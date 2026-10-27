@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-ze",
+    data: "27/10/2026",
+    titulo: "Pagamento parcial de borderô divide o borderô",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "No Contas a Pagar, pagar só parte de um borderô deixa o borderô Pago com o valor pago (marcado como parcial) e cria um borderô novo Em aberto com o saldo, com o mesmo fornecedor e as mesmas NFs. O vencimento do saldo é o informado na confirmação ou o atual." },
+      { tipo: "melhoria", texto: "Cada NF do borderô é dividida na proporção do seu saldo: parte paga no borderô pago, parte em aberto no borderô do saldo. Juros e multa entram no pagamento que quita o borderô." },
+      { tipo: "melhoria", texto: "Conciliação: cada parte do borderô é uma linha com o valor exato do pagamento e a marca parcial; ao selecionar, aparece o histórico do borderô com todas as partes." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Borderô → Confirmar Pagamento",
+  },
+  {
     versao: "2026.10.27-zd",
     data: "27/10/2026",
     titulo: "Um caminho só para remessa e retorno",

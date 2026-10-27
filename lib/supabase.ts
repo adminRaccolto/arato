@@ -447,6 +447,11 @@ export type PagamentoLote = {
   descricao?: string;
   conciliado?: boolean;
   created_at?: string;
+  // Pagamento parcial divide o borderô (Seção 379): a parte paga fica com pagamento_parcial = true e o saldo vira um
+  // borderô novo; todas as partes apontam para o primeiro borderô (lote_origem_id) e guardam o valor original.
+  lote_origem_id?: string | null;
+  pagamento_parcial?: boolean;
+  valor_lote_origem?: number | null;
   itens?: PagamentoLoteItem[];
 };
 

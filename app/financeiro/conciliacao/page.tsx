@@ -94,6 +94,11 @@ interface LoteInfo {
   conta_bancaria: string | null;
   descricao: string | null;
   conciliado: boolean;
+  data_vencimento?: string | null;
+  // Pagamento parcial divide o borderô (Seção 379): partes ligadas ao primeiro borderô
+  lote_origem_id?: string | null;
+  pagamento_parcial?: boolean | null;
+  valor_lote_origem?: number | null;
   itens: { lancamento_id: string; valor_pago: number; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null }[];
 }
 
@@ -600,9 +605,11 @@ function ConciliacaoInner() {
     setLancamentos(lData);
     // Borderôs (lotes de pagamento) e seus títulos
     try {
-      const lt = await paginar<Omit<LoteInfo, "itens">>((de, ate) => supabase.from("pagamento_lotes")
-        .select("id,status,tipo,valor_total,valor_pago,valor_juros,valor_multa,valor_desconto,data_pagamento,conta_bancaria,descricao,conciliado")
-        .in("fazenda_id", fazendaIds).order("id").range(de, ate) as unknown as PromiseLike<{ data: Omit<LoteInfo, "itens">[] | null; error: { message: string } | null }>);
+      const colsLote = "id,status,tipo,valor_total,valor_pago,valor_juros,valor_multa,valor_desconto,data_pagamento,conta_bancaria,descricao,conciliado";
+      const lerLotes = (cols: string) => paginar<Omit<LoteInfo, "itens">>((de, ate) => supabase.from("pagamento_lotes")
+        .select(cols).in("fazenda_id", fazendaIds).order("id").range(de, ate) as unknown as PromiseLike<{ data: Omit<LoteInfo, "itens">[] | null; error: { message: string } | null }>);
+      // Sem a Seção 379 as colunas das partes não existem: lê sem elas
+      const lt = await lerLotes(`${colsLote},data_vencimento,lote_origem_id,pagamento_parcial,valor_lote_origem`).catch(() => lerLotes(colsLote));
       const mapa = new Map<string, LoteInfo>(lt.map(l => [l.id, { ...l, valor_total: Number(l.valor_total), itens: [] }]));
       const ids = Array.from(mapa.keys());
       for (let i = 0; i < ids.length; i += 100) {
@@ -2269,6 +2276,7 @@ function ConciliacaoInner() {
             <div style={{ fontWeight: 700, color: negativo && !cinza ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valorMostrado)}</div>
             {!lt && ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
             {!lt && partes.get(l.id)?.parcial && <div style={{ fontSize: 10, fontWeight: 700, color: "#A16207" }}>parcial</div>}
+            {lt?.pagamento_parcial && <div style={{ fontSize: 10, fontWeight: 700, color: "#A16207" }}>parcial</div>}
           </div>
           {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
         </div>
@@ -3575,6 +3583,36 @@ function ConciliacaoInner() {
                       ))}
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: "0.5px solid #F0C060", marginTop: 3, paddingTop: 3, fontWeight: 700 }}>
                         <span>Valor do título {fmtBRL(original)} · pago {fmtBRL(pago)}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(total)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Borderô pago em partes (Seção 379): todas as partes do mesmo borderô original */}
+                {(abaSistema === "abertos" || abaSistema === "conciliados") && lancsSel.size > 0 && (() => {
+                  const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id));
+                  const loteId = sel[0]?.lote_id;
+                  if (!loteId || sel.some(l => l?.lote_id !== loteId)) return null;
+                  const lt = lotes.get(loteId);
+                  if (!lt) return null;
+                  const origem = lt.lote_origem_id ?? lt.id;
+                  const partesLote = Array.from(lotes.values()).filter(x => (x.lote_origem_id ?? x.id) === origem)
+                    .sort((a, b) => (a.data_pagamento ?? "9999").localeCompare(b.data_pagamento ?? "9999"));
+                  if (partesLote.length < 2) return null;
+                  const total = partesLote.reduce((sm, p) => sm + p.valor_total, 0);
+                  const pago = partesLote.filter(p => p.status === "pago").reduce((sm, p) => sm + p.valor_total, 0);
+                  const original = partesLote.find(p => p.valor_lote_origem != null)?.valor_lote_origem ?? total;
+                  return (
+                    <div style={{ padding: "8px 14px", fontSize: 11, background: "#FBF3E0", borderTop: "0.5px solid #F0C060", color: "var(--text-2)" }}>
+                      <div style={{ fontWeight: 700, color: "#7A5200", marginBottom: 4 }}>Histórico do borderô — pago em partes</div>
+                      {partesLote.map(p => (
+                        <div key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "1px 0", fontWeight: p.id === loteId ? 700 : 400 }}>
+                          <span>{p.status === "pago" ? `Pago em ${fmtDt(p.data_pagamento ?? "")}${p.conciliado ? " · conciliado" : ""}` : `Em aberto${p.data_vencimento ? ` · vence ${fmtDt(p.data_vencimento)}` : ""}`}</span>
+                          <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(p.valor_total)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: "0.5px solid #F0C060", marginTop: 3, paddingTop: 3, fontWeight: 700 }}>
+                        <span>Valor do borderô {fmtBRL(original)} · pago {fmtBRL(pago)}</span>
                         <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(total)}</span>
                       </div>
                     </div>

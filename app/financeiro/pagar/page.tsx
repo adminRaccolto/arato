@@ -1510,7 +1510,10 @@ export default function ContasAPagarPage() {
   const [confirmJuros, setConfirmJuros] = useState("0,00");
   const [confirmMulta, setConfirmMulta] = useState("0,00");
   const [confirmDesconto, setConfirmDesconto] = useState("0,00");
-  const totalConfirm = Math.max(0, confirmValorPago + numBR(confirmJuros) + numBR(confirmMulta) - numBR(confirmDesconto));
+  // Pagamento parcial de borderô sem pagamento anterior divide o borderô (Seção 379); juros e multa ficam para a quitação
+  const borderoDivide = !!modalConfirmarBordero && confirmValorPago > 0 && resumoBordero(modalConfirmarBordero).liquidado === 0
+    && arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo;
+  const totalConfirm = Math.max(0, confirmValorPago + (borderoDivide ? 0 : numBR(confirmJuros) + numBR(confirmMulta)) - numBR(confirmDesconto));
 
   async function abrirConfirmarBordero(b: PagamentoLote) {
     setErroBordero("");
@@ -1540,7 +1543,7 @@ export default function ContasAPagarPage() {
     try {
       await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, {
         novo_vencimento_saldo: arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo ? confirmVencimentoSaldo || undefined : undefined,
-        principal_anterior: resumoBordero(modalConfirmarBordero).liquidado, valor_pago: confirmValorPago, valor_juros: numBR(confirmJuros), valor_multa: numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
+        principal_anterior: resumoBordero(modalConfirmarBordero).liquidado, valor_pago: confirmValorPago, valor_juros: borderoDivide ? 0 : numBR(confirmJuros), valor_multa: borderoDivide ? 0 : numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
       });
       setModalConfirmarBordero(null);
       await Promise.all([carregar(), carregarBorderos()]);
@@ -1899,7 +1902,7 @@ export default function ContasAPagarPage() {
                     lancado: cel("Borderô", { color: "#888" }),
                     observacao: cel(b.descricao ?? "—", { color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }),
                     acoes: <td style={{ textAlign: "right" }}><OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopBordero({ b, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton></td>,
-                    status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? "Borderô pago" : parcial ? "Borderô parcial" : "Borderô pendente"}</span>),
+                    status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? (b.pagamento_parcial ? "Borderô pago · parcial" : "Borderô pago") : parcial ? "Borderô parcial" : "Borderô pendente"}</span>),
                   };
                   return (
                     <tr key={`bdr-${b.id}`} onClick={e => setPopBordero({ b, x: e.clientX, y: e.clientY })} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60", cursor: "pointer" }}>
@@ -2352,11 +2355,11 @@ export default function ContasAPagarPage() {
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Juros</label>
-                <input value={confirmJuros} onChange={e => setConfirmJuros(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <input value={confirmJuros} disabled={borderoDivide} title={borderoDivide ? "Juros e multa entram no pagamento que quita o borderô" : undefined} onChange={e => setConfirmJuros(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Multa</label>
-                <input value={confirmMulta} onChange={e => setConfirmMulta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <input value={confirmMulta} disabled={borderoDivide} title={borderoDivide ? "Juros e multa entram no pagamento que quita o borderô" : undefined} onChange={e => setConfirmMulta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Desconto</label>
@@ -2364,7 +2367,9 @@ export default function ContasAPagarPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12 }}>
-              <span style={{ color: "#888" }}>Valor a pagar menor que o saldo = pagamento parcial. O restante continua em aberto neste borderô.</span>
+              <span style={{ color: "#888" }}>{resumoBordero(modalConfirmarBordero).liquidado > 0
+                ? "Valor a pagar menor que o saldo = pagamento parcial. O restante continua em aberto neste borderô."
+                : "Valor a pagar menor que o saldo = pagamento parcial: este borderô fica pago com o valor pago e o saldo vira um borderô novo em aberto, com as mesmas NFs."}</span>
               <strong style={{ color: "#E24B4A", whiteSpace: "nowrap", marginLeft: 12 }}>Total: {fmtBRL(totalConfirm)}</strong>
             </div>
 
@@ -2373,7 +2378,8 @@ export default function ContasAPagarPage() {
                 <label data-arato-label="true" style={lbl} htmlFor="bordero-vencimento-saldo">Novo vencimento do saldo (opcional)</label>
                 <InputData id="bordero-vencimento-saldo" type="date" value={confirmVencimentoSaldo} onChange={e => setConfirmVencimentoSaldo(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
                 <div style={{ fontSize: 11, color: "#7A5200", marginTop: 6 }}>
-                  Saldo após este pagamento: <strong>{fmtBRL(arredondarMoeda(resumoBordero(modalConfirmarBordero).saldo - confirmValorPago))}</strong>.
+                  {borderoDivide ? "Borderô novo com o saldo" : "Saldo após este pagamento"}: <strong>{fmtBRL(arredondarMoeda(resumoBordero(modalConfirmarBordero).saldo - confirmValorPago))}</strong>.
+                  {borderoDivide ? " Juros e multa ficam para o pagamento que quitar o saldo." : ""}
                   {" "}Se deixar a data em branco, o saldo mantém o vencimento atual
                   {modalConfirmarBordero.data_vencimento ? ` (${fmtData(modalConfirmarBordero.data_vencimento)})` : ""}.
                 </div>

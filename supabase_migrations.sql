@@ -18158,3 +18158,78 @@ ALTER TABLE nf_remessas_logisticas
   ADD COLUMN IF NOT EXISTS emissao text,                       -- 'arato' (emitida aqui) | 'externa' (emitida em outro sistema)
   ADD COLUMN IF NOT EXISTS estoque_transferido boolean NOT NULL DEFAULT false;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 379 — Pagamento parcial de borderô divide o borderô
+-- =============================================================================
+-- Mesma regra da Seção 375, agora para o borderô do Contas a Pagar: pagar só parte do borderô deixa o borderô PAGO
+-- com o valor pago (pagamento_parcial = true) e cria um borderô novo EM ABERTO com o saldo (mesmo fornecedor, mesmas
+-- NFs). Cada título de dentro é dividido na proporção do seu saldo: a parte paga fica no borderô pago e a parte em
+-- aberto vai para o borderô do saldo. As partes do borderô ficam ligadas por lote_origem_id e valor_lote_origem.
+-- O servidor cria o borderô do saldo e grava lote_saldo_id no título; o gatilho da Seção 375 divide o título e põe a
+-- parte em aberto nesse borderô.
+ALTER TABLE pagamento_lotes
+  ADD COLUMN IF NOT EXISTS lote_origem_id uuid,
+  ADD COLUMN IF NOT EXISTS pagamento_parcial boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS valor_lote_origem numeric(15,2);
+CREATE INDEX IF NOT EXISTS idx_pagamento_lotes_origem ON pagamento_lotes(lote_origem_id) WHERE lote_origem_id IS NOT NULL;
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS lote_saldo_id uuid;
+ALTER TABLE empresa_lancamentos ADD COLUMN IF NOT EXISTS lote_saldo_id uuid;
+
+CREATE OR REPLACE FUNCTION fn_dividir_titulo_parcial() RETURNS trigger AS $$
+DECLARE
+  j_new jsonb := to_jsonb(NEW);
+  j_old jsonb := to_jsonb(OLD);
+  v_pago_status text := CASE WHEN TG_TABLE_NAME = 'lancamentos' THEN 'baixado' ELSE 'pago' END;
+  v_aberto_status text := CASE WHEN TG_TABLE_NAME = 'lancamentos' THEN 'em_aberto' ELSE 'pendente' END;
+  v_valor numeric := COALESCE((j_new->>'valor')::numeric, 0);
+  v_pago numeric := COALESCE((j_new->>'valor_pago')::numeric, 0);
+  v_desc numeric := GREATEST(COALESCE((j_new->>'valor_desconto')::numeric, 0) - COALESCE((j_old->>'valor_desconto')::numeric, 0), 0);
+  v_saldo numeric;
+  v_venc date;
+  v_cols text;
+BEGIN
+  -- Título em borderô só é dividido quando o servidor indica o borderô do saldo (lote_saldo_id)
+  IF j_new->>'status' IS DISTINCT FROM 'parcial' OR j_new->>'tipo' IS DISTINCT FROM 'pagar'
+     OR COALESCE(j_new->>'moeda', 'BRL') <> 'BRL'
+     OR (j_new->>'lote_id' IS NOT NULL AND j_new->>'lote_saldo_id' IS NULL)
+     OR j_new->>'contrato_financeiro_id' IS NOT NULL
+     OR COALESCE((j_old->>'valor_pago')::numeric, 0) > 0.005   -- parcial antigo: segue até o script dividir
+     OR v_pago <= 0.005 THEN
+    NEW.lote_saldo_id := NULL;
+    RETURN NEW;
+  END IF;
+  v_saldo := round(v_valor - v_pago - v_desc, 2);
+  IF v_saldo <= 0.005 THEN NEW.lote_saldo_id := NULL; RETURN NEW; END IF;
+  v_venc := COALESCE((j_new->>'vencimento_saldo')::date, (j_new->>'data_vencimento')::date);
+
+  -- Título novo com o saldo (copia tudo, menos o que é do pagamento)
+  SELECT string_agg(quote_ident(column_name), ',' ORDER BY ordinal_position) INTO v_cols
+    FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = TG_TABLE_NAME
+     AND column_name NOT IN ('id', 'created_at') AND is_identity = 'NO' AND is_generated = 'NEVER';
+  EXECUTE format('INSERT INTO %I (%s) SELECT %s FROM jsonb_populate_record(NULL::%I, $1)', TG_TABLE_NAME, v_cols, v_cols, TG_TABLE_NAME)
+    USING j_new || jsonb_build_object(
+      'valor', v_saldo, 'valor_pago', NULL, 'status', v_aberto_status, 'conciliado', false,
+      'valor_multa', NULL, 'valor_juros', NULL, 'valor_desconto', NULL,
+      'data_baixa', NULL, 'data_pagamento', NULL, 'conta_bancaria', NULL, 'conta_bancaria_id', NULL,
+      'previsao_gasto_id', NULL, 'fatura_cartao_id', NULL,
+      'lote_id', j_new->'lote_saldo_id', 'lote_saldo_id', NULL,
+      'data_vencimento', v_venc,
+      'data_prorrogacao', CASE WHEN v_venc IS DISTINCT FROM (j_new->>'data_vencimento')::date
+                               THEN COALESCE(j_new->>'data_prorrogacao', j_new->>'data_vencimento') ELSE j_new->>'data_prorrogacao' END,
+      'titulo_origem_id', COALESCE(j_new->>'titulo_origem_id', j_new->>'id'),
+      'valor_titulo_origem', COALESCE((j_new->>'valor_titulo_origem')::numeric, (j_old->>'valor')::numeric),
+      'pagamento_parcial', false, 'vencimento_saldo', NULL);
+
+  -- Este título vira a parte paga
+  NEW.valor := round(v_valor - v_saldo, 2);
+  NEW.status := v_pago_status;
+  NEW.pagamento_parcial := true;
+  NEW.titulo_origem_id := COALESCE(NEW.titulo_origem_id, NEW.id);
+  NEW.valor_titulo_origem := COALESCE(NEW.valor_titulo_origem, OLD.valor);
+  NEW.vencimento_saldo := NULL;
+  NEW.lote_saldo_id := NULL;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+NOTIFY pgrst, 'reload schema';

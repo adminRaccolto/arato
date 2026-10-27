@@ -7,7 +7,9 @@ type Original = {
   id: string; lote_id: string | null; status: string; valor: number; moeda?: string; cotacao_usd?: number;
   valor_pago: number | null; valor_juros: number | null; valor_multa: number | null; valor_desconto: number | null;
   data_baixa?: string | null; data_pagamento?: string | null; conta_bancaria?: string | null;
+  contrato_financeiro_id?: string | null; titulo_origem_id?: string | null; pagamento_parcial?: boolean | null; valor_titulo_origem?: number | null;
 };
+type Lote = PagamentoLote;
 function erro(mensagem: string) { return new Error(mensagem); }
 
 /** Mantém o saldo no próprio título e acumula as liquidações em PF/PJ. */
@@ -56,6 +58,17 @@ export async function confirmarBorderoComSaldo(db: SupabaseClient, loteId: strin
   const descontos = ratearMoeda(pagamento.desconto, principal);
   const juros = ratearMoeda(pagamento.juros, pesos);
   const multas = ratearMoeda(pagamento.multa, pesos);
+
+  // Pagamento parcial de borderô a pagar divide o borderô (Seção 379), como o título avulso (Seção 375). Fora da
+  // divisão (seguem acumulando no mesmo borderô): Contas a Receber, borderô que já tinha pagamento acumulado e
+  // títulos em dólar, de contrato financeiro ou com pagamento anterior ao borderô.
+  const dividir = lote.tipo === "pagar" && pagamento.saldo > 0 && resumo.liquidado === 0
+    && documentos.every(d => (d.original.moeda ?? "BRL") === "BRL" && !d.original.contrato_financeiro_id && !((d.original.valor_pago ?? 0) > 0));
+  if (dividir) {
+    if (pagamento.juros > 0 || pagamento.multa > 0)
+      throw erro("Juros e multa entram no pagamento que quita o borderô. Neste pagamento parcial informe só o valor pago (e o desconto, se houver).");
+    return dividirBordero(db, lote as Lote, itens, documentos, principal, descontos, data, conta, titulo, pagamento.principal, pagamento.desconto);
+  }
   const desfazer: (() => Promise<void>)[] = [];
   try {
     for (let n = 0; n < documentos.length; n++) {
@@ -116,6 +129,123 @@ export async function confirmarBorderoComSaldo(db: SupabaseClient, loteId: strin
     for (const reverter of desfazer.reverse()) {
       try { await reverter(); } catch { falhou = true; }
     }
+    if (falhou) throw erro("O pagamento não foi concluído e houve falha na reversão. Confira os títulos antes de tentar novamente.");
+    throw e;
+  }
+}
+
+/** Pagamento parcial: o borderô fica pago com o valor pago e nasce um borderô em aberto com o saldo. Cada título é
+ * dividido pelo gatilho da Seção 375/379: a parte paga fica neste borderô e a parte em aberto vai para o novo. */
+async function dividirBordero(db: SupabaseClient, lote: Lote, itens: Item[],
+  documentos: { origem: "lancamentos" | "empresa_lancamentos"; original: Original; valor: number; saldo: number }[],
+  principal: number[], descontos: number[], data: string, conta: string,
+  titulo: ValoresPagamentoBordero & { numero_titulo?: string }, totalPrincipal: number, totalDesconto: number) {
+  const vencimento = (titulo.novo_vencimento_saldo ?? "").trim();
+  const origemLote = lote.lote_origem_id ?? lote.id;
+  const valorOrigem = lote.valor_lote_origem ?? lote.valor_total;
+  const novo = await db.from("pagamento_lotes").insert({
+    fazenda_id: lote.fazenda_id, tipo: lote.tipo, status: "pendente", descricao: lote.descricao ?? null,
+    numero_titulo: (titulo.numero_titulo !== undefined ? titulo.numero_titulo || null : lote.numero_titulo ?? null),
+    data_vencimento: vencimento || lote.data_vencimento || null,
+    valor_total: arredondarMoeda(lote.valor_total - totalPrincipal), valor_pago: null, valor_juros: 0, valor_multa: 0, valor_desconto: 0,
+    lote_origem_id: origemLote, valor_lote_origem: valorOrigem, pagamento_parcial: false,
+  }).select("id").single();
+  if (novo.error) throw novo.error;
+  const saldoId = (novo.data as { id: string }).id;
+  const desfazer: (() => Promise<void>)[] = [];
+  try {
+    for (let n = 0; n < documentos.length; n++) {
+      const { origem, original, valor, saldo } = documentos[n];
+      if (saldo === 0) continue;
+      const item = itens[n];
+      if (principal[n] === 0) {
+        // Título que não recebeu nada do rateio passa inteiro para o borderô do saldo
+        const r = await db.from(origem).update({ lote_id: saldoId }).eq("id", original.id).eq("lote_id", lote.id).eq("status", original.status).select("id");
+        if (r.error) throw r.error;
+        if (r.data?.length !== 1) throw erro("Um dos títulos foi alterado durante o pagamento. Atualize a tela e tente novamente.");
+        desfazer.push(async () => {
+          const v = await db.from(origem).update({ lote_id: lote.id }).eq("id", original.id).eq("lote_id", saldoId).select("id");
+          if (v.error || v.data?.length !== 1) throw erro("Falha ao reverter título.");
+        });
+        const ri = await db.from("pagamento_lote_itens").delete().eq("id", item.id).eq("lote_id", lote.id).select("id");
+        if (ri.error) throw ri.error;
+        desfazer.push(async () => {
+          const v = await db.from("pagamento_lote_itens").insert({ id: item.id, lote_id: lote.id, lancamento_id: item.lancamento_id, origem_tabela: origem, valor_pago: item.valor_pago });
+          if (v.error) throw erro("Falha ao reverter rateio.");
+        });
+        continue;
+      }
+      const campoData = origem === "lancamentos" ? "data_baixa" : "data_pagamento";
+      const caixa = arredondarMoeda(principal[n] - descontos[n]);
+      const quita = principal[n] >= saldo;
+      const patch = {
+        valor_pago: caixa, valor_juros: null, valor_multa: null, valor_desconto: descontos[n] || null,
+        status: quita ? (origem === "lancamentos" ? "baixado" : "pago") : "parcial",
+        [campoData]: data, conta_bancaria: conta,
+        ...(quita ? {} : { lote_saldo_id: saldoId, vencimento_saldo: vencimento || null }),
+      };
+      const r = await db.from(origem).update(patch).eq("id", original.id).eq("lote_id", lote.id).eq("status", original.status).is("valor_pago", null).select("id");
+      if (r.error) throw r.error;
+      if (r.data?.length !== 1) throw erro("Um dos títulos foi alterado durante o pagamento. Atualize a tela e tente novamente.");
+      desfazer.push(async () => {
+        // Apaga a parte em aberto criada pelo gatilho e devolve o título ao estado anterior
+        if (!quita) {
+          const parte = await db.from(origem).delete().eq("lote_id", saldoId).eq("titulo_origem_id", original.titulo_origem_id ?? original.id).select("id");
+          if (parte.error) throw erro("Falha ao reverter título.");
+        }
+        const v = await db.from(origem).update({
+          valor: original.valor, status: original.status, valor_pago: original.valor_pago, valor_juros: original.valor_juros,
+          valor_multa: original.valor_multa, valor_desconto: original.valor_desconto, [campoData]: original[campoData] ?? null,
+          conta_bancaria: original.conta_bancaria ?? null, pagamento_parcial: original.pagamento_parcial ?? false,
+          titulo_origem_id: original.titulo_origem_id ?? null, valor_titulo_origem: original.valor_titulo_origem ?? null,
+        }).eq("id", original.id).eq("lote_id", lote.id).select("id");
+        if (v.error || v.data?.length !== 1) throw erro("Falha ao reverter título.");
+      });
+      const ri = await db.from("pagamento_lote_itens").update({ valor_pago: caixa, valor_juros: null, valor_multa: null, valor_desconto: descontos[n] || null })
+        .eq("id", item.id).eq("lote_id", lote.id).select("id");
+      if (ri.error) throw ri.error;
+      if (ri.data?.length !== 1) throw erro("O item do borderô foi alterado durante o pagamento.");
+      desfazer.push(async () => {
+        const v = await db.from("pagamento_lote_itens").update({ valor_pago: item.valor_pago, valor_juros: item.valor_juros ?? null,
+          valor_multa: item.valor_multa ?? null, valor_desconto: item.valor_desconto ?? null }).eq("id", item.id).eq("lote_id", lote.id).select("id");
+        if (v.error || v.data?.length !== 1) throw erro("Falha ao reverter rateio.");
+      });
+    }
+    // Itens do borderô do saldo: as partes em aberto (e os títulos movidos inteiros)
+    const novosItens: { lote_id: string; lancamento_id: string; origem_tabela: string; valor_pago: number }[] = [];
+    for (const origem of ["lancamentos", "empresa_lancamentos"] as const) {
+      const r = await db.from(origem).select("id, valor").eq("lote_id", saldoId).order("id");
+      if (r.error) throw r.error;
+      for (const t of (r.data ?? []) as { id: string; valor: number }[])
+        novosItens.push({ lote_id: saldoId, lancamento_id: t.id, origem_tabela: origem, valor_pago: arredondarMoeda(Number(t.valor)) });
+    }
+    const somaSaldo = arredondarMoeda(novosItens.reduce((s, i) => s + i.valor_pago, 0));
+    if (Math.abs(somaSaldo - arredondarMoeda(lote.valor_total - totalPrincipal)) > 0.01)
+      throw erro("O saldo dos títulos não confere com o saldo do borderô. Nada foi alterado; atualize a tela e tente novamente.");
+    if (novosItens.length) {
+      const ri = await db.from("pagamento_lote_itens").insert(novosItens);
+      if (ri.error) throw ri.error;
+    }
+    // Este borderô passa a ser o pagamento: pago, com o valor pago
+    const patch: Record<string, unknown> = {
+      status: "pago", valor_total: arredondarMoeda(totalPrincipal), valor_pago: arredondarMoeda(totalPrincipal),
+      valor_juros: 0, valor_multa: 0, valor_desconto: arredondarMoeda(totalDesconto),
+      data_pagamento: data, conta_bancaria: conta, pagamento_parcial: true, lote_origem_id: origemLote, valor_lote_origem: valorOrigem,
+    };
+    if (titulo.numero_titulo !== undefined) patch.numero_titulo = titulo.numero_titulo || null;
+    let q = db.from("pagamento_lotes").update(patch).eq("id", lote.id).eq("status", lote.status ?? "pendente");
+    q = lote.valor_pago == null ? q.is("valor_pago", null) : q.eq("valor_pago", lote.valor_pago);
+    const r = await q.select("id");
+    if (r.error) throw r.error;
+    if (r.data?.length !== 1) throw erro("O borderô foi alterado durante o pagamento. Atualize a tela.");
+  } catch (e) {
+    let falhou = false;
+    for (const reverter of desfazer.reverse()) {
+      try { await reverter(); } catch { falhou = true; }
+    }
+    // O FK remove em cascata os itens do borderô do saldo
+    const del = await db.from("pagamento_lotes").delete().eq("id", saldoId);
+    if (del.error) falhou = true;
     if (falhou) throw erro("O pagamento não foi concluído e houve falha na reversão. Confira os títulos antes de tentar novamente.");
     throw e;
   }

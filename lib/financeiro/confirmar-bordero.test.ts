@@ -8,39 +8,66 @@ import { acumularPagamentoBordero, ratearMoeda, resumoBordero } from "./saldo-bo
 import { filtrarBordero, vinculosBorderos } from "./cp-grid";
 
 type Row = Record<string, unknown>;
-function banco() {
-  const tabelas: Record<string, Row[]> = { pagamento_lotes: [{ id: "b1", fazenda_id: "f1", tipo: "pagar", status: "pendente", valor_total: 4000,
+// tipo "receber": o borderô acumula os pagamentos (modelo anterior, mantido no Contas a Receber).
+// tipo "pagar": pagamento parcial divide o borderô (Seção 379) — o gatilho do banco é simulado em dividirNoBanco.
+function banco(tipo: "pagar" | "receber" = "receber") {
+  let seq = 0;
+  const tabelas: Record<string, Row[]> = { pagamento_lotes: [{ id: "b1", fazenda_id: "f1", tipo, status: "pendente", valor_total: 4000,
     valor_pago: null, valor_juros: 0, valor_multa: 0, valor_desconto: 0, data_vencimento: "2026-10-15" }],
     pagamento_lote_itens: [], lancamentos: [], empresa_lancamentos: [] };
   for (let i = 0; i < 4; i++) {
     const origem = i === 3 ? "empresa_lancamentos" : "lancamentos";
-    tabelas[origem].push({ id: `nf${i}`, lote_id: "b1", tipo: "pagar", status: i === 3 ? "pendente" : "em_aberto", valor: 1000, valor_pago: null,
+    tabelas[origem].push({ id: `nf${i}`, lote_id: "b1", tipo, status: i === 3 ? "pendente" : "em_aberto", valor: 1000, valor_pago: null, data_vencimento: "2026-10-15",
       valor_juros: null, valor_multa: null, valor_desconto: null, conta_bancaria: null, data_baixa: null, data_pagamento: null });
     tabelas.pagamento_lote_itens.push({ id: `i${i}`, lote_id: "b1", lancamento_id: `nf${i}`, origem_tabela: origem, valor_pago: 1000 });
   }
-  const falhas = { titulo: "", cabecalho: false };
+  const falhas = { titulo: "", cabecalho: false, insercaoItens: false };
+  // Gatilho fn_dividir_titulo_parcial (Seções 375/379) para título a pagar em borderô com lote_saldo_id
+  function dividirNoBanco(tabela: string, r: Row, antes: Row) {
+    if (!["lancamentos", "empresa_lancamentos"].includes(tabela)) return;
+    const saldoId = r.lote_saldo_id; r.lote_saldo_id = null;
+    if (r.status !== "parcial" || r.tipo !== "pagar" || !saldoId || Number(antes.valor_pago ?? 0) > 0) return;
+    const desc = Math.max(0, Number(r.valor_desconto ?? 0) - Number(antes.valor_desconto ?? 0));
+    const saldo = Math.round((Number(r.valor) - Number(r.valor_pago ?? 0) - desc) * 100) / 100;
+    if (saldo <= 0) return;
+    tabelas[tabela].push({ ...r, id: `${r.id}-saldo`, valor: saldo, valor_pago: null, valor_desconto: null, valor_juros: null, valor_multa: null,
+      status: tabela === "lancamentos" ? "em_aberto" : "pendente", data_baixa: null, data_pagamento: null, conta_bancaria: null,
+      lote_id: saldoId, data_vencimento: r.vencimento_saldo ?? r.data_vencimento, titulo_origem_id: r.titulo_origem_id ?? r.id,
+      valor_titulo_origem: r.valor_titulo_origem ?? antes.valor, pagamento_parcial: false, vencimento_saldo: null });
+    Object.assign(r, { valor: Math.round((Number(r.valor) - saldo) * 100) / 100, status: tabela === "lancamentos" ? "baixado" : "pago",
+      pagamento_parcial: true, titulo_origem_id: r.titulo_origem_id ?? r.id, valor_titulo_origem: r.valor_titulo_origem ?? antes.valor, vencimento_saldo: null });
+  }
   function from(tabela: string) {
     let acao = "select", unico = false, offset = 0, limite = Infinity;
     let payload: Row = {};
+    let novos: Row[] = [];
     const filtros: ((r: Row) => boolean)[] = [];
     const query = {
       select() { return query; }, single() { unico = true; return query; }, order() { return query; },
       range(de: number, ate: number) { offset = de; limite = ate - de + 1; return query; },
       update(p: Row) { acao = "update"; payload = p; return query; },
+      insert(p: Row | Row[]) { acao = "insert"; novos = (Array.isArray(p) ? p : [p]).map(r => ({ id: `novo${++seq}`, ...r })); return query; },
       delete() { acao = "delete"; return query; },
       eq(c: string, v: unknown) { filtros.push(r => r[c] === v); return query; },
       is(c: string, v: unknown) { filtros.push(r => (r[c] ?? null) === v); return query; },
       in(c: string, vs: unknown[]) { filtros.push(r => vs.includes(r[c])); return query; },
       then(resolve: (r: { data: Row | Row[] | null; error: Error | null }) => unknown, reject?: (e: unknown) => unknown) {
         return Promise.resolve().then(() => {
+          if (acao === "insert") {
+            if (falhas.insercaoItens && tabela === "pagamento_lote_itens") return { data: null, error: new Error("Falha simulada") };
+            tabelas[tabela].push(...novos);
+            const data = structuredClone(novos);
+            return { data: unico ? data[0] ?? null : data, error: null };
+          }
           const rows = tabelas[tabela].filter(r => filtros.every(f => f(r))).slice(offset, offset + limite);
           if (acao === "update" || acao === "delete") {
-            if ((falhas.cabecalho && tabela === "pagamento_lotes") || rows.some(r => r.id === falhas.titulo))
+            if ((falhas.cabecalho && tabela === "pagamento_lotes" && rows.some(r => r.id === "b1")) || rows.some(r => r.id === falhas.titulo))
               return { data: null, error: new Error("Falha simulada") };
-            if (acao === "update") rows.forEach(r => Object.assign(r, payload));
+            if (acao === "update") rows.forEach(r => { const antes = { ...r }; Object.assign(r, payload); if ("lote_saldo_id" in payload) dividirNoBanco(tabela, r, antes); });
             else {
               tabelas[tabela] = tabelas[tabela].filter(r => !rows.includes(r));
               if (tabela === "pagamento_lotes") tabelas.pagamento_lote_itens = tabelas.pagamento_lote_itens.filter(i => !rows.some(r => r.id === i.lote_id));
+              if (tabela === "pagamento_lotes") for (const t of ["lancamentos", "empresa_lancamentos"]) for (const l of tabelas[t]) if (rows.some(r => r.id === l.lote_id)) l.lote_id = null;
             }
           }
           const data = structuredClone(rows);
@@ -201,4 +228,78 @@ test("falha na baixa não publica a nova data do saldo", async () => {
   await assert.rejects(confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, novo_vencimento_saldo: "2026-11-15" }));
   assert.equal(b.lote().data_vencimento, "2026-10-15");
   assert.equal(b.lote().valor_pago, null);
+});
+
+// ── Borderô a pagar: pagamento parcial divide o borderô (Seção 379) ──────────────────────────────────────────────
+const lotePorId = (b: ReturnType<typeof banco>, id: string) => b.tabelas.pagamento_lotes.find(l => l.id === id) as unknown as PagamentoLote & Row;
+test("borderô a pagar: 4000 - 2500 fica pago de 2500 e nasce borderô em aberto de 1500 com as mesmas NFs", async () => {
+  const b = banco("pagar");
+  await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, novo_vencimento_saldo: "2026-11-15", principal_anterior: 0 });
+  assert.equal(b.tabelas.pagamento_lotes.length, 2);
+  const pago = lotePorId(b, "b1"), saldo = b.tabelas.pagamento_lotes.find(l => l.id !== "b1") as unknown as PagamentoLote & Row;
+  assert.deepEqual([pago.status, pago.valor_total, pago.valor_pago, pago.pagamento_parcial, pago.data_pagamento], ["pago", 2500, 2500, true, "2026-10-07"]);
+  assert.deepEqual([saldo.status, saldo.valor_total, saldo.valor_pago, saldo.data_vencimento, saldo.lote_origem_id, saldo.valor_lote_origem], ["pendente", 1500, null, "2026-11-15", "b1", 4000]);
+  assert.equal(pago.lote_origem_id, "b1"); assert.equal(pago.valor_lote_origem, 4000);
+  assert.deepEqual(resumoBordero(pago), { liquidado: 2500, saldo: 0, status: "baixado" });
+  assert.deepEqual(resumoBordero(saldo), { liquidado: 0, saldo: 1500, status: "em_aberto" });
+  // cada NF: parte paga de 625 no borderô pago, parte de 375 em aberto no borderô do saldo, vencimento novo
+  const titulos = b.originais();
+  assert.equal(titulos.length, 8);
+  for (const nf of ["nf0", "nf1", "nf2", "nf3"]) {
+    const partes = titulos.filter(t => (t.titulo_origem_id ?? t.id) === nf);
+    const paga = partes.find(t => t.lote_id === "b1")!, aberta = partes.find(t => t.lote_id === saldo.id)!;
+    assert.deepEqual([paga.valor, paga.valor_pago, paga.pagamento_parcial], [625, 625, true]);
+    assert.ok(["baixado", "pago"].includes(paga.status as string));
+    assert.deepEqual([aberta.valor, aberta.valor_pago, aberta.data_vencimento], [375, null, "2026-11-15"]);
+    assert.ok(["em_aberto", "pendente"].includes(aberta.status as string));
+  }
+  const itensSaldo = b.tabelas.pagamento_lote_itens.filter(i => i.lote_id === saldo.id);
+  assert.deepEqual(itensSaldo.map(i => i.valor_pago), [375, 375, 375, 375]);
+  assert.deepEqual(b.tabelas.pagamento_lote_itens.filter(i => i.lote_id === "b1").map(i => i.valor_pago), [625, 625, 625, 625]);
+  // pagar o saldo quita o borderô novo, sem nova divisão
+  await confirmarBorderoComSaldo(b.db, saldo.id as string, "2026-11-15", "conta1", { valor_pago: 1500, valor_juros: 30, principal_anterior: 0 });
+  assert.equal(b.tabelas.pagamento_lotes.length, 2);
+  assert.equal(lotePorId(b, saldo.id as string).status, "pago");
+  assert.equal(lotePorId(b, saldo.id as string).valor_juros, 30);
+  assert.equal(b.originais().length, 8);
+});
+test("borderô a pagar: segundo parcial divide de novo e mantém a ligação com o borderô original", async () => {
+  const b = banco("pagar");
+  await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 1000 });
+  const s1 = b.tabelas.pagamento_lotes.find(l => l.id !== "b1")!;
+  await confirmarBorderoComSaldo(b.db, s1.id as string, "2026-10-20", "conta1", { valor_pago: 1000 });
+  const s2 = b.tabelas.pagamento_lotes.find(l => l.id !== "b1" && l.id !== s1.id)!;
+  assert.deepEqual([s2.valor_total, s2.lote_origem_id, s2.valor_lote_origem], [2000, "b1", 4000]);
+  assert.equal(b.tabelas.pagamento_lotes.filter(l => l.lote_origem_id === "b1").reduce((s, l) => s + Number(l.valor_total), 0), 4000);
+  assert.ok(b.originais().filter(t => t.lote_id === s2.id).every(t => t.valor === 500));
+});
+test("borderô a pagar: juros ou multa só no pagamento que quita", async () => {
+  const b = banco("pagar"); const antes = structuredClone(b.tabelas);
+  await assert.rejects(confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, valor_multa: 10 }), /Juros e multa/);
+  assert.deepEqual(b.tabelas, antes);
+  await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 4000, valor_juros: 40 });
+  assert.equal(b.tabelas.pagamento_lotes.length, 1);
+  assert.equal(b.lote().valor_juros, 40);
+});
+test("borderô a pagar: desconto no parcial reduz o caixa da parte paga, não o saldo", async () => {
+  const b = banco("pagar");
+  await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2000, valor_desconto: 100 });
+  const saldo = b.tabelas.pagamento_lotes.find(l => l.id !== "b1")!;
+  assert.equal(saldo.valor_total, 2000);
+  assert.equal(b.originais().filter(t => t.lote_id === "b1").reduce((s, t) => s + Number(t.valor_pago), 0), 1900);
+  assert.equal(lotePorId(b, "b1").valor_desconto, 100);
+});
+test("borderô a pagar: falha no meio desfaz a divisão e remove o borderô do saldo", async () => {
+  for (const falha of ["titulo", "cabecalho", "itens"]) {
+    const b = banco("pagar"); const antes = structuredClone(b.tabelas);
+    if (falha === "titulo") b.falhas.titulo = "nf2"; else if (falha === "itens") b.falhas.insercaoItens = true; else b.falhas.cabecalho = true;
+    await assert.rejects(confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500 }), /Falha simulada/);
+    assert.equal(b.tabelas.pagamento_lotes.length, 1);
+    assert.equal(b.originais().length, 4);
+    for (const t of b.originais()) {
+      const o = [...antes.lancamentos, ...antes.empresa_lancamentos].find(x => x.id === t.id)!;
+      assert.deepEqual([t.valor, t.status, t.valor_pago ?? null, t.lote_id], [o.valor, o.status, o.valor_pago ?? null, o.lote_id]);
+    }
+    assert.deepEqual(b.tabelas.pagamento_lote_itens.map(i => i.valor_pago), [1000, 1000, 1000, 1000]);
+  }
 });
