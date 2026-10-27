@@ -1348,7 +1348,8 @@ export default function FolhaPagamentoPage() {
                                       <input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)}
                                         style={{ ...S.inp, width:80, textAlign:"right" }} />
                                       <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)}
-                                        placeholder="Justificativa..." style={{ ...S.inp, width:80, fontSize:10, padding:"1px 4px" }} />
+                                        placeholder={f.outros_descontos > 0 ? "Observação do desconto" : "Observação"} title="Observação do desconto — vai para o título do salário no Contas a Pagar"
+                                        style={{ ...S.inp, width:150, fontSize:11, padding:"2px 5px", ...(f.outros_descontos > 0 && !f.desc_outros_descontos.trim() ? { borderColor:"#C9921B", background:"#FBF3E0" } : {}) }} />
                                     </div>
                                   )}
                                 </td>
@@ -1384,10 +1385,10 @@ export default function FolhaPagamentoPage() {
                                         <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.outros_beneficios)}</span>
                                       </div>
                                       <div>
-                                        <label data-arato-label="true" style={S.label}>Outros Descontos (justificativa)</label>
+                                        <label data-arato-label="true" style={S.label}>Observação dos outros descontos</label>
                                         {isFechado
                                           ? <span style={{ fontSize:13, color:"#555" }}>{f.desc_outros_descontos || "—"}</span>
-                                          : <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descreva o desconto..." />
+                                          : <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Ex.: farmácia, dias não trabalhados, empréstimo..." />
                                         }
                                       </div>
                                       <div>

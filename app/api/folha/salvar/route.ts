@@ -73,6 +73,14 @@ function liquidoItem(it: any): number {
     + (it.complemento_salarial ?? 0)
   ) * 100) / 100);
 }
+// Observação do título do salário: o que foi descontado em "Outros descontos" e por quê
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function obsOutrosDescontos(it: any): string | null {
+  const v = Number(it.outros_descontos ?? 0);
+  if (!(v > 0)) return null;
+  const txt = String(it.desc_outros_descontos ?? "").trim();
+  return `Outros descontos R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${txt ? `: ${txt}` : ""}`;
+}
 function vencimentoEncargoFolha(competencia: string): string {
   const [ano, mes] = competencia.split("-").map(Number);
   const prox = mes === 12 ? { a: ano + 1, m: 1 } : { a: ano, m: mes + 1 };
@@ -209,7 +217,7 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
       ano_safra_id: anoSafra,
       natureza: "previsao", tipo: "pagar",
       descricao: `Salário ${rotulo} — ${it.nome_funcionario}`,
-      valor: liquidoItem(it), moeda: "BRL", status: "em_aberto",
+      valor: liquidoItem(it), moeda: "BRL", status: "em_aberto", observacao: obsOutrosDescontos(it),
       categoria: "Pessoal / Salários", origem_lancamento: "folha",
       operacao_gerencial_id: ogSalario,
       data_vencimento: vencimento, data_lancamento: hoje,
@@ -570,7 +578,10 @@ export async function POST(req: Request) {
       for (const it of plano) {
         if (it.tipo === "atualizar" && it.titulo_id) {
           const t = tituloPor.get(it.titulo_id);
-          await falharSeErro(sb.from("lancamentos").update({ valor: it.depois, observacao: `${t?.observacao ? t.observacao + " · " : ""}${marca(it.antes, it.depois)}` }).eq("id", it.titulo_id), "atualizar título da folha");
+          const rAt = novas.find(x => chave(x) === String(it.funcionario_id ?? `nome:${it.nome}`));
+          const od = rAt ? obsOutrosDescontos(rAt) : null;
+          const obs = [t?.observacao, marca(it.antes, it.depois), od && !String(t?.observacao ?? "").includes(od) ? od : null].filter(Boolean).join(" · ");
+          await falharSeErro(sb.from("lancamentos").update({ valor: it.depois, observacao: obs }).eq("id", it.titulo_id), "atualizar título da folha");
           await consumirPrevisaoDoTitulo(sb, it.titulo_id, it.depois);
         } else if (it.tipo === "cancelar" && it.titulo_id) {
           const t = tituloPor.get(it.titulo_id);
@@ -589,7 +600,7 @@ export async function POST(req: Request) {
             valor: it.depois, categoria: ehEncargo ? "Pessoal / Encargos" : "Pessoal / Salários",
             origem_lancamento: "folha", operacao_gerencial_id: og,
             data_vencimento: ehEncargo ? vencimentoEncargoFolha(competencia) : vencimento, data_lancamento: hojeStr,
-            observacao: `Incluído no reprocessamento de ${hojeStr.split("-").reverse().join("/")} por ${quem}`,
+            observacao: [`Incluído no reprocessamento de ${hojeStr.split("-").reverse().join("/")} por ${quem}`, r ? obsOutrosDescontos(r) : null].filter(Boolean).join(" · "),
           });
           if (error) throw new Error(`Título de ${it.nome}: ${error.message}`);
           if (it.nome === "FGTS") await sb.from("folha_pagamento").update({ cp_fgts_id: l.id }).eq("id", id);
@@ -709,7 +720,7 @@ export async function POST(req: Request) {
             const editado = Math.abs(ex.valor - (liqAntes[it.id] ?? liq)) > 0.005;
             const valorFinal = editado ? ex.valor : liq;
             const { error: upErr } = await sb.from("lancamentos")
-              .update({ natureza: "real", valor: valorFinal, status: "em_aberto" })
+              .update({ natureza: "real", valor: valorFinal, status: "em_aberto", observacao: obsOutrosDescontos(it) })
               .eq("id", it.cp_lancamento_id);
             if (upErr) throw new Error(`CP ${it.nome_funcionario}: ${upErr.message}`);
             await consumirPrevisaoDoTitulo(sb, it.cp_lancamento_id, valorFinal);
@@ -732,6 +743,7 @@ export async function POST(req: Request) {
           valor: liq,
           moeda: "BRL",
           status: "em_aberto",
+          observacao: obsOutrosDescontos(it),
           categoria: "Pessoal / Salários",
           origem_lancamento: "folha",
           operacao_gerencial_id: ogSalario,

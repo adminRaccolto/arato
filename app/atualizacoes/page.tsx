@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zf",
+    data: "27/10/2026",
+    titulo: "Observação nos outros descontos da folha",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na folha de pagamento (produtor e Empresa), Outros Desc. tem o campo Observação embaixo do valor, destacado quando há desconto sem observação." },
+      { tipo: "melhoria", texto: "A observação vai para o título do salário no Contas a Pagar: \"Outros descontos R$ X: motivo\"." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.27-ze",
     data: "27/10/2026",
     titulo: "Pagamento parcial de borderô divide o borderô",

@@ -299,6 +299,10 @@ export default function FolhaEmpresaPage() {
           valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
           operacao_gerencial_id: ogSalario ?? null,
           data_vencimento: vencimentoSalario(folha.competencia), data_lancamento: hojeLocal(),
+          // Observação do título: o que foi descontado em Outros descontos e por quê
+          observacao: it.outros_descontos > 0
+            ? `Outros descontos R$ ${Number(it.outros_descontos).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${(it.desc_outros_descontos ?? "").trim() ? `: ${String(it.desc_outros_descontos).trim()}` : ""}`
+            : null,
         }).select("id").single();
         if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
       }
@@ -618,7 +622,14 @@ export default function FolhaEmpresaPage() {
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_trabalhador)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.irrf)}</td>
-                                <td style={S.td}><input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} /></td>
+                                <td style={S.td}>
+                                  <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                                    <input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} />
+                                    <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)}
+                                      placeholder={f.outros_descontos > 0 ? "Observação do desconto" : "Observação"} title="Observação do desconto — vai para o título do salário no Contas a Pagar"
+                                      style={{ ...S.inp, width:150, fontSize:11, padding:"2px 5px", ...(f.outros_descontos > 0 && !(f.desc_outros_descontos ?? "").trim() ? { borderColor:"#C9921B", background:"#FBF3E0" } : {}) }} />
+                                  </div>
+                                </td>
                                 <td style={S.td}><input type="number" value={f.vale_transporte+f.vale_refeicao+f.outros_beneficios} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} /></td>
                                 <td style={{ ...S.td, fontWeight:700, color:liq>=0?"#16A34A":"#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(liq)}{f.adiantamento > 0 && <div style={{ fontSize:9, fontWeight:400, color:"#C9921B" }}>já desconta adiant. {moeda(f.adiantamento)}</div>}</td>
                               </tr>
@@ -629,7 +640,7 @@ export default function FolhaEmpresaPage() {
                                       <div><label data-arato-label="true" style={S.label}>Vale Transporte</label><input type="number" value={f.vale_transporte} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
                                       <div><label data-arato-label="true" style={S.label}>Vale Refeição</label><input type="number" value={f.vale_refeicao} onChange={e=>setFuncField(idx,"vale_refeicao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
                                       <div><label data-arato-label="true" style={S.label}>Outros Benefícios</label><input type="number" value={f.outros_beneficios} onChange={e=>setFuncField(idx,"outros_beneficios",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
-                                      <div><label data-arato-label="true" style={S.label}>Outros Descontos (desc.)</label><input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descrição..." /></div>
+                                      <div><label data-arato-label="true" style={S.label}>Observação dos outros descontos</label><input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descrição..." /></div>
                                       <div><label data-arato-label="true" style={S.label}>INSS Patronal</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.inss_patronal)}</span></div>
                                       <div><label data-arato-label="true" style={S.label}>FGTS</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.fgts)}</span></div>
                                     </div>
