@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-l",
+    data: "27/10/2026",
+    titulo: "NF cancelada: antes ou depois da entrada, e NF substituta",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "O relatório NFs Canceladas pelo Emitente mostra a data do processamento e se o emitente cancelou antes ou depois da entrada da nota no Arato." },
+      { tipo: "novo", texto: "Coluna NF substituta: o sistema procura outra NF válida do mesmo emitente, emitida até 90 dias depois e com valor até 10% diferente. Sem substituta, a nota aparece como \"Sem substituta — cobrar fornecedor\". Filtro Só sem NF substituta e total no topo." },
+      { tipo: "melhoria", texto: "As notas já canceladas no Arato (inclusive as marcadas pelo botão) continuam no relatório, num grupo próprio, para conferir a NF substituta." },
+    ],
+    onde: "Documentos Fiscais → Relatórios → NFs Canceladas pelo Emitente",
+  },
+  {
     versao: "2026.10.27-k",
     data: "27/10/2026",
     titulo: "Marcar canceladas pelo relatório",
