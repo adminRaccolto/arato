@@ -45,11 +45,11 @@ import {
   listarAnosSafra,
   listarCiclos,
   listarPedidoCompraItens,
-  listarTransferenciasMaquinas, atualizarTransferenciaMaquina,
+  
   processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
-import type { TransferenciaMaquina, NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
+import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
 import InputMonetario from "../InputMonetario";
 import InputNumerico from "../InputNumerico";
@@ -337,7 +337,7 @@ const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: strin
   pecas:        { label: "Peças / Manutenção",       desc: "Compra de peças, pneus ou serviços de manutenção. Cada item é vinculado à maquinário do cadastro.",                    cor: "#E0F0FF" },
   custo_direto: { label: "Apropriação Direta",       desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).",       cor: "#E8F5E9" },
   vef:          { label: "Entrega Futura (VEF)",     desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                            cor: "#FAEEDA" },
-  remessa:      { label: "Remessa / Entrega",        desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                         cor: "#E6F1FB" },
+  remessa:      { label: "Entrega de compra futura",desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                         cor: "#E6F1FB" },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -433,9 +433,6 @@ export default function ModalNf({
 
   const [nfEdit, setNfEdit] = useState<NfEntrada | null>(null);
   // Retorno de bem do imobilizado: remessas abertas (Transferência de Máquinas) que esta NF pode baixar
-  const [transfCandidatas, setTransfCandidatas] = useState<TransferenciaMaquina[]>([]);
-  const [transfVinculoId, setTransfVinculoId] = useState("");
-  const [refNfeXml, setRefNfeXml] = useState("");
 
   // Operações Gerenciais ativas — usado no select do cabeçalho e no cálculo
   // de modoDireto (combustível/manutenção/CC) em Apropriação Direta.
@@ -907,7 +904,6 @@ export default function ModalNf({
       }));
       aplicarDuplicatasXml(doc);
       setIeDestXml((doc.querySelector("dest")?.querySelector("IE")?.textContent ?? "").replace(/\D/g, ""));
-      setRefNfeXml(doc.getElementsByTagName("refNFe")[0]?.textContent?.trim() ?? "");
     } catch { /* mantém o que já está */ }
   }
 
@@ -1014,7 +1010,6 @@ export default function ModalNf({
         data_vencimento_cp: vencISO     || p.data_vencimento_cp,
       }));
       aplicarDuplicatasXml(doc);
-      setRefNfeXml(doc.getElementsByTagName("refNFe")[0]?.textContent?.trim() ?? "");
 
       // Verifica se o DOMParser retornou um erro de parse
       if (doc.querySelector("parsererror")) {
@@ -1655,15 +1650,6 @@ export default function ModalNf({
         }
       }
 
-      // 2c. Retorno de bem: baixa a remessa vinculada em Fiscal → Transferência de Máquinas
-      if (transfVinculoId) {
-        await atualizarTransferenciaMaquina(transfVinculoId, {
-          status: "retornada",
-          nf_retorno_chave:  cab.chave_acesso || nfEdit.chave_acesso || undefined,
-          nf_retorno_numero: nfEdit.numero,
-          nf_retorno_data:   cab.data_emissao || nfEdit.data_emissao || hojeLocal(),
-        });
-      }
 
       // 3. Marcar como processada
       await atualizarNfEntrada(nfEdit.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
@@ -2331,22 +2317,6 @@ export default function ModalNf({
   // nomes comerciais ("SOJA" → inoculante Bradyrhizobium) e mandava sementes e outros produtos para o estoque por
   // princípio ativo em vez do item do cadastro. Todo item de NF vai para um item do cadastro.
 
-  // ── Retorno de bem: carrega remessas abertas e sugere a correta (refNFe do XML, senão CNPJ do emitente) ──
-  useEffect(() => {
-    const c = (cab.cfop || "").trim();
-    if (!CFOPS_RETORNO_DE_REMESSA.has(c) || !contaId) { setTransfCandidatas([]); setTransfVinculoId(""); return; }
-    let vivo = true;
-    listarTransferenciasMaquinas(contaId).then(all => {
-      if (!vivo) return;
-      const abertas = all.filter(t => t.status === "emitida" && (t.direcao ?? "saida") === "saida");
-      setTransfCandidatas(abertas);
-      const cnpj = (cab.emitente_cnpj || "").replace(/\D/g, "");
-      const porChave = refNfeXml ? abertas.find(t => t.nf_saida_chave === refNfeXml) : undefined;
-      const porCnpj = abertas.filter(t => cnpj && (t.destinatario_cnpj || "").replace(/\D/g, "") === cnpj);
-      setTransfVinculoId(prev => prev || porChave?.id || (porCnpj.length === 1 ? porCnpj[0].id : ""));
-    }).catch(() => { if (vivo) setTransfCandidatas([]); });
-    return () => { vivo = false; };
-  }, [cab.cfop, cab.emitente_cnpj, refNfeXml, contaId]);
 
   // ── Auto-fill tipo_apropiacao por tipo de entrada ─────────
   const tipoAprpDefault = (t: TipoEntrada): NfEntradaItem["tipo_apropiacao"] =>
@@ -2695,22 +2665,6 @@ export default function ModalNf({
                     <div data-arato-panel="true" style={{ border: "0.5px solid #C9921B", background: "#FBF3E0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5500" }}>Bem do ativo imobilizado — {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) ? "retorno / entrada de bem" : "transferência de bem"}</div>
                       <div style={{ fontSize: 11, color: "#7A5500", marginTop: 2 }}>Sem cobrança: esta NF não gera Contas a Pagar nem movimenta estoque, e não exige Operação Gerencial.</div>
-                      {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) && (
-                        <div style={{ marginTop: 10 }}>
-                          <label data-arato-label="true" style={lbl}>Baixar a remessa correspondente (Fiscal → Transferência de Máquinas)</label>
-                          <SelectField value={transfVinculoId} onChange={e => setTransfVinculoId(e.target.value)} style={inp}>
-                            <option value="">— não vincular a nenhuma remessa —</option>
-                            {transfCandidatas.map(t => (
-                              <option key={t.id} value={t.id}>
-                                {t.maquina_nome} · {t.destinatario_nome} · NF {t.nf_saida_numero ?? "s/nº"}{t.nf_saida_data ? ` de ${t.nf_saida_data.split("-").reverse().join("/")}` : ""}
-                              </option>
-                            ))}
-                          </SelectField>
-                          <div style={{ fontSize: 10, color: "#7A5500", marginTop: 3 }}>
-                            {transfCandidatas.length === 0 ? "Nenhuma remessa aberta encontrada." : transfVinculoId ? "Ao processar, a remessa selecionada passa a Retornada com os dados desta NF." : "Selecione a remessa para dar baixa nela ao processar."}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -3664,7 +3618,7 @@ export default function ModalNf({
                                 <option value="maquinario">Maquinário</option>
                                 <option value="terceiro">Terceiro</option>
                                 <option value="vef">VEF</option>
-                                <option value="remessa">Remessa</option>
+                                <option value="remessa">Entrega de compra futura (VEF)</option>
                               </SelectField>
                             </div>
                           </>

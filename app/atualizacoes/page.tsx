@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zd",
+    data: "27/10/2026",
+    titulo: "Um caminho só para remessa e retorno",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A NF de entrada não vincula mais remessa de máquina: o retorno de máquina é registrado em Retornos." },
+      { tipo: "melhoria", texto: "O modo antigo de remessa de insumo pelas Notas de Venda foi desligado; links antigos abrem a tela Remessas com a NF de origem." },
+      { tipo: "melhoria", texto: "Na NF de entrada, o tipo Remessa / Entrega passou a se chamar Entrega de compra futura (VEF), que é o que ele é; no filtro de Documentos Fiscais aparece como Entrega VEF." },
+    ],
+    onde: "Documentos Fiscais → Remessas e Retornos",
+  },
+  {
     versao: "2026.10.27-zc",
     data: "27/10/2026",
     titulo: "Máquinas em Remessas e Retornos",

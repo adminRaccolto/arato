@@ -764,9 +764,15 @@ function FiscalInner() {
     listarDepositos(fazendaId).then(setDepositos).catch(() => setDepositos([]));
   }, [fazendaId]);
 
-  // Pre-fill modal quando navegado de "Emitir NF Remessa" em NF de Entrada
+  // Remessa a partir da NF de entrada agora é emitida na tela Remessas (diretriz 27/10/2026): o endereço antigo
+  // (?modo=remessa&nf_entrada_id=) vai para lá. O pré-preenchimento abaixo ficou sem entrada.
+  useEffect(() => {
+    if (modoParam === "remessa" && nfEntradaIdParam) router.replace(`/fiscal/remessas?nf_entrada_id=${nfEntradaIdParam}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoParam, nfEntradaIdParam]);
   useEffect(() => {
     if (modoParam !== "remessa" || !nfEntradaIdParam || !fazendaId) return;
+    if (modoParam === "remessa") return;
     (async () => {
       const [{ data: nf }, itensEntrada] = await Promise.all([
         supabase.from("nf_entradas").select("*").eq("id", nfEntradaIdParam).single(),

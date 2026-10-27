@@ -81,7 +81,7 @@ const TIPO_ENTRADA_META: Record<string, { bg: string; cl: string; label: string 
   pecas:            { bg: "#E0F0FF", cl: "#0A4B8C", label: "Peças / Manut." },
   custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"            },
-  remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"        },
+  remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Entrega VEF"    },
   devolucao_compra: { bg: "#FCEBEB", cl: "#791F1F", label: "Devolução"      },
 };
 const ORIGEM_DOC_META: Record<string, string> = { manual: "Manual", xml: "XML", sieg: "Sieg", leitor: "Leitor" };
