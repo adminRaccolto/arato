@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-m",
+    data: "27/10/2026",
+    titulo: "Processamento de NF: coluna OG preenchida",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "No relatório Processamento de NF e NFS-e, a coluna Operação Gerencial ficava vazia nas notas gravadas com a OG antiga da fazenda (mesma classificação do catálogo). Agora mostra a OG de todas as notas, e o filtro por OG também traz essas notas." },
+    ],
+    onde: "Documentos Fiscais → Relatórios → Processamento de NF e NFS-e",
+  },
+  {
     versao: "2026.10.27-l",
     data: "27/10/2026",
     titulo: "NF cancelada: antes ou depois da entrada, e NF substituta",

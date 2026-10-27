@@ -64,6 +64,9 @@ export default function RelatorioProcessamentoNf() {
   const [numero, setNumero] = useState("");
   const [fornecedor, setFornecedor] = useState("");
   const [ogs, setOgs] = useState<OperacaoGerencial[]>([]);
+  // OGs apontadas pelas notas que não estão no catálogo deduplicado (cópias antigas por fazenda da mesma classificação):
+  // sem elas a coluna OG ficava vazia para a maioria das notas
+  const [ogsDasNotas, setOgsDasNotas] = useState<OperacaoGerencial[]>([]);
   const [ccs, setCcs] = useState<CentroCusto[]>([]);
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -77,7 +80,7 @@ export default function RelatorioProcessamentoNf() {
     listarCentrosCustoGeralDaConta(fazendaId).then(setCcs).catch(() => setCcs([]));
   }, [idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ogPorId = useMemo(() => new Map(ogs.map(o => [o.id, o])), [ogs]);
+  const ogPorId = useMemo(() => new Map([...ogsDasNotas, ...ogs].map(o => [o.id, o])), [ogs, ogsDasNotas]);
   const ccPorId = useMemo(() => new Map(ccs.map(c => [c.id, c])), [ccs]);
   const nomeOg = (id: string | null) => { const o = id ? ogPorId.get(id) : null; return o ? `${o.classificacao ?? ""} ${o.descricao ?? ""}`.trim() : ""; };
   const nomeCc = (id: string | null) => { const c = id ? ccPorId.get(id) : null; return c ? `${c.codigo ? c.codigo + " " : ""}${c.nome}` : ""; };
@@ -125,6 +128,13 @@ export default function RelatorioProcessamentoNf() {
           og_id: s.operacao_gerencial_id, cc_id: s.centro_custo_id, processado_por: s.processado_por ?? "",
         });
       }
+      const faltam = [...new Set(out.map(l => l.og_id).filter((id): id is string => !!id && !ogs.some(o => o.id === id)))];
+      const extras: OperacaoGerencial[] = [];
+      for (let i = 0; i < faltam.length; i += 200) {
+        const { data } = await supabase.from("operacoes_gerenciais").select("*").in("id", faltam.slice(i, i + 200));
+        extras.push(...((data ?? []) as OperacaoGerencial[]));
+      }
+      setOgsDasNotas(extras);
       out.sort((a, b) => b.emissao.localeCompare(a.emissao) || a.numero.localeCompare(b.numero));
       setLinhas(out); setGerado(true);
     } catch (e) {
@@ -139,7 +149,8 @@ export default function RelatorioProcessamentoNf() {
   const filtradas = linhas.filter(l => {
     if (ogFiltro) {
       const o = l.og_id ? ogPorId.get(l.og_id) : null;
-      if (!o || !(o.id === ogFiltro.id || (ogFiltro.classificacao && (o.classificacao ?? "").startsWith(ogFiltro.classificacao + ".")))) return false;
+      // mesma classificação também vale: a nota pode estar gravada na cópia antiga da OG, por fazenda
+      if (!o || !(o.id === ogFiltro.id || (ogFiltro.classificacao && (o.classificacao === ogFiltro.classificacao || (o.classificacao ?? "").startsWith(ogFiltro.classificacao + "."))))) return false;
     }
     if (ccId === "__sem" ? !!l.cc_id : ccId && l.cc_id !== ccId) return false;
     if (produto.trim() && !texto(l.produto).includes(texto(produto.trim()))) return false;
