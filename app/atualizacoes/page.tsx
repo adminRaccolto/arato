@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-d",
+    data: "27/10/2026",
+    titulo: "NF de entrada não associa mais item por princípio ativo",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "A NF de entrada deixou de associar sozinha um item ao estoque por princípio ativo. Ela comparava palavras soltas da descrição: \"SOJA\" virava o inoculante Bradyrhizobium, e a semente não entrava no estoque do item certo. Agora todo item da NF vai para um item do cadastro." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.27-c",
     data: "27/10/2026",
     titulo: "Sincronização de NFS-e com o SIEG não perde a rodada",
