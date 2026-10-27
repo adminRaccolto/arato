@@ -3326,7 +3326,9 @@ export async function processarNfEntrada(
 
   // Retorno/entrada de bem do imobilizado (CFOP 1554/1555/2554/2555/1552/2552): não há cobrança — sem CP.
   const { data: nfCfopRow } = await supabase.from("nf_entradas").select("cfop").eq("id", nfId).maybeSingle();
-  const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(((nfCfopRow?.cfop as string | null) ?? "").trim());
+  const cfopNf = ((nfCfopRow?.cfop as string | null) ?? "").replace(/\D/g, "");
+  // Retorno de armazém geral (5906/6906…) também não tem cobrança: os itens voltam ao estoque, sem CP
+  const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(cfopNf) || CFOPS_RETORNO_ARMAZENAGEM.has(cfopNf);
 
   // Trava de duplicidade: se a NF JÁ tem título ativo do produtor, processar de novo nunca cria outro.
   // Achado 14/10/2026: reprocessamentos da mesma NF geraram um segundo CP em aberto ao lado do já baixado
@@ -7798,7 +7800,7 @@ export async function atualizarNfRemessaLogistica(
 // TRANSFERÊNCIA DE MÁQUINAS E EQUIPAMENTOS (Remessa/Retorno)
 // ════════════════════════════════════════════════════════════
 import type { TransferenciaMaquina } from "./supabase";
-import { CFOPS_BEM_SEM_PAGAMENTO } from "./cfop-imobilizado";
+import { CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_ARMAZENAGEM } from "./cfop-imobilizado";
 import { valorEmMaos } from "./folha-calculo";
 
 export async function listarTransferenciasMaquinas(contaId: string): Promise<TransferenciaMaquina[]> {

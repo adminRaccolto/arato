@@ -7,6 +7,10 @@ export const CFOPS_BEM_SEM_PAGAMENTO = new Set(["1552", "2552", "1554", "2554", 
 // Retornos que podem baixar uma remessa aberta em Fiscal → Transferência de Máquinas
 // (o módulo usa 1555 como CFOP de retorno de comodato; o fisco usa 1554 — aceitamos os dois).
 export const CFOPS_RETORNO_DE_REMESSA = new Set(["1554", "2554", "1555", "2555"]);
+// Retorno de mercadoria depositada em armazém geral / depósito fechado (ex.: Luft devolvendo o que foi remetido para
+// armazenagem). Sem cobrança — não gera Contas a Pagar —, mas os itens VOLTAM ao estoque (a remessa tinha baixado).
+// A NF chega com o CFOP do emitente (5906/6906, 5907/6907) ou já convertido para entrada (1906/2906, 1907/2907).
+export const CFOPS_RETORNO_ARMAZENAGEM = new Set(["5906", "6906", "5907", "6907", "1906", "2906", "1907", "2907"]);
 export const ehBemImobilizado = (cfop?: string | null) => {
   const c = (cfop ?? "").trim();
   return CFOPS_COMPRA_BEM.has(c) || CFOPS_BEM_SEM_PAGAMENTO.has(c);

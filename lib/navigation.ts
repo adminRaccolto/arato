@@ -110,6 +110,7 @@ export const NAV: NavItem[] = [
       { type: "divider", label: "Notas de Entrada" },
       { id: "docfis-terceiro",   label: "Notas de Terceiro",                 path: "/fiscal/documentos",             moduleId: "nf_entrada" },
       { id: "docfis-proprias",   label: "Notas Próprias",                    path: "/fiscal/notas-proprias",         moduleId: "fiscal_nfe" },
+      { id: "docfis-retornos",   label: "Retornos (NF de retorno recebida)", path: "/fiscal/retornos",               moduleId: "fiscal_nfe" },
       { id: "docfis-ret-insumo", label: "Retorno de Insumo",                 path: "/fiscal/remessas",               moduleId: "fiscal_nfe" },
       { id: "docfis-ret-maq",    label: "Retorno de Máquinas e Equipamentos", path: "/fiscal/transferencia-maquinas", moduleId: "fiscal_nfe" },
       { id: "docfis-ret-agric",  label: "Retorno de Produto Agrícola",       path: "/comercial/faturamento",         moduleId: "contratos"  },

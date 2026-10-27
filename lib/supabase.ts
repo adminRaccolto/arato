@@ -1403,6 +1403,8 @@ export type NfRemessaLogistica = {
   natureza_remessa: string;
   observacao?: string;
   status: "emitida" | "retornada" | "cancelada";
+  valor_retornado?: number;   // Seção 377: soma das NFs de retorno (retorno parcial)
+  retornos?: { numero: string; chave?: string | null; data?: string | null; valor: number; emitente?: string | null }[];
   created_at?: string;
 };
 

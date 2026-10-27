@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-za",
+    data: "27/10/2026",
+    titulo: "Tela própria para NF de retorno",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Documentos Fiscais → Retornos: a NF de retorno de mercadoria depositada (armazém geral, condomínio logístico, ex.: LUFT, CFOP 5906/6906…) é processada aqui, ligada à remessa, com os itens voltando ao estoque e sem Contas a Pagar nem Pedido de Compra." },
+      { tipo: "novo", texto: "Retorno parcial: a remessa acumula o que já voltou e só fica Retornada quando volta tudo. Requer a Seção 377." },
+      { tipo: "correcao", texto: "NF com CFOP de retorno de armazém deixou de ser processada como compra na tela de NF de entrada: o sistema avisa e abre a tela Retornos." },
+    ],
+    onde: "Documentos Fiscais → Retornos",
+  },
+  {
     versao: "2026.10.27-z",
     data: "27/10/2026",
     titulo: "Nota própria no Monitor e retorno de remessa emitido por terceiros",

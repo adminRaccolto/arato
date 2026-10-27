@@ -21,7 +21,7 @@ import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import ModalCadastroFornecedor from "./ModalCadastroFornecedor";
-import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
+import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA, CFOPS_RETORNO_ARMAZENAGEM } from "../../lib/cfop-imobilizado";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -1301,6 +1301,13 @@ export default function ModalNf({
   // ── Processar NF (finalizar) ──────────────────────────────
   async function processarNF() {
     if (!fazendaId || !nfEdit) return;
+    // NF de retorno de armazém (5906/6906…) não é compra: é processada na tela Retornos (liga à remessa, sem CP)
+    if (CFOPS_RETORNO_ARMAZENAGEM.has(String(cab.cfop || nfEdit.cfop || "").replace(/\D/g, ""))) {
+      if (window.confirm(`A NF ${nfEdit.numero} é RETORNO de mercadoria depositada (CFOP ${cab.cfop || nfEdit.cfop}), não compra.\n\nEla é processada em Documentos Fiscais → Retornos, ligada à remessa e sem Contas a Pagar. Abrir agora?`)) {
+        window.location.href = `/fiscal/retornos?nf=${nfEdit.id}`;
+      }
+      return;
+    }
     // Guard local: evita duplo clique com estado local desatualizado
     if (nfEdit.status === "processada") {
       alert("Esta NF já foi processada. Para reprocessar, clique em 'Estornar' primeiro para reverter o estoque e o lançamento financeiro.");

@@ -18135,3 +18135,13 @@ UPDATE rel_lancamentos r SET natureza = l.natureza
   FROM lancamentos l
  WHERE l.id = r.id AND r.origem_tabela = 'lancamentos' AND r.natureza IS DISTINCT FROM l.natureza;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 377 — Remessa logística com retorno parcial
+-- =============================================================================
+-- A mercadoria remetida ao armazém volta aos poucos (ex.: remessa de 11.420 kg de glifosato, retorno de 1.200 kg).
+-- A remessa acumula o valor retornado e a lista de NFs de retorno; só passa a "retornada" quando volta tudo.
+ALTER TABLE nf_remessas_logisticas
+  ADD COLUMN IF NOT EXISTS valor_retornado numeric(15,2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS retornos jsonb NOT NULL DEFAULT '[]'::jsonb;
+NOTIFY pgrst, 'reload schema';
