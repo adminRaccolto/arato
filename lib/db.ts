@@ -16,7 +16,7 @@ import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular
 import { cached, invalidateCache } from "./cache";
 import { vencimentoSalario } from "./folha-calculo";
 import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
-import { alocarEntregaPorLinha, linhasSemConversao } from "./compras/entrega-pedido";
+import { alocarEntregaPorLinha, linhasSemConversao, statusPorEntrega } from "./compras/entrega-pedido";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -5419,9 +5419,9 @@ export async function listarPedidoCompraEntregas(pedido_id: string): Promise<Ped
 async function recalcularStatusPedidoCompra(pedido_id: string): Promise<void> {
   const itens = await listarPedidoCompraItens(pedido_id);
   if (!itens.length) return;
-  const todoEntregue = itens.every(it => (it.qtd_entregue ?? 0) >= (it.quantidade - (it.qtd_cancelada ?? 0)));
-  const algumEntregue = itens.some(it => (it.qtd_entregue ?? 0) > 0);
-  const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : "aprovado";
+  const { count: nfsProcessadas } = await supabase.from("nf_entradas").select("id", { count: "exact", head: true })
+    .eq("pedido_compra_id", pedido_id).eq("status", "processada");
+  const novoStatus = statusPorEntrega(itens, new Map(itens.map(it => [it.id, it.qtd_entregue ?? 0])), (nfsProcessadas ?? 0) > 0);
   await atualizarPedidoCompra(pedido_id, { status: novoStatus });
 }
 

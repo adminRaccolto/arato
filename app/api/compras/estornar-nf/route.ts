@@ -4,7 +4,7 @@ import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido"
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
-import { alocarEntregaPorLinha } from "../../../../lib/compras/entrega-pedido";
+import { alocarEntregaPorLinha, statusPorEntrega } from "../../../../lib/compras/entrega-pedido";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../../../../lib/supabase-servidor";
 
@@ -44,9 +44,7 @@ async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: stri
     }
   }
 
-  const todoEntregue = itens.every(it => (entregaPorLinha.get(it.id) ?? 0) >= (it.quantidade - (it.qtd_cancelada ?? 0)));
-  const algumEntregue = itens.some(it => (entregaPorLinha.get(it.id) ?? 0) > 0);
-  const novoStatus = todoEntregue ? "entregue" : algumEntregue ? "parcialmente_entregue" : "aprovado";
+  const novoStatus = statusPorEntrega(itens, entregaPorLinha, nfIds.length > 0);
   await sb.from("pedidos_compra").update({ status: novoStatus }).eq("id", pedido_id);
 }
 

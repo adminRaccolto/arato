@@ -80,3 +80,17 @@ export function linhasSemConversao(linhas: Linha[], nfItens: ItemNf[]): Map<stri
   }
   return out;
 }
+
+/**
+ * Status do pedido pela entrega de cada linha. Pedido que já recebeu NF processada nunca volta para "aprovado": linha
+ * pedida numa unidade sem conversão (bag × kg) fica com entrega 0 até o pedido ser ajustado, mas a mercadoria chegou.
+ */
+export function statusPorEntrega(
+  linhas: { id: string; quantidade: number; qtd_cancelada?: number | null }[],
+  entregue: Map<string, number>,
+  temNfProcessada: boolean,
+): "entregue" | "parcialmente_entregue" | "aprovado" {
+  const todo = linhas.every(l => (entregue.get(l.id) ?? 0) >= l.quantidade - (l.qtd_cancelada ?? 0));
+  const algum = temNfProcessada || linhas.some(l => (entregue.get(l.id) ?? 0) > 0);
+  return todo ? "entregue" : algum ? "parcialmente_entregue" : "aprovado";
+}

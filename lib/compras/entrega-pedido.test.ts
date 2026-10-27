@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { alocarEntregaPorLinha, linhasSemConversao } from "./entrega-pedido.ts";
+import { alocarEntregaPorLinha, linhasSemConversao, statusPorEntrega } from "./entrega-pedido.ts";
 
 test("NF em kg não soma em linha pedida em bag (sem conversão segura)", () => {
   const linhas = [{ id: "l1", insumo_id: "olimpo", quantidade: 97, unidade: "bag" }];
@@ -23,4 +23,11 @@ test("sem unidade informada mantém o comportamento antigo; vínculo exato antes
   const e = alocarEntregaPorLinha(linhas, [{ insumo_id: "x", pedido_item_id: "b", quantidade: 4 }, { insumo_id: "x", quantidade: 15 }]);
   assert.equal(e.get("b"), 9);
   assert.equal(e.get("a"), 10);
+});
+
+test("pedido com NF processada não volta para aprovado", () => {
+  const linhas = [{ id: "l1", quantidade: 97 }];
+  assert.equal(statusPorEntrega(linhas, new Map([["l1", 0]]), true), "parcialmente_entregue");
+  assert.equal(statusPorEntrega(linhas, new Map([["l1", 0]]), false), "aprovado");
+  assert.equal(statusPorEntrega(linhas, new Map([["l1", 97]]), true), "entregue");
 });
