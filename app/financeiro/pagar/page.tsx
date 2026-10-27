@@ -47,7 +47,7 @@ import GridPagination, { useGridPagination } from "../../../components/GridPagin
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
+import { useState, useEffect, useCallback, Fragment, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
@@ -352,6 +352,7 @@ export default function ContasAPagarPage() {
   // quitado) ───────────────────────────────────────────────────────
   const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
   const [borderosPagos, setBorderosPagos] = useState<PagamentoLote[]>([]);
+  const [infoBordero, setInfoBordero] = useState<Map<string, { fornecedor: string | null; produtor: string | null; origem: string | null; operacao: string | null; conta: string | null }>>(new Map());
   const carregarBorderos = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length) return;
@@ -362,6 +363,28 @@ export default function ContasAPagarPage() {
       ]);
       setBorderosPendentes(pend);
       setBorderosPagos(pagos);
+      // Fornecedor, produtor e origem do borderô vêm dos títulos dele (o cabeçalho do borderô não guarda fornecedor)
+      const ids = [...new Set([...pend, ...pagos].flatMap(b => (b.itens ?? []).map(i => i.lancamento_id)))];
+      const titulos: { id: string; pessoa_id: string | null; pessoa_nome: string | null; produtor_nome: string | null; empresa_nome: string | null; origem_tabela: string; operacao_gerencial_nome: string | null }[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await supabase.from("rel_lancamentos").select("id, pessoa_id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 200));
+        titulos.push(...((data ?? []) as typeof titulos));
+      }
+      const porId = new Map(titulos.map(t => [t.id, t]));
+      const idsContas = [...new Set([...pend, ...pagos].map(b => b.conta_bancaria).filter(Boolean))] as string[];
+      const { data: contasB } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [] };
+      const nomeConta = new Map((contasB ?? []).map(c => [c.id as string, c.nome as string]));
+      const unicoOuVarios = (vals: (string | null)[]) => { const u = [...new Set(vals.filter(Boolean))] as string[]; return u.length <= 1 ? (u[0] ?? null) : `Vários (${u.length})`; };
+      setInfoBordero(new Map([...pend, ...pagos].map(b => {
+        const ts = (b.itens ?? []).map(i => porId.get(i.lancamento_id)).filter((t): t is typeof titulos[number] => !!t);
+        return [b.id, {
+          fornecedor: unicoOuVarios(ts.map(t => t.pessoa_nome)),
+          produtor: unicoOuVarios(ts.map(t => t.produtor_nome ?? t.empresa_nome)),
+          origem: unicoOuVarios(ts.map(t => t.origem_tabela === "lancamentos" ? "PF" : "PJ")),
+          operacao: unicoOuVarios(ts.map(t => t.operacao_gerencial_nome)),
+          conta: b.conta_bancaria ? nomeConta.get(b.conta_bancaria) ?? null : null,
+        }];
+      })));
     } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, fazendaIds?.join(",")]);
@@ -1358,7 +1381,16 @@ export default function ContasAPagarPage() {
   const [salvandoBordero, setSalvandoBordero] = useState(false);
   const [erroBordero, setErroBordero] = useState("");
 
+  // Borderô é de UM fornecedor (o boleto que agrupa as NFs dele). Vários fornecedores juntos = Baixar em Lote.
+  const chaveFornecedor = (l: RelLancamento) => l.pessoa_id ?? (l.pessoa_nome ? `nome:${l.pessoa_nome.trim().toUpperCase()}` : "sem");
+  const fornecedoresLote = [...new Map(itensLote.map(l => [chaveFornecedor(l), l.pessoa_nome ?? "sem fornecedor"])).values()];
+  const fornecedorBordero = fornecedoresLote.length === 1 ? fornecedoresLote[0] : null;
+
   function abrirModalCriarBordero() {
+    if (fornecedoresLote.length > 1) {
+      alert(`O borderô é de um fornecedor só, e a seleção tem ${fornecedoresLote.length}: ${fornecedoresLote.slice(0, 4).join(", ")}${fornecedoresLote.length > 4 ? "…" : ""}.\n\nPara pagar vários fornecedores de uma vez, use Baixar em Lote.`);
+      return;
+    }
     setErroBordero("");
     setBorderoDesc("");
     setBorderoVencimento("");
@@ -1368,10 +1400,11 @@ export default function ContasAPagarPage() {
 
   async function criarBorderoAction() {
     if (!fazendaId || itensLote.length === 0) return;
+    if (fornecedoresLote.length > 1) { setErroBordero("O borderô é de um fornecedor só. Para vários fornecedores, use Baixar em Lote."); return; }
     setSalvandoBordero(true); setErroBordero("");
     try {
       const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, origem_tabela: l.origem_tabela as "lancamentos" | "empresa_lancamentos", valor_pago: saldoLote(l) }));
-      const desc = borderoDesc.trim() || `Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`;
+      const desc = borderoDesc.trim() || `Borderô ${fornecedorBordero ?? ""} — ${itensLote.length} NF${itensLote.length !== 1 ? "s" : ""}`.replace("Borderô  —", "Borderô —");
       await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente", borderoVencimento || null, borderoNumeroTitulo.trim() || null);
       setSelecionados(new Set());
       setModalCriarBordero(false);
@@ -1784,24 +1817,39 @@ export default function ContasAPagarPage() {
                   const pago = entry.pago;
                   const parcial = resumoBordero(b).status === "parcial";
                   const qtdItens = (b.itens ?? []).length;
+                  // Borderô no grid como qualquer CP: cada informação na sua coluna (cor da linha continua diferente)
+                  const info = infoBordero.get(b.id);
+                  const res = resumoBordero(b);
+                  const cel = (conteudo: ReactNode, extra: CSSProperties = {}) => <td style={{ padding: "7px 10px", ...extra }}>{conteudo}</td>;
+                  const corTexto = pago ? "#15803D" : "#7A5200";
+                  const celulasBordero: Record<string, ReactNode> = {
+                    checkbox: cel(null, { textAlign: "center" }),
+                    origem: cel(<span style={{ fontSize: 10, fontWeight: 700, background: info?.origem === "PJ" ? "#F5F3FF" : "#E6F1FB", color: info?.origem === "PJ" ? "#5B21B6" : "#0C447C", padding: "2px 7px", borderRadius: 6 }}>{info?.origem ?? "PF"}</span>),
+                    produtor: cel(info?.produtor ?? "—"),
+                    numero: cel(b.numero_titulo ?? "—", { color: "#888", fontVariantNumeric: "tabular-nums" }),
+                    pessoa: cel(info?.fornecedor ?? "—", { fontWeight: 600 }),
+                    descricao: cel(<><span style={{ fontWeight: 700, color: corTexto }}>Borderô</span> · {qtdItens} NF{qtdItens !== 1 ? "s" : ""}</>),
+                    operacao: cel(info?.operacao ?? "—"),
+                    safra: cel("—"), ciclo: cel("—"), cc: cel("—"),
+                    lancamento: cel(fmtData(b.created_at), { color: "#888" }),
+                    vencimento: cel(fmtData(b.data_vencimento)),
+                    dias: cel("—", { textAlign: "center" }),
+                    venc_orig: cel("—", { color: "#888" }),
+                    baixa: cel(fmtData(b.data_pagamento)),
+                    valor: cel(fmtBRL(b.valor_total), { fontWeight: 600, textAlign: "right", color: "#E24B4A" }),
+                    pago: cel(fmtBRL(res.liquidado), { textAlign: "right", color: res.liquidado > 0 ? "#166534" : undefined }),
+                    saldo: cel(fmtBRL(res.saldo), { textAlign: "right", fontWeight: 600 }),
+                    moeda: cel("BRL", { textAlign: "center" }),
+                    conta: cel(info?.conta ?? "—"),
+                    nf: cel("—"),
+                    lancado: cel("Borderô", { color: "#888" }),
+                    observacao: cel(b.descricao ?? "—", { color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }),
+                    acoes: <td style={{ textAlign: "right" }}><OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopBordero({ b, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton></td>,
+                    status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? "Borderô pago" : parcial ? "Borderô parcial" : "Borderô pendente"}</span>),
+                  };
                   return (
                     <tr key={`bdr-${b.id}`} onClick={e => setPopBordero({ b, x: e.clientX, y: e.clientY })} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60", cursor: "pointer" }}>
-                      <td colSpan={colunasVisiveis.length} style={{ padding: "10px 14px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            {pago
-                              ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
-                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>{parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</span>}
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
-                            {b.numero_titulo && <span style={{ fontSize: 11, color: "#888" }}>Nº {b.numero_titulo}</span>}
-                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
-                            {parcial && <span style={{ color: "#7A5200" }}>Liquidado {fmtBRL(resumoBordero(b).liquidado)} · Saldo {fmtBRL(resumoBordero(b).saldo)}</span>}
-                            {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
-                            {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>pago em {fmtData(b.data_pagamento)}</span>}
-                          </div>
-                          <span style={{ fontSize: 11, color: pago ? "#15803D" : "#7A5200" }}>clique para ver as ações ›</span>
-                        </div>
-                      </td>
+                      {colunasVisiveis.map(c => <Fragment key={c.key}>{celulasBordero[c.key] ?? <td />}</Fragment>)}
                     </tr>
                   );
                 }
@@ -1943,6 +1991,7 @@ export default function ContasAPagarPage() {
                 <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ PAGO" : parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}{b.numero_titulo ? ` · Nº ${b.numero_titulo}` : ""}</div>
+                  {infoBordero.get(b.id)?.fornecedor && <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>Fornecedor: <strong style={{ color: "#1a1a1a" }}>{infoBordero.get(b.id)?.fornecedor}</strong></div>}
                 </div>
                 <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
                   <div><div style={{ color: "#888", fontSize: 10 }}>NFs</div><div style={{ color: "#1a1a1a" }}>{qtd} NF{qtd !== 1 ? "s" : ""}</div></div>
@@ -2145,12 +2194,16 @@ export default function ContasAPagarPage() {
             <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
               Agrupa os títulos selecionados sem baixar agora — define data e conta bancária depois, ao confirmar o pagamento do borderô inteiro de uma vez.
             </div>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14, fontSize: 13 }}>
+              <span style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>Fornecedor do borderô: </span>
+              <strong style={{ color: "#0B2D50" }}>{fornecedorBordero ?? "—"}</strong>
+            </div>
 
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Descrição do borderô (opcional)</label>
                 <input value={borderoDesc} onChange={e => setBorderoDesc(e.target.value)}
-                  placeholder={`Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`}
+                  placeholder={`Borderô ${fornecedorBordero ?? ""} — ${itensLote.length} NF${itensLote.length !== 1 ? "s" : ""}`}
                   style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div data-arato-dialog-body="true">

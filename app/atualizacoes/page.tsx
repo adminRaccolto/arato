@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-o",
+    data: "27/10/2026",
+    titulo: "Borderô de um fornecedor só, nas colunas do grid",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "No Contas a Pagar, o borderô passa a ser de um fornecedor só. Com títulos de fornecedores diferentes selecionados, o sistema recusa e orienta usar Baixar em Lote." },
+      { tipo: "melhoria", texto: "Ao criar o borderô, o modal mostra o fornecedor e a descrição padrão traz o nome dele e a quantidade de NFs." },
+      { tipo: "melhoria", texto: "No grid, o borderô mantém a cor da linha, mas cada informação fica na sua coluna, como qualquer CP: Fornecedor, Nº, Descrição (quantidade de NFs), Vencimento, Valor, Pago, Saldo, Conta e Status." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.27-n",
     data: "27/10/2026",
     titulo: "Folha: adiantamento descontado na previsão do CP",
