@@ -35,7 +35,7 @@ const MODULOS_PERM: ModuloPermissao[] = [
   { id: "fin_receber",      label: "Contas a Receber",          grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","aprovar"] },
   { id: "fin_pagar",        label: "Contas a Pagar",            grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","aprovar"] },
   { id: "fin_contratos",    label: "Contratos Financeiros",     grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "folha",            label: "Folha de Pagamento",        grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","reprocessar"] },
+  { id: "folha",            label: "Folha de Pagamento",        grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","reprocessar","aprovar"] },
   { id: "fin_tesouraria",   label: "Tesouraria",                grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
   { id: "fin_seguros",      label: "Seguros",                   grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
   { id: "fiscal_nfe",       label: "Emissão NF-e",              grupo: "Fiscal",     acoes: ["visualizar","criar","aprovar"] },

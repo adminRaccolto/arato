@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-q",
+    data: "27/10/2026",
+    titulo: "Adiantamento pago por título de NF",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Conta pessoal do funcionário paga pelo produtor (NF em nome do produtor): o adiantamento pode ser ligado ao título da NF no Contas a Pagar, sem gerar outro CP nem outra saída de caixa. O título passa para a OG Adiantamento para funcionário e o valor é descontado na folha." },
+      { tipo: "aviso", texto: "Exceção controlada: só para quem tem a ação Aprovar da Folha, só em adiantamento novo, só título de NF a pagar do mesmo cliente, um adiantamento por título, valor igual ao do título e motivo obrigatório. Requer a Seção 374." },
+    ],
+    onde: "Financeiro → Folha de Pagamento → Adiantamentos",
+  },
+  {
     versao: "2026.10.27-p",
     data: "27/10/2026",
     titulo: "Adiantamento de gratificação reconhece a gratificação da folha",

@@ -275,6 +275,46 @@ async function semPermissaoReprocessar(sb: any, userId: string): Promise<string 
   return null;
 }
 
+/** Adiantamento pago por um título do CP (exceção: NF em nome de outro titular) — ação "aprovar" da Folha. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function semPermissaoAdiantamentoPorTitulo(sb: any, userId: string): Promise<string | null> {
+  const { data: perfil } = await sb.from("perfis").select("role").eq("user_id", userId).maybeSingle();
+  if (String(perfil?.role ?? "").startsWith("raccotlo") || perfil?.role === "bpo") return null;
+  const { data: u } = await sb.from("usuarios").select("grupos_usuarios(permissoes)").eq("auth_user_id", userId).maybeSingle();
+  const g = Array.isArray(u?.grupos_usuarios) ? u?.grupos_usuarios[0] : u?.grupos_usuarios;
+  const p = (g?.permissoes ?? {})["folha"];
+  if (Array.isArray(p) && p.length > 0 && !p.includes("aprovar")) return "Seu grupo de usuário não tem permissão para lançar adiantamento pago por título do Contas a Pagar (Folha: Aprovar, em Configurações → Usuários e Permissões).";
+  return null;
+}
+
+/**
+ * Exceção controlada: conta pessoal do funcionário paga pelo produtor (ex.: farmácia com NF em nome do produtor). O
+ * dinheiro sai no CP da NF; o adiantamento só aponta para ele. Travas: só adiantamento novo (nunca um que já tirou
+ * dinheiro do caixa), título de NF (produto ou serviço) do mesmo cliente, a pagar e não cancelado, sem outro adiantamento
+ * ligado e com o MESMO valor. O titular do título e o destinatário da NF podem ser outros (é a exceção).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function validarTituloDoAdiantamento(sb: any, fazendaId: string, tituloId: string, valor: number): Promise<{ erro: string } | { titulo: any }> {
+  const { data: t } = await sb.from("lancamentos").select("id, fazenda_id, tipo, natureza, status, valor, moeda, nf_entrada_id, operacao_gerencial_id, observacao, descricao").eq("id", tituloId).maybeSingle();
+  if (!t) return { erro: "Título do Contas a Pagar não encontrado." };
+  const { data: fz } = await sb.from("fazendas").select("id, conta_id").in("id", [fazendaId, t.fazenda_id]);
+  const contas = new Set((fz ?? []).map((f: any) => f.conta_id));
+  if (contas.size !== 1 || contas.has(null)) return { erro: "O título é de outro cliente." };
+  if (t.tipo !== "pagar" || t.natureza === "previsao" || t.status === "cancelado") return { erro: "Escolha um título a pagar real (não previsão nem cancelado)." };
+  if ((t.moeda ?? "BRL") !== "BRL") return { erro: "Só título em reais." };
+  let deNf = !!t.nf_entrada_id;
+  if (!deNf) {
+    const { count } = await sb.from("nf_servicos").select("id", { count: "exact", head: true }).eq("lancamento_id", t.id);
+    deNf = (count ?? 0) > 0;
+  }
+  if (!deNf) return { erro: "Só título de NF (produto ou serviço) pode ser pago como adiantamento de funcionário." };
+  const { count: jaUsado, error } = await sb.from("adiantamentos_salario").select("id", { count: "exact", head: true }).eq("titulo_pago_id", t.id).neq("status", "cancelado");
+  if (error) return { erro: "Aplique a Seção 374 do supabase_migrations.sql para usar adiantamento pago por título." };
+  if ((jaUsado ?? 0) > 0) return { erro: "Este título já está ligado a outro adiantamento." };
+  if (Math.abs(Number(t.valor) - Number(valor)) > 0.005) return { erro: `O valor do adiantamento tem que ser o valor do título (R$ ${Number(t.valor).toFixed(2).replace(".", ",")}).` };
+  return { titulo: t };
+}
+
 class FolhaFechadaError extends Error {}
 /** Folha fechada não aceita alteração: precisa ser reaberta (Reabrir Folha) antes. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1002,6 +1042,32 @@ export async function POST(req: Request) {
         if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
       }
       const ogAdiantFunc = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.09.002");
+
+      // Pago por um título do CP (conta do funcionário com NF em nome do produtor): não gera CP nem saída de caixa
+      const tituloPagoId = (payload as any).titulo_pago_id as string | undefined;
+      if (tituloPagoId) {
+        const negado = await semPermissaoAdiantamentoPorTitulo(sb, user.id);
+        if (negado) return NextResponse.json({ error: negado }, { status: 403 });
+        if (!String(descricao ?? "").trim()) return NextResponse.json({ error: "Informe o motivo (ex.: conta da farmácia do funcionário paga pelo produtor)." }, { status: 422 });
+        const v = await validarTituloDoAdiantamento(sb, fazenda_id, tituloPagoId, Number(valor));
+        if ("erro" in v) return NextResponse.json({ error: v.erro }, { status: 422 });
+        const t = v.titulo;
+        const marca = `Pago como adiantamento a ${funcionario_nome} (folha): ${String(descricao).trim()}`;
+        const { error: adiErr } = await sb.from("adiantamentos_salario").insert({
+          fazenda_id, funcionario_id, data, valor, tipo: tipoAdi,
+          competencia_ref: competencia_ref || null, descricao: descricao || null,
+          lancamento_id: null, titulo_pago_id: t.id, titulo_og_anterior: t.operacao_gerencial_id ?? null, status: "pendente",
+        });
+        if (adiErr) throw (adiErr.code === "42703" || adiErr.code === "PGRST204") ? new Error("Aplique a Seção 374 do supabase_migrations.sql para usar adiantamento pago por título.") : adiErr;
+        // O título deixa de ser despesa da fazenda: vira Adiantamento para funcionário (o custo entra pelo salário)
+        await falharSeErro(sb.from("lancamentos").update({
+          ...(ogAdiantFunc ? { operacao_gerencial_id: ogAdiantFunc } : {}),
+          observacao: [t.observacao, marca].filter(Boolean).join(" | "),
+        }).eq("id", t.id), "marcar título como adiantamento");
+        await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
+        return NextResponse.json({ ok: true, lancamento_id: null, titulo_pago_id: t.id });
+      }
+
       // CP do adiantamento nasce já ligado ao empregador (empresa ou produtor) do funcionário —
       // sem isso o título ficava "solto" e não aparecia no filtro de origem do Contas a Pagar.
       const { data: funcEmp } = await sb.from("funcionarios").select("empresa_id, produtor_id").eq("id", funcionario_id).maybeSingle();
@@ -1046,6 +1112,11 @@ export async function POST(req: Request) {
         const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor, ignorarId: id });
         if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
       }
+      // Adiantamento pago por título: valor e funcionário ficam travados (o valor é o do título)
+      const { data: atualAdi } = await sb.from("adiantamentos_salario").select("*").eq("id", id).maybeSingle();
+      if (atualAdi?.titulo_pago_id && (Math.abs(Number(atualAdi.valor) - Number(valor)) > 0.005 || atualAdi.funcionario_id !== funcionario_id)) {
+        return NextResponse.json({ error: "Adiantamento pago por título do Contas a Pagar: o valor e o funcionário não mudam. Cancele e lance de novo." }, { status: 422 });
+      }
       // Atualiza o registro de adiantamento
       const { error: adiErr } = await sb.from("adiantamentos_salario").update({
         funcionario_id, data, valor,
@@ -1073,9 +1144,13 @@ export async function POST(req: Request) {
       // Busca lancamento_id vinculado antes de cancelar
       const { data: adi } = await sb
         .from("adiantamentos_salario")
-        .select("lancamento_id, funcionario_id")
+        .select("*")
         .eq("id", id)
         .single();
+      // Pago por título do CP: o título da NF fica (é a dívida real com o fornecedor); volta a Operação Gerencial anterior
+      if (adi?.titulo_pago_id) {
+        await falharSeErro(sb.from("lancamentos").update({ operacao_gerencial_id: adi.titulo_og_anterior ?? null }).eq("id", adi.titulo_pago_id), "devolver a OG do título");
+      }
       // Exclui o CP se não estiver baixado
       if (adi?.lancamento_id) {
         const { data: lanc } = await sb

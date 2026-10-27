@@ -92,6 +92,7 @@ interface Adiantamento {
   competencia_ref?: string;
   descricao?: string;
   lancamento_id?: string;
+  titulo_pago_id?: string | null;   // pago por um título de NF do CP (Seção 374), sem CP próprio
   status: "pendente" | "descontado" | "cancelado";
   tipo?: "salario" | "gratificacao" | "devolucao";
   created_at?: string;
@@ -228,6 +229,26 @@ export default function FolhaPagamentoPage() {
   const [dataPgto, setDataPgto] = useState("");
   const dataPgtoManual = useRef(false);
   const [adiConta,   setAdiConta]   = useState("");
+  // Exceção controlada: adiantamento pago por um título de NF do Contas a Pagar (conta do funcionário com NF em nome do
+  // produtor). Só para quem tem a ação Aprovar da Folha; valor = valor do título; motivo obrigatório.
+  const podeAdiPorTitulo = podeAcao("folha", "aprovar");
+  const [adiForma, setAdiForma] = useState<"conta" | "titulo">("conta");
+  type TituloNf = { id: string; descricao: string | null; valor: number; pessoa_nome: string | null; nfe_numero: string | null; data_vencimento: string | null; status_normalizado: string | null };
+  const [adiTitulo, setAdiTitulo] = useState<TituloNf | null>(null);
+  const [adiBuscaTit, setAdiBuscaTit] = useState("");
+  const [adiTitulos, setAdiTitulos] = useState<TituloNf[]>([]);
+  async function buscarTitulosNf(texto: string) {
+    setAdiBuscaTit(texto);
+    const t = texto.trim();
+    if (t.length < 2 || !fazendaIds.length) { setAdiTitulos([]); return; }
+    let q = supabase.from("rel_lancamentos").select("id, descricao, valor, pessoa_nome, nfe_numero, data_vencimento, status_normalizado")
+      .eq("tipo", "pagar").eq("origem_tabela", "lancamentos").not("nfe_numero", "is", null).neq("status_normalizado", "cancelado");
+    q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fazendaIds);
+    const num = t.replace(/\D/g, "");
+    q = num && num === t ? q.ilike("nfe_numero", `%${num}%`) : q.ilike("pessoa_nome", `%${t}%`);
+    const { data } = await q.order("data_vencimento", { ascending: false }).limit(30);
+    setAdiTitulos(((data ?? []) as TituloNf[]).map(x => ({ ...x, valor: Number(x.valor ?? 0) })));
+  }
   const [contasAdi,  setContasAdi]  = useState<ContaBancaria[]>([]);
 
   // Contas bancárias do empregador do funcionário escolhido (empresa → contas da empresa; senão contas do produtor da conta)
@@ -761,10 +782,15 @@ export default function FolhaPagamentoPage() {
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
       setMsg("Preencha funcionário, data e valor."); return;
     }
-    if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
+    const porTitulo = !adiEdit.id && adiForma === "titulo";
+    if (porTitulo) {
+      if (!adiTitulo) { setMsg("Escolha o título (NF) do Contas a Pagar que pagou a conta do funcionário."); return; }
+      if (Math.abs((adiEdit.valor ?? 0) - adiTitulo.valor) > 0.005) { setMsg(`O valor do adiantamento tem que ser o valor do título (${moeda(adiTitulo.valor)}).`); return; }
+      if (!String(adiEdit.descricao ?? "").trim()) { setMsg("Informe o motivo (ex.: conta da farmácia do funcionário paga pelo produtor)."); return; }
+    } else if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
     if (adiEdit.tipo === "gratificacao") {
       if (!adiEdit.competencia_ref) { setMsg("Adiantamento de gratificação: informe a competência da gratificação."); return; }
-      if (adiGratInfo.lancada <= 0) { setMsg("Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações."); return; }
+      if (adiGratInfo.lancada <= 0) { setMsg("Não há gratificação lançada para este funcionário nessa competência. Lance antes na aba Gratificações."); return; }
       if ((adiEdit.valor ?? 0) > adiGratInfo.disponivel + 0.005) {
         setMsg(`O valor excede a gratificação disponível (${moeda(adiGratInfo.disponivel)}). O excedente deve ser lançado manualmente como empréstimo a terceiros.`); return;
       }
@@ -797,9 +823,12 @@ export default function FolhaPagamentoPage() {
           competencia_ref: adiEdit.competencia_ref || null,
           descricao: adiEdit.descricao || null,
           funcionario_nome,
-        }) as { lancamento_id?: string | null };
+          ...(porTitulo && adiTitulo ? { titulo_pago_id: adiTitulo.id } : {}),
+        }) as { lancamento_id?: string | null; titulo_pago_id?: string | null };
         // Adiantamento é dinheiro que já saiu: CP nasce baixado, na conta informada (entra no fluxo de caixa)
-        if (r?.lancamento_id) {
+        if (r?.titulo_pago_id) {
+          setMsg("Adiantamento registrado e ligado ao título da NF no Contas a Pagar (sem novo CP). Pague o título normalmente.");
+        } else if (r?.lancamento_id) {
           try {
             await baixarLancamento(r.lancamento_id, adiEdit.valor, adiEdit.data, adiConta);
             setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
@@ -1082,7 +1111,7 @@ export default function FolhaPagamentoPage() {
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
               <div style={{ marginLeft:"auto" }}>
-                <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data: hojeLocal(), competencia_ref: compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>
+                <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data: hojeLocal(), competencia_ref: compAtual() }); setAdiForma("conta"); setAdiTitulo(null); setAdiTitulos([]); setAdiBuscaTit(""); setModalAdi(true); }} style={S.btn("#1A4870")}>
                   + Novo Adiantamento
                 </OperationalButton>
               </div>
@@ -1110,7 +1139,7 @@ export default function FolhaPagamentoPage() {
                         <td style={S.td}>{dataFmt(a.data)}</td>
                         <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(a.valor)}</td>
                         <td style={S.td}>{a.competencia_ref ? nomeMes(a.competencia_ref) : "—"}</td>
-                        <td style={{ ...S.td, color:"#888" }}>{a.descricao || "—"}</td>
+                        <td style={{ ...S.td, color:"#888" }}>{a.descricao || "—"}{a.titulo_pago_id && <div style={{ fontSize:10, fontWeight:600, color:"#1A4870" }}>Pago por título de NF do Contas a Pagar</div>}</td>
                         <td style={S.td}>
                           <span style={{ fontSize:11, fontWeight:700, color:ADI_COLOR[a.status], background:ADI_COLOR[a.status]+"18", borderRadius:4, padding:"2px 8px" }}>
                             {ADI_LABEL[a.status]}
@@ -1628,7 +1657,7 @@ export default function FolhaPagamentoPage() {
                   <div style={{ marginTop:6, fontSize:11, color: adiGratInfo.lancada > 0 ? "#0B2D50" : "#791F1F" }}>
                     {adiGratInfo.lancada > 0
                       ? `Gratificação lançada: ${moeda(adiGratInfo.lancada)} · já adiantado: ${moeda(adiGratInfo.adiantado)} · disponível: ${moeda(adiGratInfo.disponivel)}`
-                      : "Nenhuma gratificação lançada para este funcionário nessa competência (Cadastros, Funcionários, aba Premiações)."}
+                      : "Nenhuma gratificação lançada para este funcionário nessa competência (aba Gratificações)."}
                     {(adiEdit.valor ?? 0) > adiGratInfo.disponivel + 0.005 && adiGratInfo.lancada > 0 && <div style={{ color:"#791F1F" }}>Excede o disponível: lance o excedente manualmente como empréstimo a terceiros.</div>}
                   </div>
                 )}
@@ -1640,7 +1669,43 @@ export default function FolhaPagamentoPage() {
                   <option value="gratificacao">Gratificação (de uma competência lançada)</option>
                 </select>
               </div>
-              {!adiEdit.id && (
+              {!adiEdit.id && podeAdiPorTitulo && (
+                <div>
+                  <label data-arato-label="true" style={S.label}>Como foi pago</label>
+                  <select value={adiForma} onChange={e => { setAdiForma(e.target.value as "conta" | "titulo"); setAdiTitulo(null); setAdiTitulos([]); setAdiBuscaTit(""); }} style={{ ...S.inp, width:"100%" }}>
+                    <option value="conta">Dinheiro entregue ao funcionário (sai de uma conta bancária)</option>
+                    <option value="titulo">Conta do funcionário paga por um título de NF do Contas a Pagar</option>
+                  </select>
+                </div>
+              )}
+              {!adiEdit.id && adiForma === "titulo" && (
+                <div>
+                  <label data-arato-label="true" style={S.label}>Título da NF no Contas a Pagar *</label>
+                  {adiTitulo ? (
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", border:"0.5px solid #1A4870", borderRadius:8, background:"#D5E8F5", fontSize:12 }}>
+                      <span><strong>NF {adiTitulo.nfe_numero}</strong> · {adiTitulo.pessoa_nome ?? "—"} · venc. {adiTitulo.data_vencimento ? adiTitulo.data_vencimento.split("-").reverse().join("/") : "—"} · <strong>{moeda(adiTitulo.valor)}</strong></span>
+                      <button type="button" onClick={() => setAdiTitulo(null)} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, textDecoration:"underline" }}>trocar</button>
+                    </div>
+                  ) : (
+                    <>
+                      <input type="text" value={adiBuscaTit} onChange={e => buscarTitulosNf(e.target.value)} placeholder="Fornecedor ou nº da NF" style={{ ...S.inp, width:"100%" }} />
+                      {adiTitulos.length > 0 && (
+                        <div style={{ border:"0.5px solid #DDE2EE", borderRadius:8, marginTop:4, maxHeight:180, overflowY:"auto" }}>
+                          {adiTitulos.map(t => (
+                            <button key={t.id} type="button" onClick={() => { setAdiTitulo(t); setAdiEdit(p => ({ ...p, valor: t.valor })); }}
+                              style={{ display:"flex", justifyContent:"space-between", gap:8, width:"100%", padding:"6px 10px", background:"#fff", border:"none", borderBottom:"0.5px solid #F0F2F7", cursor:"pointer", fontSize:12, textAlign:"left" }}>
+                              <span>NF {t.nfe_numero} · {t.pessoa_nome ?? "—"}</span>
+                              <span style={{ whiteSpace:"nowrap" }}>{moeda(t.valor)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <span style={{ fontSize:11, color:"#888" }}>Exceção: vale mesmo com a NF em nome do produtor. Não gera outro CP nem saída de caixa — o dinheiro sai quando o título da NF for pago. O título passa para a OG Adiantamento para funcionário; o valor é o do título e o motivo é obrigatório.</span>
+                </div>
+              )}
+              {!adiEdit.id && adiForma === "conta" && (
                 <div>
                   <label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
                   <SelectField value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
@@ -1658,7 +1723,7 @@ export default function FolhaPagamentoPage() {
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <OperationalButton data-arato-button="secondary" onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="secondary" onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar, Gerar CP e Baixar"}</OperationalButton>
+              <OperationalButton data-arato-button="secondary" onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : adiForma === "titulo" ? "Registrar e ligar ao título" : "Registrar, Gerar CP e Baixar"}</OperationalButton>
             </div>
           </div>
         </div>

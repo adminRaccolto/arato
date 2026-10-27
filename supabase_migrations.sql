@@ -18009,3 +18009,17 @@ UPDATE rel_contratos r SET comprador_nome = p.nome FROM pessoas p
 UPDATE rel_pedidos_compra r SET fornecedor_nome = p.nome, fornecedor_cpf_cnpj = p.cpf_cnpj FROM pessoas p
  WHERE p.id = r.fornecedor_id AND (r.fornecedor_nome IS DISTINCT FROM p.nome OR r.fornecedor_cpf_cnpj IS DISTINCT FROM p.cpf_cnpj);
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 374 — Adiantamento a funcionário pago por um título do Contas a Pagar
+-- =============================================================================
+-- Conta do funcionário paga pelo produtor (ex.: farmácia, NF emitida em nome do produtor): o dinheiro sai no CP da NF
+-- (é ele que concilia com o banco) e o adiantamento só aponta para esse título, sem gerar outro CP nem outra saída de
+-- caixa. Exceção deliberada: o título pode ser de outro titular (produtor/empresa) e a NF em nome de outra pessoa.
+-- titulo_og_anterior guarda a Operação Gerencial do título antes de virar "Adiantamento para funcionário", para voltar
+-- se o adiantamento for cancelado.
+ALTER TABLE adiantamentos_salario
+  ADD COLUMN IF NOT EXISTS titulo_pago_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS titulo_og_anterior uuid;
+CREATE INDEX IF NOT EXISTS idx_adiantamentos_titulo_pago ON adiantamentos_salario(titulo_pago_id) WHERE titulo_pago_id IS NOT NULL;
+NOTIFY pgrst, 'reload schema';
