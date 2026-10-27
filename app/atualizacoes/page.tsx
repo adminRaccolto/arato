@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-x",
+    data: "27/10/2026",
+    titulo: "Nota própria de remessa ligada à NF de entrada",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Na Entrada de Nota Própria (nota emitida fora do Arato), dá para marcar que é remessa e ligar à NF de entrada processada. A remessa entra no mesmo controle das remessas emitidas pelo Arato (Retorno de Insumo), com o CFOP de retorno correspondente. Pelo XML ou pela chave, o CFOP de remessa já marca a opção." },
+    ],
+    onde: "Documentos Fiscais → Entrada de Nota Própria",
+  },
+  {
     versao: "2026.10.27-w",
     data: "27/10/2026",
     titulo: "Pagamento parcial divide o título",

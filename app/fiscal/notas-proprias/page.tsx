@@ -24,8 +24,17 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarNotasPropriasExternas, criarNotaPropriaExterna, salvarItensNotaPropriaExterna,
   processarNotaPropriaExterna, estornarNotaPropriaExterna, excluirNotaPropriaExterna,
-  listarItensNotaPropriaExterna, listarInsumosParaConta, listarDepositosMulti, insumoAtivo } from "../../../lib/db";
-import type { NotaPropriaExterna, Insumo, Deposito } from "../../../lib/supabase";
+  listarItensNotaPropriaExterna, listarInsumosParaConta, listarDepositosMulti, insumoAtivo,
+  criarNfRemessaLogistica, listarNfRemessasLogisticas } from "../../../lib/db";
+import { supabase } from "../../../lib/supabase";
+import type { NotaPropriaExterna, Insumo, Deposito, NfRemessaLogistica } from "../../../lib/supabase";
+
+// Remessa emitida fora do Arato ligada a uma NF de entrada processada: entra no mesmo controle de remessas logísticas da
+// remessa emitida pelo Arato (botão Emitir NF Remessa da NF de entrada). CFOP de retorno pelo CFOP da remessa.
+const CFOP_RETORNO: Record<string, string> = { "5905": "5906", "6905": "6906", "5901": "5902", "6901": "6902", "5915": "5916", "6915": "6916", "5934": "5906", "6934": "6906", "5949": "5949", "6949": "6949" };
+const ehCfopRemessa = (c: string) => c in CFOP_RETORNO;
+type NfEntradaOp = { id: string; numero: string | null; serie: string | null; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null; chave_acesso: string | null };
+const marcaRemessa = (notaId: string) => `Nota própria emitida fora do Arato (registro ${notaId})`;
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
@@ -66,6 +75,14 @@ export default function NotasPropriasExternasPage() {
       listarDepositosMulti(ids),
     ]);
     setNotas(n); setInsumos(i); setDepositos(d);
+    if (contaId) {
+      try {
+        const rems = await listarNfRemessasLogisticas(contaId);
+        const mapa = new Map<string, NfRemessaLogistica>();
+        for (const r of rems) { const m = (r.observacao ?? "").match(/registro ([0-9a-f-]{36})/); if (m) mapa.set(m[1], r); }
+        setRemessasPorNota(mapa);
+      } catch { /* sem a lista, a tela segue sem a marca de remessa */ }
+    }
     setLoading(false);
   };
   useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [fazendaId, fazendaIds?.join(",")]);
@@ -82,7 +99,23 @@ export default function NotasPropriasExternasPage() {
     numero: "", serie: "", chave_acesso: "", natureza: "", data_emissao: "",
     cnpj_emitente: "", nome_emitente: "", cnpj_destinatario: "", nome_destinatario: "",
     valor_total: "", movimenta_estoque: false, deposito_origem_id: "", observacao: "",
+    remessa: false, cfop_remessa: "", dest_uf: "",
   };
+  const [nfEntradaVinc, setNfEntradaVinc] = useState<NfEntradaOp | null>(null);
+  const [buscaNfEnt, setBuscaNfEnt] = useState("");
+  const [nfsEntrada, setNfsEntrada] = useState<NfEntradaOp[]>([]);
+  async function buscarNfsEntrada(texto: string) {
+    setBuscaNfEnt(texto);
+    const t = texto.trim();
+    const ids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (t.length < 2 || !ids.length) { setNfsEntrada([]); return; }
+    let q = supabase.from("nf_entradas").select("id, numero, serie, emitente_nome, data_emissao, valor_total, chave_acesso")
+      .in("fazenda_id", ids).eq("status", "processada");
+    q = /^\d+$/.test(t) ? q.ilike("numero", `%${t.replace(/^0+/, "")}%`) : q.ilike("emitente_nome", `%${t}%`);
+    const { data } = await q.order("data_emissao", { ascending: false }).limit(30);
+    setNfsEntrada((data ?? []) as NfEntradaOp[]);
+  }
+  const [remessasPorNota, setRemessasPorNota] = useState<Map<string, NfRemessaLogistica>>(new Map());
   const [cab, setCab] = useState(CAB_VAZIO);
   const [itens, setItens] = useState<ItemForm[]>([ITEM_VAZIO()]);
   const [xmlRaw, setXmlRaw] = useState<string | undefined>(undefined);
@@ -94,6 +127,7 @@ export default function NotasPropriasExternasPage() {
   function abrirWizard() {
     setErroWiz(""); setOrig("manual"); setPasso(1);
     setCab(CAB_VAZIO); setItens([ITEM_VAZIO()]); setXmlRaw(undefined); setChaveDigitada("");
+    setNfEntradaVinc(null); setNfsEntrada([]); setBuscaNfEnt("");
     setWizard(true);
   }
 
@@ -134,7 +168,16 @@ export default function NotasPropriasExternasPage() {
       data_emissao: (tag("dhEmi") || "").slice(0, 10) || p.data_emissao,
       natureza: tag("natOp") || p.natureza,
       valor_total: tag("vNF") || p.valor_total,
+      ...detectarRemessa(xml, p),
     }));
+  }
+
+  // CFOP de remessa no XML (5905, 6905, 5949…) já marca a nota como remessa e preenche o CFOP e a UF do destinatário
+  function detectarRemessa(xml: string | undefined, p: typeof CAB_VAZIO) {
+    const cfop = xml?.match(/<CFOP>(\d{4})<\/CFOP>/)?.[1] ?? "";
+    const dest = xml?.match(/<dest>[\s\S]*?<\/dest>/)?.[0] ?? "";
+    const uf = dest.match(/<UF>([A-Z]{2})<\/UF>/)?.[1] ?? "";
+    return ehCfopRemessa(cfop) ? { remessa: true, cfop_remessa: cfop, dest_uf: uf || p.dest_uf } : {};
   }
 
   async function consultarPorChave() {
@@ -151,6 +194,7 @@ export default function NotasPropriasExternasPage() {
       if (!json.ok) { setErroWiz(json.erro || "Não foi possível consultar essa chave."); return; }
       aplicarParsed(json);
       setXmlRaw(json.xml_content);
+      setCab(p => ({ ...p, ...detectarRemessa(json.xml_content, p) }));
       if (json.aviso) setAvisoWiz(json.aviso);
     } catch (e: unknown) {
       setErroWiz(e instanceof Error ? e.message : "Erro ao consultar a chave.");
@@ -169,6 +213,10 @@ export default function NotasPropriasExternasPage() {
     // A confirmação fica em salvar(), que é onde a nota é gravada (sem pedir duas vezes)
     if (!cab.numero.trim() || !cab.data_emissao || !cab.valor_total) {
       setErroWiz("Preencha número, data de emissão e valor total."); return;
+    }
+    if (cab.remessa && !nfEntradaVinc) { setErroWiz("Escolha a NF de entrada que originou a remessa, ou desmarque a opção de remessa."); return; }
+    if (cab.remessa && nfEntradaVinc && !/^\d{4}$/.test(cab.cfop_remessa.replace(/\D/g, ""))) {
+      setErroWiz("Informe o CFOP da remessa (ex.: 5905)."); return;
     }
     setErroWiz("");
     if (cab.movimenta_estoque) { setPasso(2); return; }
@@ -195,6 +243,17 @@ export default function NotasPropriasExternasPage() {
         movimenta_estoque: cab.movimenta_estoque, deposito_origem_id: cab.deposito_origem_id || undefined,
         status: "registrada", xml_content: xmlRaw, observacao: cab.observacao.trim() || undefined,
       });
+      if (cab.remessa && nfEntradaVinc) {
+        const cfop = cab.cfop_remessa.replace(/\D/g, "");
+        await criarNfRemessaLogistica({
+          fazenda_id: fazendaId, nf_entrada_id: nfEntradaVinc.id, nf_compra_chave: nfEntradaVinc.chave_acesso ?? undefined,
+          nf_remessa_chave: cab.chave_acesso.trim() || undefined, nf_remessa_numero: cab.numero.trim(), nf_remessa_data: cab.data_emissao,
+          cfop_remessa: cfop, cfop_retorno: CFOP_RETORNO[cfop] ?? cfop,
+          destinatario_nome: cab.nome_destinatario.trim() || "—", destinatario_uf: cab.dest_uf.trim().toUpperCase() || undefined,
+          valor_total: numBR(cab.valor_total), natureza_remessa: cab.natureza.trim() || `CFOP ${cfop}`,
+          observacao: marcaRemessa(nota.id), status: "emitida",
+        });
+      }
       if (cab.movimenta_estoque) {
         const itensValidos = itens.filter(it => it.descricao.trim() && it.insumo_id);
         await salvarItensNotaPropriaExterna(nota.id, itensValidos.map(it => ({
@@ -220,7 +279,13 @@ export default function NotasPropriasExternasPage() {
   async function excluir(n: NotaPropriaExterna) {
     if (n.status === "processada") { alert("Nota processada (com baixa de estoque) — estorne primeiro."); return; }
     if (!confirm(`Excluir "${n.numero}"? Essa ação não pode ser desfeita.`)) return;
-    try { await excluirNotaPropriaExterna(n.id); await carregar(); }
+    const rem = remessasPorNota.get(n.id);
+    if (rem && rem.status === "retornada") { alert("Esta remessa já tem retorno registrado. Desfaça o retorno em Retorno de Insumo antes de excluir."); return; }
+    try {
+      await excluirNotaPropriaExterna(n.id);
+      if (rem) await supabase.from("nf_remessas_logisticas").delete().eq("id", rem.id).ilike("observacao", `%${n.id}%`);
+      await carregar();
+    }
     catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao excluir."); }
   }
 
@@ -273,7 +338,7 @@ export default function NotasPropriasExternasPage() {
                         <td style={{ padding: "7px 10px", fontWeight: 600 }}>{n.numero}{n.serie ? `/${n.serie}` : ""}</td>
                         <td style={{ padding: "7px 10px" }}>{fmtData(n.data_emissao)}</td>
                         <td style={{ padding: "7px 10px" }}>{n.nome_destinatario ?? "—"}</td>
-                        <td style={{ padding: "7px 10px" }}>{n.natureza ?? "—"}</td>
+                        <td style={{ padding: "7px 10px" }}>{n.natureza ?? "—"}{remessasPorNota.get(n.id) && <div style={{ fontSize: 10, fontWeight: 600, color: "#1A4870" }}>Remessa · CFOP {remessasPorNota.get(n.id)!.cfop_remessa} · {remessasPorNota.get(n.id)!.status === "retornada" ? "retornada" : "aguardando retorno"}</div>}</td>
                         <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(n.valor_total)}</td>
                         <td style={{ padding: "7px 10px", textAlign: "center" }}>{n.movimenta_estoque ? "✓" : "—"}</td>
                         <td style={{ padding: "7px 10px", fontSize: 11, color: "var(--text-2)" }}>{n.origem_entrada ?? "—"}</td>
@@ -373,6 +438,52 @@ export default function NotasPropriasExternasPage() {
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                   Desmarcado = só fica arquivada (histórico/consulta). Marcado = no próximo passo você associa os itens ao catálogo e escolhe o depósito — ao salvar, dá baixa automática no estoque. Nunca gera CP/CR.
                 </div>
+              </div>
+
+              <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
+                  <input type="checkbox" checked={cab.remessa} onChange={e => setCab(p => ({ ...p, remessa: e.target.checked }))} />
+                  É remessa de mercadoria de uma NF de entrada (armazenagem, depósito, industrialização…)
+                </label>
+                {cab.remessa && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 80px", gap: 10, marginTop: 10 }}>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>NF de entrada processada que originou a remessa</label>
+                      {nfEntradaVinc ? (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "7px 10px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", fontSize: 12 }}>
+                          <span><strong>NF {nfEntradaVinc.numero}{nfEntradaVinc.serie ? `/${nfEntradaVinc.serie}` : ""}</strong> · {nfEntradaVinc.emitente_nome ?? "—"} · {fmtData(nfEntradaVinc.data_emissao)} · {fmtBRL(nfEntradaVinc.valor_total)}</span>
+                          <button type="button" onClick={() => setNfEntradaVinc(null)} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>trocar</button>
+                        </div>
+                      ) : (
+                        <>
+                          <input value={buscaNfEnt} onChange={e => buscarNfsEntrada(e.target.value)} style={inp} placeholder="Nº da NF ou fornecedor" />
+                          {nfsEntrada.length > 0 && (
+                            <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: "auto", background: "var(--bg-card)" }}>
+                              {nfsEntrada.map(n => (
+                                <button key={n.id} type="button" onClick={() => { setNfEntradaVinc(n); setNfsEntrada([]); }}
+                                  style={{ display: "flex", justifyContent: "space-between", gap: 8, width: "100%", padding: "6px 10px", background: "none", border: "none", borderBottom: "0.5px solid var(--border-table)", cursor: "pointer", fontSize: 12, textAlign: "left", color: "var(--text-1)" }}>
+                                  <span>NF {n.numero} · {n.emitente_nome ?? "—"} · {fmtData(n.data_emissao)}</span>
+                                  <span>{fmtBRL(n.valor_total)}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>CFOP da remessa</label>
+                      <input value={cab.cfop_remessa} onChange={e => setCab(p => ({ ...p, cfop_remessa: e.target.value.replace(/\D/g, "").slice(0, 4) }))} style={inp} placeholder="5905" />
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>UF dest.</label>
+                      <input value={cab.dest_uf} onChange={e => setCab(p => ({ ...p, dest_uf: e.target.value.toUpperCase().slice(0, 2) }))} style={inp} placeholder="MT" />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--text-3)" }}>
+                      A remessa entra no mesmo controle das remessas emitidas pelo Arato (Retorno de Insumo), ligada a esta NF de entrada{cab.cfop_remessa && CFOP_RETORNO[cab.cfop_remessa] ? `; o retorno será com CFOP ${CFOP_RETORNO[cab.cfop_remessa]}` : ""}. Não gera CP/CR.
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
