@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zk",
+    data: "27/10/2026",
+    titulo: "CT-e de frete contratado pelo SIEG",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "A sincronização do SIEG passa a baixar os CT-e em que o cliente é o tomador (quem paga o frete). Eles aparecem em Documentos Fiscais, filtro CT-e, como pendentes." },
+      { tipo: "novo", texto: "Ao processar o CT-e, o sistema gera o Contas a Pagar para a transportadora, com operação de frete, vencimento, safra, ciclo e centro de custo. Estornar desfaz o título enquanto ele não foi pago." },
+      { tipo: "melhoria", texto: "CT-e cancelado pelo emitente é marcado na sincronização; CT-e emitido pela própria conta não é importado em dobro." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → CT-e",
+  },
+  {
     versao: "2026.10.27-zj",
     data: "27/10/2026",
     titulo: "Exclusão em lote no CP, busca em Retornos, folha × CP e extrato de gratificação",

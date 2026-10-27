@@ -11,7 +11,7 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, parseCTeXml, parseEventoCancelamentoCteXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
@@ -335,6 +335,73 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── 3c. CT-e de frete contratado (o cliente é o TOMADOR) — Seção 381 ─────
+    // Entra pendente em cte_entradas; o CP para a transportadora nasce ao processar em Documentos Fiscais.
+    // CT-e emitido pela própria conta (Fretes e Transporte) não entra: já tem o financeiro da emissão.
+    // Falha aqui não derruba a sincronização das NF-e: vira aviso.
+    let importados_cte = 0, duplicados_cte = 0, canceladas_cte = 0;
+    const dig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+    let contaIdCte: string | null = null;
+    { const { data: fz } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle(); contaIdCte = (fz?.conta_id as string | null) ?? null; }
+    cteLoop: for (const cnpj of cnpjs) {
+      let docs: string[] = [];
+      try {
+        docs = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 2, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjTom: cnpj });
+      } catch (e) {
+        avisos.push(`CT-e (${cnpj}) não consultados: ${String(e).slice(0, 200)}`);
+        continue;
+      }
+      for (const xml of docs) {
+        const c = parseCTeXml(xml);
+        if (!c || !c.numero) continue;
+        if (dig(c.tomador.cnpj) !== cnpj) continue;   // só o frete que este CPF/CNPJ paga
+        if (chavesAcesso && chavesAcesso.length > 0 && !chavesAcesso.includes(c.chave)) continue;
+        const { data: proprio } = await db.from("ctes").select("id").in("fazenda_id", fazendaIdsDaConta).eq("chave_acesso", c.chave).limit(1);
+        if (proprio?.length) { duplicados_cte++; continue; }
+        const { data: ja, error: eJa } = await db.from("cte_entradas").select("id, status").eq("conta_id", contaIdCte ?? "").eq("chave", c.chave).limit(1);
+        if (eJa) {
+          avisos.push(eJa.code === "42P01" || eJa.code === "PGRST205" ? "CT-e não importados: rode a Seção 381 do supabase_migrations.sql." : `CT-e: ${eJa.message}`);
+          break cteLoop;
+        }
+        const xmlPath = `ctes-sieg/${fazenda_id}/${c.chave}.xml`;
+        const up = await db.storage.from("arquivos").upload(xmlPath, xml, { contentType: "application/xml", upsert: true });
+        const dados = {
+          numero: c.numero, serie: c.serie, data_emissao: c.data_emissao || null, cfop: c.cfop, natureza_operacao: c.natureza,
+          emitente_nome: c.emitente.nome, emitente_cnpj: c.emitente.cnpj, emitente_ie: c.emitente.ie, emitente_uf: c.emitente.uf,
+          tomador_tipo: c.tomador.tipo, tomador_nome: c.tomador.nome, tomador_cnpj: c.tomador.cnpj,
+          remetente_nome: c.remetente.nome, remetente_cnpj: c.remetente.cnpj, destinatario_nome: c.destinatario.nome, destinatario_cnpj: c.destinatario.cnpj,
+          municipio_origem: c.municipio_origem, uf_origem: c.uf_origem, municipio_destino: c.municipio_destino, uf_destino: c.uf_destino,
+          produto_descricao: c.produto || null, peso_kg: c.peso_kg, valor_mercadoria: c.valor_mercadoria,
+          valor_prestacao: c.valor_prestacao, valor_receber: c.valor_receber, valor_icms: c.valor_icms, nfe_chaves: c.nfe_chaves,
+          xml_storage_path: up.error ? null : xmlPath,
+        };
+        if (ja?.length) {
+          if (ja[0].status === "pendente") await db.from("cte_entradas").update(dados).eq("id", ja[0].id);
+          duplicados_cte++;
+          continue;
+        }
+        const { error: eIns } = await db.from("cte_entradas").insert({ ...dados, conta_id: contaIdCte, fazenda_id, chave: c.chave, origem: "sieg", status: "pendente" });
+        if (eIns) erros.push(`CT-e ${c.numero} (…${c.chave.slice(-8)}): ${eIns.message}`);
+        else importados_cte++;
+      }
+      // Cancelamento pelo emitente (110111): pendente vira Cancelado; processado recebe aviso para estornar
+      try {
+        const eventos = await baixarEventosCancelamentoSieg(siegCreds, { TipoXml: 2, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjTom: cnpj });
+        for (const chave of [...new Set(eventos.map(parseEventoCancelamentoCteXml).filter((x): x is string => !!x))]) {
+          const { data: cs } = await db.from("cte_entradas").select("id, status, observacao, numero").eq("conta_id", contaIdCte ?? "").eq("chave", chave);
+          for (const ce of cs ?? []) {
+            if (ce.status === "pendente") { await db.from("cte_entradas").update({ status: "cancelada" }).eq("id", ce.id); canceladas_cte++; }
+            else if (ce.status === "processada" && !String(ce.observacao ?? "").includes(AVISO_CANCELADA)) {
+              await db.from("cte_entradas").update({ observacao: [ce.observacao, AVISO_CANCELADA].filter(Boolean).join(" | ") }).eq("id", ce.id);
+              avisos.push(`CT-e ${ce.numero} cancelado pelo emitente, mas já processado — estorne.`);
+            }
+          }
+        }
+      } catch (e) {
+        avisos.push(`Cancelamentos de CT-e (${cnpj}) não consultados: ${String(e).slice(0, 200)}`);
+      }
+    }
+
     // ── 4. Persistir última sync ─────────────────────────────────────────────
     // A marca da última sincronização é o FIM DA JANELA CONSULTADA (menos 1 dia de folga), nunca "agora":
     // antes ela era gravada ao terminar o processamento (minutos depois da consulta), e as NFs que o SIEG
@@ -365,6 +432,9 @@ export async function POST(req: NextRequest) {
       importados_nfe,
       duplicados_nfe,
       canceladas_nfe,
+      importados_cte,
+      duplicados_cte,
+      canceladas_cte,
       avisos,
       total_xmls:    xmlsNFe.length,
       erros:         erros.slice(0, 20),

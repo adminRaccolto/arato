@@ -18344,3 +18344,123 @@ BEGIN
   END LOOP;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 381 — CT-e recebido (frete contratado) importado do SIEG
+-- =============================================================================
+-- A sincronização do SIEG só baixava NF-e: o CT-e de transportadora de fora, em que o cliente é o TOMADOR (quem
+-- paga o frete), nunca chegava. cte_entradas guarda esse CT-e (separado de "ctes", que são os CT-e EMITIDOS pela
+-- própria conta em Fretes e Transporte). Entra pendente em Documentos Fiscais; ao processar, gera o Contas a Pagar
+-- para a transportadora (produtor em lancamentos ou empresa em empresa_lancamentos). CT-e que a própria conta
+-- emitiu não é importado aqui (já tem o financeiro da emissão).
+CREATE TABLE IF NOT EXISTS cte_entradas (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id              uuid REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id            uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  chave                 text NOT NULL,
+  numero                text,
+  serie                 text,
+  data_emissao          date,
+  cfop                  text,
+  natureza_operacao     text,
+  emitente_nome         text,
+  emitente_cnpj         text,
+  emitente_ie           text,
+  emitente_uf           text,
+  tomador_tipo          text,           -- remetente | expedidor | recebedor | destinatario | outros
+  tomador_nome          text,
+  tomador_cnpj          text,
+  remetente_nome        text,
+  remetente_cnpj        text,
+  destinatario_nome     text,
+  destinatario_cnpj     text,
+  municipio_origem      text,
+  uf_origem             text,
+  municipio_destino     text,
+  uf_destino            text,
+  produto_descricao     text,
+  peso_kg               numeric,
+  valor_mercadoria      numeric(15,2),
+  valor_prestacao       numeric(15,2) NOT NULL DEFAULT 0,   -- vTPrest
+  valor_receber         numeric(15,2),                      -- vRec
+  valor_icms            numeric(15,2),
+  nfe_chaves            text[],
+  xml_storage_path      text,
+  origem                text NOT NULL DEFAULT 'sieg',
+  status                text NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente','processada','cancelada')),
+  lancamento_id         uuid,
+  lancamento_tabela     text CHECK (lancamento_tabela IN ('lancamentos','empresa_lancamentos')),
+  pessoa_id             uuid,
+  produtor_id           uuid,
+  empresa_id            uuid,
+  operacao_gerencial_id uuid,
+  ano_safra_id          uuid,
+  ciclo_id              uuid,
+  centro_custo_id       uuid,
+  data_vencimento       date,
+  observacao            text,
+  processado_em         timestamptz,
+  processado_por        text,
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (conta_id, chave)
+);
+CREATE INDEX IF NOT EXISTS idx_cte_entradas_fazenda ON cte_entradas(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_cte_entradas_status  ON cte_entradas(status);
+
+ALTER TABLE cte_entradas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cte_entradas_tenant" ON cte_entradas;
+CREATE POLICY "cte_entradas_tenant" ON cte_entradas FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+
+-- Espelho no grid de Documentos Fiscais (tipo CTE, origem cte_entradas)
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_cte_entrada(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v cte_entradas%ROWTYPE;
+BEGIN
+  SELECT * INTO v FROM cte_entradas WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'cte_entradas';
+    RETURN;
+  END IF;
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at,
+    destinatario_nome, destinatario_cnpj, data_entrada, tipo_entrada, origem_doc, duplicatas_xml, processado_por
+  ) VALUES (
+    v.id, 'cte_entradas', 'CTE', v.fazenda_id, v.conta_id, v.numero, v.serie, v.chave, v.data_emissao,
+    v.emitente_nome, v.emitente_cnpj, v.valor_prestacao, v.status, v.status,
+    v.cfop, v.natureza_operacao, v.observacao, v.lancamento_id, v.created_at, now(),
+    v.tomador_nome, v.tomador_cnpj, (v.processado_em AT TIME ZONE 'America/Cuiaba')::date, 'frete', v.origem, NULL, v.processado_por
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now(),
+    destinatario_nome = EXCLUDED.destinatario_nome, destinatario_cnpj = EXCLUDED.destinatario_cnpj,
+    data_entrada = EXCLUDED.data_entrada, tipo_entrada = EXCLUDED.tipo_entrada, origem_doc = EXCLUDED.origem_doc,
+    duplicatas_xml = EXCLUDED.duplicatas_xml, processado_por = EXCLUDED.processado_por;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_doc_fiscal_cte_entrada() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = OLD.id AND origem_tabela = 'cte_entradas';
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_doc_fiscal_cte_entrada(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_doc_fiscal_cte_entrada ON cte_entradas;
+CREATE TRIGGER trg_rel_doc_fiscal_cte_entrada
+AFTER INSERT OR UPDATE OR DELETE ON cte_entradas
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_doc_fiscal_cte_entrada();
+NOTIFY pgrst, 'reload schema';

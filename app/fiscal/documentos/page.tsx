@@ -43,6 +43,7 @@ import TopNav from "../../../components/TopNav";
 import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalNf from "../../../components/fiscal/ModalNf";
 import ModalProcessarLote from "../../../components/fiscal/ModalProcessarLote";
+import ModalCteEntrada from "../../../components/fiscal/ModalCteEntrada";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarOperacoesGerenciaisAtivasDaConta, listarCentrosCustoGeralDaConta } from "../../../lib/db";
 import type { OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
@@ -300,7 +301,8 @@ export default function DocumentosFiscaisPage() {
         const dup = Number(d.duplicados_nfe ?? 0);
         const canc = Number(d.canceladas_nfe ?? 0);
         const avisos = Array.isArray(d.avisos) ? (d.avisos as string[]) : [];
-        setSiegMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : ""}${canc > 0 ? ` · ${canc} cancelada${canc !== 1 ? "s" : ""} pelo emitente` : ""}${avisos.length ? ` · ${avisos.join(" · ")}` : ""}`);
+        const cte = Number(d.importados_cte ?? 0), cteCanc = Number(d.canceladas_cte ?? 0);
+        setSiegMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : ""}${canc > 0 ? ` · ${canc} cancelada${canc !== 1 ? "s" : ""} pelo emitente` : ""}${cte > 0 ? ` · ${cte} CT-e de frete` : ""}${cteCanc > 0 ? ` · ${cteCanc} CT-e cancelado${cteCanc !== 1 ? "s" : ""}` : ""}${avisos.length ? ` · ${avisos.join(" · ")}` : ""}`);
         await carregar();
       }
     } catch (e) { setSiegMsg(`✗ Erro de rede: ${e}`); }
@@ -394,7 +396,10 @@ export default function DocumentosFiscaisPage() {
     }
   }
 
+  // CT-e recebido do SIEG (frete contratado, Seção 381): abre a janela de processamento, não o detalhe do CT-e emitido
+  const [cteEntradaId, setCteEntradaId] = useState<string | null>(null);
   function abrirPopover(d: RelDocFiscal, x: number, y: number) {
+    if (d.origem_tabela === "cte_entradas") { setCteEntradaId(d.id); return; }
     setPopover(p => p?.d.id === d.id ? null : { d, x, y });
     if (d.tipo_doc === "NF" && !nfDetalhe[d.id]) {
       setNfDetalheCarregando(d.id);
@@ -498,7 +503,7 @@ export default function DocumentosFiscaisPage() {
         <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "8px 14px", marginBottom: 10, fontSize: 11, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 14 }}>ℹ</span>
           <div style={{ color: "#7A5200" }}>
-            Esta tela mostra documentos emitidos <strong>contra</strong> o produtor/empresa (NF, NFS e CT-e recebidos) — não é onde você emite os seus. CT-e aqui é só visualização; emissão/edição continua em <strong>Fretes e Transporte → CT-e</strong>.
+            Esta tela mostra documentos emitidos <strong>contra</strong> o produtor/empresa (NF, NFS e CT-e recebidos) — não é onde você emite os seus. CT-e de frete contratado (vindo do SIEG) é processado aqui e gera o Contas a Pagar da transportadora; CT-e emitido por você é só visualização — emissão/edição continua em <strong>Fretes e Transporte → CT-e</strong>.
           </div>
         </div>
 
@@ -1086,6 +1091,11 @@ export default function DocumentosFiscaisPage() {
           onClose={() => setModalLote(false)}
           onSaved={() => { carregar(); setSelecionados(new Set()); }}
         />
+      )}
+
+      {cteEntradaId && (
+        <ModalCteEntrada id={cteEntradaId} fazendaIds={fazendaIds ?? (fazendaId ? [fazendaId] : [])} contaId={contaId ?? null}
+          onClose={() => setCteEntradaId(null)} onSaved={carregar} />
       )}
 
       {modalNfs && fazendaId && (

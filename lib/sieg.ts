@@ -482,3 +482,62 @@ export function normalizarApiKeySieg(raw: string): string {
   }
   return k;
 }
+
+// ─── Parser CT-e (frete contratado: cliente como tomador) ─────────────────────
+
+export interface CTeParseResult {
+  chave: string; numero: string; serie: string; data_emissao: string; cfop: string; natureza: string;
+  emitente: { cnpj: string; nome: string; ie: string; uf: string };
+  tomador: { tipo: "remetente" | "expedidor" | "recebedor" | "destinatario" | "outros"; cnpj: string; nome: string };
+  remetente: { cnpj: string; nome: string }; destinatario: { cnpj: string; nome: string };
+  municipio_origem: string; uf_origem: string; municipio_destino: string; uf_destino: string;
+  produto: string; peso_kg: number | null; valor_mercadoria: number | null;
+  valor_prestacao: number; valor_receber: number | null; valor_icms: number | null;
+  nfe_chaves: string[];
+}
+
+const TOMA: Record<string, CTeParseResult["tomador"]["tipo"]> = { "0": "remetente", "1": "expedidor", "2": "recebedor", "3": "destinatario", "4": "outros" };
+
+export function parseCTeXml(xml: string): CTeParseResult | null {
+  try {
+    const idMatch = xml.match(/Id=["']CTe(\d{44})["']/);
+    if (!idMatch) return null;
+    const inf = blockOf(xml, "infCte") || xml;
+    const ide = blockOf(inf, "ide");
+    const parte = (tag: string) => { const b = blockOf(inf, tag); return { cnpj: tagVal(b, "CNPJ") || tagVal(b, "CPF"), nome: tagVal(b, "xNome"), bloco: b }; };
+    const emit = parte("emit"), rem = parte("rem"), dest = parte("dest"), exped = parte("exped"), receb = parte("receb");
+    const toma4 = blockOf(ide, "toma4");
+    const codToma = toma4 ? (tagVal(toma4, "toma") || "4") : tagVal(blockOf(ide, "toma3"), "toma") || tagVal(blockOf(ide, "toma03"), "toma");
+    const tipo = TOMA[codToma] ?? "destinatario";
+    const tomador = tipo === "outros" ? { cnpj: tagVal(toma4, "CNPJ") || tagVal(toma4, "CPF"), nome: tagVal(toma4, "xNome") }
+      : ({ remetente: rem, expedidor: exped, recebedor: receb, destinatario: dest } as Record<string, { cnpj: string; nome: string }>)[tipo];
+    const num = (v: string) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+    const vPrest = blockOf(inf, "vPrest");
+    const carga = blockOf(inf, "infCarga");
+    // Peso: medida em KG (cUnid 01) ou toneladas (02); prefere a que fala em peso
+    const infQ = [...carga.matchAll(new RegExp(`<${NS}infQ>([\\s\\S]*?)</${NS}infQ>`, "g"))].map(m => ({ unid: tagVal(m[1], "cUnid"), med: tagVal(m[1], "tpMed"), q: num(tagVal(m[1], "qCarga")) }));
+    const pesos = infQ.filter(q => (q.unid === "01" || q.unid === "02") && q.q != null).map(q => ({ ...q, kg: q.unid === "02" ? (q.q as number) * 1000 : (q.q as number) }));
+    const peso = (pesos.find(p => /peso/i.test(p.med)) ?? pesos[0])?.kg ?? null;
+    const nfe_chaves = [...new Set([...inf.matchAll(new RegExp(`<${NS}chave>(\\d{44})</${NS}chave>`, "g"))].map(m => m[1]))];
+    return {
+      chave: idMatch[1], numero: tagVal(ide, "nCT"), serie: tagVal(ide, "serie"), data_emissao: (tagVal(ide, "dhEmi") || "").slice(0, 10),
+      cfop: tagVal(ide, "CFOP"), natureza: tagVal(ide, "natOp"),
+      emitente: { cnpj: emit.cnpj, nome: emit.nome, ie: tagVal(emit.bloco, "IE"), uf: tagVal(blockOf(emit.bloco, "enderEmit"), "UF") },
+      tomador: { tipo, cnpj: tomador?.cnpj ?? "", nome: tomador?.nome ?? "" },
+      remetente: { cnpj: rem.cnpj, nome: rem.nome }, destinatario: { cnpj: dest.cnpj, nome: dest.nome },
+      municipio_origem: tagVal(ide, "xMunIni"), uf_origem: tagVal(ide, "UFIni"), municipio_destino: tagVal(ide, "xMunFim"), uf_destino: tagVal(ide, "UFFim"),
+      produto: tagVal(carga, "proPred"), peso_kg: peso, valor_mercadoria: num(tagVal(carga, "vCarga")),
+      valor_prestacao: num(tagVal(vPrest, "vTPrest")) ?? 0, valor_receber: num(tagVal(vPrest, "vRec")), valor_icms: num(tagVal(blockOf(inf, "imp"), "vICMS")),
+      nfe_chaves,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Evento de cancelamento (110111) de CT-e: devolve a chave do CT-e cancelado. */
+export function parseEventoCancelamentoCteXml(xml: string): string | null {
+  if (tagVal(xml, "tpEvento") !== "110111") return null;
+  const chave = tagVal(xml, "chCTe");
+  return /^\d{44}$/.test(chave) ? chave : null;
+}
