@@ -29,10 +29,18 @@ async function validarAdiantamentoGratificacao(
 ): Promise<string | null> {
   const comp = String(p.competencia_ref ?? "").slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(comp)) return "Adiantamento de gratificação: informe a competência da gratificação.";
-  const { data: prem, error: e1 } = await sb.from("funcionario_premiacoes").select("valor, mes_referencia").eq("funcionario_id", p.funcionario_id);
+  // A folha (aba Gratificações, e o que a tela mostra como "Gratificação lançada") usa funcionarios_premiacoes; a aba
+  // Premiações do cadastro grava em funcionario_premiacoes. Só esta segunda era lida: a tela mostrava R$ 10.000 lançados
+  // e o servidor recusava dizendo que não havia gratificação. Vale a da folha; sem ela, a do cadastro.
+  const somaComp = (rows: any[] | null) => (rows ?? []).filter((x: any) => String(x.mes_referencia).slice(0, 7) === comp).reduce((s: number, x: any) => s + Number(x.valor || 0), 0);
+  const { data: premFolha, error: e1 } = await sb.from("funcionarios_premiacoes").select("valor, mes_referencia").eq("funcionario_id", p.funcionario_id);
   if (e1) return `Não foi possível ler as gratificações do funcionário: ${e1.message}`;
-  const lancada = (prem ?? []).filter((x: any) => String(x.mes_referencia).slice(0, 7) === comp).reduce((s: number, x: any) => s + Number(x.valor || 0), 0);
-  if (lancada <= 0) return "Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações.";
+  let lancada = somaComp(premFolha);
+  if (lancada <= 0) {
+    const { data: premCad } = await sb.from("funcionario_premiacoes").select("valor, mes_referencia").eq("funcionario_id", p.funcionario_id);
+    lancada = somaComp(premCad);
+  }
+  if (lancada <= 0) return "Não há gratificação lançada para este funcionário nessa competência. Lance antes na Folha de Pagamento, aba Gratificações.";
   const { data: adis, error: e2 } = await sb.from("adiantamentos_salario").select("id, valor, competencia_ref, status").eq("funcionario_id", p.funcionario_id).eq("tipo", "gratificacao");
   if (e2) return "Aplique a Seção 344 do supabase_migrations.sql para usar adiantamento de gratificação.";
   const adiantado = (adis ?? []).filter((a: any) => a.status !== "cancelado" && a.id !== p.ignorarId && String(a.competencia_ref ?? "").slice(0, 7) === comp)

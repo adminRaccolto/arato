@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-p",
+    data: "27/10/2026",
+    titulo: "Adiantamento de gratificação reconhece a gratificação da folha",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O adiantamento de gratificação era recusado com \"Não há gratificação lançada\" mesmo com a tela mostrando a gratificação disponível: a conferência lia só a aba Premiações do cadastro, e não a aba Gratificações da folha. Agora vale a gratificação da folha (e, sem ela, a do cadastro)." },
+    ],
+    onde: "Financeiro → Folha de Pagamento → Adiantamentos",
+  },
+  {
     versao: "2026.10.27-o",
     data: "27/10/2026",
     titulo: "Borderô de um fornecedor só, nas colunas do grid",
