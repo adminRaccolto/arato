@@ -101,6 +101,15 @@ export async function POST(request: NextRequest) {
         try { avisoDevolucao = await reverterDevolucaoCompra(adm, devId); }
         catch (e) { avisoDevolucao = `A NF-e foi cancelada, mas não consegui desfazer a devolução no sistema (${e instanceof Error ? e.message : String(e)}). Estorne-a manualmente.`; }
       }
+      // NF-e de transferência de máquina cancelada: a remessa cancelada cancela a movimentação; o retorno cancelado
+      // devolve a movimentação a "emitida" (aguardando novo retorno). Antes a transferência seguia "emitida" com a NF
+      // cancelada.
+      if (resultado.sucesso && nota.chave_acesso) {
+        await adm.from("transferencias_maquinas").update({ status: "cancelada" }).eq("nf_saida_chave", nota.chave_acesso).neq("direcao", "entrada");
+        await adm.from("transferencias_maquinas").update({
+          status: "emitida", nf_retorno_chave: null, nf_retorno_numero: null, nf_retorno_protocolo: null, nf_retorno_data: null,
+        }).eq("nf_retorno_chave", nota.chave_acesso);
+      }
       return NextResponse.json({ ok: resultado.sucesso, cStat: resultado.cStat, xMotivo: resultado.xMotivo, protocolo: resultado.protocoloEvento, aviso: avisoDevolucao });
     }
 

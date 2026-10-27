@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-u",
+    data: "27/10/2026",
+    titulo: "Transferência de máquinas acompanha o cancelamento da NF-e",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Cancelar no Monitor a NF-e de remessa de uma transferência de máquina deixava a transferência como Emitida. Agora ela passa a Cancelada; cancelar a NF-e de retorno volta a transferência para Emitida, aguardando novo retorno." },
+    ],
+    onde: "Fiscal → Monitor de NF-e Emitidas; Documentos Fiscais → Transferência de Máquinas",
+  },
+  {
     versao: "2026.10.27-t",
     data: "27/10/2026",
     titulo: "NF-e com transportadora, placa e motorista",
