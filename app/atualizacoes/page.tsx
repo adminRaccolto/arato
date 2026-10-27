@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-z",
+    data: "27/10/2026",
+    titulo: "Nota própria no Monitor e retorno de remessa emitido por terceiros",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Entrada de Nota Própria pelo XML passa a preencher emitente, destinatário e itens (antes só número, série, data, natureza e valor)." },
+      { tipo: "novo", texto: "A nota própria com chave de acesso entra também no Monitor de NF-e Emitidas, com o XML para o DANFE. A remessa ligada a ela guarda os itens, para o retorno poder ser emitido pelo Arato." },
+      { tipo: "novo", texto: "Retorno de Insumo: além de emitir o retorno pelo Arato, dá para vincular um retorno já emitido pelo condomínio logístico ou armazém (ex.: Luft, NF recebida) ou por você em outro sistema. As NFs recebidas do destinatário da remessa aparecem sugeridas." },
+    ],
+    onde: "Documentos Fiscais → Entrada de Nota Própria; Retorno de Insumo; Fiscal → Monitor de NF-e Emitidas",
+  },
+  {
     versao: "2026.10.27-y",
     data: "27/10/2026",
     titulo: "CP mostra o que é previsão",

@@ -28,7 +28,7 @@ interface RetornoForm {
 }
 
 export default function RemessasLogisticasPage() {
-  const { contaId, fazendaId } = useAuth();
+  const { contaId, fazendaId, fazendaIds } = useAuth();
 
   const [remessas,   setRemessas]   = useState<NfRemessaLogistica[]>([]);
   const [pessoas,    setPessoas]    = useState<Pessoa[]>([]);
@@ -45,6 +45,49 @@ export default function RemessasLogisticasPage() {
   const [fiscalMods,   setFiscalMods]   = useState<Array<{modulo: string; config: Record<string,string>}>>([]);
   const [retCpfHint,   setRetCpfHint]    = useState<string | undefined>(undefined);
   const [retProdutorId, setRetProdutorId] = useState<string | undefined>(undefined);
+  // Retorno já emitido por outro: condomínio logístico/armazém (chega como NF de entrada) ou nota própria emitida fora
+  type DocRetorno = { origem: "nf_entrada" | "nota_propria"; id: string; numero: string; chave: string | null; data: string | null; emitente: string | null; valor: number | null };
+  const [retModo, setRetModo] = useState<"emitir" | "vincular">("emitir");
+  const [retBusca, setRetBusca] = useState("");
+  const [retDocs, setRetDocs] = useState<DocRetorno[]>([]);
+  const [retManual, setRetManual] = useState({ numero: "", chave: "", data: "" });
+  async function buscarDocsRetorno(texto: string, r: NfRemessaLogistica) {
+    setRetBusca(texto);
+    const ids = fazendaIds?.length ? fazendaIds : r.fazenda_id ? [r.fazenda_id] : [];
+    if (!ids.length) return;
+    const t = texto.trim();
+    const num = /^\d+$/.test(t) ? t.replace(/^0+/, "") : "";
+    let qe = supabase.from("nf_entradas").select("id, numero, chave_acesso, data_emissao, emitente_nome, valor_total, status").in("fazenda_id", ids).neq("status", "cancelada");
+    let qp = supabase.from("notas_proprias_externas").select("id, numero, chave_acesso, data_emissao, nome_destinatario, valor_total, status").in("fazenda_id", ids).neq("status", "cancelada");
+    if (num) { qe = qe.ilike("numero", `%${num}%`); qp = qp.ilike("numero", `%${num}%`); }
+    else if (t) { qe = qe.ilike("emitente_nome", `%${t}%`); qp = qp.ilike("nome_destinatario", `%${t}%`); }
+    if (r.nf_remessa_data) { qe = qe.gte("data_emissao", r.nf_remessa_data); qp = qp.gte("data_emissao", r.nf_remessa_data); }
+    const [{ data: e }, { data: pr }] = await Promise.all([qe.order("data_emissao", { ascending: false }).limit(20), qp.order("data_emissao", { ascending: false }).limit(10)]);
+    setRetDocs([
+      ...((e ?? []) as { id: string; numero: string; chave_acesso: string | null; data_emissao: string | null; emitente_nome: string | null; valor_total: number | null }[])
+        .map(x => ({ origem: "nf_entrada" as const, id: x.id, numero: x.numero, chave: x.chave_acesso, data: x.data_emissao, emitente: x.emitente_nome, valor: x.valor_total })),
+      ...((pr ?? []) as { id: string; numero: string; chave_acesso: string | null; data_emissao: string | null; nome_destinatario: string | null; valor_total: number | null }[])
+        .map(x => ({ origem: "nota_propria" as const, id: x.id, numero: x.numero, chave: x.chave_acesso, data: x.data_emissao, emitente: `Nota própria → ${x.nome_destinatario ?? "—"}`, valor: x.valor_total })),
+    ]);
+  }
+  async function vincularRetorno(doc: { numero: string; chave: string | null; data: string | null; descricao: string }) {
+    if (!modalRetorno) return;
+    if (!doc.numero.trim()) { setRetErro("Informe o número da NF de retorno."); return; }
+    setRetEmitindo(true); setRetErro("");
+    try {
+      const chave = (doc.chave ?? "").replace(/\D/g, "") || undefined;
+      await atualizarNfRemessaLogistica(modalRetorno.id, {
+        nf_retorno_chave: chave, nf_retorno_numero: doc.numero.trim(), nf_retorno_data: doc.data || hojeLocal(), status: "retornada",
+        observacao: [modalRetorno.observacao, `Retorno emitido fora do Arato: ${doc.descricao}`].filter(Boolean).join(" | "),
+      });
+      setRemessas(prev => prev.map(x => x.id === modalRetorno.id ? { ...x, nf_retorno_chave: chave, nf_retorno_numero: doc.numero.trim(), status: "retornada" } : x));
+      setRetOk({ chave: chave ?? "", numero: doc.numero.trim() });
+    } catch (e) {
+      setRetErro((e as Error).message ?? "Erro ao vincular o retorno.");
+    } finally {
+      setRetEmitindo(false);
+    }
+  }
 
   useEffect(() => {
     if (!contaId) return;
@@ -63,6 +106,11 @@ export default function RemessasLogisticasPage() {
   async function abrirRetorno(r: NfRemessaLogistica) {
     setModalRetorno(r);
     setRetForm({ natureza: "Retorno de armazenagem de condomínio logístico", obs: "" });
+    setRetModo("emitir"); setRetDocs([]); setRetManual({ numero: "", chave: "", data: "" });
+    // sugestões: NFs recebidas do próprio condomínio/armazém da remessa
+    const sugestao = r.destinatario_nome.split(/\s+/).slice(0, 2).join(" ");
+    setRetBusca(sugestao);
+    buscarDocsRetorno(sugestao, r);
     setRetErro("");
     setRetOk(null);
     // Busca módulos fiscais da fazenda REAL da remessa (não a fazenda ativa
@@ -307,7 +355,7 @@ export default function RemessasLogisticasPage() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 580, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div data-arato-dialog-body="true">
-                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Retorno</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Retorno da Remessa</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   Remessa original: {modalRetorno.nf_remessa_numero} — {modalRetorno.destinatario_nome}
                 </div>
@@ -318,7 +366,7 @@ export default function RemessasLogisticasPage() {
             {retOk ? (
               <div style={{ padding: 28, textAlign: "center" }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>NF de Retorno Emitida!</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>{retModo === "vincular" ? "Retorno vinculado à remessa!" : "NF de Retorno Emitida!"}</div>
                 <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>Número: <strong>{retOk.numero}</strong></div>
                 <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-3)", wordBreak: "break-all", marginBottom: 20 }}>{retOk.chave}</div>
                 <OperationalButton data-arato-button="primary" onClick={() => setModalRetorno(null)} style={btnV}>Fechar</OperationalButton>
@@ -338,6 +386,40 @@ export default function RemessasLogisticasPage() {
                   </div>
                 </div>
 
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  {([["emitir", "Emitir NF de retorno pelo Arato"], ["vincular", "Vincular retorno já emitido (condomínio, armazém, outro sistema)"]] as const).map(([m, t]) => (
+                    <button key={m} type="button" onClick={() => { setRetModo(m); setRetErro(""); }}
+                      style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 12, fontWeight: retModo === m ? 700 : 500, cursor: "pointer",
+                        border: retModo === m ? "1.5px solid #1A4870" : "0.5px solid var(--border)", background: retModo === m ? "#D5E8F5" : "var(--bg-card)", color: retModo === m ? "#0B2D50" : "var(--text-2)" }}>{t}</button>
+                  ))}
+                </div>
+
+                {retModo === "vincular" && (
+                  <div style={{ marginBottom: 14 }}>
+                    <label data-arato-label="true" style={lbl}>NF de retorno recebida (ex.: emitida pela Luft) ou nota própria emitida fora</label>
+                    <input style={inp} value={retBusca} onChange={e => buscarDocsRetorno(e.target.value, modalRetorno)} placeholder="Nº da NF ou emitente" />
+                    <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, marginTop: 6, maxHeight: 200, overflowY: "auto" }}>
+                      {retDocs.length === 0 && <div style={{ padding: 10, fontSize: 12, color: "var(--text-3)" }}>Nenhuma NF encontrada. Digite o número ou o emitente, ou informe abaixo.</div>}
+                      {retDocs.map(d => (
+                        <div key={`${d.origem}:${d.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "0.5px solid var(--border)", fontSize: 12 }}>
+                          <span><strong>NF {d.numero}</strong> · {d.emitente ?? "—"} · {d.data ? d.data.split("-").reverse().join("/") : "—"} · {fmtBRL(d.valor ?? 0)}</span>
+                          <OperationalButton data-arato-button="primary" disabled={retEmitindo} onClick={() => vincularRetorno({ numero: d.numero, chave: d.chave, data: d.data, descricao: `NF ${d.numero} — ${d.emitente ?? ""}${d.origem === "nf_entrada" ? " (NF recebida)" : ""}` })}
+                            style={{ ...btnV, padding: "4px 10px", fontSize: 11 }}>Vincular</OperationalButton>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", margin: "10px 0 6px" }}>Ou informe a NF de retorno:</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 130px auto", gap: 8, alignItems: "end" }}>
+                      <input style={inp} placeholder="Número" value={retManual.numero} onChange={e => setRetManual(p => ({ ...p, numero: e.target.value }))} />
+                      <input style={inp} placeholder="Chave de acesso (opcional)" value={retManual.chave} onChange={e => setRetManual(p => ({ ...p, chave: e.target.value }))} />
+                      <input style={inp} type="date" value={retManual.data} onChange={e => setRetManual(p => ({ ...p, data: e.target.value }))} />
+                      <OperationalButton data-arato-button="primary" disabled={retEmitindo} onClick={() => vincularRetorno({ numero: retManual.numero, chave: retManual.chave, data: retManual.data, descricao: `NF ${retManual.numero} (informada à mão)` })} style={{ ...btnV, padding: "7px 12px" }}>Vincular</OperationalButton>
+                    </div>
+                    {retErro && <div style={{ background: "#FDECEA", color: "#B91C1C", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginTop: 10 }}>{retErro}</div>}
+                  </div>
+                )}
+
+                {retModo === "emitir" && (<>
                 {/* Natureza */}
                 <div style={{ marginBottom: 14 }}>
                   <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
@@ -370,6 +452,7 @@ export default function RemessasLogisticasPage() {
                     {retEmitindo ? "Emitindo…" : "Emitir NF de Retorno →"}
                   </OperationalButton>
                 </div>
+                </>)}
               </div>
             )}
           </div>

@@ -25,7 +25,7 @@ import {
   listarNotasPropriasExternas, criarNotaPropriaExterna, salvarItensNotaPropriaExterna,
   processarNotaPropriaExterna, estornarNotaPropriaExterna, excluirNotaPropriaExterna,
   listarItensNotaPropriaExterna, listarInsumosParaConta, listarDepositosMulti, insumoAtivo,
-  criarNfRemessaLogistica, listarNfRemessasLogisticas } from "../../../lib/db";
+  criarNfRemessaLogistica, listarNfRemessasLogisticas, criarNotaFiscal } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import type { NotaPropriaExterna, Insumo, Deposito, NfRemessaLogistica } from "../../../lib/supabase";
 
@@ -35,6 +35,31 @@ const CFOP_RETORNO: Record<string, string> = { "5905": "5906", "6905": "6906", "
 const ehCfopRemessa = (c: string) => c in CFOP_RETORNO;
 type NfEntradaOp = { id: string; numero: string | null; serie: string | null; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null; chave_acesso: string | null };
 const marcaRemessa = (notaId: string) => `Nota própria emitida fora do Arato (registro ${notaId})`;
+
+// Leitura completa do XML da NF-e (cabeçalho, emitente, destinatário, itens, protocolo). Antes só lia número, série,
+// data, natureza e valor — emitente, destinatário e itens ficavam em branco.
+function lerXmlNfe(xml: string) {
+  const tag = (src: string, t: string) => src.match(new RegExp(`<${t}>([^<]*)</${t}>`))?.[1] ?? "";
+  const bloco = (src: string, t: string) => src.match(new RegExp(`<${t}[ >][\\s\\S]*?</${t}>`))?.[0] ?? "";
+  const ide = bloco(xml, "ide"), emit = bloco(xml, "emit"), ender = bloco(emit, "enderEmit"), dest = bloco(xml, "dest"), enderDest = bloco(dest, "enderDest");
+  const dets = xml.match(/<det [\s\S]*?<\/det>/g) ?? [];
+  return {
+    numero: tag(ide, "nNF"), serie: tag(ide, "serie"), chave: xml.match(/Id=["']NFe(\d{44})["']/)?.[1] ?? "",
+    data_emissao: (tag(ide, "dhEmi") || tag(ide, "dEmi")).slice(0, 10), natureza: tag(ide, "natOp"),
+    valor_total: Number(tag(xml, "vNF") || 0),
+    cnpj_emitente: tag(emit, "CNPJ") || tag(emit, "CPF"), nome_emitente: tag(emit, "xNome"),
+    cnpj_destinatario: tag(dest, "CNPJ") || tag(dest, "CPF"), nome_destinatario: tag(dest, "xNome"), dest_uf: tag(enderDest, "UF"),
+    protocolo: tag(xml, "nProt"), tpNF: tag(ide, "tpNF"),
+    emit_dados: { emit_razao: tag(emit, "xNome"), emit_cnpj: tag(emit, "CNPJ") || tag(emit, "CPF"), emit_ie: tag(emit, "IE"),
+      emit_endereco: tag(ender, "xLgr"), emit_numero: tag(ender, "nro"), emit_bairro: tag(ender, "xBairro"), emit_municipio: tag(ender, "xMun"),
+      emit_uf: tag(ender, "UF"), emit_cep: tag(ender, "CEP"), emit_fone: tag(ender, "fone") },
+    dest_dados: { dest_ie: tag(dest, "IE"), dest_uf: tag(enderDest, "UF"), dest_cidade: tag(enderDest, "xMun"), dest_endereco: tag(enderDest, "xLgr"), dest_numero: tag(enderDest, "nro") },
+    itens: dets.map(d => { const pr = bloco(d, "prod"); return {
+      descricao: tag(pr, "xProd"), unidade: tag(pr, "uCom") || "un", quantidade: Number(tag(pr, "qCom") || 0),
+      valor_unitario: Number(tag(pr, "vUnCom") || 0), valor_total: Number(tag(pr, "vProd") || 0), ncm: tag(pr, "NCM"), cfop: tag(pr, "CFOP"),
+    }; }),
+  };
+}
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
@@ -52,7 +77,7 @@ const STATUS_META: Record<string, { label: string; bg: string; cl: string }> = {
   cancelada:  { label: "Cancelada", bg: "#FCEBEB", cl: "#791F1F" },
 };
 
-type ItemForm = { key: string; descricao: string; unidade: string; quantidade: string; valor_unitario: string; valor_total: string; insumo_id: string };
+type ItemForm = { key: string; descricao: string; unidade: string; quantidade: string; valor_unitario: string; valor_total: string; insumo_id: string; ncm?: string; cfop?: string };
 const ITEM_VAZIO = (): ItemForm => ({ key: crypto.randomUUID(), descricao: "", unidade: "un", quantidade: "", valor_unitario: "", valor_total: "", insumo_id: "" });
 
 export default function NotasPropriasExternasPage() {
@@ -134,7 +159,7 @@ export default function NotasPropriasExternasPage() {
   function aplicarParsed(d: {
     numero?: string; serie?: string; chave?: string; data_emissao?: string; natureza?: string;
     cnpj_emitente?: string; nome_emitente?: string; cnpj_destinatario?: string; nome_destinatario?: string;
-    valor_total?: number; itens?: { descricao: string; unidade: string; quantidade: number; valor_unitario: number; valor_total: number }[];
+    valor_total?: number; itens?: { descricao: string; unidade: string; quantidade: number; valor_unitario: number; valor_total: number; ncm?: string; cfop?: string }[];
   }) {
     setCab(p => ({
       ...p,
@@ -148,28 +173,16 @@ export default function NotasPropriasExternasPage() {
       setItens(d.itens.map(it => ({
         key: crypto.randomUUID(), descricao: it.descricao, unidade: it.unidade || "un",
         quantidade: String(it.quantidade), valor_unitario: String(it.valor_unitario), valor_total: String(it.valor_total),
-        insumo_id: "",
+        insumo_id: "", ncm: it.ncm, cfop: it.cfop,
       })));
     }
   }
 
   function parsearXmlLocal(xml: string) {
     setXmlRaw(xml);
-    // Parse mínimo no client (sem backend) — tags básicas via regex simples,
-    // suficiente pro cabeçalho; itens o usuário confere/ajusta manualmente
-    // se o XML vier truncado. Pra parse completo (com itens), usa Chave.
-    const tag = (t: string) => xml.match(new RegExp(`<${t}>([^<]*)</${t}>`))?.[1] ?? "";
-    const idMatch = xml.match(/Id=["']NFe(\d{44})["']/);
-    setCab(p => ({
-      ...p,
-      numero: tag("nNF") || p.numero,
-      serie: tag("serie") || p.serie,
-      chave_acesso: idMatch?.[1] ?? p.chave_acesso,
-      data_emissao: (tag("dhEmi") || "").slice(0, 10) || p.data_emissao,
-      natureza: tag("natOp") || p.natureza,
-      valor_total: tag("vNF") || p.valor_total,
-      ...detectarRemessa(xml, p),
-    }));
+    const d = lerXmlNfe(xml);
+    aplicarParsed({ ...d, chave: d.chave, valor_total: d.valor_total || undefined });
+    setCab(p => ({ ...p, ...detectarRemessa(xml, p) }));
   }
 
   // CFOP de remessa no XML (5905, 6905, 5949…) já marca a nota como remessa e preenche o CFOP e a UF do destinatário
@@ -223,6 +236,36 @@ export default function NotasPropriasExternasPage() {
     salvar();
   }
 
+  // Nota própria com chave entra no Monitor de NF-e Emitidas (DANFE, cancelamento, carta de correção) — antes ficava
+  // só nesta tela. Com o XML, guarda o arquivo para o DANFE e os dados do emitente/destinatário.
+  async function registrarNoMonitor(notaId: string) {
+    const chave = cab.chave_acesso.replace(/\D/g, "");
+    if (!fazendaId || chave.length !== 44) return;
+    try {
+      const { data: ja } = await supabase.from("notas_fiscais").select("id").eq("chave_acesso", chave).limit(1);
+      if (ja?.length) return;   // a NF já está no Monitor (ex.: emitida pelo próprio Arato)
+      const x = xmlRaw ? lerXmlNfe(xmlRaw) : null;
+      let xmlUrl: string | undefined;
+      if (xmlRaw) {
+        const path = `${fazendaId}/nfe_emitidas/${chave}.xml`;
+        const up = await supabase.storage.from("arquivos").upload(path, new Blob([xmlRaw], { type: "application/xml" }), { upsert: true });
+        if (!up.error) xmlUrl = supabase.storage.from("arquivos").getPublicUrl(path).data.publicUrl;
+      }
+      const cfop = (cab.cfop_remessa || x?.itens[0]?.cfop || itens.find(i => i.cfop)?.cfop || "").replace(/\D/g, "");
+      await criarNotaFiscal({
+        fazenda_id: fazendaId, numero: cab.numero.trim(), serie: cab.serie.trim() || "1", tipo: x?.tpNF === "0" ? "entrada" : "saida",
+        cfop: cfop.length === 4 ? `${cfop[0]}.${cfop.slice(1)}` : cfop, natureza: cab.natureza.trim() || "—",
+        destinatario: cab.nome_destinatario.trim() || "—", cnpj_destinatario: cab.cnpj_destinatario.replace(/\D/g, "") || undefined,
+        valor_total: numBR(cab.valor_total), data_emissao: cab.data_emissao, status: "autorizada", chave_acesso: chave, xml_url: xmlUrl,
+        auto: false, tipo_emissao: 1, observacao: ["Emitida fora do Arato (Entrada de Nota Própria)", cab.observacao.trim()].filter(Boolean).join(" — "),
+        itens_json: itens.filter(i => i.descricao.trim()).map(i => ({ item: i.descricao.trim(), ncm: i.ncm ?? "", cfop: i.cfop ?? cfop, unidade: i.unidade, quantidade: numBR(i.quantidade), valor_unitario: numBR(i.valor_unitario), valor_total: numBR(i.valor_total) })),
+        dados_nf_json: { ...(x?.emit_dados ?? {}), ...(x?.dest_dados ?? {}), protocolo_autorizacao: x?.protocolo || undefined, origem_externa: true, nota_propria_id: notaId },
+      } as never);
+    } catch (e) {
+      console.error("[nota própria] não registrou no Monitor:", e);
+    }
+  }
+
   async function salvar() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
@@ -243,6 +286,7 @@ export default function NotasPropriasExternasPage() {
         movimenta_estoque: cab.movimenta_estoque, deposito_origem_id: cab.deposito_origem_id || undefined,
         status: "registrada", xml_content: xmlRaw, observacao: cab.observacao.trim() || undefined,
       });
+      await registrarNoMonitor(nota.id);
       if (cab.remessa && nfEntradaVinc) {
         const cfop = cab.cfop_remessa.replace(/\D/g, "");
         await criarNfRemessaLogistica({
@@ -252,6 +296,11 @@ export default function NotasPropriasExternasPage() {
           destinatario_nome: cab.nome_destinatario.trim() || "—", destinatario_uf: cab.dest_uf.trim().toUpperCase() || undefined,
           valor_total: numBR(cab.valor_total), natureza_remessa: cab.natureza.trim() || `CFOP ${cfop}`,
           observacao: marcaRemessa(nota.id), status: "emitida",
+          // itens da remessa: sem eles o Retorno de Insumo não consegue emitir a NF de retorno
+          itens_json: itens.filter(it => it.descricao.trim()).map(it => ({
+            descricao_produto: it.descricao.trim(), ncm: it.ncm || undefined, unidade: it.unidade || "UN",
+            quantidade: numBR(it.quantidade), valor_unitario: numBR(it.valor_unitario), valor_total: numBR(it.valor_total),
+          })),
         });
       }
       if (cab.movimenta_estoque) {
@@ -284,6 +333,7 @@ export default function NotasPropriasExternasPage() {
     try {
       await excluirNotaPropriaExterna(n.id);
       if (rem) await supabase.from("nf_remessas_logisticas").delete().eq("id", rem.id).ilike("observacao", `%${n.id}%`);
+      await supabase.from("notas_fiscais").delete().eq("dados_nf_json->>nota_propria_id", n.id);
       await carregar();
     }
     catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao excluir."); }
