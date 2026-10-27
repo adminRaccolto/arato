@@ -224,7 +224,7 @@ export default function FolhaPagamentoPage() {
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
   const [vencCp,     setVencCp]     = useState<Record<string, string>>({});
   // Situação do salário no Contas a Pagar (folha fechada): soma o título e as partes de pagamento parcial (Seção 375)
-  const [situacaoCp, setSituacaoCp] = useState<Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null }>>({});
+  const [situacaoCp, setSituacaoCp] = useState<Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null; travado: boolean }>>({});
   const [fGratFunc, setFGratFunc] = useState("");
   // Data de pagamento da folha (vencimento do CP de salário): cada cliente escolhe conforme a sua operação.
   // Padrão: o mesmo dia do mês usado na última folha (ou dia 5), no mês seguinte à competência.
@@ -421,16 +421,19 @@ export default function FolhaPagamentoPage() {
       if (cpIds.length) {
         const { data: lancs } = await supabase.from("lancamentos").select("id, data_vencimento").in("id", cpIds);
         setVencCp(Object.fromEntries((lancs ?? []).map(l => [l.id as string, l.data_vencimento as string])));
-        const { data: partes } = await supabase.from("lancamentos").select("id, titulo_origem_id, valor, valor_pago, status, natureza, data_baixa")
+        const { data: partes } = await supabase.from("lancamentos").select("id, titulo_origem_id, valor, valor_pago, status, natureza, data_baixa, lote_id, conciliado")
           .or(`id.in.(${cpIds.join(",")}),titulo_origem_id.in.(${cpIds.join(",")})`).neq("status", "cancelado");
-        const sit: Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null }> = {};
-        for (const t of (partes ?? []) as { id: string; titulo_origem_id: string | null; valor: number; valor_pago: number | null; status: string; natureza: string | null; data_baixa: string | null }[]) {
+        const sit: Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null; travado: boolean }> = {};
+        for (const t of (partes ?? []) as { id: string; titulo_origem_id: string | null; valor: number; valor_pago: number | null; status: string; natureza: string | null; data_baixa: string | null; lote_id: string | null; conciliado: boolean | null }[]) {
           const chave = cpIds.includes(t.id) ? t.id : t.titulo_origem_id;
           if (!chave) continue;
-          const atual = sit[chave] ?? { valor: 0, pago: 0, previsao: false, ultimaBaixa: null };
+          const atual = sit[chave] ?? { valor: 0, pago: 0, previsao: false, ultimaBaixa: null, travado: false };
           const pago = t.status === "baixado" ? Number(t.valor_pago ?? t.valor) : Number(t.valor_pago ?? 0);
+          // Salário já movimentado (pago, parcial, em borderô ou conciliado) não pode mais ser alterado pela folha
+          const travado = pago > 0 || !!t.lote_id || !!t.conciliado || t.status === "baixado" || t.status === "parcial";
           sit[chave] = { valor: atual.valor + Number(t.valor), pago: atual.pago + pago, previsao: atual.previsao || t.natureza === "previsao",
-            ultimaBaixa: t.data_baixa && (!atual.ultimaBaixa || t.data_baixa > atual.ultimaBaixa) ? t.data_baixa : atual.ultimaBaixa };
+            ultimaBaixa: t.data_baixa && (!atual.ultimaBaixa || t.data_baixa > atual.ultimaBaixa) ? t.data_baixa : atual.ultimaBaixa,
+            travado: atual.travado || travado };
         }
         setSituacaoCp(sit);
       } else { setVencCp({}); setSituacaoCp({}); }
@@ -1307,7 +1310,7 @@ export default function FolhaPagamentoPage() {
             {folhaEdit.status === "fechado" && (
               <div style={{ background:"#FBF3E0", border:"0.5px solid #C9921B", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#7A4300" }}>
                 {podeReprocessar
-                  ? <>Folha fechada: faça os ajustes e clique em <strong>⟳ Reprocessar Folha</strong>. O sistema recalcula e altera no Contas a Pagar só os valores que mudaram; títulos já pagos não são mexidos.</>
+                  ? <>Folha fechada: salários já pagos no Contas a Pagar ficam travados (em cinza). Nos salários em aberto, ajuste gratificação e outros descontos e clique em <strong>⟳ Reprocessar Folha</strong>: o Contas a Pagar é atualizado só onde o valor mudou.</>
                   : <>🔒 Folha fechada: seu grupo de usuário não tem a rotina Reprocessar Folha (Configurações → Usuários e Permissões). Peça a quem tem a permissão, ou reabra a folha.</>}
               </div>
             )}
@@ -1417,11 +1420,16 @@ export default function FolhaPagamentoPage() {
                           const expanded = funcExpand.has(idx);
                           const sel = selecionados.has(idx);
                           const isFechado = folhaEdit.status === "fechado";
+                          // Folha fechada: salário já pago (ou em borderô/conciliado) fica travado; em aberto continua editável e o
+                          // Reprocessar Folha atualiza o Contas a Pagar
+                          const travado = isFechado && !!f.cp_lancamento_id && !!situacaoCp[f.cp_lancamento_id]?.travado;
+                          const editavel = !isFechado || !travado;
                           return (
                             <>
-                              <tr key={idx} style={{ background: !sel ? "#F9F9F9" : idx%2===0?"#fff":"#FAFBFD", opacity: sel ? 1 : 0.45 }}>
+                              <tr key={idx} title={travado ? "Salário já pago no Contas a Pagar — não pode ser alterado" : undefined}
+                                style={{ background: travado ? "#F1F2F4" : !sel ? "#F9F9F9" : idx%2===0?"#fff":"#FAFBFD", opacity: sel ? (travado ? 0.7 : 1) : 0.45, color: travado ? "#888" : undefined }}>
                                 <td style={{ ...S.td, width:24, padding:"4px 6px" }}>
-                                  <input type="checkbox" checked={sel} onChange={() => setSelecionados(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s; })} style={{ cursor:"pointer" }} />
+                                  <input type="checkbox" checked={sel} disabled={travado} onChange={() => setSelecionados(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s; })} style={{ cursor: travado ? "not-allowed" : "pointer" }} />
                                 </td>
                                 <td style={{ ...S.td, width:24, padding:"4px 4px" }}>
                                   <OperationalButton data-arato-button="secondary" onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:"#1A4870", padding:"0 2px" }}>{expanded?"▾":"▸"}</OperationalButton>
@@ -1438,8 +1446,8 @@ export default function FolhaPagamentoPage() {
                                   {moeda(f.salario_base)}
                                 </td>
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
-                                  <input type="number" value={f.gratificacao} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.gratificacao > 0 ? "#C9921B" : "#DDE2EE", fontSize:12 }} />
+                                  <input type="number" value={f.gratificacao} disabled={!editavel} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)}
+                                    style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.gratificacao > 0 ? "#C9921B" : "#DDE2EE", fontSize:12, ...(!editavel ? { background:"#F1F2F4", color:"#888" } : {}) }} />
                                 </td>
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.inss_trabalhador)}</td>
@@ -1447,7 +1455,7 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap", color: (f.complemento_salarial ?? 0) > 0 ? "#1A4870" : "#888", fontWeight: (f.complemento_salarial ?? 0) > 0 ? 600 : 400 }}>{moeda(f.complemento_salarial ?? 0)}</td>
                                 {/* ── Outros Descontos — com justificativa inline ── */}
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
-                                  {isFechado ? (
+                                  {!editavel ? (
                                     <div>
                                       <span style={{ fontVariantNumeric:"tabular-nums", color:"#555" }}>{moeda(f.outros_descontos)}</span>
                                       {f.desc_outros_descontos && <div style={{ fontSize:9, color:"#888", marginTop:1 }}>{f.desc_outros_descontos}</div>}
@@ -1505,7 +1513,7 @@ export default function FolhaPagamentoPage() {
                                       </div>
                                       <div>
                                         <label data-arato-label="true" style={S.label}>Observação dos outros descontos</label>
-                                        {isFechado
+                                        {!editavel
                                           ? <span style={{ fontSize:13, color:"#555" }}>{f.desc_outros_descontos || "—"}</span>
                                           : <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Ex.: farmácia, dias não trabalhados, empréstimo..." />
                                         }

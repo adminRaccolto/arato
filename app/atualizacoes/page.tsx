@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zl",
+    data: "27/10/2026",
+    titulo: "Descontos na folha fechada para salários em aberto",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na folha já processada, os salários em aberto no Contas a Pagar aceitam alteração de gratificação e outros descontos (com observação); o Reprocessar Folha atualiza o CP." },
+      { tipo: "melhoria", texto: "Salários já pagos (ou em borderô/conciliados) ficam em cinza e travados na folha processada." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.27-zk",
     data: "27/10/2026",
     titulo: "CT-e de frete contratado pelo SIEG",

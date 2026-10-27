@@ -513,6 +513,16 @@ export async function POST(req: Request) {
       const pago = (t: any) => !!t && (t.status === "baixado" || t.status === "parcial" || !!t.lote_id || !!t.conciliado || Number(t.valor_pago ?? 0) > 0);
       const r2 = (v: number) => Math.round(v * 100) / 100;
 
+      // Salário já pago (ou em borderô/conciliado) fica como estava: a tela trava a linha e o servidor garante —
+      // gratificação e outros descontos voltam ao valor gravado; só os em aberto são alterados e atualizam o CP.
+      for (const r of novas) {
+        const velha = antigaPor.get(chave(r));
+        const t = velha?.cp_lancamento_id ? tituloPor.get(velha.cp_lancamento_id) : null;
+        if (!velha || !pago(t)) continue;
+        for (const campo of ["gratificacao", "salario_bruto", "inss_trabalhador", "irrf", "outros_descontos", "desc_outros_descontos", "complemento_salarial", "inss_patronal", "fgts"])
+          r[campo] = velha[campo];
+      }
+
       type Item = { tipo: "atualizar" | "criar" | "cancelar" | "sem_mudanca" | "pendencia_pago_maior" | "desconto"; funcionario_id?: string | null; nome: string; antes: number; depois: number; titulo_id?: string | null; diferenca?: number };
       const plano: Item[] = [];
       for (const r of novas) {
