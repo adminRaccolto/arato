@@ -4,7 +4,8 @@
  *  - NF-e: eventos de cancelamento (110111) registrados no SIEG no período, cruzados pela chave de acesso com as NFs
  *    de entrada de todas as fazendas do cliente;
  *  - NFS-e: notas já processadas que a sincronização marcou como canceladas pelo prestador (a pendente ela já cancela).
- * Não altera nenhuma nota.
+ * A consulta não altera nenhuma nota. Com `marcar_ids`, marca como Cancelada as NF-e pendentes escolhidas na tela
+ * (só pendente/digitando, só do cliente — processada nunca muda aqui: tem CP e estoque, o caminho é estornar).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
@@ -34,15 +35,30 @@ const dig = (s: unknown) => String(s ?? "").replace(/\D/g, "");
 
 export async function POST(req: NextRequest) {
   try {
-    const { fazenda_id, data_inicio, data_fim } = await req.json() as { fazenda_id: string; data_inicio: string; data_fim: string };
+    const { fazenda_id, data_inicio, data_fim, marcar_ids } = await req.json() as { fazenda_id: string; data_inicio: string; data_fim: string; marcar_ids?: string[] };
     const negado = await exigirAcessoFazenda(req, fazenda_id);
     if (negado) return negado;
-    if (!data_inicio || !data_fim) return NextResponse.json({ erro: "Informe o período." }, { status: 400 });
 
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const { data: faz } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
     const { data: fazRows } = faz?.conta_id ? await db.from("fazendas").select("id").eq("conta_id", faz.conta_id) : { data: null };
     const fazendaIds = fazRows?.length ? fazRows.map(f => f.id as string) : [fazenda_id];
+
+    if (Array.isArray(marcar_ids)) {
+      const obs = `Cancelada pelo emitente na SEFAZ (marcada pelo relatório de NFs canceladas em ${new Date().toLocaleDateString("pt-BR")})`;
+      let marcadas = 0;
+      for (let i = 0; i < marcar_ids.length; i += 200) {
+        const { data, error } = await db.from("nf_entradas").update({ status: "cancelada" })
+          .in("id", marcar_ids.slice(i, i + 200)).in("fazenda_id", fazendaIds).in("status", ["pendente", "digitando"]).select("id, observacao");
+        if (error) throw error;
+        for (const n of data ?? []) {
+          await db.from("nf_entradas").update({ observacao: [n.observacao, obs].filter(Boolean).join(" | ") }).eq("id", n.id);
+          marcadas++;
+        }
+      }
+      return NextResponse.json({ marcadas });
+    }
+    if (!data_inicio || !data_fim) return NextResponse.json({ erro: "Informe o período." }, { status: 400 });
 
     // CPFs/CNPJs monitorados no SIEG em qualquer fazenda do cliente
     const { data: cfgs } = await db.from("configuracoes_modulo").select("config").in("fazenda_id", fazendaIds).eq("modulo", "sieg");

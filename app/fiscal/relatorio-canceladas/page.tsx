@@ -1,12 +1,14 @@
 "use client";
 // NFs canceladas pelo emitente que no Arato não estão como Canceladas: as já processadas (têm estoque/CP — precisam de
 // estorno) e as ainda pendentes. NF-e vem dos eventos de cancelamento do SIEG no período; NFS-e processada vem do aviso
-// que a sincronização deixa na nota. Só leitura: o relatório não altera nenhuma nota.
+// que a sincronização deixa na nota. A consulta não altera nada; as pendentes podem ser marcadas como Canceladas com um
+// clique (as processadas nunca: têm CP e estoque, o caminho é estornar).
 import { useEffect, useState } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { OperationalButton, OperationalHeading } from "../../../components/OperationalUI";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import InputData from "../../../components/InputData";
 import { supabase } from "../../../lib/supabase";
 import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
@@ -48,6 +50,8 @@ export default function RelatorioNfsCanceladas() {
   const [res, setRes] = useState<Resultado | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [marcando, setMarcando] = useState(false);
+  const [aviso, setAviso] = useState("");
   const [nomeFaz, setNomeFaz] = useState<Map<string, string>>(new Map());
   const idsKey = fazendaIds.join(",");
 
@@ -74,6 +78,28 @@ export default function RelatorioNfsCanceladas() {
       setErro(e instanceof Error ? e.message : "Erro ao gerar");
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function marcarPendentes() {
+    const ids = (res?.linhas ?? []).filter(l => l.tipo === "NF-e" && grupoDe(l) === "pendente").map(l => l.id);
+    if (!ids.length || !fazendaId) return;
+    if (!(await confirmarAcao({ titulo: "Marcar como canceladas?", mensagem: `${ids.length} NF-e pendente(s) cancelada(s) pelo emitente na SEFAZ passam a Cancelada no Arato. Nenhuma tem estoque ou título no CP.`, perigo: false }))) return;
+    setMarcando(true); setErro(""); setAviso("");
+    try {
+      const r = await fetch("/api/fiscal/nfs-canceladas", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, marcar_ids: ids }),
+      });
+      const d = await r.json() as { marcadas?: number; erro?: string; error?: string };
+      if (!r.ok || d.erro || d.error) throw new Error(d.erro ?? d.error ?? `HTTP ${r.status}`);
+      const feitas = new Set(ids);
+      setRes(prev => prev ? { ...prev, linhas: prev.linhas.filter(l => !(l.tipo === "NF-e" && feitas.has(l.id) && grupoDe(l) === "pendente")), ja_canceladas: prev.ja_canceladas + (d.marcadas ?? 0) } : prev);
+      setAviso(`✓ ${d.marcadas ?? 0} nota(s) marcada(s) como Cancelada.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao marcar");
+    } finally {
+      setMarcando(false);
     }
   }
 
@@ -130,7 +156,7 @@ export default function RelatorioNfsCanceladas() {
         <OperationalHeading data-arato-page-heading="true">
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>NFs Canceladas pelo Emitente</h1>
-            <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Notas canceladas na SEFAZ que no Arato ainda estão processadas ou pendentes. Só consulta: nenhuma nota é alterada.</div>
+            <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Notas canceladas na SEFAZ que no Arato ainda estão processadas ou pendentes. As pendentes podem ser marcadas como Canceladas; as processadas precisam de estorno.</div>
           </div>
         </OperationalHeading>
 
@@ -158,6 +184,7 @@ export default function RelatorioNfsCanceladas() {
               <OperationalButton data-arato-button="secondary" onClick={excel} disabled={!linhas.length}
                 style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>⬇ Excel</OperationalButton>
             </div>
+            {aviso && <div style={{ marginBottom: 6, padding: 8, background: "#D5E8F5", color: "#0B2D50", borderRadius: 8, fontSize: 12 }}>{aviso}</div>}
             {res.avisos.map(a => <div key={a} style={{ marginBottom: 6, padding: 8, background: "#FEF5E7", color: "#7A4A06", borderRadius: 8, fontSize: 12 }}>{a}</div>)}
 
             {GRUPOS.map(g => {
@@ -169,6 +196,12 @@ export default function RelatorioNfsCanceladas() {
                     <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{g.titulo}</h2>
                     <span style={{ fontSize: 12, color: "#666" }}>{g.sub}</span>
                     <span style={{ flex: 1 }} />
+                    {g.id === "pendente" && ls.length > 0 && (
+                      <OperationalButton data-arato-button="primary" onClick={marcarPendentes} disabled={marcando}
+                        style={{ padding: "6px 12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        {marcando ? "Marcando..." : `Marcar ${ls.length} como canceladas`}
+                      </OperationalButton>
+                    )}
                     <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(total(ls))}</span>
                   </div>
                   <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderLeft: `3px solid ${g.cor}`, borderRadius: 12, overflow: "auto" }}>

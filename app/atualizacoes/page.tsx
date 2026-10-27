@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-k",
+    data: "27/10/2026",
+    titulo: "Marcar canceladas pelo relatório",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "No relatório NFs Canceladas pelo Emitente, o grupo das pendentes ganhou o botão Marcar N como canceladas: com um clique e confirmação, as NF-e pendentes canceladas pelo emitente passam a Cancelada. As já processadas não mudam (precisam de estorno)." },
+    ],
+    onde: "Documentos Fiscais → Relatórios → NFs Canceladas pelo Emitente",
+  },
+  {
     versao: "2026.10.27-j",
     data: "27/10/2026",
     titulo: "Conciliação: borderô inteiro e pagamentos parciais",
