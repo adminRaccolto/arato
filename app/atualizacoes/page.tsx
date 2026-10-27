@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-c",
+    data: "27/10/2026",
+    titulo: "Sincronização de NFS-e com o SIEG não perde a rodada",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Em clientes com muitos CPF/CNPJ monitorados, a busca de NFS-e no SIEG passava de 5 minutos e era interrompida antes de gravar qualquer nota. Agora grava o que já baixou, e os documentos que faltaram ficam para a próxima rodada." },
+      { tipo: "melhoria", texto: "O diagnóstico da sincronização de NFS-e mostra a mensagem de erro completa devolvida pelo SIEG." },
+    ],
+    onde: "Documentos Fiscais → NF de Serviços → Sincronizar SIEG",
+  },
+  {
     versao: "2026.10.27-b",
     data: "27/10/2026",
     titulo: "Pedido de Compra: NFs vinculadas certas",

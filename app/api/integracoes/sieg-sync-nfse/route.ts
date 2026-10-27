@@ -226,7 +226,17 @@ export async function POST(req: NextRequest) {
     const erros: string[] = [];
     const diagnostico: string[] = [];
 
+    // Orçamento de tempo: a função morre em 300 s e, como as notas só são gravadas depois de baixar todos os
+    // CPF/CNPJ, estourar o tempo perdia tudo (achado 27/10/2026: Grupo Ogliari, 9 documentos, nada entrava desde 19/10).
+    // Passando do limite, os documentos restantes ficam para a próxima rodada e a marca de sincronização não avança.
+    const inicioMs = Date.now();
+    const LIMITE_DOWNLOAD_MS = 180_000;
     for (const cnpj of cnpjs) {
+      if (Date.now() - inicioMs > LIMITE_DOWNLOAD_MS) {
+        diagnostico.push(`⏱ CNPJ ${cnpj} não consultado nesta rodada (tempo) — fica para a próxima`);
+        erros.push(`Tempo esgotado antes de consultar ${cnpj}`);
+        continue;
+      }
       let docs: string[] = [];
       const tentativas: string[] = [];
 
@@ -242,7 +252,7 @@ export async function POST(req: NextRequest) {
         } catch (e) {
           // 60 chars cortava bem no meio da mensagem de erro real da SIEG
           // (ex: "...IsSuccess":false,"ErrorM" — nunca dava pra ver o motivo).
-          tentativas.push(`${label}: ERRO (${String(e).slice(0, 220)})`);
+          tentativas.push(`${label}: ERRO (${String(e).replace(/^Error: /, "").slice(0, 600)})`);
           console.warn(`[nfse] ${label} falhou: ${e}`);
         }
       };
@@ -268,7 +278,7 @@ export async function POST(req: NextRequest) {
               allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData });
             }
           } catch (e) {
-            tentativas.push(`Fallback: ERRO (${String(e).slice(0, 220)})`);
+            tentativas.push(`Fallback: ERRO (${String(e).replace(/^Error: /, "").slice(0, 600)})`);
           }
           // filtra client-side pelo CNPJ do tomador no XML
           for (const xml of allXmls) {
