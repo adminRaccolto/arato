@@ -110,6 +110,23 @@ async function apagarPrevisoesDaFolha(sb: any, folhaId: string): Promise<void> {
   if (error && !tabelaPrevisoesAusente(error)) console.error("[folha] apagar previsões:", error.message);
 }
 
+// Adiantamento lançado, editado ou cancelado: as folhas em rascunho com o funcionário refazem a previsão do salário no CP
+// (senão ela ficava com o valor antigo até alguém salvar a folha de novo). Falha aqui não desfaz o adiantamento.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function ressincronizarFolhasDoFuncionario(sb: any, funcionarioId: string | null | undefined): Promise<void> {
+  if (!funcionarioId) return;
+  try {
+    const { data: linhas } = await sb.from("folha_funcionarios").select("folha_id").eq("funcionario_id", funcionarioId);
+    const ids = [...new Set((linhas ?? []).map((l: any) => l.folha_id as string))];
+    if (!ids.length) return;
+    const { data: rascunhos } = await sb.from("folha_pagamento").select("id").in("id", ids).eq("status", "rascunho");
+    for (const f of rascunhos ?? []) await sincronizarPrevisoesFolha(sb, f.id as string);
+  } catch (e) {
+    console.error("[folha] ressincronizar previsões após adiantamento", e);
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 /** Folha em rascunho já aparece no Contas a Pagar e no fluxo de caixa como PREVISÃO (natureza "previsao"):
  *  um título por funcionário + FGTS + INSS Patronal. Ao fechar a folha (ou ao efetivar o título no CP) a
  *  previsão vira título real com o valor que estiver nela. Refaz todas as previsões da folha a partir das
@@ -123,6 +140,25 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
   const hoje = hojeLocal();
   const vencimento = (folha.data_vencimento as string | null) || vencimentoSalario(competencia);
   const rotulo = rotuloCompetencia(competencia);
+
+  // Adiantamento da linha = soma dos pendentes do funcionário (da competência ou sem competência) — mesma regra do
+  // fechamento. Antes valia o que a tela mandava: linha incluída à mão ia com 0 e a previsão do salário entrava cheia no
+  // CP (ex.: R$ 3.864,33 em vez de R$ 3.164,33 com adiantamento de R$ 700), mesmo a folha mostrando o desconto.
+  const funcIds = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
+  if (funcIds.length) {
+    const { data: adis } = await sb.from("adiantamentos_salario").select("funcionario_id, valor")
+      .eq("status", "pendente").in("funcionario_id", funcIds).or(`competencia_ref.eq.${competencia},competencia_ref.is.null`);
+    const soma: Record<string, number> = {};
+    for (const a of adis ?? []) soma[a.funcionario_id] = (soma[a.funcionario_id] ?? 0) + Number(a.valor ?? 0);
+    for (const it of (itens ?? []) as any[]) {
+      if (!it.funcionario_id) continue;
+      const pend = Math.round((soma[it.funcionario_id] ?? 0) * 100) / 100;
+      if (Math.abs(pend - Number(it.adiantamento ?? 0)) > 0.005) {
+        await falharSeErro(sb.from("folha_funcionarios").update({ adiantamento: pend }).eq("id", it.id), "adiantamento da folha");
+        it.adiantamento = pend;
+      }
+    }
+  }
 
   // Previsões antigas (salário já ligado às linhas + encargos) saem para entrar as novas; título real nunca é tocado.
   const antigos = [
@@ -990,6 +1026,7 @@ export async function POST(req: Request) {
           ? new Error("Aplique a Seção 344 do supabase_migrations.sql para usar adiantamento de gratificação.")
           : adiErr;
       }
+      await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
       return NextResponse.json({ ok: true, lancamento_id: lanc?.id ?? null });
     }
 
@@ -1018,6 +1055,7 @@ export async function POST(req: Request) {
           data_lancamento: data,
         }).eq("id", adi.lancamento_id);
       }
+      await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
       return NextResponse.json({ ok: true });
     }
 
@@ -1027,7 +1065,7 @@ export async function POST(req: Request) {
       // Busca lancamento_id vinculado antes de cancelar
       const { data: adi } = await sb
         .from("adiantamentos_salario")
-        .select("lancamento_id")
+        .select("lancamento_id, funcionario_id")
         .eq("id", id)
         .single();
       // Exclui o CP se não estiver baixado
@@ -1044,6 +1082,7 @@ export async function POST(req: Request) {
       }
       const { error } = await sb.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
       if (error) throw error;
+      await ressincronizarFolhasDoFuncionario(sb, adi?.funcionario_id);
       return NextResponse.json({ ok: true });
     }
 

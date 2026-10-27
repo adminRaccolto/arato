@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-n",
+    data: "27/10/2026",
+    titulo: "Folha: adiantamento descontado na previsão do CP",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A folha em rascunho mostrava o salário já descontando o adiantamento, mas a previsão no Contas a Pagar podia sair com o valor cheio (ex.: R$ 3.864,33 em vez de R$ 3.164,33). Agora, ao salvar a folha, o adiantamento é sempre a soma dos pendentes do funcionário na competência (ou sem competência), a mesma regra do fechamento." },
+      { tipo: "melhoria", texto: "Lançar, editar ou cancelar um adiantamento atualiza na hora a previsão do salário nas folhas em rascunho do funcionário." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.27-m",
     data: "27/10/2026",
     titulo: "Processamento de NF: coluna OG preenchida",
