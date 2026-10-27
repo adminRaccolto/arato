@@ -385,6 +385,10 @@ function ConciliacaoInner() {
   const [abaSistema, setAbaSistema]         = useState<"sugeridos" | "inconsistencias" | "conciliados" | "abertos" | "conferencia">("abertos");
   const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
+  // Pagamento parcial dividido (Seção 375): título de origem e marca "parcial" de cada parte
+  const [partes, setPartes] = useState<Map<string, { origem: string; parcial: boolean }>>(new Map());
+  type ParteTitulo = { id: string; valor: number; valor_pago: number | null; status: string; data_vencimento: string; data_baixa: string | null; conciliado: boolean; pagamento_parcial: boolean; valor_titulo_origem: number | null };
+  const [historicoTitulo, setHistoricoTitulo] = useState<{ origem: string; partes: ParteTitulo[] } | null>(null);
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());
   // Popup com a relação de CPs/CRs de uma conciliação (um lançamento do extrato ligado a vários títulos)
   const [popupRelacao, setPopupRelacao]     = useState<{ descricao: string; valor: number; data: string; ids: string[] } | null>(null);
@@ -428,6 +432,31 @@ function ConciliacaoInner() {
   // Vinculação (bordero)
   const [linhaAtiva, setLinhaAtiva] = useState<LinhaOFX | null>(null);
   const [lancsSel, setLancsSel]     = useState<Set<string>>(new Set());
+  // Um título selecionado que veio de pagamento parcial: mostra todas as partes (pagas e em aberto) — a soma dá o valor
+  // original do título/NF
+  const idSelUnico = lancsSel.size === 1 ? Array.from(lancsSel)[0] : null;
+  useEffect(() => {
+    const origem = idSelUnico ? (partes.get(idSelUnico)?.origem ?? (Array.from(partes.values()).some(p => p.origem === idSelUnico) ? idSelUnico : null)) : null;
+    if (!origem) { setHistoricoTitulo(null); return; }
+    let vivo = true;
+    (async () => {
+      const lista: ParteTitulo[] = [];
+      for (const tab of ["lancamentos", "empresa_lancamentos"] as const) {
+        const dataBaixa = tab === "lancamentos" ? "data_baixa" : "data_pagamento";
+        const { data } = await supabase.from(tab).select(`id, valor, valor_pago, status, data_vencimento, ${dataBaixa}, conciliado, pagamento_parcial, valor_titulo_origem`)
+          .or(`id.eq.${origem},titulo_origem_id.eq.${origem}`);
+        for (const r of (data ?? []) as unknown as Record<string, unknown>[]) lista.push({
+          id: String(r.id), valor: Number(r.valor ?? 0), valor_pago: r.valor_pago == null ? null : Number(r.valor_pago),
+          status: r.status === "pago" ? "baixado" : r.status === "pendente" ? "em_aberto" : String(r.status), data_vencimento: String(r.data_vencimento ?? ""),
+          data_baixa: (r[dataBaixa] as string | null) ?? null, conciliado: !!r.conciliado, pagamento_parcial: !!r.pagamento_parcial,
+          valor_titulo_origem: r.valor_titulo_origem == null ? null : Number(r.valor_titulo_origem),
+        });
+      }
+      lista.sort((a, b) => (a.data_baixa ?? "9999").localeCompare(b.data_baixa ?? "9999"));
+      if (vivo) setHistoricoTitulo({ origem, partes: lista });
+    })();
+    return () => { vivo = false; };
+  }, [idSelUnico, partes]);
   const [salvando, setSalvando]     = useState(false);
 
   // Tesouraria inline
@@ -580,6 +609,14 @@ function ConciliacaoInner() {
         for (const x of it) mapa.get(x.lote_id)?.itens.push({ lancamento_id: x.lancamento_id, valor_pago: Number(x.valor_pago), valor_multa: x.valor_multa, valor_juros: x.valor_juros, valor_desconto: x.valor_desconto });
       }
       setLotes(mapa);
+      // Partes de títulos com pagamento parcial (sem a Seção 375 a consulta falha e a tela segue sem a marca)
+      const mp = new Map<string, { origem: string; parcial: boolean }>();
+      for (const tab of ["lancamentos", "empresa_lancamentos"] as const) {
+        const { data: pts, error: ePts } = await supabase.from(tab).select("id, titulo_origem_id, pagamento_parcial")
+          .in("fazenda_id", fazendaIds).not("titulo_origem_id", "is", null).limit(5000);
+        if (!ePts) for (const x of (pts ?? []) as { id: string; titulo_origem_id: string; pagamento_parcial: boolean }[]) mp.set(x.id, { origem: x.titulo_origem_id, parcial: x.pagamento_parcial });
+      }
+      setPartes(mp);
     } catch (e) { console.error("[carregar] borderôs", e); }
     if (hR.data) setHistorico(hR.data as HistoricoConciliacao[]);
     if (ogR.data) setOpsCustom(ogR.data as OpTesouraria[]);
@@ -1366,6 +1403,8 @@ function ConciliacaoInner() {
     setLinhaAtiva(null);
     setLancsSel(new Set());
     setSalvando(false);
+    // Baixa parcial divide o título no banco (Seção 375): recarrega para mostrar a parte paga e o título do saldo
+    if (baixas.some(p => p.status === "parcial")) carregar();
   }
 
   // ── Salvar lançamento de tesouraria e conciliar ───────────────────────────
@@ -2226,6 +2265,7 @@ function ConciliacaoInner() {
           <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
             <div style={{ fontWeight: 700, color: negativo && !cinza ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valorMostrado)}</div>
             {!lt && ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
+            {!lt && partes.get(l.id)?.parcial && <div style={{ fontSize: 10, fontWeight: 700, color: "#A16207" }}>parcial</div>}
           </div>
           {modo === "conciliados" && om && <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}</span></div>}
         </div>
@@ -3516,6 +3556,27 @@ function ConciliacaoInner() {
                 )}
 
                 {/* Soma dos selecionados × linha ativa e confirmação (aba de abertos) */}
+                {(abaSistema === "abertos" || abaSistema === "conciliados") && historicoTitulo && historicoTitulo.partes.length > 1 && (() => {
+                  const h = historicoTitulo;
+                  const total = h.partes.reduce((sm, p) => sm + p.valor, 0);
+                  const pago = h.partes.filter(p => p.status === "baixado").reduce((sm, p) => sm + p.valor, 0);
+                  const original = h.partes.find(p => p.valor_titulo_origem != null)?.valor_titulo_origem ?? total;
+                  return (
+                    <div style={{ padding: "8px 14px", fontSize: 11, background: "#FBF3E0", borderTop: "0.5px solid #F0C060", color: "var(--text-2)" }}>
+                      <div style={{ fontWeight: 700, color: "#7A5200", marginBottom: 4 }}>Histórico do título — pago em partes</div>
+                      {h.partes.map(p => (
+                        <div key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "1px 0", fontWeight: p.id === idSelUnico ? 700 : 400 }}>
+                          <span>{p.status === "baixado" ? `Pago em ${fmtDt(p.data_baixa ?? p.data_vencimento)}${p.conciliado ? " · conciliado" : ""}` : `Em aberto · vence ${fmtDt(p.data_vencimento)}`}</span>
+                          <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(p.valor)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: "0.5px solid #F0C060", marginTop: 3, paddingTop: 3, fontWeight: 700 }}>
+                        <span>Valor do título {fmtBRL(original)} · pago {fmtBRL(pago)}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(total)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {(abaSistema === "abertos" || abaSistema === "conciliados") && linhaAtiva && lancsSel.size > 0 && (() => {
                   const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
                   const esperado = valorDaSelecao(sel);

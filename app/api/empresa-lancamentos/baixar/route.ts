@@ -97,11 +97,20 @@ export async function POST(req: NextRequest) {
     if (body.multa_valor)     patch.valor_multa = body.multa_valor;
     if (body.juros_valor)     patch.valor_juros = body.juros_valor;
     if (body.desconto_valor)  patch.valor_desconto = descAcum;
+    // Pagamento parcial divide o título (Seção 375): esta parte fica paga e o saldo vira um título novo, com o
+    // vencimento informado. Título parcial antigo (já tinha valor pago) segue o jeito anterior: reprograma o vencimento.
+    const divide = novoStatus === "parcial" && !((atual.valor_pago as number | null) ?? 0);
     if (novoStatus === "parcial" && body.nova_data_vencimento) {
-      patch.data_vencimento = body.nova_data_vencimento;
-      patch.data_prorrogacao = body.nova_data_vencimento;
+      if (divide) patch.vencimento_saldo = body.nova_data_vencimento;
+      else { patch.data_vencimento = body.nova_data_vencimento; patch.data_prorrogacao = body.nova_data_vencimento; }
     }
-    const { error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id);
+    let { error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id);
+    if (error && "vencimento_saldo" in patch && (error.code === "42703" || error.code === "PGRST204")) {
+      // Seção 375 ainda não rodada: sem divisão, reprograma o vencimento como antes
+      delete patch.vencimento_saldo;
+      patch.data_vencimento = body.nova_data_vencimento; patch.data_prorrogacao = body.nova_data_vencimento;
+      ({ error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id));
+    }
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true, novo_status: novoStatus, novo_total: novoTotal });
   } catch (e) {

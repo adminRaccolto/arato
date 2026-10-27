@@ -18025,3 +18025,89 @@ ALTER TABLE adiantamentos_aplicacoes
 ALTER TABLE adiantamentos_salario ADD COLUMN IF NOT EXISTS valor_aplicado_cp numeric(14,2) NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_adiant_aplic_salario ON adiantamentos_aplicacoes(adiantamento_salario_id) WHERE adiantamento_salario_id IS NOT NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 375 — Pagamento parcial divide o título (CP do produtor e da Empresa)
+-- =============================================================================
+-- Antes: um título só acumulava o valor pago (status "parcial") e a conciliação precisava adivinhar a qual pagamento
+-- cada linha do extrato correspondia. Agora, quando um título a pagar vira "parcial", ele é dividido na hora:
+--   • o próprio título fica BAIXADO com o valor pago (pagamento_parcial = true);
+--   • nasce um título novo EM ABERTO com o saldo (mesma NF, fornecedor, classificação), com o vencimento informado na
+--     baixa (vencimento_saldo) ou o mesmo de antes.
+-- As partes ficam ligadas por titulo_origem_id (o primeiro título) e guardam valor_titulo_origem (valor original).
+-- Vale para qualquer caminho de baixa (tela do CP, conciliação, adiantamento). Fora da divisão: moeda diferente de
+-- real, título em borderô, parcela de contrato financeiro e títulos parciais antigos (valor pago acumulado antes desta
+-- seção — são divididos por script, compatível com o que já foi conciliado).
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS titulo_origem_id uuid,
+  ADD COLUMN IF NOT EXISTS pagamento_parcial boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS vencimento_saldo date,
+  ADD COLUMN IF NOT EXISTS valor_titulo_origem numeric(15,2);
+ALTER TABLE empresa_lancamentos
+  ADD COLUMN IF NOT EXISTS titulo_origem_id uuid,
+  ADD COLUMN IF NOT EXISTS pagamento_parcial boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS vencimento_saldo date,
+  ADD COLUMN IF NOT EXISTS valor_titulo_origem numeric(15,2);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_titulo_origem ON lancamentos(titulo_origem_id) WHERE titulo_origem_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_emp_lancamentos_titulo_origem ON empresa_lancamentos(titulo_origem_id) WHERE titulo_origem_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION fn_dividir_titulo_parcial() RETURNS trigger AS $$
+DECLARE
+  j_new jsonb := to_jsonb(NEW);
+  j_old jsonb := to_jsonb(OLD);
+  v_pago_status text := CASE WHEN TG_TABLE_NAME = 'lancamentos' THEN 'baixado' ELSE 'pago' END;
+  v_aberto_status text := CASE WHEN TG_TABLE_NAME = 'lancamentos' THEN 'em_aberto' ELSE 'pendente' END;
+  v_valor numeric := COALESCE((j_new->>'valor')::numeric, 0);
+  v_pago numeric := COALESCE((j_new->>'valor_pago')::numeric, 0);
+  v_desc numeric := GREATEST(COALESCE((j_new->>'valor_desconto')::numeric, 0) - COALESCE((j_old->>'valor_desconto')::numeric, 0), 0);
+  v_saldo numeric;
+  v_venc date;
+  v_cols text;
+BEGIN
+  IF j_new->>'status' IS DISTINCT FROM 'parcial' OR j_new->>'tipo' IS DISTINCT FROM 'pagar'
+     OR COALESCE(j_new->>'moeda', 'BRL') <> 'BRL' OR j_new->>'lote_id' IS NOT NULL
+     OR j_new->>'contrato_financeiro_id' IS NOT NULL
+     OR COALESCE((j_old->>'valor_pago')::numeric, 0) > 0.005   -- parcial antigo: segue até o script dividir
+     OR v_pago <= 0.005 THEN
+    RETURN NEW;
+  END IF;
+  v_saldo := round(v_valor - v_pago - v_desc, 2);
+  IF v_saldo <= 0.005 THEN RETURN NEW; END IF;
+  v_venc := COALESCE((j_new->>'vencimento_saldo')::date, (j_new->>'data_vencimento')::date);
+
+  -- Título novo com o saldo (copia tudo, menos o que é do pagamento)
+  SELECT string_agg(quote_ident(column_name), ',' ORDER BY ordinal_position) INTO v_cols
+    FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = TG_TABLE_NAME
+     AND column_name NOT IN ('id', 'created_at') AND is_identity = 'NO' AND is_generated = 'NEVER';
+  EXECUTE format('INSERT INTO %I (%s) SELECT %s FROM jsonb_populate_record(NULL::%I, $1)', TG_TABLE_NAME, v_cols, v_cols, TG_TABLE_NAME)
+    USING j_new || jsonb_build_object(
+      'valor', v_saldo, 'valor_pago', NULL, 'status', v_aberto_status, 'conciliado', false,
+      'valor_multa', NULL, 'valor_juros', NULL, 'valor_desconto', NULL,
+      'data_baixa', NULL, 'data_pagamento', NULL, 'conta_bancaria', NULL, 'conta_bancaria_id', NULL,
+      'previsao_gasto_id', NULL, 'fatura_cartao_id', NULL, 'lote_id', NULL,
+      'data_vencimento', v_venc,
+      'data_prorrogacao', CASE WHEN v_venc IS DISTINCT FROM (j_new->>'data_vencimento')::date
+                               THEN COALESCE(j_new->>'data_prorrogacao', j_new->>'data_vencimento') ELSE j_new->>'data_prorrogacao' END,
+      'titulo_origem_id', COALESCE(j_new->>'titulo_origem_id', j_new->>'id'),
+      'valor_titulo_origem', COALESCE((j_new->>'valor_titulo_origem')::numeric, (j_old->>'valor')::numeric),
+      'pagamento_parcial', false, 'vencimento_saldo', NULL);
+
+  -- Este título vira a parte paga
+  NEW.valor := round(v_valor - v_saldo, 2);
+  NEW.status := v_pago_status;
+  NEW.pagamento_parcial := true;
+  NEW.titulo_origem_id := COALESCE(NEW.titulo_origem_id, NEW.id);
+  NEW.valor_titulo_origem := COALESCE(NEW.valor_titulo_origem, OLD.valor);
+  NEW.vencimento_saldo := NULL;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- "0_" no nome: roda antes dos outros BEFORE UPDATE (previsão de gastos, fatura) — eles já veem o título baixado
+DROP TRIGGER IF EXISTS trg_0_dividir_titulo_parcial ON lancamentos;
+CREATE TRIGGER trg_0_dividir_titulo_parcial BEFORE UPDATE ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();
+DROP TRIGGER IF EXISTS trg_0_dividir_titulo_parcial ON empresa_lancamentos;
+CREATE TRIGGER trg_0_dividir_titulo_parcial BEFORE UPDATE ON empresa_lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();
+NOTIFY pgrst, 'reload schema';

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-w",
+    data: "27/10/2026",
+    titulo: "Pagamento parcial divide o título",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "No Contas a Pagar (produtor e Empresa), pagar só parte de um título divide o título: a parte paga fica Baixada com o valor pago (marcada como parcial) e o saldo vira um título novo Em aberto, ligado à mesma NF, com o vencimento que você informar na baixa. Vale para a tela do CP, a conciliação bancária e o pagamento com adiantamento." },
+      { tipo: "melhoria", texto: "Na conciliação, cada parte é um título comum com o valor exato do pagamento. Ao selecionar uma parte, aparece o histórico do título com todas as partes e a soma igual ao valor original." },
+      { tipo: "aviso", texto: "Ficam fora da divisão: título em dólar, título em borderô, parcela de contrato financeiro e Contas a Receber. Requer a Seção 375." },
+    ],
+    onde: "Financeiro → Contas a Pagar; Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.27-v",
     data: "27/10/2026",
     titulo: "Pagar com adiantamento de funcionário aparece para toda a equipe",

@@ -613,6 +613,7 @@ export default function ContasAPagarPage() {
             acao: "baixar", lancamento_id: modalBaixa.id,
             valor_pago_agora: numBR(bValor), data_baixa: bData, conta_bancaria: bConta,
             multa_valor: numBR(bMulta), juros_valor: numBR(bJuros), desconto_valor: numBR(bDesc),
+            nova_data_vencimento: bNovaData || undefined,
           }),
         });
         const json = await res.json() as { ok: boolean; error?: string };
@@ -2641,9 +2642,10 @@ export default function ContasAPagarPage() {
                 )}
               </div>
             )}
-            {modalBaixa.origem_tabela === "lancamentos" && numBR(bValor) > 0 && numBR(bValor) + 0.01 < saldoBase(modalBaixa) + numBR(bMulta) + numBR(bJuros) - numBR(bDesc) && (
+            {numBR(bValor) > 0 && numBR(bValor) + 0.01 < saldoBase(modalBaixa) + numBR(bMulta) + numBR(bJuros) - numBR(bDesc) && (
               <div data-arato-dialog-body="true" style={{ marginTop: 12, background: "#FBF3E0", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 14px" }}>
-                <label data-arato-label="true" style={lbl}>Pagamento parcial — nova data de vencimento do saldo restante (opcional)</label>
+                <div style={{ fontSize: 11, color: "#7A5200", marginBottom: 6 }}>Pagamento parcial: este título fica baixado com {fmtBRL(numBR(bValor))} e o saldo de {fmtBRL(Math.max(0, saldoBase(modalBaixa) - numBR(bValor) - numBR(bDesc)))} vira um título novo em aberto, ligado à mesma NF.</div>
+                <label data-arato-label="true" style={lbl}>Vencimento do saldo (vazio = mantém o vencimento atual)</label>
                 <InputData type="date" value={bNovaData} onChange={e => setBNovaData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
             )}

@@ -280,11 +280,21 @@ export async function POST(req: NextRequest) {
     if (body.juros_valor)            patch.valor_juros            = body.juros_valor;
     if (body.desconto_valor)         patch.valor_desconto         = body.desconto_valor;
 
-    const { error } = await sb.from("lancamentos").update(patch).eq("id", id);
+    // Pagamento parcial divide o título (Seção 375): esta parte fica baixada com o valor pago e o saldo vira um título
+    // novo, com o vencimento informado (vencimento_saldo, na mesma gravação). Título parcial antigo (já tinha valor
+    // pago) segue o jeito anterior: só reprograma o vencimento.
+    const divide = novoStatus === "parcial" && !jaRPago;
+    if (novoStatus === "parcial" && body.nova_data_vencimento && divide) patch.vencimento_saldo = body.nova_data_vencimento;
+    let { error } = await sb.from("lancamentos").update(patch).eq("id", id);
+    if (error && "vencimento_saldo" in patch && (error.code === "42703" || error.code === "PGRST204")) {
+      delete patch.vencimento_saldo;   // Seção 375 ainda não rodada
+      ({ error } = await sb.from("lancamentos").update(patch).eq("id", id));
+      if (!error) await sb.from("lancamentos").update({ data_vencimento: body.nova_data_vencimento }).eq("id", id);
+    }
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    // Reprograma vencimento se pagamento parcial com nova data
-    if (novoStatus === "parcial" && body.nova_data_vencimento) {
+    // Parcial antigo: reprograma vencimento com a nova data
+    if (novoStatus === "parcial" && body.nova_data_vencimento && !divide) {
       await sb.from("lancamentos")
         .update({ data_vencimento: body.nova_data_vencimento })
         .eq("id", id);
