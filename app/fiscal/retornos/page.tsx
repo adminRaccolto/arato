@@ -18,7 +18,10 @@ import {
   listarInsumosParaConta, listarDepositosMulti, listarNfRemessasLogisticas, listarNfEntradaItens,
   atualizarNfEntrada, atualizarNfRemessaLogistica, processarNfEntrada, insumoAtivo, listarPessoasDaConta,
 } from "../../../lib/db";
-import { CFOPS_RETORNO_ARMAZENAGEM } from "../../../lib/cfop-imobilizado";
+import { CFOPS_RETORNO_ARMAZENAGEM, CFOPS_RETORNO_DE_REMESSA } from "../../../lib/cfop-imobilizado";
+import type { TransferenciaMaquina } from "../../../lib/supabase";
+import { listarTransferenciasMaquinas, atualizarTransferenciaMaquina } from "../../../lib/db";
+import Link from "next/link";
 import { fatorUnidade } from "../../../lib/estoque/unidades";
 import { hojeLocal } from "../../../lib/data-local";
 
@@ -27,6 +30,8 @@ const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().j
 const fmtQtd = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 const dig = (s?: string | null) => String(s ?? "").replace(/\D/g, "");
 const ehRetorno = (cfop?: string | null) => CFOPS_RETORNO_ARMAZENAGEM.has(dig(cfop));
+// Retorno de máquina/equipamento (comodato, conserto, bem que saiu): baixa a remessa da máquina, sem CP nem estoque
+const ehRetornoMaquina = (cfop?: string | null) => CFOPS_RETORNO_DE_REMESSA.has(dig(cfop));
 
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
@@ -49,6 +54,9 @@ function RetornosConteudo() {
   const ids = useMemo(() => (fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : []), [fazendaIds, fazendaId]);
 
   const [nfs, setNfs] = useState<NfEntrada[]>([]);
+  const [nfsMaq, setNfsMaq] = useState<NfEntrada[]>([]);
+  const [maquinas, setMaquinas] = useState<TransferenciaMaquina[]>([]);
+  const [maqVinc, setMaqVinc] = useState<Record<string, string>>({});
   const [remessas, setRemessas] = useState<NfRemessaLogistica[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [depositos, setDepositos] = useState<Deposito[]>([]);
@@ -76,6 +84,21 @@ function RetornosConteudo() {
       listarDepositosMulti(ids),
     ]);
     setNfs(((n ?? []) as NfEntrada[]).filter(x => ehRetorno(x.cfop)));
+    const pendMaq = ((n ?? []) as NfEntrada[]).filter(x => ehRetornoMaquina(x.cfop));
+    setNfsMaq(pendMaq);
+    try {
+      const tms = (await listarTransferenciasMaquinas(contaId)).filter(t => t.status === "emitida" && t.motivo !== "transferencia_fazenda");
+      setMaquinas(tms);
+      // sugestão: a remessa referenciada no XML; senão a única do mesmo CPF/CNPJ
+      const sug: Record<string, string> = {};
+      for (const nf of pendMaq) {
+        const ref = (nf as unknown as { xml_content?: string }).xml_content?.match(/<refNFe>(\d{44})<\/refNFe>/)?.[1];
+        const porChave = ref ? tms.find(t => t.nf_saida_chave === ref) : undefined;
+        const porDoc = tms.filter(t => dig(t.destinatario_cnpj) && dig(t.destinatario_cnpj) === dig(nf.emitente_cnpj));
+        sug[nf.id] = porChave?.id ?? (porDoc.length === 1 ? porDoc[0].id : "");
+      }
+      setMaqVinc(sug);
+    } catch { setMaquinas([]); }
     setRemessas(rem);
     setInsumos(ins.filter(insumoAtivo));
     setDepositos(dep);
@@ -173,6 +196,22 @@ function RetornosConteudo() {
   }
 
   const depositosProprios = depositos.filter(d => !nfSel || d.fazenda_id === nfSel.fazenda_id);
+
+  // NF de retorno de máquina recebida: dá baixa na remessa da máquina e marca a NF como processada (sem CP, sem estoque)
+  async function processarRetornoMaquina(nf: NfEntrada) {
+    const t = maquinas.find(m => m.id === maqVinc[nf.id]);
+    if (!t) { setMsg(""); alert("Escolha a remessa da máquina que está voltando."); return; }
+    if (!(await confirmarAcao({ titulo: "Registrar retorno da máquina?", perigo: false,
+      mensagem: `${t.maquina_nome}: a remessa NF ${t.nf_saida_numero ?? "s/nº"} passa a Retornada com a NF ${nf.numero} de ${nf.emitente_nome}. Sem Contas a Pagar e sem estoque.` }))) return;
+    try {
+      await atualizarTransferenciaMaquina(t.id, { status: "retornada", nf_retorno_chave: nf.chave_acesso || undefined, nf_retorno_numero: nf.numero, nf_retorno_data: nf.data_emissao || hojeLocal() });
+      await atualizarNfEntrada(nf.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
+      setMsg(`✓ Retorno de ${t.maquina_nome} registrado (NF ${nf.numero}).`);
+      await carregar();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao registrar o retorno da máquina.");
+    }
+  }
 
   // ── Retorno emitido pelo Arato ou emitido fora (sem NF de entrada para processar) ─────────────────────────────
   const [retRem, setRetRem] = useState<NfRemessaLogistica | null>(null);
@@ -374,6 +413,55 @@ function RetornosConteudo() {
                     <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                       <button type="button" onClick={() => abrirRetorno(r, "arato")} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 11, fontWeight: 600, marginRight: 10 }}>Emitir retorno</button>
                       <button type="button" onClick={() => abrirRetorno(r, "externa")} style={{ background: "none", border: "none", color: "#1A6B3C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Retorno emitido fora</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section style={{ marginTop: 24 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: "0 0 8px" }}>Máquinas e equipamentos <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-3)" }}>· retorno de conserto, comodato ou bem que saiu (CFOP 1554/2554/1555/2555)</span></h2>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "auto", marginBottom: 12 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
+              <thead><tr>{["NF recebida", "Emissão", "Emitente", "CFOP", "Remessa da máquina", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {nfsMaq.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>Nenhuma NF de retorno de máquina pendente.</td></tr>}
+                {nfsMaq.map(n => (
+                  <tr key={n.id}>
+                    <td style={{ ...td, fontWeight: 600 }}>{n.numero}{n.serie ? `/${n.serie}` : ""}</td>
+                    <td style={td}>{fmtData(n.data_emissao)}</td>
+                    <td style={td}>{n.emitente_nome}</td>
+                    <td style={td}>{n.cfop}</td>
+                    <td style={{ ...td, minWidth: 280 }}>
+                      <select value={maqVinc[n.id] ?? ""} onChange={e => setMaqVinc(p => ({ ...p, [n.id]: e.target.value }))} style={inp}>
+                        <option value="">— escolher a remessa —</option>
+                        {maquinas.map(t => <option key={t.id} value={t.id}>{t.maquina_nome} · {t.destinatario_nome} · NF {t.nf_saida_numero ?? "s/nº"}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ ...td, textAlign: "right" }}>
+                      <OperationalButton data-arato-button="primary" onClick={() => processarRetornoMaquina(n)} style={{ padding: "5px 12px", background: "#1A6B3C", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Registrar retorno</OperationalButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+              <thead><tr>{["Máquina / equipamento", "Direção", "Contraparte", "NF de saída", "Retorno previsto", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {maquinas.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>Nenhuma máquina aguardando retorno.</td></tr>}
+                {maquinas.map(t => (
+                  <tr key={t.id}>
+                    <td style={{ ...td, fontWeight: 600 }}>{t.maquina_nome}</td>
+                    <td style={td}>{t.direcao === "entrada" ? "↘ Entrou (de terceiro)" : "↗ Saiu"}</td>
+                    <td style={td}>{t.destinatario_nome}</td>
+                    <td style={td}>{t.nf_saida_numero ?? "—"} <span style={{ color: "var(--text-3)" }}>{fmtData(t.nf_saida_data)}</span></td>
+                    <td style={td}>{fmtData(t.data_retorno_prevista)}</td>
+                    <td style={{ ...td, textAlign: "right" }}>
+                      <Link href={`/fiscal/remessas?aba=maquinas&retorno_maquina=${t.id}`} style={{ fontSize: 11, color: "#1A4870", fontWeight: 600 }}>{t.direcao === "entrada" ? "Registrar devolução" : "Emitir / registrar retorno"} →</Link>
                     </td>
                   </tr>
                 ))}

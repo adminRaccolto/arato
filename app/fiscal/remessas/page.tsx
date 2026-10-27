@@ -19,6 +19,7 @@ import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/
 import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
 import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
 import { BlocoTransporte, TRANSP_VAZIO, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
+import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -51,6 +52,7 @@ const novoItem = (): ItemRem => ({ key: crypto.randomUUID(), insumo_id: "", desc
 function RemessasConteudo() {
   const { contaId, fazendaId, fazendaIds } = useAuth();
   const params = useSearchParams();
+  const [aba, setAba] = useState<"mercadorias" | "maquinas">(params.get("aba") === "maquinas" ? "maquinas" : "mercadorias");
   const ids = useMemo(() => (fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : []), [fazendaIds, fazendaId]);
   const dados = useDadosEmissao(ids, contaId);
 
@@ -257,10 +259,18 @@ function RemessasConteudo() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas</h1>
-            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Mercadoria enviada a armazém geral, depósito ou condomínio logístico. O estoque passa para o depósito do armazém; o retorno fica em Retornos.</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Mercadoria ou máquina que sai e depois volta: armazém geral, depósito, conserto, comodato. O retorno fica em Retornos.</div>
           </div>
-          <OperationalButton data-arato-button="primary" onClick={abrirNova} style={btnV}>+ Nova Remessa</OperationalButton>
+          {aba === "mercadorias" && <OperationalButton data-arato-button="primary" onClick={abrirNova} style={btnV}>+ Nova Remessa</OperationalButton>}
         </OperationalHeading>
+
+        <div style={{ display: "flex", gap: 4, borderBottom: "0.5px solid var(--border-table)", marginBottom: 16 }}>
+          {([["mercadorias", "Mercadorias (armazém / depósito)"], ["maquinas", "Máquinas e equipamentos"]] as const).map(([k, t]) => (
+            <button key={k} type="button" onClick={() => setAba(k)} style={{ background: "none", border: "none", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent", color: aba === k ? "#1A4870" : "var(--text-2)", fontWeight: aba === k ? 700 : 500, fontSize: 13, padding: "8px 14px", cursor: "pointer" }}>{t}</button>
+          ))}
+        </div>
+
+        {aba === "maquinas" ? <RemessasMaquinas retornoId={params.get("retorno_maquina")} /> : <>
 
         {msg && <div style={{ marginBottom: 12, padding: 10, background: "#E8F5E9", color: "#1A6B3C", borderRadius: 8, fontSize: 13 }}>{msg}</div>}
 
@@ -304,6 +314,7 @@ function RemessasConteudo() {
             </tbody>
           </table>
         </div>
+        </>}
       </main>
 
       {modal && (

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zc",
+    data: "27/10/2026",
+    titulo: "Máquinas em Remessas e Retornos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A Transferência de Máquinas virou a aba Máquinas e equipamentos da tela Remessas (o funcionamento é o mesmo; o endereço antigo abre essa aba)." },
+      { tipo: "novo", texto: "Retornos lista também a NF de retorno de máquina recebida (CFOP 1554/2554/1555/2555), para dar baixa na remessa da máquina sem CP, e as máquinas aguardando retorno. A NF de entrada com essas CFOPs abre a tela Retornos." },
+      { tipo: "melhoria", texto: "Menu de Documentos Fiscais: um grupo Remessas e Retornos no lugar das entradas separadas de máquinas, retorno de insumo e remessa." },
+    ],
+    onde: "Documentos Fiscais → Remessas e Retornos",
+  },
+  {
     versao: "2026.10.27-zb",
     data: "27/10/2026",
     titulo: "Remessas: tela própria, com estoque no armazém",

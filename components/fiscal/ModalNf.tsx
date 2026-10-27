@@ -1301,9 +1301,10 @@ export default function ModalNf({
   // ── Processar NF (finalizar) ──────────────────────────────
   async function processarNF() {
     if (!fazendaId || !nfEdit) return;
-    // NF de retorno de armazém (5906/6906…) não é compra: é processada na tela Retornos (liga à remessa, sem CP)
-    if (CFOPS_RETORNO_ARMAZENAGEM.has(String(cab.cfop || nfEdit.cfop || "").replace(/\D/g, ""))) {
-      if (window.confirm(`A NF ${nfEdit.numero} é RETORNO de mercadoria depositada (CFOP ${cab.cfop || nfEdit.cfop}), não compra.\n\nEla é processada em Documentos Fiscais → Retornos, ligada à remessa e sem Contas a Pagar. Abrir agora?`)) {
+    // NF de retorno (armazém 5906/6906…, máquina 1554/1555…) não é compra: é processada na tela Retornos (liga à remessa, sem CP)
+    const cfopDig = String(cab.cfop || nfEdit.cfop || "").replace(/\D/g, "");
+    if (CFOPS_RETORNO_ARMAZENAGEM.has(cfopDig) || CFOPS_RETORNO_DE_REMESSA.has(cfopDig)) {
+      if (window.confirm(`A NF ${nfEdit.numero} é RETORNO (CFOP ${cab.cfop || nfEdit.cfop}), não compra.\n\nEla é processada em Documentos Fiscais → Retornos, ligada à remessa e sem Contas a Pagar. Abrir agora?`)) {
         window.location.href = `/fiscal/retornos?nf=${nfEdit.id}`;
       }
       return;
