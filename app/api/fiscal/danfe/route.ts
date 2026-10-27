@@ -144,11 +144,15 @@ export async function GET(req: NextRequest) {
       pdfDoc.end();
     });
 
+    // ?download=1 baixa o arquivo direto (botão "DANFE em PDF"); sem ele abre no navegador para imprimir
+    const baixar = req.nextUrl.searchParams.get("download") === "1";
+    const nNF = (xmlContent.match(/<nNF>(\d+)<\/nNF>/)?.[1] ?? "").replace(/^0+/, "");
+    const nomeArq = nNF ? `DANFE NF ${nNF}.pdf` : `DANFE-${chave}.pdf`;
     return new NextResponse(pdfBuffer.buffer as ArrayBuffer, {
       status: 200,
       headers: {
         "Content-Type":        "application/pdf",
-        "Content-Disposition": `inline; filename="DANFE-${chave}.pdf"`,
+        "Content-Disposition": `${baixar ? "attachment" : "inline"}; filename="${nomeArq}"`,
         "Cache-Control":       "private, max-age=300",
       },
     });

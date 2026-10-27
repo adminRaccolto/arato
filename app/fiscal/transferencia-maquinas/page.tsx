@@ -196,11 +196,11 @@ export default function TransferenciaMaquinasPage() {
     }
   }
 
-  // DANFE da NF-e da movimentação (abre a mesma tela de impressão do Monitor)
+  // DANFE da NF-e da movimentação (o mesmo PDF do Monitor, gerado do XML autorizado)
   async function abrirDanfe(chave: string | null | undefined) {
     if (!chave) return;
-    const { data } = await supabase.from("notas_fiscais").select("id").eq("chave_acesso", chave).limit(1).maybeSingle();
-    if (data?.id) window.open(`/comercial/faturamento/danfe/${data.id}`, "_blank");
+    const { data } = await supabase.from("notas_fiscais").select("id, fazenda_id").eq("chave_acesso", chave).limit(1).maybeSingle();
+    if (data?.id) window.open(`/api/fiscal/danfe?chave=${chave}&fazenda_id=${data.fazenda_id}`, "_blank");
     else alert("Esta NF-e ainda não está no Monitor de NF-e Emitidas. Fale com o suporte para registrá-la.");
   }
 

@@ -629,6 +629,13 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                             style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                             🖨 Imprimir DANFE
                           </OperationalButton>
+                          {nota.chave_acesso && (
+                            <a href={`/api/fiscal/danfe?chave=${nota.chave_acesso}&fazenda_id=${nota.fazenda_id}&download=1`} download
+                              onClick={e => e.stopPropagation()}
+                              style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#fff", color: "#0D0D0D", cursor: "pointer", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+                              ⬇ DANFE em PDF
+                            </a>
+                          )}
                           {nota.xml_url && (
                             <OperationalButton data-arato-button="secondary" style={{ padding: "5px 12px", border: "0.5px solid #444444", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</OperationalButton>
                           )}

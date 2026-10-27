@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-s",
+    data: "27/10/2026",
+    titulo: "DANFE: baixar em PDF, IE e CPF do emitente",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Monitor de NF-e Emitidas: botão ⬇ DANFE em PDF baixa o arquivo direto (DANFE NF <número>.pdf), sem precisar imprimir em PDF." },
+      { tipo: "correcao", texto: "No DANFE, a Inscrição Estadual do emitente ficava em cima do título Destinatário / Remetente; agora fica à direita do quadro. Emitente pessoa física (produtor) passa a mostrar o CPF no campo CNPJ / CPF, que saía vazio." },
+    ],
+    onde: "Fiscal → Monitor de NF-e Emitidas",
+  },
+  {
     versao: "2026.10.27-r",
     data: "27/10/2026",
     titulo: "Transferência de máquinas: IE do destinatário, Monitor e DANFE",
