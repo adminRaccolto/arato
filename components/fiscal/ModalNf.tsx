@@ -4054,7 +4054,7 @@ export default function ModalNf({
                         <button data-arato-button="secondary" onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
-                        <button data-arato-button="secondary" onClick={() => router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nfEdit.id}`)} style={{ ...btnR, borderColor: "#1A487050", color: "#1A4870" }}>🚚 Emitir NF Remessa</button>
+                        <button data-arato-button="secondary" onClick={() => router.push(`/fiscal/remessas?nf_entrada_id=${nfEdit.id}`)} style={{ ...btnR, borderColor: "#1A487050", color: "#1A4870" }}>🚚 Emitir NF Remessa</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && (
                         <button data-arato-button="secondary" onClick={() => abrirReclassificar(nfEdit)} style={{ ...btnR, borderColor: "#C9921B50", color: "#7A5200" }}>🏷 Reclassificar</button>

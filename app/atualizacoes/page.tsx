@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zb",
+    data: "27/10/2026",
+    titulo: "Remessas: tela própria, com estoque no armazém",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Documentos Fiscais → Remessas: emitir a NF-e de remessa para armazém geral/depósito pelo Arato (com transporte) ou registrar a emitida em outro sistema (com XML). Os itens vêm da NF de entrada de origem ou do cadastro." },
+      { tipo: "melhoria", texto: "A remessa transfere o estoque do depósito próprio para o depósito do armazém (o total não muda). O retorno faz o caminho inverso. Remessas antigas, que deram baixa, voltam como entrada." },
+      { tipo: "melhoria", texto: "Retornos ganhou Emitir retorno e Retorno emitido fora, com retorno parcial. A Entrada de Nota Própria deixou de registrar remessa (manda para Remessas), e o botão Emitir NF Remessa da NF de entrada abre a tela Remessas. Requer as Seções 377 e 378." },
+    ],
+    onde: "Documentos Fiscais → Remessas e Retornos",
+  },
+  {
     versao: "2026.10.27-za",
     data: "27/10/2026",
     titulo: "Tela própria para NF de retorno",

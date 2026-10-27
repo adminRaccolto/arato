@@ -18145,3 +18145,16 @@ ALTER TABLE nf_remessas_logisticas
   ADD COLUMN IF NOT EXISTS valor_retornado numeric(15,2) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS retornos jsonb NOT NULL DEFAULT '[]'::jsonb;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 378 — Remessa transfere o estoque para o depósito do armazém
+-- =============================================================================
+-- A mercadoria remetida ao armazém continua sendo do cliente: a remessa lança saída do depósito próprio e entrada no
+-- depósito do armazém (tipo armazem_terceiro, ligado à pessoa do armazém); o retorno faz o caminho inverso. Remessas
+-- antigas (sem estes campos) baixaram o estoque — o retorno delas é só entrada.
+ALTER TABLE nf_remessas_logisticas
+  ADD COLUMN IF NOT EXISTS deposito_origem_id uuid REFERENCES depositos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS deposito_terceiro_id uuid REFERENCES depositos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS emissao text,                       -- 'arato' (emitida aqui) | 'externa' (emitida em outro sistema)
+  ADD COLUMN IF NOT EXISTS estoque_transferido boolean NOT NULL DEFAULT false;
+NOTIFY pgrst, 'reload schema';

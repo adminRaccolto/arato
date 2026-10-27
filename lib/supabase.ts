@@ -1404,6 +1404,10 @@ export type NfRemessaLogistica = {
   observacao?: string;
   status: "emitida" | "retornada" | "cancelada";
   valor_retornado?: number;   // Seção 377: soma das NFs de retorno (retorno parcial)
+  deposito_origem_id?: string | null;    // Seção 378: de onde saiu (depósito próprio)
+  deposito_terceiro_id?: string | null;  // Seção 378: depósito do armazém para onde foi
+  emissao?: "arato" | "externa" | null;
+  estoque_transferido?: boolean;
   retornos?: { numero: string; chave?: string | null; data?: string | null; valor: number; emitente?: string | null }[];
   created_at?: string;
 };

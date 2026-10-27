@@ -1,463 +1,443 @@
 "use client";
+import Link from "next/link";
+// Remessas — tela própria para a remessa de mercadoria a armazém geral, depósito ou condomínio logístico (ex.: LUFT).
+// Diretriz do dono 27/10/2026: compra, remessa e retorno em telas separadas, cada uma com as suas variáveis.
+// Aqui: emitir a NF-e de remessa pelo Arato OU registrar a remessa emitida em outro sistema; os itens vêm da NF de
+// entrada de origem ou do cadastro; o estoque é TRANSFERIDO do depósito próprio para o depósito do armazém (continua
+// sendo do cliente). O retorno (NF recebida do armazém, emitida pelo Arato ou fora) fica na tela Retornos.
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { hojeLocal } from "../../../lib/data-local";
-import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
+import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
-import { useState, useEffect } from "react";
+import SelectBusca from "../../../components/SelectBusca";
 import TopNav from "../../../components/TopNav";
-import { listarNfRemessasLogisticas, atualizarNfRemessaLogistica, listarPessoasDaConta } from "../../../lib/db";
-import type { NfRemessaLogistica, Pessoa } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { supabase } from "../../../lib/supabase";
+import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/supabase";
+import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
+import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
+import { BlocoTransporte, TRANSP_VAZIO, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 
-const fmtBRL   = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtData  = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
+const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
+const numBR = (s: string) => parseFloat(String(s).replace(/\./g, "").replace(",", ".")) || 0;
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const th: React.CSSProperties = { padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "8px 12px", fontSize: 12, borderBottom: "0.5px solid var(--border-row)", verticalAlign: "top" };
+const ehDepTerceiro = (d: Deposito) => ["terceiro", "armazem_terceiro"].includes(d.tipo);
 
 const STATUS_BADGE: Record<string, { bg: string; cl: string; label: string }> = {
-  emitida:   { bg: "#D5E8F5", cl: "#0B2D50", label: "Emitida" },
+  emitida:   { bg: "#D5E8F5", cl: "#0B2D50", label: "Aguardando retorno" },
   retornada: { bg: "#E8F5E9", cl: "#1A6B3C", label: "Retornada" },
   cancelada: { bg: "#FDECEA", cl: "#B91C1C", label: "Cancelada" },
 };
 
-interface RetornoForm {
-  natureza: string;
-  obs: string;
-}
+// Valor remetido: soma dos itens (o cabeçalho de remessas antigas pode estar errado); sem itens, o total
+const valorRemetido = (r: NfRemessaLogistica) => {
+  const its = Array.isArray(r.itens_json) ? (r.itens_json as { valor_total?: number }[]) : [];
+  const soma = its.reduce((s, i) => s + Number(i.valor_total ?? 0), 0);
+  return soma > 0 ? soma : Number(r.valor_total ?? 0);
+};
 
-export default function RemessasLogisticasPage() {
+type ItemRem = { key: string; insumo_id: string; descricao: string; ncm: string; unidade: string; quantidade: string; valor_unitario: string };
+type NfOrigem = { id: string; numero: string; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null; produtor_id: string | null; fazenda_id: string };
+const novoItem = (): ItemRem => ({ key: crypto.randomUUID(), insumo_id: "", descricao: "", ncm: "", unidade: "", quantidade: "", valor_unitario: "" });
+
+function RemessasConteudo() {
   const { contaId, fazendaId, fazendaIds } = useAuth();
+  const params = useSearchParams();
+  const ids = useMemo(() => (fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : []), [fazendaIds, fazendaId]);
+  const dados = useDadosEmissao(ids, contaId);
 
-  const [remessas,   setRemessas]   = useState<NfRemessaLogistica[]>([]);
-  const [pessoas,    setPessoas]    = useState<Pessoa[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [busca,      setBusca]      = useState("");
-  const [filtroSt,   setFiltroSt]   = useState("");
+  const [remessas, setRemessas] = useState<NfRemessaLogistica[]>([]);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [depositos, setDepositos] = useState<Deposito[]>([]);
+  const [ufFazenda, setUfFazenda] = useState<Map<string, string>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [busca, setBusca] = useState("");
+  const [filtroSt, setFiltroSt] = useState("");
+  const [msg, setMsg] = useState("");
 
-  // Modal de retorno
-  const [modalRetorno, setModalRetorno] = useState<NfRemessaLogistica | null>(null);
-  const [retForm,      setRetForm]      = useState<RetornoForm>({ natureza: "Retorno de armazenagem de condomínio logístico", obs: "" });
-  const [retEmitindo,  setRetEmitindo]  = useState(false);
-  const [retErro,      setRetErro]      = useState("");
-  const [retOk,        setRetOk]        = useState<{chave: string; numero: string} | null>(null);
-  const [fiscalMods,   setFiscalMods]   = useState<Array<{modulo: string; config: Record<string,string>}>>([]);
-  const [retCpfHint,   setRetCpfHint]    = useState<string | undefined>(undefined);
-  const [retProdutorId, setRetProdutorId] = useState<string | undefined>(undefined);
-  // Retorno já emitido por outro: condomínio logístico/armazém (chega como NF de entrada) ou nota própria emitida fora
-  type DocRetorno = { origem: "nf_entrada" | "nota_propria"; id: string; numero: string; chave: string | null; data: string | null; emitente: string | null; valor: number | null };
-  const [retModo, setRetModo] = useState<"emitir" | "vincular">("emitir");
-  const [retBusca, setRetBusca] = useState("");
-  const [retDocs, setRetDocs] = useState<DocRetorno[]>([]);
-  const [retManual, setRetManual] = useState({ numero: "", chave: "", data: "" });
-  async function buscarDocsRetorno(texto: string, r: NfRemessaLogistica) {
-    setRetBusca(texto);
-    const ids = fazendaIds?.length ? fazendaIds : r.fazenda_id ? [r.fazenda_id] : [];
-    if (!ids.length) return;
-    const t = texto.trim();
-    const num = /^\d+$/.test(t) ? t.replace(/^0+/, "") : "";
-    let qe = supabase.from("nf_entradas").select("id, numero, chave_acesso, data_emissao, emitente_nome, valor_total, status").in("fazenda_id", ids).neq("status", "cancelada");
-    let qp = supabase.from("notas_proprias_externas").select("id, numero, chave_acesso, data_emissao, nome_destinatario, valor_total, status").in("fazenda_id", ids).neq("status", "cancelada");
-    if (num) { qe = qe.ilike("numero", `%${num}%`); qp = qp.ilike("numero", `%${num}%`); }
-    else if (t) { qe = qe.ilike("emitente_nome", `%${t}%`); qp = qp.ilike("nome_destinatario", `%${t}%`); }
-    if (r.nf_remessa_data) { qe = qe.gte("data_emissao", r.nf_remessa_data); qp = qp.gte("data_emissao", r.nf_remessa_data); }
-    const [{ data: e }, { data: pr }] = await Promise.all([qe.order("data_emissao", { ascending: false }).limit(20), qp.order("data_emissao", { ascending: false }).limit(10)]);
-    setRetDocs([
-      ...((e ?? []) as { id: string; numero: string; chave_acesso: string | null; data_emissao: string | null; emitente_nome: string | null; valor_total: number | null }[])
-        .map(x => ({ origem: "nf_entrada" as const, id: x.id, numero: x.numero, chave: x.chave_acesso, data: x.data_emissao, emitente: x.emitente_nome, valor: x.valor_total })),
-      ...((pr ?? []) as { id: string; numero: string; chave_acesso: string | null; data_emissao: string | null; nome_destinatario: string | null; valor_total: number | null }[])
-        .map(x => ({ origem: "nota_propria" as const, id: x.id, numero: x.numero, chave: x.chave_acesso, data: x.data_emissao, emitente: `Nota própria → ${x.nome_destinatario ?? "—"}`, valor: x.valor_total })),
+  async function carregar() {
+    if (!contaId || !ids.length) return;
+    setLoading(true);
+    const [r, p, ins, dep, { data: fz }] = await Promise.all([
+      listarNfRemessasLogisticas(contaId), listarPessoasDaConta(fazendaId ?? ids[0]),
+      listarInsumosParaConta(contaId, fazendaId ?? undefined), listarDepositosMulti(ids),
+      supabase.from("fazendas").select("id, estado").in("id", ids),
     ]);
+    setRemessas(r); setPessoas(p); setInsumos(ins.filter(insumoAtivo)); setDepositos(dep);
+    setUfFazenda(new Map(((fz ?? []) as { id: string; estado: string | null }[]).map(f => [f.id, f.estado ?? ""])));
+    setLoading(false);
   }
-  async function vincularRetorno(doc: { numero: string; chave: string | null; data: string | null; descricao: string }) {
-    if (!modalRetorno) return;
-    if (!doc.numero.trim()) { setRetErro("Informe o número da NF de retorno."); return; }
-    setRetEmitindo(true); setRetErro("");
+  useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [contaId, ids.join(",")]);
+
+  // ── Nova remessa ─────────────────────────────────────────────────────────────
+  const [modal, setModal] = useState(false);
+  const [modo, setModo] = useState<"arato" | "externa">("arato");
+  const [nfOrigem, setNfOrigem] = useState<NfOrigem | null>(null);
+  const [buscaNf, setBuscaNf] = useState("");
+  const [nfsOrigem, setNfsOrigem] = useState<NfOrigem[]>([]);
+  const [itens, setItens] = useState<ItemRem[]>([novoItem()]);
+  const [armazemId, setArmazemId] = useState("");
+  const [depOrigem, setDepOrigem] = useState("");
+  const [depTerceiro, setDepTerceiro] = useState("");
+  const [cfop, setCfop] = useState("5905");
+  const [natureza, setNatureza] = useState("Remessa para depósito em armazém geral");
+  const [dataRem, setDataRem] = useState(hojeLocal());
+  const [obs, setObs] = useState("");
+  const [emitenteSel, setEmitenteSel] = useState("");
+  const [tr, setTr] = useState<Transp>(TRANSP_VAZIO);
+  const [ext, setExt] = useState({ numero: "", serie: "", chave: "", xml: "" });
+  const [erro, setErro] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const insumoPorId = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
+  const armazem = pessoas.find(p => p.id === armazemId);
+  const fazendaRem = nfOrigem?.fazenda_id ?? depositos.find(d => d.id === depOrigem)?.fazenda_id ?? fazendaId ?? ids[0];
+
+  function abrirNova() {
+    setModo("arato"); setNfOrigem(null); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
+    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setNatureza("Remessa para depósito em armazém geral");
+    setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
+    setErro(""); setModal(true);
+  }
+
+  async function buscarNfsOrigem(t: string) {
+    setBuscaNf(t);
+    if (t.trim().length < 2) { setNfsOrigem([]); return; }
+    let q = supabase.from("nf_entradas").select("id, numero, emitente_nome, data_emissao, valor_total, produtor_id, fazenda_id").in("fazenda_id", ids).eq("status", "processada");
+    q = /^\d+$/.test(t.trim()) ? q.ilike("numero", `%${t.trim().replace(/^0+/, "")}%`) : q.ilike("emitente_nome", `%${t.trim()}%`);
+    const { data } = await q.order("data_emissao", { ascending: false }).limit(30);
+    setNfsOrigem((data ?? []) as NfOrigem[]);
+  }
+
+  async function escolherNfOrigem(nf: NfOrigem) {
+    setNfOrigem(nf); setNfsOrigem([]);
+    const its = await listarNfEntradaItens(nf.id);
+    const doEstoque = its.filter(i => i.insumo_id);
+    setItens(doEstoque.length ? doEstoque.map(i => ({
+      key: crypto.randomUUID(), insumo_id: i.insumo_id!, descricao: insumoPorId.get(i.insumo_id!)?.nome ?? i.descricao_produto,
+      ncm: i.ncm ?? insumoPorId.get(i.insumo_id!)?.ncm ?? "", unidade: insumoPorId.get(i.insumo_id!)?.unidade ?? i.unidade,
+      quantidade: String(i.quantidade ?? ""), valor_unitario: i.quantidade ? String(Math.round((Number(i.valor_total ?? 0) / Number(i.quantidade)) * 10000) / 10000) : "",
+    })) : [novoItem()]);
+    const dep = its.find(i => i.deposito_id)?.deposito_id;
+    if (dep) setDepOrigem(dep);
+  }
+
+  function escolherArmazem(id: string) {
+    setArmazemId(id);
+    const p = pessoas.find(x => x.id === id);
+    const dep = depositos.find(d => ehDepTerceiro(d) && d.pessoa_id === id);
+    setDepTerceiro(dep?.id ?? "");
+    const ufOrig = ufFazenda.get(fazendaRem ?? "") ?? "";
+    if (p?.estado && ufOrig) setCfop(p.estado === ufOrig ? "5905" : "6905");
+  }
+
+  async function criarDepositoArmazem() {
+    if (!armazem || !fazendaRem) return;
+    const { data, error } = await supabase.from("depositos").insert({ fazenda_id: fazendaRem, nome: `Armazém ${armazem.nome}`.slice(0, 80), tipo: "armazem_terceiro", pessoa_id: armazem.id, ativo: true }).select("*").single();
+    if (error) { setErro(`Não foi possível criar o depósito do armazém: ${error.message}`); return; }
+    setDepositos(p => [...p, data as Deposito]); setDepTerceiro((data as Deposito).id);
+  }
+
+  function setItem(key: string, patch: Partial<ItemRem>) { setItens(p => p.map(i => i.key === key ? { ...i, ...patch } : i)); }
+  function escolherInsumo(key: string, id: string) {
+    const ins = insumoPorId.get(id);
+    setItem(key, { insumo_id: id, descricao: ins?.nome ?? "", ncm: ins?.ncm ?? "", unidade: ins?.unidade ?? "", valor_unitario: ins?.custo_medio ? String(ins.custo_medio) : "" });
+  }
+  const totalItens = itens.reduce((s, i) => s + numBR(i.quantidade) * numBR(i.valor_unitario), 0);
+
+  function lerXmlExterno(xml: string) {
+    const x = lerXmlNfe(xml);
+    setExt({ numero: x.numero, serie: x.serie, chave: x.chave, xml });
+    if (x.data_emissao) setDataRem(x.data_emissao);
+    if (x.natureza) setNatureza(x.natureza);
+    const c = x.itens[0]?.cfop; if (c) setCfop(c);
+    const doc = x.cnpj_destinatario.replace(/\D/g, "");
+    const p = pessoas.find(pp => (pp.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
+    if (p) escolherArmazem(p.id);
+    if (!itens.some(i => i.insumo_id) && x.itens.length) setItens(x.itens.map(i => ({ key: crypto.randomUUID(), insumo_id: "", descricao: i.descricao, ncm: i.ncm, unidade: i.unidade, quantidade: String(i.quantidade), valor_unitario: String(i.valor_unitario) })));
+  }
+
+  async function salvar() {
+    const cf = cfop.replace(/\D/g, "");
+    if (!armazem) { setErro("Escolha o armazém (destinatário)."); return; }
+    if (!depOrigem || !depTerceiro) { setErro("Escolha o depósito de origem e o depósito do armazém."); return; }
+    if (itens.some(i => !i.insumo_id || !(numBR(i.quantidade) > 0))) { setErro("Todo item precisa estar ligado a um produto do cadastro e ter quantidade."); return; }
+    if (!/^\d{4}$/.test(cf)) { setErro("Informe o CFOP da remessa (ex.: 5905)."); return; }
+    if (modo === "externa" && !ext.numero.trim()) { setErro("Informe o número da NF emitida."); return; }
+    if (!(await confirmarAcao({ titulo: modo === "arato" ? "Emitir NF-e de remessa?" : "Registrar remessa?", perigo: false,
+      mensagem: `${itens.length} item(ns), ${fmtBRL(totalItens)}, para ${armazem.nome}. O estoque passa de "${depositos.find(d => d.id === depOrigem)?.nome}" para "${depositos.find(d => d.id === depTerceiro)?.nome}". Não gera CP/CR.` }))) return;
+    setSalvando(true); setErro("");
     try {
-      const chave = (doc.chave ?? "").replace(/\D/g, "") || undefined;
-      await atualizarNfRemessaLogistica(modalRetorno.id, {
-        nf_retorno_chave: chave, nf_retorno_numero: doc.numero.trim(), nf_retorno_data: doc.data || hojeLocal(), status: "retornada",
-        observacao: [modalRetorno.observacao, `Retorno emitido fora do Arato: ${doc.descricao}`].filter(Boolean).join(" | "),
-      });
-      setRemessas(prev => prev.map(x => x.id === modalRetorno.id ? { ...x, nf_retorno_chave: chave, nf_retorno_numero: doc.numero.trim(), status: "retornada" } : x));
-      setRetOk({ chave: chave ?? "", numero: doc.numero.trim() });
-    } catch (e) {
-      setRetErro((e as Error).message ?? "Erro ao vincular o retorno.");
-    } finally {
-      setRetEmitindo(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!contaId) return;
-    (async () => {
-      setLoading(true);
-      const [r, p] = await Promise.all([
-        listarNfRemessasLogisticas(contaId),
-        listarPessoasDaConta(contaId),
-      ]);
-      setRemessas(r);
-      setPessoas(p);
-      setLoading(false);
-    })();
-  }, [contaId]);
-
-  async function abrirRetorno(r: NfRemessaLogistica) {
-    setModalRetorno(r);
-    setRetForm({ natureza: "Retorno de armazenagem de condomínio logístico", obs: "" });
-    setRetModo("emitir"); setRetDocs([]); setRetManual({ numero: "", chave: "", data: "" });
-    // sugestões: NFs recebidas do próprio condomínio/armazém da remessa
-    const sugestao = r.destinatario_nome.split(/\s+/).slice(0, 2).join(" ");
-    setRetBusca(sugestao);
-    buscarDocsRetorno(sugestao, r);
-    setRetErro("");
-    setRetOk(null);
-    // Busca módulos fiscais da fazenda REAL da remessa (não a fazenda ativa
-    // do seletor, que pode ser outra na mesma conta)
-    const fazendaRemessa = r.fazenda_id ?? fazendaId;
-    if (fazendaRemessa) {
-      const { data } = await supabase
-        .from("configuracoes_modulo")
-        .select("modulo, config")
-        .eq("fazenda_id", fazendaRemessa)
-        .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-      setFiscalMods((data ?? []) as Array<{modulo: string; config: Record<string,string>}>);
-    }
-    // CPF/CNPJ do produtor dono da NF de compra original — quem responde fiscalmente pelo retorno,
-    // não "o primeiro módulo fiscal que aparecer" (a fazenda pode ter vários emitentes configurados).
-    setRetCpfHint(undefined);
-    setRetProdutorId(undefined);
-    if (r.nf_entrada_id) {
-      const { data: nfOrig } = await supabase.from("nf_entradas").select("produtor_id").eq("id", r.nf_entrada_id).maybeSingle();
-      if (nfOrig?.produtor_id) {
-        setRetProdutorId(nfOrig.produtor_id);
-        const { data: prod } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfOrig.produtor_id).maybeSingle();
-        setRetCpfHint(prod?.cpf_cnpj ?? undefined);
+      const itensReg = itens.map(i => ({ insumo_id: i.insumo_id, descricao: i.descricao || insumoPorId.get(i.insumo_id)?.nome || "", ncm: i.ncm, unidade: (i.unidade || "UN").toUpperCase(), quantidade: numBR(i.quantidade), valor_unitario: numBR(i.valor_unitario), valor_total: Math.round(numBR(i.quantidade) * numBR(i.valor_unitario) * 100) / 100 }));
+      let nf: { numero: string; serie?: string; chave?: string | null; protocolo?: string | null; xml?: string | null; xml_url?: string | null; emit?: Record<string, string | undefined> };
+      let fazEmissao = fazendaRem;
+      if (modo === "arato") {
+        let cpfHint: string | undefined;
+        if (nfOrigem?.produtor_id) { const { data: pr } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfOrigem.produtor_id).maybeSingle(); cpfHint = pr?.cpf_cnpj ?? undefined; }
+        const em = resolverEmitente(dados.emitentes, emitenteSel, cpfHint);
+        if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
+        fazEmissao = em.fazenda_id;
+        const { transporte, motorista } = montarTransporte(dados, tr);
+        const resp = await fetch("/api/fiscal/emitir-nfe", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf,
+            destinatario: {
+              nome: armazem.nome, cpf_cnpj: (armazem.cpf_cnpj ?? "").replace(/\D/g, "") || undefined, ie: armazem.inscricao_est || undefined,
+              logradouro: armazem.logradouro || undefined, numero: armazem.numero || undefined, bairro: armazem.bairro || undefined,
+              municipio_ibge: armazem.municipio_ibge || undefined, municipio_nome: armazem.municipio || undefined, uf: armazem.estado || undefined,
+              cep: (armazem.cep ?? "").replace(/\D/g, "") || undefined,
+            },
+            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario })),
+            natureza, inf_cpl: [obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
+            frete: tr.frete, transporte, tipo: "1",
+          }),
+        });
+        const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string } & Record<string, string | undefined>;
+        if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
+        nf = { numero: res.numero ?? "", serie: res.serie, chave: res.chave, protocolo: res.protocolo, xml_url: res.xmlUrl,
+          emit: { emit_razao: res.emit_razao, emit_cnpj: res.emit_cnpj, emit_ie: res.emit_ie, emit_endereco: res.emit_endereco, emit_numero: res.emit_numero, emit_bairro: res.emit_bairro, emit_municipio: res.emit_municipio, emit_uf: res.emit_uf, emit_cep: res.emit_cep, emit_fone: res.emit_fone } };
+      } else {
+        const x = ext.xml ? lerXmlNfe(ext.xml) : null;
+        nf = { numero: ext.numero.trim(), serie: ext.serie.trim() || undefined, chave: ext.chave.replace(/\D/g, "") || null, protocolo: x?.protocolo || null, xml: ext.xml || null, emit: x?.emit_dados };
       }
-    }
-  }
-
-  async function emitirRetorno() {
-    if (!modalRetorno || !(modalRetorno.fazenda_id ?? fazendaId)) return;
-    setRetEmitindo(true);
-    setRetErro("");
-    try {
-      // Itens da remessa original
-      const itensOrig = (modalRetorno.itens_json as Array<{
-        descricao_produto: string; ncm?: string; quantidade: number;
-        valor_unitario: number; valor_total: number; unidade: string; unidade_nf?: string;
-      }> | null) ?? [];
-      if (!itensOrig.length) throw new Error("Nenhum item registrado na remessa original.");
-
-      const itensNfe = itensOrig.map((it, i) => ({
-        descricao:      it.descricao_produto,
-        ncm:            it.ncm ?? "31052000",
-        cfop:           modalRetorno.cfop_retorno,
-        unidade:        (it.unidade_nf ?? it.unidade).toUpperCase(),
-        quantidade:     it.quantidade,
-        valor_unitario: it.valor_unitario,
-      }));
-
-      const dest = pessoas.find(p => p.id === modalRetorno.destinatario_pessoa_id);
-
-      const resp = await fetch("/api/fiscal/emitir-nfe", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
+      const r = await fetch("/api/fiscal/remessas", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:   modalRetorno.fazenda_id ?? fazendaId,
-          modulo_key:      fiscalMods[0]?.modulo ?? "",   // fallback — o servidor prefere cpf_cnpj_hint quando resolvível
-          produtor_id_hint: retProdutorId,
-          cpf_cnpj_hint:   retCpfHint,
-          destinatario: {
-            nome:           modalRetorno.destinatario_nome,
-            cpf_cnpj:       dest ? (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined : undefined,
-            ie:             dest?.inscricao_est || undefined,
-            logradouro:     dest?.logradouro || undefined,
-            numero:         dest?.numero || undefined,
-            bairro:         dest?.bairro || undefined,
-            municipio_ibge: dest?.municipio_ibge || undefined,
-            municipio_nome: dest?.municipio || undefined,
-            uf:             modalRetorno.destinatario_uf || undefined,
-            cep:            dest ? (dest.cep ?? "").replace(/\D/g, "") || undefined : undefined,
-          },
-          itens:    itensNfe,
-          natureza: retForm.natureza,
-          inf_cpl:  `Retorno de remessa — NF ref: ${modalRetorno.nf_remessa_chave ?? modalRetorno.nf_remessa_numero ?? ""}${retForm.obs ? `\n${retForm.obs}` : ""}`,
-          frete:    "9",
-          nfe_ref:  modalRetorno.nf_remessa_chave || undefined,
-          tipo:     "1",
+          acao: "registrar", fazenda_id: fazEmissao, nf_entrada_id: nfOrigem?.id ?? null, emissao: modo, cfop: cf, cfop_retorno: CFOP_RETORNO[cf] ?? cf, natureza,
+          destinatario: { pessoa_id: armazem.id, nome: armazem.nome, uf: armazem.estado ?? null },
+          deposito_origem_id: depOrigem, deposito_terceiro_id: depTerceiro, data: dataRem, observacao: obs || undefined, nf, itens: itensReg,
         }),
       });
-      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
-      if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
-
-      // Atualiza registro
-      await atualizarNfRemessaLogistica(modalRetorno.id, {
-        nf_retorno_chave:    res.chave,
-        nf_retorno_numero:   res.numero,
-        nf_retorno_protocolo: res.protocolo,
-        nf_retorno_data:     hojeLocal(),
-        status:              "retornada",
-      });
-      setRemessas(prev => prev.map(r => r.id === modalRetorno.id ? { ...r, nf_retorno_chave: res.chave, nf_retorno_numero: res.numero, status: "retornada" } : r));
-      setRetOk({ chave: res.chave, numero: res.numero ?? "" });
+      const j = await r.json() as { ok: boolean; error?: string };
+      if (!j.ok) throw new Error(modo === "arato" ? `A NF-e ${nf.numero} foi autorizada, mas o registro da remessa falhou: ${j.error}. Avise o suporte antes de emitir de novo.` : j.error);
+      setMsg(`✓ Remessa NF ${nf.numero} ${modo === "arato" ? "emitida" : "registrada"}: estoque transferido para ${depositos.find(d => d.id === depTerceiro)?.nome}.`);
+      setModal(false);
+      await carregar();
     } catch (e) {
-      setRetErro((e as Error).message ?? "Erro ao emitir NF de retorno.");
+      setErro(e instanceof Error ? e.message : "Erro ao salvar a remessa.");
     } finally {
-      setRetEmitindo(false);
+      setSalvando(false);
     }
   }
+
+  // Botão "Emitir NF Remessa" da NF de entrada: abre já com a NF de origem
+  useEffect(() => {
+    const id = params.get("nf_entrada_id");
+    if (!id || loading || modal) return;
+    (async () => {
+      const { data } = await supabase.from("nf_entradas").select("id, numero, emitente_nome, data_emissao, valor_total, produtor_id, fazenda_id").eq("id", id).maybeSingle();
+      abrirNova();
+      if (data) await escolherNfOrigem(data as NfOrigem);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const filtradas = remessas.filter(r => {
     if (filtroSt && r.status !== filtroSt) return false;
     const q = busca.toLowerCase();
-    if (!q) return true;
-    return (
-      r.destinatario_nome.toLowerCase().includes(q) ||
-      (r.nf_compra_chave ?? "").includes(q) ||
-      (r.nf_remessa_chave ?? "").includes(q) ||
-      (r.nf_remessa_numero ?? "").includes(q)
-    );
+    return !q || r.destinatario_nome.toLowerCase().includes(q) || (r.nf_remessa_numero ?? "").includes(q) || (r.nf_remessa_chave ?? "").includes(q);
   });
-
-  const totalEmitidas   = remessas.filter(r => r.status === "emitida").length;
-  const totalRetornadas = remessas.filter(r => r.status === "retornada").length;
-  const totalValor      = remessas.reduce((s, r) => s + r.valor_total, 0);
+  const depsProprios = depositos.filter(d => !ehDepTerceiro(d));
+  const depsTerceiros = depositos.filter(ehDepTerceiro);
 
   return (
     <>
       <TopNav />
       <main style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px" }}>
-        {/* Header */}
-        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas Logísticas</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas</h1>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Mercadoria enviada a armazém geral, depósito ou condomínio logístico. O estoque passa para o depósito do armazém; o retorno fica em Retornos.</div>
           </div>
+          <OperationalButton data-arato-button="primary" onClick={abrirNova} style={btnV}>+ Nova Remessa</OperationalButton>
         </OperationalHeading>
 
-        {/* KPIs */}
-        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
-          {[
-            { label: "Total Emitidas",   value: String(totalEmitidas),               bg: "#D5E8F5", cl: "#0B2D50" },
-            { label: "Aguard. Retorno",  value: String(totalEmitidas - totalRetornadas < 0 ? 0 : totalEmitidas), bg: "#FBF3E0", cl: "#7A5C00" },
-            { label: "Retornadas",       value: String(totalRetornadas),              bg: "#E8F5E9", cl: "#1A6B3C" },
-            { label: "Valor Total",      value: fmtBRL(totalValor),                  bg: "#F4F6FA", cl: "#1a1a1a" },
-          ].map(k => (
-            <div data-arato-statistic="display" key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, color: k.cl, fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: k.cl }}>{k.value}</div>
-            </div>
-          ))}
-        </div>
+        {msg && <div style={{ marginBottom: 12, padding: 10, background: "#E8F5E9", color: "#1A6B3C", borderRadius: 8, fontSize: 13 }}>{msg}</div>}
 
-        {/* Filtros */}
-        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-          <input style={{ ...inp, maxWidth: 320 }} placeholder="Buscar por destinatário ou chave NF…" value={busca} onChange={e => setBusca(e.target.value)} />
-          <SelectField style={{ ...inp, maxWidth: 180 }} value={filtroSt} onChange={e => setFiltroSt(e.target.value)}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por armazém, nº ou chave…" style={{ ...inp, maxWidth: 320 }} />
+          <SelectField value={filtroSt} onChange={e => setFiltroSt(e.target.value)} style={{ ...inp, maxWidth: 200 }}>
             <option value="">Todos os status</option>
-            <option value="emitida">Emitida</option>
+            <option value="emitida">Aguardando retorno</option>
             <option value="retornada">Retornada</option>
             <option value="cancelada">Cancelada</option>
           </SelectField>
-          <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{filtradas.length} registro{filtradas.length !== 1 ? "s" : ""}</span>
         </OperationalFilters>
 
-        {/* Tabela */}
-        {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Carregando…</div>
-        ) : filtradas.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-            {busca || filtroSt ? "Nenhuma remessa encontrada para os filtros." : "Nenhuma NF de remessa logística emitida. Use ⋮ → Emitir NF Remessa em uma NF de compra processada."}
-          </div>
-        ) : (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border)" }}>
-                    <th style={{ padding: "11px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Destinatário</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Status</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Data Remessa</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>NF Remessa</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>CFOP</th>
-                    <th style={{ padding: "11px 10px", textAlign: "right",  fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Valor</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>NF Compra (ref)</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>NF Retorno</th>
-                    <th style={{ padding: "11px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Ações</th>
+        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+            <thead><tr>{["NF remessa", "Data", "Armazém", "CFOP", "Emissão", "Remetido", "Já voltou", "Falta voltar", "Status", ""].map(h => <th key={h} style={{ ...th, textAlign: ["Remetido", "Já voltou", "Falta voltar"].includes(h) ? "right" : "left" }}>{h}</th>)}</tr></thead>
+            <tbody>
+              {loading && <tr><td colSpan={10} style={{ ...td, textAlign: "center", padding: 20, color: "var(--text-3)" }}>Carregando…</td></tr>}
+              {!loading && filtradas.length === 0 && <tr><td colSpan={10} style={{ ...td, textAlign: "center", padding: 20, color: "var(--text-3)" }}>Nenhuma remessa.</td></tr>}
+              {filtradas.map(r => {
+                const sb = STATUS_BADGE[r.status] ?? STATUS_BADGE.emitida;
+                const falta = Math.max(0, valorRemetido(r) - Number(r.valor_retornado ?? 0));
+                return (
+                  <tr key={r.id}>
+                    <td style={{ ...td, fontWeight: 600 }}>{r.nf_remessa_numero ?? "—"}</td>
+                    <td style={td}>{fmtData(r.nf_remessa_data)}</td>
+                    <td style={td}>{r.destinatario_nome}</td>
+                    <td style={td}>{r.cfop_remessa}</td>
+                    <td style={td}>{r.emissao === "externa" ? "Fora do Arato" : r.emissao === "arato" ? "Arato" : "—"}{r.estoque_transferido ? "" : <div style={{ fontSize: 10, color: "var(--text-3)" }}>estoque baixado (antiga)</div>}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(valorRemetido(r))}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(r.status === "retornada" && !r.valor_retornado ? valorRemetido(r) : r.valor_retornado ?? 0)}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{r.status === "retornada" ? fmtBRL(0) : fmtBRL(falta)}</td>
+                    <td style={td}><span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, background: sb.bg, color: sb.cl }}>{sb.label}</span></td>
+                    <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
+                      {r.nf_remessa_chave && <a href={`/api/fiscal/danfe?chave=${r.nf_remessa_chave}&fazenda_id=${r.fazenda_id}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1A4870", fontWeight: 600, marginRight: 10 }}>🖨 DANFE</a>}
+                      {r.status === "emitida" && <Link href="/fiscal/retornos" style={{ fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Retorno →</Link>}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtradas.map((r, i) => {
-                    const badge = STATUS_BADGE[r.status] ?? { bg: "#eee", cl: "#333", label: r.status };
-                    return (
-                      <tr key={r.id} style={{ borderBottom: i < filtradas.length - 1 ? "0.5px solid var(--border)" : "none", background: i % 2 === 0 ? "transparent" : "var(--bg-stripe)" }}>
-                        <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 500 }}>
-                          <div>{r.destinatario_nome}</div>
-                          {r.destinatario_uf && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{r.destinatario_uf}</div>}
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "center" }}>
-                          <span style={{ fontSize: 10, background: badge.bg, color: badge.cl, borderRadius: 20, padding: "2px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>{badge.label}</span>
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{fmtData(r.nf_remessa_data)}</td>
-                        <td style={{ padding: "10px 10px", textAlign: "center" }}>
-                          {r.nf_remessa_numero ? (
-                            <div>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{r.nf_remessa_numero}</div>
-                              {r.nf_remessa_chave && <div style={{ fontSize: 9, fontFamily: "monospace", color: "var(--text-3)", wordBreak: "break-all", maxWidth: 200 }}>{r.nf_remessa_chave.slice(0, 22)}…</div>}
-                            </div>
-                          ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "center" }}>
-                          <span style={{ fontSize: 11, background: "#D5E8F5", color: "#0B2D50", borderRadius: 6, padding: "2px 7px", fontWeight: 600 }}>{r.cfop_remessa}</span>
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>
-                          {fmtBRL(r.valor_total)}
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "center" }}>
-                          {r.nf_compra_chave ? (
-                            <span style={{ fontSize: 9, fontFamily: "monospace", color: "var(--text-3)" }} title={r.nf_compra_chave}>{r.nf_compra_chave.slice(0, 22)}…</span>
-                          ) : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>}
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "center" }}>
-                          {r.nf_retorno_chave ? (
-                            <div>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>{r.nf_retorno_numero}</div>
-                              <div style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtData(r.nf_retorno_data)}</div>
-                            </div>
-                          ) : (
-                            r.status === "emitida" ? (
-                              <span style={{ fontSize: 10, color: "#C9921B", background: "#FBF3E0", borderRadius: 20, padding: "2px 7px" }}>Pendente</span>
-                            ) : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "10px 10px", textAlign: "center" }}>
-                          {r.status === "emitida" && (
-                            <OperationalButton data-arato-button="secondary" onClick={() => abrirRetorno(r)}
-                              style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 7, background: "transparent", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                              Emitir Retorno →
-                            </OperationalButton>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </OperationalGrid>
-            </div>
-          </div>
-        )}
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </main>
 
-      {/* ── Modal de Retorno ── */}
-      {modalRetorno && (
+      {modal && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 580, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div data-arato-dialog-body="true">
-                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Retorno da Remessa</div>
-                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
-                  Remessa original: {modalRetorno.nf_remessa_numero} — {modalRetorno.destinatario_nome}
-                </div>
-              </div>
-              <OperationalButton data-arato-button="icon" onClick={() => setModalRetorno(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</OperationalButton>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "min(96vw, 980px)", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Nova Remessa</div>
+              <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
-
-            {retOk ? (
-              <div style={{ padding: 28, textAlign: "center" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>{retModo === "vincular" ? "Retorno vinculado à remessa!" : "NF de Retorno Emitida!"}</div>
-                <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>Número: <strong>{retOk.numero}</strong></div>
-                <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-3)", wordBreak: "break-all", marginBottom: 20 }}>{retOk.chave}</div>
-                <OperationalButton data-arato-button="primary" onClick={() => setModalRetorno(null)} style={btnV}>Fechar</OperationalButton>
+            <div style={{ padding: "16px 22px", overflowY: "auto", flex: 1, display: "grid", gap: 14 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([["arato", "Emitir NF-e de remessa pelo Arato"], ["externa", "NF de remessa já emitida em outro sistema"]] as const).map(([m, t]) => (
+                  <button key={m} type="button" onClick={() => setModo(m)} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: modo === m ? 700 : 500,
+                    border: modo === m ? "1.5px solid #1A4870" : "0.5px solid var(--border)", background: modo === m ? "#D5E8F5" : "var(--bg-card)", color: modo === m ? "#0B2D50" : "var(--text-2)" }}>{t}</button>
+                ))}
               </div>
-            ) : (
-              <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
-                {/* Info resumo */}
-                <div style={{ background: "var(--bg-stripe)", borderRadius: 8, padding: "12px 14px", fontSize: 12, color: "var(--text-1)", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <div><span style={{ color: "var(--text-3)" }}>Destinatário:</span><br/><strong>{modalRetorno.destinatario_nome}</strong></div>
-                    <div><span style={{ color: "var(--text-3)" }}>CFOP Retorno:</span><br/>
-                      <span style={{ background: "#D5E8F5", color: "#0B2D50", borderRadius: 6, padding: "2px 7px", fontWeight: 700 }}>{modalRetorno.cfop_retorno}</span>
-                      <span style={{ marginLeft: 6, fontSize: 11, color: "var(--text-3)" }}>({modalRetorno.cfop_retorno === "5906" ? "Intra-estadual" : "Inter-estadual"})</span>
-                    </div>
-                    <div><span style={{ color: "var(--text-3)" }}>NF Remessa ref.:</span><br/><span style={{ fontFamily: "monospace", fontSize: 10 }}>{modalRetorno.nf_remessa_chave?.slice(0, 30)}…</span></div>
-                    <div><span style={{ color: "var(--text-3)" }}>Valor Total:</span><br/><strong>{fmtBRL(modalRetorno.valor_total)}</strong></div>
+
+              {modo === "externa" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 2fr 1fr", gap: 10, alignItems: "end" }}>
+                  <div><label style={lbl}>Número *</label><input value={ext.numero} onChange={e => setExt(p => ({ ...p, numero: e.target.value }))} style={inp} /></div>
+                  <div><label style={lbl}>Série</label><input value={ext.serie} onChange={e => setExt(p => ({ ...p, serie: e.target.value }))} style={inp} /></div>
+                  <div><label style={lbl}>Chave de acesso</label><input value={ext.chave} onChange={e => setExt(p => ({ ...p, chave: e.target.value }))} style={inp} /></div>
+                  <div>
+                    <label style={lbl}>XML (opcional)</label>
+                    <input type="file" accept=".xml" onChange={async e => { const f = e.target.files?.[0]; if (f) lerXmlExterno(await f.text()); }} style={{ fontSize: 11 }} />
                   </div>
                 </div>
+              )}
 
-                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                  {([["emitir", "Emitir NF de retorno pelo Arato"], ["vincular", "Vincular retorno já emitido (condomínio, armazém, outro sistema)"]] as const).map(([m, t]) => (
-                    <button key={m} type="button" onClick={() => { setRetModo(m); setRetErro(""); }}
-                      style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 12, fontWeight: retModo === m ? 700 : 500, cursor: "pointer",
-                        border: retModo === m ? "1.5px solid #1A4870" : "0.5px solid var(--border)", background: retModo === m ? "#D5E8F5" : "var(--bg-card)", color: retModo === m ? "#0B2D50" : "var(--text-2)" }}>{t}</button>
-                  ))}
-                </div>
-
-                {retModo === "vincular" && (
-                  <div style={{ marginBottom: 14 }}>
-                    <label data-arato-label="true" style={lbl}>NF de retorno recebida (ex.: emitida pela Luft) ou nota própria emitida fora</label>
-                    <input style={inp} value={retBusca} onChange={e => buscarDocsRetorno(e.target.value, modalRetorno)} placeholder="Nº da NF ou emitente" />
-                    <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, marginTop: 6, maxHeight: 200, overflowY: "auto" }}>
-                      {retDocs.length === 0 && <div style={{ padding: 10, fontSize: 12, color: "var(--text-3)" }}>Nenhuma NF encontrada. Digite o número ou o emitente, ou informe abaixo.</div>}
-                      {retDocs.map(d => (
-                        <div key={`${d.origem}:${d.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "0.5px solid var(--border)", fontSize: 12 }}>
-                          <span><strong>NF {d.numero}</strong> · {d.emitente ?? "—"} · {d.data ? d.data.split("-").reverse().join("/") : "—"} · {fmtBRL(d.valor ?? 0)}</span>
-                          <OperationalButton data-arato-button="primary" disabled={retEmitindo} onClick={() => vincularRetorno({ numero: d.numero, chave: d.chave, data: d.data, descricao: `NF ${d.numero} — ${d.emitente ?? ""}${d.origem === "nf_entrada" ? " (NF recebida)" : ""}` })}
-                            style={{ ...btnV, padding: "4px 10px", fontSize: 11 }}>Vincular</OperationalButton>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>NF de entrada de origem (opcional — traz os itens)</label>
+                  {nfOrigem ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", fontSize: 12 }}>
+                      <span><strong>NF {nfOrigem.numero}</strong> · {nfOrigem.emitente_nome ?? "—"} · {fmtData(nfOrigem.data_emissao)} · {fmtBRL(nfOrigem.valor_total)}</span>
+                      <button type="button" onClick={() => setNfOrigem(null)} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>trocar</button>
+                    </div>
+                  ) : (
+                    <>
+                      <input value={buscaNf} onChange={e => buscarNfsOrigem(e.target.value)} style={inp} placeholder="Nº da NF ou fornecedor" />
+                      {nfsOrigem.length > 0 && (
+                        <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, marginTop: 4, maxHeight: 160, overflowY: "auto" }}>
+                          {nfsOrigem.map(n => (
+                            <button key={n.id} type="button" onClick={() => escolherNfOrigem(n)} style={{ display: "flex", justifyContent: "space-between", width: "100%", padding: "6px 10px", background: "none", border: "none", borderBottom: "0.5px solid var(--border-table)", cursor: "pointer", fontSize: 12, color: "var(--text-1)", textAlign: "left" }}>
+                              <span>NF {n.numero} · {n.emitente_nome ?? "—"} · {fmtData(n.data_emissao)}</span><span>{fmtBRL(n.valor_total)}</span>
+                            </button>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", margin: "10px 0 6px" }}>Ou informe a NF de retorno:</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 130px auto", gap: 8, alignItems: "end" }}>
-                      <input style={inp} placeholder="Número" value={retManual.numero} onChange={e => setRetManual(p => ({ ...p, numero: e.target.value }))} />
-                      <input style={inp} placeholder="Chave de acesso (opcional)" value={retManual.chave} onChange={e => setRetManual(p => ({ ...p, chave: e.target.value }))} />
-                      <input style={inp} type="date" value={retManual.data} onChange={e => setRetManual(p => ({ ...p, data: e.target.value }))} />
-                      <OperationalButton data-arato-button="primary" disabled={retEmitindo} onClick={() => vincularRetorno({ numero: retManual.numero, chave: retManual.chave, data: retManual.data, descricao: `NF ${retManual.numero} (informada à mão)` })} style={{ ...btnV, padding: "7px 12px" }}>Vincular</OperationalButton>
-                    </div>
-                    {retErro && <div style={{ background: "#FDECEA", color: "#B91C1C", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginTop: 10 }}>{retErro}</div>}
-                  </div>
-                )}
-
-                {retModo === "emitir" && (<>
-                {/* Natureza */}
-                <div style={{ marginBottom: 14 }}>
-                  <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
-                  <input style={inp} value={retForm.natureza} onChange={e => setRetForm(p => ({ ...p, natureza: e.target.value }))} />
+                      )}
+                    </>
+                  )}
                 </div>
-
-                {/* Obs */}
-                <div style={{ marginBottom: 14 }}>
-                  <label data-arato-label="true" style={lbl}>Observações complementares (opcional)</label>
-                  <textarea style={{ ...inp, minHeight: 56, resize: "vertical" }}
-                    value={retForm.obs} onChange={e => setRetForm(p => ({ ...p, obs: e.target.value }))}
-                    placeholder="Ex: Retorno integral, produto em bom estado…" />
-                </div>
-
-                <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", marginBottom: 16 }}>
-                  Os itens da remessa original serão incluídos na NF de retorno.
-                  A NF de remessa será referenciada via &lt;NFref&gt;.
-                </div>
-
-                {retErro && (
-                  <div style={{ background: "#FDECEA", color: "#B91C1C", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginBottom: 14 }}>
-                    {retErro}
-                  </div>
-                )}
-
-                <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                  <OperationalButton data-arato-button="secondary" onClick={() => setModalRetorno(null)} style={btnR}>Cancelar</OperationalButton>
-                  <OperationalButton data-arato-button="primary" onClick={emitirRetorno} disabled={retEmitindo}
-                    style={{ ...btnV, opacity: retEmitindo ? 0.6 : 1 }}>
-                    {retEmitindo ? "Emitindo…" : "Emitir NF de Retorno →"}
-                  </OperationalButton>
-                </div>
-                </>)}
+                <div><label style={lbl}>Data da remessa</label><input type="date" value={dataRem} onChange={e => setDataRem(e.target.value)} style={inp} /></div>
               </div>
-            )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>Armazém (destinatário) *</label>
+                  <SelectBusca value={armazemId} onChange={escolherArmazem} placeholder="— selecionar —" options={pessoas.map(p => ({ value: p.id, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}` }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Depósito de origem *</label>
+                  <select value={depOrigem} onChange={e => setDepOrigem(e.target.value)} style={inp}>
+                    <option value="">Selecionar…</option>
+                    {depsProprios.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Depósito do armazém *</label>
+                  <select value={depTerceiro} onChange={e => setDepTerceiro(e.target.value)} style={inp}>
+                    <option value="">Selecionar…</option>
+                    {depsTerceiros.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                  </select>
+                  {armazem && !depTerceiro && <button type="button" onClick={criarDepositoArmazem} style={{ marginTop: 4, background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 11, textDecoration: "underline", padding: 0 }}>+ criar depósito &quot;Armazém {armazem.nome}&quot;</button>}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "110px 2fr 2fr", gap: 12 }}>
+                <div><label style={lbl}>CFOP *</label><input value={cfop} onChange={e => setCfop(e.target.value.replace(/\D/g, "").slice(0, 4))} style={inp} /></div>
+                <div><label style={lbl}>Natureza da operação</label><input value={natureza} onChange={e => setNatureza(e.target.value)} style={inp} /></div>
+                {modo === "arato" ? (
+                  <div>
+                    <label style={lbl}>Emitente da NF</label>
+                    <select value={emitenteSel} onChange={e => setEmitenteSel(e.target.value)} style={inp}>
+                      <option value="">{dados.emitentes.length === 1 ? dados.emitentes[0].nome : "Automático (dono da NF de origem)"}</option>
+                      {dados.emitentes.length > 1 && dados.emitentes.map(e => <option key={`${e.modulo}|${e.fazenda_id}`} value={`${e.modulo}|${e.fazenda_id}`}>{e.nome} — {e.cpf}{e.ie ? ` · IE ${e.ie}` : ""}</option>)}
+                    </select>
+                  </div>
+                ) : <div />}
+              </div>
+
+              <div>
+                <label style={lbl}>Itens (no cadastro e na unidade do estoque)</label>
+                <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                    <thead><tr>{["Produto do cadastro", "NCM", "Un.", "Quantidade", "Valor unit.", "Total", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {itens.map(i => (
+                        <tr key={i.key}>
+                          <td style={{ ...td, minWidth: 260 }}>
+                            <SelectBusca value={i.insumo_id} onChange={v => escolherInsumo(i.key, v)} placeholder={i.descricao || "Produto…"} options={insumos.map(s => ({ value: s.id, label: `${s.nome} (${s.unidade})` }))} />
+                          </td>
+                          <td style={td}><input value={i.ncm} onChange={e => setItem(i.key, { ncm: e.target.value.replace(/\D/g, "").slice(0, 8) })} style={{ ...inp, width: 100 }} /></td>
+                          <td style={td}>{i.unidade || "—"}</td>
+                          <td style={td}><input value={i.quantidade} onChange={e => setItem(i.key, { quantidade: e.target.value })} style={{ ...inp, width: 110 }} /></td>
+                          <td style={td}><input value={i.valor_unitario} onChange={e => setItem(i.key, { valor_unitario: e.target.value })} style={{ ...inp, width: 110 }} /></td>
+                          <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(numBR(i.quantidade) * numBR(i.valor_unitario))}</td>
+                          <td style={td}>{itens.length > 1 && <button type="button" onClick={() => setItens(p => p.filter(x => x.key !== i.key))} style={{ background: "none", border: "none", color: "#B91C1C", cursor: "pointer" }}>×</button>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12 }}>
+                  <button type="button" onClick={() => setItens(p => [...p, novoItem()])} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, padding: 0 }}>+ item</button>
+                  <strong>Total {fmtBRL(totalItens)}</strong>
+                </div>
+              </div>
+
+              {modo === "arato" && <BlocoTransporte d={dados} t={tr} set={setTr} inp={inp} lbl={lbl} />}
+              <div><label style={lbl}>Observação / informações complementares</label><input value={obs} onChange={e => setObs(e.target.value)} style={inp} /></div>
+              {erro && <div style={{ padding: 10, background: "#FCEBEB", color: "#791F1F", borderRadius: 8, fontSize: 13 }}>{erro}</div>}
+            </div>
+            <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={btnR}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}>{salvando ? "Salvando…" : modo === "arato" ? "Emitir NF-e de remessa" : "Registrar remessa"}</OperationalButton>
+            </div>
           </div>
         </div>
       )}
     </>
   );
+}
+
+export default function RemessasPage() {
+  return <Suspense fallback={null}><RemessasConteudo /></Suspense>;
 }
