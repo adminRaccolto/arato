@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zi",
+    data: "27/10/2026",
+    titulo: "Lista completa de serviços na NFS-e",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Na NFS-e (passo Serviço & Discriminação), o código de serviço tem a lista completa da LC 116/2003 (cerca de 200 itens: saúde, medicina, veterinária, informática, contabilidade, advocacia, transporte, armazenagem…), agrupada e com busca por código ou nome." },
+      { tipo: "correcao", texto: "Descrições corrigidas conforme a lei: 17.06 é propaganda e publicidade (suporte em informática é 1.07), 17.09 é perícias e análises técnicas, 20.01 é serviço portuário (armazenagem é 11.04) e 22.01 é exploração de rodovia (fisioterapia é 4.08)." },
+      { tipo: "melhoria", texto: "Código vindo da prefeitura ou do SIEG em outro formato (ex.: 04.02.01) é reconhecido como o item da lista (4.02)." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → NFS-e → Serviço",
+  },
+  {
     versao: "2026.10.27-zh",
     data: "27/10/2026",
     titulo: "Funcionário como fornecedor no Contas a Pagar",

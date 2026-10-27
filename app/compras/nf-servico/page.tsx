@@ -14,6 +14,7 @@ import SelectBusca from "../../../components/SelectBusca";
 import { listarPessoasDaConta, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
+import { LC116, codigoLC116 } from "../../../lib/fiscal/lc116";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos
@@ -48,22 +49,6 @@ const STATUS_META: Record<string, { bg: string; cl: string; label: string }> = {
 // ─────────────────────────────────────────────────────────────
 // Códigos LC 116/2003 — mais comuns no agronegócio
 // ─────────────────────────────────────────────────────────────
-const LC116: { codigo: string; descricao: string }[] = [
-  { codigo: "7.01",  descricao: "7.01 — Engenharia, agronomia, agrimensura e consultoria técnica" },
-  { codigo: "7.16",  descricao: "7.16 — Florestamento, reflorestamento, semeadura, adubação e reparação de solo" },
-  { codigo: "7.17",  descricao: "7.17 — Escoramento, contenção de encostas e serviços congêneres" },
-  { codigo: "14.01", descricao: "14.01 — Lubrificação, manutenção e reparação de máquinas e equipamentos" },
-  { codigo: "14.02", descricao: "14.02 — Assistência técnica" },
-  { codigo: "14.06", descricao: "14.06 — Instalação e montagem de aparelhos, máquinas e equipamentos" },
-  { codigo: "16.01", descricao: "16.01 — Serviços de transporte de natureza municipal" },
-  { codigo: "17.01", descricao: "17.01 — Assessoria ou consultoria de qualquer natureza" },
-  { codigo: "17.06", descricao: "17.06 — Suporte técnico em informática" },
-  { codigo: "17.09", descricao: "17.09 — Planejamento, organização e administração" },
-  { codigo: "20.01", descricao: "20.01 — Serviços de armazenamento, guarda e conservação de mercadorias" },
-  { codigo: "22.01", descricao: "22.01 — Serviços de fisioterapia (saúde trabalhadores)" },
-  { codigo: "31.01", descricao: "31.01 — Serviços técnicos em edificações, eletrônica, mecânica e telecomunicações" },
-  { codigo: "outros", descricao: "Outro código (informar manualmente)" },
-];
 
 // ─────────────────────────────────────────────────────────────
 // Tipo local
@@ -446,7 +431,10 @@ export default function NfServicoPage() {
       observacao:             nf.observacao ?? "",
       forma_pagamento:        "",
     });
-    const isLivre = !LC116.find(c => c.codigo === nf.codigo_servico);
+    // Código da prefeitura/SIEG em outro formato ("04.02.01") casa com o item da lista ("4.02")
+    const naLista = codigoLC116(nf.codigo_servico);
+    if (naLista && naLista !== nf.codigo_servico) setCab(prev => ({ ...prev, codigo_servico: naLista }));
+    const isLivre = !naLista;
     if (isLivre && nf.codigo_servico) {
       setCab(prev => ({ ...prev, codigo_servico: "outros" }));
       setCodigoLivre(nf.codigo_servico ?? "");
@@ -1391,10 +1379,9 @@ export default function NfServicoPage() {
                   <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label data-arato-label="true" style={lbl}>Código de Serviço — Lei Complementar 116/2003</label>
-                      <SelectField value={cab.codigo_servico} onChange={e => setCab(p=>({...p,codigo_servico:e.target.value}))} style={inp}>
-                        <option value="">Selecionar código…</option>
-                        {LC116.map(c => <option key={c.codigo} value={c.codigo}>{c.descricao}</option>)}
-                      </SelectField>
+                      <SelectBusca value={cab.codigo_servico} onChange={v => setCab(p=>({...p,codigo_servico:v}))} style={inp}
+                        placeholder="Buscar por código ou nome (ex.: médic, 4.01)…"
+                        options={[...LC116.map(c => ({ value: c.codigo, label: c.descricao, group: c.grupo })), { value: "outros", label: "Outro código (informar manualmente)", group: "Outros" }]} />
                     </div>
                     <div>
                       {cab.codigo_servico === "outros" ? (
