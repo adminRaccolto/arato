@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-y",
+    data: "27/10/2026",
+    titulo: "CP mostra o que é previsão",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O título de previsão (Previsão de Gastos e folha em rascunho) aparecia no grid do CP igual a um título real, com Baixar e seleção para lote e borderô. Agora aparece com fundo cinza, a marca PREVISÃO e o status Previsão, sem Baixar, sem seleção para lote/borderô e fora da Conciliação Bancária." },
+      { tipo: "melhoria", texto: "No lugar de Baixar, o botão ⚡ Efetivar abre o título já como real para conferir o valor e salvar. No rodapé do grid, as previsões somam à parte e não entram no Saldo em aberto. Requer a Seção 376." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.27-x",
     data: "27/10/2026",
     titulo: "Nota própria de remessa ligada à NF de entrada",

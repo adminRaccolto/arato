@@ -505,6 +505,8 @@ function ConciliacaoInner() {
         .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id,lote_id")
         .in("fazenda_id", fazIds)
         .not("status", "eq", "cancelado")
+        // previsão (Previsão de Gastos / folha em rascunho) não é pagamento: não concilia (o banco recusa a baixa)
+        .or("natureza.is.null,natureza.neq.previsao")
         // desempate por id: só data_vencimento é chave não-única e a paginação por range
         // pulava/duplicava lançamentos na fronteira das páginas.
         .order("data_vencimento", { ascending: false })
@@ -824,6 +826,7 @@ function ConciliacaoInner() {
         .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id,lote_id")
         .in("fazenda_id", fazendaIds)
         .not("status", "eq", "cancelado")
+        .or("natureza.is.null,natureza.neq.previsao")
         .gte("data_vencimento", iniMatch)
         .lte("data_vencimento", fimMatch)
         .order("id").range(de, ate));

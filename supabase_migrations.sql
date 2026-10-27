@@ -18111,3 +18111,27 @@ DROP TRIGGER IF EXISTS trg_0_dividir_titulo_parcial ON empresa_lancamentos;
 CREATE TRIGGER trg_0_dividir_titulo_parcial BEFORE UPDATE ON empresa_lancamentos
   FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 376 — CP: o grid sabe que o título é PREVISÃO
+-- =============================================================================
+-- rel_lancamentos (fonte do grid do CP) não tinha a natureza do título: a previsão (Previsão de Gastos, folha em
+-- rascunho) aparecia igual a um CP real, com Baixar e seleção para lote/borderô. Mantém a natureza no espelho com um
+-- gatilho próprio, que roda depois de trg_rel_lancamento_produtor (ordem alfabética: "zz"). Empresa não tem previsão.
+ALTER TABLE rel_lancamentos ADD COLUMN IF NOT EXISTS natureza text;
+
+CREATE OR REPLACE FUNCTION fn_rel_lancamento_natureza() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE rel_lancamentos SET natureza = NEW.natureza
+   WHERE id = NEW.id AND origem_tabela = 'lancamentos' AND natureza IS DISTINCT FROM NEW.natureza;
+  RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS trg_zz_rel_lancamento_natureza ON lancamentos;
+CREATE TRIGGER trg_zz_rel_lancamento_natureza AFTER INSERT OR UPDATE ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_rel_lancamento_natureza();
+
+UPDATE rel_lancamentos r SET natureza = l.natureza
+  FROM lancamentos l
+ WHERE l.id = r.id AND r.origem_tabela = 'lancamentos' AND r.natureza IS DISTINCT FROM l.natureza;
+NOTIFY pgrst, 'reload schema';

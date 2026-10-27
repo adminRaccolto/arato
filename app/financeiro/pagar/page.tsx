@@ -109,7 +109,12 @@ type RelLancamento = {
   conta_bancaria: string | null;
   conta_bancaria_nome: string | null;
   observacao: string | null;
+  natureza?: string | null;   // "previsao" = Previsão de Gastos ou folha em rascunho (Seção 376); sem a seção, vale a origem
 };
+
+// Título de previsão: não é dívida real ainda — não se paga, não entra em lote nem em borderô; vira real ao efetivar
+// (Previsão de Gastos) ou ao fechar a folha.
+const ehPrevisao = (l: Pick<RelLancamento, "natureza" | "origem_lancamento">) => l.natureza === "previsao" || l.origem_lancamento === "previsao";
 
 const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
   { v: "em_aberto", label: "Em Aberto", bg: "#E8E8E8", color: "#0D0D0D" },
@@ -157,7 +162,8 @@ const ORIGEM_LANC_LABEL: Record<string, string> = {
   arrendamento: "Arrendamento", tesouraria: "Tesouraria", plantio: "Plantio",
   contrato_financeiro: "Contrato Financeiro", consorcio: "Consórcio", manual: "Manual",
   compra_terra: "Compra de Terra", nf_servico: "NF de Serviço", seguro: "Seguro",
-  folha: "Folha de Pagamento", nf_entrada_empresa: "NF de Entrada",
+  folha: "Folha de Pagamento", nf_entrada_empresa: "NF de Entrada", previsao: "Previsão de Gastos",
+  cartao_fatura: "Fatura de Cartão",
 };
 
 const FORMAS_PAGAMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
@@ -930,6 +936,17 @@ export default function ContasAPagarPage() {
   // ── Editar lançamento existente — reaproveita o mesmo modal, sem a parte
   // de Condição de Pagamento: em edição, "Parcelado" + "Gerar" divide o título em
   // parcelas (a 1ª é o próprio título editado; as demais nascem com o mesmo agrupador).
+  // Previsão vira título real: folha só fechando a folha; Previsão de Gastos abre o título já como "real" para conferir
+  // o valor e salvar (o salvar consome a previsão, como o ⚡ Efetivar de dentro do título)
+  async function efetivarPrevisao(l: RelLancamento) {
+    if (l.origem_lancamento === "folha") {
+      alert("Este salário é previsão de uma folha em rascunho. Para virar título real, feche a folha em Financeiro → Folha de Pagamento.");
+      return;
+    }
+    await abrirEditar(l);
+    setNovoForm(p => ({ ...p, natureza: "real" }));
+  }
+
   async function abrirEditar(l: RelLancamento) {
     setErroNovo("");
     setNovoTab("principal");
@@ -1300,7 +1317,8 @@ export default function ContasAPagarPage() {
 
   const totalPagar = linhas.reduce((s, l) => s + (emReais(l, l.valor) ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
   const totalPago = linhas.reduce((s, l) => s + (l.valor_pago ?? (l.status_normalizado === "baixado" ? emReais(l, l.valor) ?? 0 : 0)), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).liquidado, 0);
-  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
+  const totalAberto = linhas.filter(l => !ehPrevisao(l) && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
+  const totalPrevisto = linhas.filter(l => ehPrevisao(l) && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
   // Reintroduzido 01/10/2026 — a tela antiga do produtor tinha isso, mas só
@@ -1329,7 +1347,7 @@ export default function ContasAPagarPage() {
   }, []);
 
   const podeSelecionar = (l: RelLancamento) =>
-    !tituloVinculado(l, vinculos) && saldoBase(l) > 0 && (l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial");
+    !ehPrevisao(l) && !tituloVinculado(l, vinculos) && saldoBase(l) > 0 && (l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial");
   const toggleSel = (id: string) => setSelecionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const idsSelecionaveis = linhas.filter(podeSelecionar).map(l => l.id);
   const toggleTodos = () => {
@@ -1916,7 +1934,10 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px" }}>{l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}</td>
                   ),
                   descricao: (
-                    <td style={{ padding: "7px 10px" }}>{l.descricao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>
+                      {ehPrevisao(l) && <span title="Ainda não é dívida real: efetive (Previsão de Gastos) ou feche a folha para pagar" style={{ fontSize: 9, fontWeight: 700, background: "#2A2A2A", color: "#fff", padding: "1px 6px", borderRadius: 6, marginRight: 6 }}>PREVISÃO</span>}
+                      {l.descricao ?? "—"}
+                    </td>
                   ),
                   operacao: (
                     <td style={{ padding: "7px 10px" }}>{l.operacao_gerencial_nome ?? "—"}</td>
@@ -1978,12 +1999,15 @@ export default function ContasAPagarPage() {
                   ),
                   acoes: (
                     <td style={{ textAlign: "right" }}>
-                      {["em_aberto", "vencido", "parcial"].includes(l.status_normalizado ?? "") ? <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); abrirBaixa(l); }}>Baixar</OperationalButton> : <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopover({ l, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton>}
+                      {ehPrevisao(l) && ["em_aberto", "vencido"].includes(l.status_normalizado ?? "") ? <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); efetivarPrevisao(l); }}>⚡ Efetivar</OperationalButton>
+                      : ["em_aberto", "vencido", "parcial"].includes(l.status_normalizado ?? "") ? <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); abrirBaixa(l); }}>Baixar</OperationalButton> : <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopover({ l, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton>}
                     </td>
                   ),
                   status: (
                     <td style={{ padding: "7px 10px" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>
+                      {ehPrevisao(l) && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado"
+                        ? <span style={{ fontSize: 10, fontWeight: 700, background: "#E8E8E8", color: "#2A2A2A", padding: "2px 8px", borderRadius: 8, border: "0.5px dashed #888" }}>Previsão</span>
+                        : <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>}
                     </td>
                   ),
                 };
@@ -1993,7 +2017,7 @@ export default function ContasAPagarPage() {
                       if ((e.target as HTMLElement).closest("button,input,select,a")) return;
                       setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
                     }}
-                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined, cursor: "pointer" }}>
+                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : ehPrevisao(l) ? "#F6F6F4" : undefined, color: ehPrevisao(l) ? "#555" : undefined, cursor: "pointer" }}>
                     {colunasVisiveis.map(c => <Fragment key={c.key}>{celulasGrid[c.key]}</Fragment>)}
                   </tr>
                 );
@@ -2005,7 +2029,7 @@ export default function ContasAPagarPage() {
           </OperationalGrid>
         </div>
         {!carregando && <GridPagination pagination={gridPagination} />}
-        <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span><span>Pago: <strong>{fmtBRL(totalPago)}</strong></span><span>Saldo em aberto: <strong>{fmtBRL(totalAberto)}</strong></span></div></div>
+        <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span><span>Pago: <strong>{fmtBRL(totalPago)}</strong></span><span>Saldo em aberto: <strong>{fmtBRL(totalAberto)}</strong></span>{totalPrevisto > 0 && <span>Previsões (não efetivadas): <strong>{fmtBRL(totalPrevisto)}</strong></span>}</div></div>
       </div>
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}
@@ -2091,7 +2115,9 @@ export default function ContasAPagarPage() {
                     <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
                       {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                     </span>
-                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
+                    {ehPrevisao(l) && aberto
+                      ? <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: "#2A2A2A", color: "#fff" }}>Previsão — não é título real</span>
+                      : <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>}
                     <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cp" zIndex={1500} />
                     <OperationalButton data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</OperationalButton>
                   </div>
@@ -2173,7 +2199,10 @@ export default function ContasAPagarPage() {
               </div>
               {/* Ações — coluna vertical na margem direita */}
               <div  style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6, maxHeight: "85vh", overflowY: "auto" }}>
-                {aberto && (
+                {aberto && ehPrevisao(l) && (
+                  <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); efetivarPrevisao(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#E8F5EC", color: "#166534", border: "0.5px solid #16A34A", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>⚡ Efetivar</OperationalButton>
+                )}
+                {aberto && !ehPrevisao(l) && (
                   <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</OperationalButton>
                 )}
                 {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
