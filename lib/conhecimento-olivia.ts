@@ -158,6 +158,8 @@ Estes pontos foram confirmados lendo o código de execução, não o texto da te
 
 ## MÓDULOS — O QUE CADA UM FAZ
 
+**Pedido de Compra: unidade do item**: o item do pedido usa sempre a unidade do cadastro do item (a mesma da NF e do estoque) e não dá para trocar. Pedido antigo em outra unidade (ex.: bag com item em kg) mostra o botão "pedido em bag · usar kg". Com conversão segura (t ↔ kg, g ↔ kg, mL ↔ L, lt = L) o botão converte quantidade e preço. Sem conversão (bag, saca, bombona, dose, un) ele só troca a unidade, e a quantidade precisa ser redigitada na unidade do cadastro. Em NFs Vinculadas, a linha cuja unidade não converte mostra "Pedido em bag, NF em kg — sem conversão; ajuste o pedido", sem % nem saldo. A entrega dessa linha não é somada enquanto o pedido não for ajustado.
+
 **Pedido de Compra × NF de outro emitente**: na NF de entrada, ao escolher um pedido cujo fornecedor é outra empresa (raiz do CNPJ diferente da do emitente da NF), o sistema pede confirmação. Isso só vale na compra por conta e ordem: pedido feito com a revenda e NF emitida pela fábrica ou mineradora. O emitente da NF nunca é trocado, e o título a pagar fica com o fornecedor do pedido. Filial do mesmo CNPJ conta como a mesma empresa e aparece com ★ na lista de pedidos. Dentro do pedido (NFs Vinculadas), a lista mostra só as NFs processadas, com a etiqueta "outro emitente" quando for o caso. NFs ainda pendentes ligadas ao pedido aparecem numa linha de aviso e não contam como entregue. Se o vínculo estiver errado, abra a NF e use Desvincular.
 
 ### Cadastros → Pessoas e Entidades

@@ -22,11 +22,12 @@ import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { fatorUnidade, unidadePadrao } from "../../lib/estoque/unidades";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import {
   listarPedidosCompraRelDaConta, buscarPedidoCompraPorId, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
-  listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra, alocarEntregaPorLinha,
+  listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra, alocarEntregaPorLinha, linhasSemConversao,
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
@@ -980,13 +981,15 @@ export default function ComprasPage() {
             const nomeLower = ins.nome.toLowerCase();
             return nomeLower.includes(descLower.slice(0, 10)) || descLower.includes(nomeLower.slice(0, 10));
           });
+          // Item achado no cadastro: quantidade e preço vão para a unidade do cadastro quando a conversão é segura
+          const fatorIa = insumoMatch?.unidade ? fatorUnidade(it.unidade || insumoMatch.unidade, insumoMatch.unidade) : null;
           return {
             tipo_item: "produto" as const,
             insumo_id: insumoMatch?.id ?? "",
             nome_item: it.descricao,
-            unidade: it.unidade || insumoMatch?.unidade || "UN",
-            quantidade: String(it.quantidade ?? ""),
-            valor_unitario: String(it.valor_unitario ?? ""),
+            unidade: fatorIa !== null && insumoMatch ? insumoMatch.unidade : (it.unidade || insumoMatch?.unidade || "UN"),
+            quantidade: String(it.quantidade == null ? "" : fatorIa !== null ? +(it.quantidade * fatorIa).toFixed(4) : it.quantidade),
+            valor_unitario: String(it.valor_unitario == null ? "" : fatorIa !== null ? +(it.valor_unitario / fatorIa).toFixed(6) : it.valor_unitario),
             desconto_unitario: "0",
             qtd_cancelada: "0",
             qtd_entregue: 0,
@@ -2287,9 +2290,37 @@ export default function ComprasPage() {
                                   )}
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 60 }}>
-                                  <SelectField style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, unidade: e.target.value } : x))}>
-                                    {["kg","sc","bag","t","L","mL","g","un","cx","m","m²","m³","hr", ...(it.unidade && !["kg","sc","bag","t","L","mL","g","un","cx","m","m²","m³","hr"].includes(it.unidade) ? [it.unidade] : [])].map(u => <option key={u} value={u}>{u}</option>)}
-                                  </SelectField>
+                                  {(() => {
+                                    // Item do cadastro: a unidade é sempre a do cadastro (a mesma da NF e do estoque) — pedido em
+                                    // outra unidade (bag × kg) fazia a entrega não bater. Linha antiga noutra unidade: aviso + ajuste.
+                                    const insCad = it.insumo_id ? insumos.find(i => i.id === it.insumo_id) : undefined;
+                                    if (insCad?.unidade) {
+                                      const unCad = insCad.unidade;
+                                      const igual = unidadePadrao(it.unidade) === unidadePadrao(unCad);
+                                      const fator = fatorUnidade(it.unidade, unCad);
+                                      return (
+                                        <div title="Unidade do cadastro do item (a mesma da NF e do estoque)">
+                                          <div style={{ ...inp, fontSize: 12, background: "var(--bg-page)", color: "var(--text-2)" }}>{igual ? it.unidade : unCad}</div>
+                                          {!igual && (
+                                            <button type="button" onClick={() => setItens(prev => prev.map((x, j) => {
+                                              if (j !== it._idx) return x;
+                                              if (fator === null) return { ...x, unidade: unCad };
+                                              const q = parseFloat(x.quantidade) || 0, vu = parseFloat(x.valor_unitario) || 0, dsc = parseFloat(x.desconto_unitario) || 0;
+                                              return { ...x, unidade: unCad, quantidade: String(+(q * fator).toFixed(4)), valor_unitario: String(+(vu / fator).toFixed(6)), desconto_unitario: String(+(dsc / fator).toFixed(6)) };
+                                            }))} style={{ marginTop: 2, fontSize: 10, color: "#7A5200", background: "#FBF3E0", border: "0.5px solid #E8D3A0", borderRadius: 6, padding: "1px 5px", cursor: "pointer", whiteSpace: "nowrap" }}
+                                              title={fator === null ? `Pedido em ${it.unidade}; o item é em ${unCad}. Ao ajustar, informe a quantidade em ${unCad}.` : `Converte ${it.unidade} → ${unCad} (quantidade e preço)`}>
+                                              pedido em {it.unidade} · usar {unCad}
+                                            </button>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                    return (
+                                      <SelectField style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, unidade: e.target.value } : x))}>
+                                        {["kg","sc","bag","t","L","mL","g","un","cx","m","m²","m³","hr", ...(it.unidade && !["kg","sc","bag","t","L","mL","g","un","cx","m","m²","m³","hr"].includes(it.unidade) ? [it.unidade] : [])].map(u => <option key={u} value={u}>{u}</option>)}
+                                      </SelectField>
+                                    );
+                                  })()}
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 90 }}>
                                   <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={4} value={it.quantidade} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: v } : x))} placeholder="0" />
@@ -2492,6 +2523,11 @@ export default function ComprasPage() {
           modalEntrega.itens,
           nfsFiscaisItens.filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? "")),
         );
+        // Linha pedida numa unidade sem conversão para a da NF (pedido antigo em bag × NF em kg): não mostra % nem saldo
+        const semConversao = linhasSemConversao(
+          modalEntrega.itens,
+          nfsFiscaisItens.filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? "")),
+        );
 
         const NF_STATUS: Record<string, { label: string; bg: string; color: string }> = {
           digitando:  { label: "Digitando",  bg: "#F4F6FA",  color: "#555"     },
@@ -2542,6 +2578,18 @@ export default function ComprasPage() {
                       const cancelada = it.qtd_cancelada ?? 0;
                       const pendente  = Math.max(0, it.quantidade - cancelada - entregue);
                       const pct       = it.quantidade > 0 ? (entregue / Math.max(1, it.quantidade - cancelada)) * 100 : 0;
+                      const unNf      = ehFiscal ? semConversao.get(it.id) : undefined;
+                      if (unNf) return (
+                        <tr key={it.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                          <td style={{ padding: "8px 10px" }}>{it.nome_item}</td>
+                          <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
+                          <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
+                          <td colSpan={3} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, color: "#7A5200" }}
+                            title="Edite o pedido e use a unidade do cadastro do item para acompanhar a entrega">
+                            Pedido em {it.unidade}, NF em {unNf} — sem conversão; ajuste o pedido para {unNf}
+                          </td>
+                        </tr>
+                      );
                       return (
                         <tr key={it.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                           <td style={{ padding: "8px 10px" }}>{it.nome_item}</td>

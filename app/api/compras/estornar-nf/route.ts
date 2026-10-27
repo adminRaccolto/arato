@@ -4,62 +4,10 @@ import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido"
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
+import { alocarEntregaPorLinha } from "../../../../lib/compras/entrega-pedido";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../../../../lib/supabase-servidor";
 
-// Espelha lib/db.ts:alocarEntregaPorLinha — duplicado aqui pelo mesmo motivo
-// do resto do arquivo (client de service_role, não o anônimo do browser).
-// Pedido pode ter o mesmo produto em mais de uma linha (embalagens ou valor
-// fiscal por unidade diferentes) — calcular a entrega só por insumo_id
-// (somar tudo e aplicar o mesmo total em cada linha) fazia uma linha passar
-// de 100% enquanto a outra, sem nenhuma entrega de verdade, mostrava o
-// mesmo número. Prioriza o vínculo exato (nf_entrada_itens.pedido_item_id,
-// escolhido na Associação de Produtos quando há ambiguidade); cai no
-// fallback por insumo_id (preenche as linhas em ordem) só pra itens sem
-// esse vínculo.
-function alocarEntregaPorLinha(
-  linhas: { id: string; insumo_id?: string | null; quantidade: number }[],
-  nfItens: { insumo_id?: string | null; pedido_item_id?: string | null; quantidade: number }[],
-): Map<string, number> {
-  const entregue = new Map<string, number>();
-  const porInsumo = new Map<string, typeof linhas>();
-  for (const l of linhas) {
-    if (!l.insumo_id) continue;
-    entregue.set(l.id, 0);
-    const grupo = porInsumo.get(l.insumo_id);
-    if (grupo) grupo.push(l);
-    else porInsumo.set(l.insumo_id, [l]);
-  }
-
-  const naoVinculadoPorInsumo = new Map<string, number>();
-  for (const nf of nfItens) {
-    if (!nf.insumo_id) continue;
-    if (nf.pedido_item_id && entregue.has(nf.pedido_item_id)) {
-      entregue.set(nf.pedido_item_id, (entregue.get(nf.pedido_item_id) ?? 0) + nf.quantidade);
-    } else {
-      naoVinculadoPorInsumo.set(nf.insumo_id, (naoVinculadoPorInsumo.get(nf.insumo_id) ?? 0) + nf.quantidade);
-    }
-  }
-
-  for (const [insumoId, linhasDoProduto] of porInsumo) {
-    let restante = naoVinculadoPorInsumo.get(insumoId) ?? 0;
-    if (restante <= 0) continue;
-    for (const l of linhasDoProduto) {
-      if (restante <= 0) break;
-      const jaAlocado = entregue.get(l.id) ?? 0;
-      const capacidade = Math.max(0, l.quantidade - jaAlocado);
-      const aplicar = Math.min(restante, capacidade);
-      entregue.set(l.id, jaAlocado + aplicar);
-      restante -= aplicar;
-    }
-    if (restante > 0 && linhasDoProduto.length > 0) {
-      const ultima = linhasDoProduto[linhasDoProduto.length - 1];
-      entregue.set(ultima.id, (entregue.get(ultima.id) ?? 0) + restante);
-    }
-  }
-
-  return entregue;
-}
 
 // Pedido "fiscal" nunca passa por registrarEntrega — a quantidade entregue
 // vem das NFs processadas vinculadas a ele; sem recalcular aqui, o pedido
@@ -72,7 +20,7 @@ async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: stri
   // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado.
   if (ped.status === "rascunho" || ped.status === "cancelado") return;
 
-  const { data: itens } = await sb.from("pedidos_compra_itens").select("id, insumo_id, quantidade, qtd_cancelada, qtd_entregue").eq("pedido_id", pedido_id);
+  const { data: itens } = await sb.from("pedidos_compra_itens").select("id, insumo_id, quantidade, qtd_cancelada, qtd_entregue, unidade").eq("pedido_id", pedido_id);
   if (!itens?.length) return;
 
   // Gate por NF de verdade vinculada, não pela flag `fiscal` (pode estar
@@ -81,9 +29,9 @@ async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: stri
   if (!nfsVinculadas?.length) return;
   const nfIds = nfsVinculadas.filter(n => n.status === "processada").map(n => n.id);
 
-  let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number }[] = [];
+  let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number; unidade: string | null }[] = [];
   if (nfIds.length) {
-    const { data } = await sb.from("nf_entrada_itens").select("insumo_id, pedido_item_id, quantidade").in("nf_entrada_id", nfIds);
+    const { data } = await sb.from("nf_entrada_itens").select("insumo_id, pedido_item_id, quantidade, unidade").in("nf_entrada_id", nfIds);
     nfItens = data ?? [];
   }
 

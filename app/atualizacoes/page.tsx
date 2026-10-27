@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-e",
+    data: "27/10/2026",
+    titulo: "Pedido de Compra na unidade do cadastro do item",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O item do pedido de compra usa sempre a unidade do cadastro do item, que é a mesma da NF e do estoque. Pedido antigo em outra unidade mostra o aviso \"pedido em bag · usar kg\". Quando a conversão é segura (t ↔ kg, lt = L), o ajuste converte quantidade e preço sozinho." },
+      { tipo: "correcao", texto: "Na entrega do pedido, NF e pedido em unidades diferentes não somam mais como se fossem iguais, o que gerava casos como \"71.520 de 97 bags\" (73.732%). Conversões seguras são feitas; sem conversão, a linha mostra o aviso para ajustar o pedido, em vez de um percentual errado." },
+    ],
+    onde: "Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.27-d",
     data: "27/10/2026",
     titulo: "NF de entrada não associa mais item por princípio ativo",

@@ -16,6 +16,7 @@ import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular
 import { cached, invalidateCache } from "./cache";
 import { vencimentoSalario } from "./folha-calculo";
 import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
+import { alocarEntregaPorLinha, linhasSemConversao } from "./compras/entrega-pedido";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -5480,55 +5481,7 @@ export async function encerrarPedidoCompra(
 // primeiro) até completar a quantidade pedida de cada uma; sobra além da
 // capacidade de todas as linhas vai pra última, pra nunca "sumir" valor
 // que a NF realmente informou.
-export function alocarEntregaPorLinha(
-  linhas: { id: string; insumo_id?: string | null; quantidade: number }[],
-  nfItens: { insumo_id?: string | null; pedido_item_id?: string | null; quantidade: number }[],
-): Map<string, number> {
-  const entregue = new Map<string, number>();
-  const porInsumo = new Map<string, typeof linhas>();
-  for (const l of linhas) {
-    if (!l.insumo_id) continue;
-    entregue.set(l.id, 0);
-    const grupo = porInsumo.get(l.insumo_id);
-    if (grupo) grupo.push(l);
-    else porInsumo.set(l.insumo_id, [l]);
-  }
-
-  // 1. Vínculo exato primeiro
-  const naoVinculadoPorInsumo = new Map<string, number>();
-  for (const nf of nfItens) {
-    if (!nf.insumo_id) continue;
-    if (nf.pedido_item_id && entregue.has(nf.pedido_item_id)) {
-      entregue.set(nf.pedido_item_id, (entregue.get(nf.pedido_item_id) ?? 0) + nf.quantidade);
-    } else {
-      naoVinculadoPorInsumo.set(nf.insumo_id, (naoVinculadoPorInsumo.get(nf.insumo_id) ?? 0) + nf.quantidade);
-    }
-  }
-
-  // 2. Fallback: distribui o não-vinculado entre as linhas do mesmo produto,
-  // preenchendo a capacidade restante de cada uma em ordem.
-  for (const [insumoId, linhasDoProduto] of porInsumo) {
-    let restante = naoVinculadoPorInsumo.get(insumoId) ?? 0;
-    if (restante <= 0) continue;
-    for (const l of linhasDoProduto) {
-      if (restante <= 0) break;
-      const jaAlocado = entregue.get(l.id) ?? 0;
-      const capacidade = Math.max(0, l.quantidade - jaAlocado);
-      const aplicar = Math.min(restante, capacidade);
-      entregue.set(l.id, jaAlocado + aplicar);
-      restante -= aplicar;
-    }
-    // Sobra além da capacidade de todas as linhas — não perde o valor,
-    // acumula na última linha do produto (sinaliza divergência real em vez
-    // de escondê-la).
-    if (restante > 0 && linhasDoProduto.length > 0) {
-      const ultima = linhasDoProduto[linhasDoProduto.length - 1];
-      entregue.set(ultima.id, (entregue.get(ultima.id) ?? 0) + restante);
-    }
-  }
-
-  return entregue;
-}
+export { alocarEntregaPorLinha, linhasSemConversao };
 
 // Pedido "fiscal" (vinculado a NF de Produtos, em vez de entrega manual) nunca
 // passa por registrarEntrega — a quantidade entregue vem das NFs de entrada
@@ -5567,10 +5520,10 @@ export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | u
   if (!nfsVinculadas?.length) return; // pedido manual de verdade — nunca recebeu NF
   const nfIds = nfsVinculadas.filter(n => n.status === "processada").map(n => n.id);
 
-  let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number }[] = [];
+  let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number; unidade: string | null }[] = [];
   if (nfIds.length) {
     const { data } = await supabase.from("nf_entrada_itens")
-      .select("insumo_id, pedido_item_id, quantidade").in("nf_entrada_id", nfIds);
+      .select("insumo_id, pedido_item_id, quantidade, unidade").in("nf_entrada_id", nfIds);
     nfItens = data ?? [];
   }
 
