@@ -20,6 +20,8 @@ export type ApiResponseANTT<T = unknown> = {
   Dados:    T;
   Mensagem: string;
   Erros:    string[];
+  HttpStatus?: number;
+  ResultadoIncerto?: boolean;
 };
 
 export type CiotGerado = {
@@ -98,6 +100,8 @@ export type CertificadoPem = { cert: string; key: string };
  */
 export function normalizarRespostaAntt(raw: unknown): ApiResponseANTT<CiotGerado> {
   const r = (Array.isArray(raw) ? { Mensagem: raw } : (raw ?? {})) as Record<string, unknown>;
+  // Preserva o diagnóstico de transporte; não o confunde com rejeição da declaração.
+  if (r.HttpStatus !== undefined && r.Sucesso === false) return r as ApiResponseANTT<CiotGerado>;
   let msgs: string[] = [];
   const m = r.Mensagem;
   if (Array.isArray(m)) msgs = m.map(String);
@@ -123,22 +127,28 @@ export class CiotService {
     this.basePath = u.pathname; // /pefServices
   }
 
-  // A ANTT devolve 5xx esporádicos (gateway sobrecarregado) e responde normalmente segundos depois:
-  // tenta de novo até 2 vezes antes de mostrar o erro. Um 5xx não processa nada, então repetir é seguro.
+  // Só consultas podem ser repetidas automaticamente. Um 5xx/timeout em uma gravação
+  // não garante que a ANTT deixou de processá-la (inclusive a reserva de um número).
   private async post<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T>> {
     let r = await this.postUmaVez<T>(path, body);
-    for (const espera of [3000, 7000]) {
-      if (!r.status5xx) break;
-      await new Promise(ok => setTimeout(ok, espera));
-      r = await this.postUmaVez<T>(path, body);
+    if (["/api/ConsultarFrotaTransportador", "/api/ConsultarCIOTGerado"].includes(path)) {
+      for (const espera of [3000, 7000]) {
+        if (!r.HttpStatus || r.HttpStatus < 500) break;
+        await new Promise(ok => setTimeout(ok, espera));
+        r = await this.postUmaVez<T>(path, body);
+      }
     }
-    const { status5xx: _s, ...resp } = r; // eslint-disable-line @typescript-eslint/no-unused-vars
-    return resp;
+    return r;
   }
 
-  private postUmaVez<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T> & { status5xx?: boolean }> {
+  private postUmaVez<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T>> {
     const payload = JSON.stringify(body);
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
+      const falhaTransporte = (status: number, mensagem: string): ApiResponseANTT<T> => ({
+        Sucesso: false, Dados: null as T, Mensagem: mensagem, Erros: [mensagem],
+        HttpStatus: status,
+        ResultadoIncerto: !["/api/ConsultarFrotaTransportador", "/api/ConsultarCIOTGerado"].includes(path),
+      });
       const req = https.request({
         host: this.host, path: `${this.basePath}${path}`, method: "POST",
         cert: this.pem.cert, key: this.pem.key,
@@ -147,22 +157,29 @@ export class CiotService {
       }, res => {
         let buf = "";
         res.on("data", d => { buf += d; });
+        res.on("error", () => resolve(falhaTransporte(502, "A conexão com a ANTT foi interrompida. Não foi possível confirmar o processamento da operação. Consulte o CIOT antes de tentar novamente.")));
         res.on("end", () => {
-          try { resolve(JSON.parse(buf) as ApiResponseANTT<T>); }
+          const st = res.statusCode ?? 502;
+          // O status HTTP prevalece mesmo quando o corpo é JSON.
+          if (st >= 500) {
+            resolve(falhaTransporte(st, `O serviço da ANTT retornou HTTP ${st} em ${path}. Não foi possível confirmar o processamento da operação. Consulte o CIOT antes de tentar novamente; se já estiver declarado, informe o número e o código verificador em "Usar este CIOT".`));
+            return;
+          }
+          try {
+            const raw = JSON.parse(buf);
+            if (st >= 400) {
+              const msg = `A ANTT recusou a requisição (HTTP ${st}): ${raw?.Mensagem || raw?.Message || "verifique o acesso e os dados da operação"}`;
+              resolve({ ...falhaTransporte(st, msg), ResultadoIncerto: false });
+            } else resolve(raw as ApiResponseANTT<T>);
+          }
           catch {
-            // 5xx com página HTML = o serviço da ANTT está fora do ar ou sobrecarregado — não é erro nos dados do CIOT
-            const st = res.statusCode ?? 0;
             const texto = buf.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
-            const msg = st >= 500
-              ? `A ANTT não atendeu o pedido (HTTP ${st}) mesmo após 3 tentativas — instabilidade no serviço deles, não erro nos dados. Clique em Gerar de novo em alguns minutos; se o CIOT já aparecer no site da ANTT, use "Já emitiu o CIOT no site?".${texto ? ` Resposta: ${texto}` : ""}`
-              : `Resposta inesperada da ANTT (HTTP ${st}): ${texto}`;
-            if (st >= 500) console.warn(`[ciot] ANTT HTTP ${st} em ${path}: ${texto}`);
-            resolve({ Sucesso: false, Dados: null as unknown as T, Mensagem: msg, Erros: [], status5xx: st >= 500 });
+            resolve(falhaTransporte(st >= 400 ? st : 502, `Resposta inesperada da ANTT (HTTP ${st}): ${texto}. Consulte o CIOT antes de tentar novamente.`));
           }
         });
       });
       req.on("timeout", () => { req.destroy(new Error("Tempo esgotado ao falar com a ANTT.")); });
-      req.on("error", reject);
+      req.on("error", () => resolve(falhaTransporte(504, "Não foi possível obter a resposta da ANTT. O processamento da operação não foi confirmado. Consulte o CIOT antes de tentar novamente.")));
       req.write(payload);
       req.end();
     });

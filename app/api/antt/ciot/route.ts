@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       if (id.length !== 12) {
         const g = await svc.gerar(cnpj);
         id = g.Dados?.CIOT ?? "";
-        if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+        if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: g.HttpStatus ?? 422 });
         await db.from("ciots").insert({ id_operacao: id, cpf_cnpj_contratante: cnpj, cpf_cnpj_contratado: cnpj, placa: dados.Veiculos[0]?.Placa, valor_frete: parseFloat(dados.ValorFrete), ambiente: b.ambiente ?? "homologacao", status: "reservado" });
       }
 
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       const jaCadastrado = !d.Sucesso && /j[aá] cadastrad/i.test(d.Mensagem ?? "");
       if (d.Sucesso || jaCadastrado) {
         let verificador = d.Dados?.CodigoVerificador ?? "";
-        let protocolo = d.Dados?.Protocolo ?? "";
+        const protocolo = d.Dados?.Protocolo ?? "";
         if (!verificador) {
           try {
             const c = await svc.consultar(id, new Date().getFullYear().toString());
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
         await db.from("ciots").update({ codigo_verificador: verificador || null, protocolo: protocolo || null, valor_frete: parseFloat(dados.ValorFrete), data_inicio: dados.DataInicioViagem, data_fim: dados.DataFimViagem, status: "declarado" }).eq("id_operacao", id);
         return NextResponse.json({ Sucesso: true, Mensagem: d.Mensagem, Erros: [], Dados: { IdOperacaoTransporte: id, CodigoVerificador: verificador, Protocolo: protocolo } });
       }
-      return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || "sem detalhe"}` }, { status: 422 });
+      return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação não foi confirmada: ${d.Mensagem || "sem detalhe"}` }, { status: d.HttpStatus ?? 422 });
     }
 
     if (b.acao === "consultar") return NextResponse.json(await svc.consultar(b.ciot ?? "", b.ano ?? String(new Date().getFullYear())));
