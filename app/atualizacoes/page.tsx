@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-c",
+    data: "28/10/2026",
+    titulo: "Contrato financeiro: TFB/TFBD, credor e data lidos do PDF",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Indexador aceita a sigla do contrato (TFB, TFBD do BNDES e outros), e a taxa do indexador pode ser digitada quando o sistema não tem o histórico dela; ela é gravada e entra na TEF." },
+      { tipo: "correcao", texto: "Leitura do PDF pela IA: traz o indexador TFBD/TFB e a taxa dele, e a data do contrato também quando está por extenso no fecho da cédula." },
+      { tipo: "correcao", texto: "Credor: quando o cliente ainda não tem o banco cadastrado, o cadastro é criado sozinho pelo CNPJ do PDF (ou pelo botão Buscar, com o nome da Receita) e já fica selecionado." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → Novo Contrato",
+  },
+  {
     versao: "2026.10.28-b",
     data: "28/10/2026",
     titulo: "Lote processa NFs de insumos e associa itens pelo histórico",

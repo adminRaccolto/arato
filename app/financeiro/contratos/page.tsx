@@ -25,7 +25,7 @@ import {
   listarImoveisUrbanos,
   listarFazendas,
   listarCentrosCustoGeralDaConta,
-  listarPessoasDaConta,
+  listarPessoasDaConta, criarPessoa,
   buscarOgsCf,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
@@ -324,8 +324,9 @@ export default function ContratosFinanceiros() {
   }, [contratos]);
 
   // ── Busca taxa variável de referência da tabela taxas_variaveis_historico ──
+  // Indexador sem histórico no sistema (TFB, TFBD, Outro…): a taxa é digitada ou vem do PDF e não é apagada aqui
   const buscarTaxaVariavelRef = async (indexador: string) => {
-    if (!indexador || indexador === "Outro") { setTaxaVariavelRef(null); setFC(p => ({ ...p, taxa_variavel_ref: "" })); return; }
+    if (!indexador || indexador === "Outro") { setTaxaVariavelRef(null); return; }
     setLoadingTaxaRef(true);
     const { data } = await supabase
       .from("taxas_variaveis_historico")
@@ -336,27 +337,37 @@ export default function ContratosFinanceiros() {
       .limit(1);
     const taxa = data?.[0]?.valor_pct ?? null;
     setTaxaVariavelRef(taxa);
-    setFC(p => ({ ...p, taxa_variavel_ref: taxa != null ? String(taxa) : "" }));
+    if (taxa != null) setFC(p => ({ ...p, taxa_variavel_ref: String(taxa) }));
     setLoadingTaxaRef(false);
   };
 
-  // ── Busca credor por CNPJ/CPF ──
+  // ── Credor por CNPJ/CPF: cadastro do cliente; se não houver, cria (nome do PDF ou da Receita) como Instituição Financeira ──
+  const credorPorCnpj = async (doc: string, nomeSugerido: string | null): Promise<Pessoa | null> => {
+    if (doc.length < 11) return null;
+    const local = pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
+    if (local) return local;
+    const { data } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).ilike("cpf_cnpj", `%${doc.slice(0, 8)}%`).limit(20);
+    const achado = ((data ?? []) as Pessoa[]).find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
+    if (achado) { setPessoas(prev => prev.find(p => p.id === achado.id) ? prev : [...prev, achado]); return achado; }
+    let nome = (nomeSugerido ?? "").trim();
+    if (!nome && doc.length === 14) {
+      try { const r = await fetch(`/api/cadastros/consultar-cnpj?cnpj=${doc}`); const j = await r.json(); nome = String(j?.razao_social ?? j?.nome ?? "").trim(); } catch { /* sem nome da Receita */ }
+    }
+    const faz = fC.fazenda_id || fazendaId;
+    if (!nome || !faz) return null;
+    const fmt = doc.length === 14 ? doc.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : doc.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+    try {
+      const nova = await criarPessoa({ fazenda_id: faz, nome, tipo: doc.length === 14 ? "pj" : "pf", cpf_cnpj: fmt, cliente: false, fornecedor: true, subcategorias: ["Instituição Financeira"] } as Omit<Pessoa, "id" | "created_at">);
+      setPessoas(prev => prev.find(p => p.id === nova.id) ? prev : [...prev, nova]);
+      return nova;
+    } catch { return null; }
+  };
   const buscarCredorPorCnpj = async () => {
     const doc = cnpjBusca.replace(/\D/g, "");
     if (doc.length < 11) return;
-    // 1. Tenta na lista já carregada
-    const local = pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
-    if (local) { onPessoaChange(local.id); setCnpjBuscaStatus("encontrado"); return; }
-    // 2. Busca direta por CPF/CNPJ (fallback — pessoas já deveriam estar em memória)
-    const { data } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).ilike("cpf_cnpj", `%${doc}%`).limit(5);
-    const match = (data ?? []).find((p: { cpf_cnpj?: string }) => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
-    if (match) {
-      setPessoas(prev => prev.find(p => p.id === match.id) ? prev : [...prev, match as Pessoa]);
-      onPessoaChange(match.id);
-      setCnpjBuscaStatus("encontrado");
-    } else {
-      setCnpjBuscaStatus("nao_encontrado");
-    }
+    const p = await credorPorCnpj(doc, fC.credor || null);
+    if (p) { onPessoaChange(p.id); setCnpjBuscaStatus("encontrado"); }
+    else setCnpjBuscaStatus("nao_encontrado");
   };
 
   // ── Carregar dados ao mudar aba ──
@@ -456,7 +467,7 @@ export default function ContratosFinanceiros() {
       data_contrato: c.data_contrato, numero_documento: c.numero_documento ?? "",
       taxa_tipo: (c.taxa_tipo ?? "fixa") as "fixa" | "variavel",
       indexador: c.indexador ?? "",
-      taxa_variavel_ref: "",
+      taxa_variavel_ref: c.taxa_variavel_ref != null ? String(c.taxa_variavel_ref) : "",
       spread_aa: c.spread_aa != null ? String(c.spread_aa) : "",
       spread_am: c.spread_am != null ? String(c.spread_am) : "",
       taxa_juros_aa: c.taxa_juros_aa != null ? String(c.taxa_juros_aa) : "",
@@ -504,10 +515,9 @@ export default function ContratosFinanceiros() {
       // Normalização de CPF/CNPJ: remove formatação para comparação
       const normDoc = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 
-      // Matching automático: credor CNPJ → pessoas cadastradas
-      const pessoaMatch = d.credor_cnpj
-        ? pessoas.find(p => normDoc(p.cpf_cnpj) === normDoc(d.credor_cnpj) && normDoc(d.credor_cnpj).length > 0)
-        : null;
+      // Credor: CNPJ exato no cadastro; senão o cadastro é criado com o CNPJ e o nome lidos do PDF (Instituição Financeira)
+      const pessoaMatch = d.credor_cnpj ? await credorPorCnpj(normDoc(d.credor_cnpj), d.credor_nome ?? d.credor ?? null) : null;
+      if (d.credor_cnpj) setCnpjBusca(String(d.credor_cnpj));
 
       // Matching automático: produtor CPF → produtores cadastrados
       const produtorMatch = d.produtor_cpf
@@ -533,6 +543,7 @@ export default function ContratosFinanceiros() {
         valor_financiado: d.valor_financiado  ? String(d.valor_financiado)  : prev.valor_financiado,
         taxa_tipo:        (d.taxa_tipo         ?? prev.taxa_tipo) as "fixa" | "variavel",
         indexador:        d.indexador         ?? prev.indexador,
+        taxa_variavel_ref: d.taxa_tipo === "variavel" && d.indexador_taxa_aa != null ? String(d.indexador_taxa_aa) : prev.taxa_variavel_ref,
         spread_aa:        d.spread_aa != null ? String(d.spread_aa)         : prev.spread_aa,
         spread_am:        d.spread_am != null ? String(d.spread_am)         : prev.spread_am,
         taxa_juros_aa:    d.taxa_tipo !== "variavel" && d.taxa_juros_aa ? String(d.taxa_juros_aa) : prev.taxa_juros_aa,
@@ -653,6 +664,7 @@ export default function ContratosFinanceiros() {
       indexador: fC.taxa_tipo === "variavel" ? (fC.indexador || undefined) : undefined,
       spread_aa: fC.taxa_tipo === "variavel" && fC.spread_aa ? parseFloat(fC.spread_aa.replace(",", ".")) : undefined,
       spread_am: fC.taxa_tipo === "variavel" && fC.spread_am ? parseFloat(fC.spread_am.replace(",", ".")) : undefined,
+      taxa_variavel_ref: fC.taxa_tipo === "variavel" && fC.taxa_variavel_ref ? parseFloat(String(fC.taxa_variavel_ref).replace(",", ".")) : undefined,
       taxa_juros_aa: fC.taxa_tipo === "fixa" && fC.taxa_juros_aa ? parseFloat(fC.taxa_juros_aa.replace(",", ".")) : undefined,
       taxa_juros_am: fC.taxa_tipo === "fixa" && fC.taxa_juros_am ? parseFloat(fC.taxa_juros_am.replace(",", ".")) : undefined,
       iof_pct: fC.iof_pct ? parseFloat(fC.iof_pct.replace(",", ".")) : undefined,
@@ -1804,19 +1816,21 @@ export default function ContratosFinanceiros() {
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 8 }}>
                         <div>
                           <label data-arato-label="true" style={lbl}>Indexador <span style={{ color: "#E24B4A" }}>*</span></label>
-                          <SelectField style={inp} value={fC.indexador} onChange={e => { setFC(p => ({ ...p, indexador: e.target.value })); buscarTaxaVariavelRef(e.target.value); }}>
-                            <option value="">Selecione…</option>
-                            {["CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "INPC", "IGP-M", "Outro"].map(idx => (
-                              <option key={idx} value={idx}>{idx}</option>
-                            ))}
-                          </SelectField>
+                          {/* Lista aberta: aceita o indexador como está no contrato (ex.: TFB, TFBD do BNDES) */}
+                          <input style={inp} list="cf-indexadores" placeholder="Ex.: CDI, TFBD" value={fC.indexador}
+                            onChange={e => setFC(p => ({ ...p, indexador: e.target.value.toUpperCase() }))}
+                            onBlur={e => buscarTaxaVariavelRef(e.target.value.trim())} />
+                          <datalist id="cf-indexadores">
+                            {["CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "TFB", "TFBD", "INPC", "IGP-M", "PTAX", "Outro"].map(idx => <option key={idx} value={idx} />)}
+                          </datalist>
                         </div>
                         <div>
                           <label data-arato-label="true" style={lbl}>
-                            Taxa {fC.indexador || "Variável"} — ref. {loadingTaxaRef ? "…" : taxaVariavelRef != null ? `${fmtNum(taxaVariavelRef, 4)}% a.a.` : "sem dado"}
+                            Taxa {fC.indexador || "do indexador"} a.a. (%) {loadingTaxaRef ? "…" : taxaVariavelRef != null ? "— do histórico" : "— informe"}
                           </label>
-                          <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)", cursor: "default" }}
-                            readOnly value={taxaVariavelRef != null ? fmtNum(taxaVariavelRef, 4) : "—"} />
+                          {/* Vem do histórico quando existe (CDI, IPCA…); senão é digitada ou lida do PDF (TFB, TFBD…) */}
+                          <InputNumerico style={inp} decimais={4} placeholder="Ex: 7,0200" value={fC.taxa_variavel_ref}
+                            onChange={v => setFC(p => ({ ...p, taxa_variavel_ref: v }))} />
                         </div>
                         <div>
                           <label data-arato-label="true" style={lbl}>Juros Fixos a.a. (%)</label>
@@ -1830,7 +1844,7 @@ export default function ContratosFinanceiros() {
                         </div>
                         <div>
                           {(() => {
-                            const variavel = taxaVariavelRef ?? 0;
+                            const variavel = parseFloat(String(fC.taxa_variavel_ref || "").replace(",", ".")) || (taxaVariavelRef ?? 0);
                             const fixo = parseFloat((fC.spread_aa || "0").replace(",", ".")) || 0;
                             const tef = variavel + fixo;
                             return (

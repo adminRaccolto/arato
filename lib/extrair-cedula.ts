@@ -26,8 +26,9 @@ export interface CedulaExtraida {
   valor_tarifas: number | null;        // Tarifas + seguro + outras despesas em R$ financiadas, embutidas no valor financiado
   // Taxa de juros — fixa OU variável (indexador + spread)
   taxa_tipo: "fixa" | "variavel" | null;
-  indexador: string | null;         // CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M, Outro
+  indexador: string | null;         // CDI, IPCA, SELIC, TR, TJLP, TLP, TFB, TFBD, INPC, IGP-M… (nome como no contrato)
   spread_aa: number | null;         // spread sobre o indexador a.a. (%) — quando variável
+  indexador_taxa_aa?: number | null; // taxa do próprio indexador informada no contrato (ex.: TFBD 7,02% a.a.) — quando variável
   spread_am: number | null;         // spread a.m. calculado
   taxa_juros_aa: number | null;     // taxa total a.a. — só quando fixa
   taxa_juros_am: number | null;     // taxa total a.m. — só quando fixa
@@ -64,7 +65,10 @@ CAMPOS A EXTRAIR:
 
 4. numero_documento: Número da cédula/contrato. Procure em campos como "Nº", "CTR", "OP", "Código", cabeçalho.
 
-5. data_contrato: Data de emissão/assinatura do documento (YYYY-MM-DD).
+5. data_contrato: Data de emissão/assinatura do documento, SEMPRE no formato YYYY-MM-DD.
+   Procure em "Data de Emissão", "Emitida em", "Data da Operação", "Data do Contrato" e, principalmente em cédulas,
+   no fecho do documento antes das assinaturas ("Local e data", ex.: "Canarana-MT, 10 de setembro de 2026" → "2026-09-10").
+   Datas por extenso ou em dd/mm/aaaa devem ser convertidas. Não use a data de vencimento nem a de liberação.
 
 6. data_liberacao: Data em que o banco liberou/liberará o dinheiro. Procure em "Forma de Utilização", "Cronograma de Liberação", "Data de Liberação".
    IMPORTANTE: Se o campo diz "imediata", "imediato" ou similar, use a mesma data_contrato.
@@ -108,10 +112,13 @@ CAMPOS A EXTRAIR:
     - "fixa": taxa expressa diretamente como percentual, sem indexador (ex: "8,00% a.a.", "Juro 7% a.a.").
     - Dúvida → "fixa".
 
-15. indexador: Apenas quando taxa_tipo = "variavel". Nome EXATO do indexador conforme o documento.
-    Valores esperados: "CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "INPC", "IGP-M".
-    Se o documento usar outro (ex: "ANBIMA", "IPCA-15") → "Outro".
-    null quando taxa_tipo = "fixa".
+15. indexador: Apenas quando taxa_tipo = "variavel". SIGLA do indexador exatamente como está no documento, em maiúsculas.
+    Exemplos: "CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "TFB", "TFBD", "INPC", "IGP-M". Taxas do BNDES como
+    "Taxa Fixa do BNDES (TFB)" ou "TFBD" contam como indexador: devolva a sigla ("TFB", "TFBD"), nunca "Outro".
+    Só use "Outro" se o documento não der nenhum nome. null quando taxa_tipo = "fixa".
+
+15b. indexador_taxa_aa: a taxa a.a. (%) do PRÓPRIO indexador, quando o contrato informa o valor dela
+    (ex.: "TFBD de 7,02% a.a. + 2,10% a.a." → 7.02; "TJLP vigente de 6,5% a.a." → 6.5). null se o documento não informar.
 
 16. spread_aa: Percentual do spread sobre o indexador a.a. (%). Apenas quando taxa_tipo = "variavel".
     Exemplo: "CDI + 2,50% a.a." → spread_aa = 2.50.
@@ -190,6 +197,7 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
   "valor_tarifas": null,
   "taxa_tipo": "fixa",
   "indexador": null,
+  "indexador_taxa_aa": null,
   "spread_aa": null,
   "spread_am": null,
   "taxa_juros_aa": null,
@@ -204,6 +212,27 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
   "observacao": null,
   "confianca": "baixa"
 }`;
+
+
+const MESES: Record<string, number> = { janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12 };
+/** "2026-09-10", "10/09/2026", "10.09.26" ou "10 de setembro de 2026" → "2026-09-10"; inválida → null. */
+export function dataIso(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const ok = (a: number, m: number, d: number) => {
+    if (a < 100) a += 2000;
+    const dt = new Date(Date.UTC(a, m - 1, d));
+    return dt.getUTCFullYear() === a && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : null;
+  };
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return ok(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  if (m) return ok(+m[3], +m[2], +m[1]);
+  const t = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  m = t.match(/(\d{1,2})\s*(?:de\s+)?([a-z]+)\s*(?:de\s+)?(\d{4})/);
+  if (m && MESES[m[2]]) return ok(+m[3], MESES[m[2]], +m[1]);
+  return null;
+}
 
 export async function extrairCedula(pdfBase64: string): Promise<CedulaExtraida | null> {
   try {
@@ -239,6 +268,11 @@ export async function extrairCedula(pdfBase64: string): Promise<CedulaExtraida |
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = data as any;
     if (!d.credor_nome && d.credor) d.credor_nome = d.credor;
+    // Datas sempre em YYYY-MM-DD (o campo da tela só aceita esse formato): converte dd/mm/aaaa e "10 de setembro de 2026"
+    d.data_contrato = dataIso(d.data_contrato);
+    d.data_liberacao = dataIso(d.data_liberacao);
+    if (Array.isArray(d.parcelas_cronograma)) d.parcelas_cronograma = d.parcelas_cronograma.map((x: { data_vencimento: unknown; valor: number }) => ({ ...x, data_vencimento: dataIso(x.data_vencimento) })).filter((x: { data_vencimento: string | null }) => x.data_vencimento);
+    if (typeof d.indexador === "string") d.indexador = d.indexador.trim().toUpperCase() || null;
 
     return data;
   } catch (err) {
