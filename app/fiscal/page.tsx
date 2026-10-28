@@ -16,6 +16,7 @@ import type { NotaFiscal, Produtor, ProdutorIE, Pessoa, Deposito } from "../../l
 import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
 import { ratearDescontoNf, emissorDoProdutor } from "../../lib/nfe/remessa";
+import { fmtNcm } from "../../lib/fiscal/ncm-produtos";
 
 // ── Naturezas fiscais ────────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -47,12 +48,12 @@ const NATUREZAS_DEVOLUCAO = [
 
 const NCM_OPTIONS = [
   { codigo: "1201.90.00", descricao: "Soja em grão — outros (comercialização)" },
-  { codigo: "1005.10.90", descricao: "Milho em grão" },
+  { codigo: "1005.90.10", descricao: "Milho em grão (exceto semeadura)" },
   { codigo: "5201.00.20", descricao: "Algodão em caroço" },
   { codigo: "5201.00.10", descricao: "Algodão em pluma" },
   { codigo: "1207.21.00", descricao: "Caroço de algodão" },
   { codigo: "1001.99.00", descricao: "Trigo em grão" },
-  { codigo: "1007.90.10", descricao: "Sorgo em grão" },
+  { codigo: "1007.90.00", descricao: "Sorgo em grão (exceto semeadura)" },
   { codigo: "1201.10.00", descricao: "Soja para semeadura (sementes)" },
 ];
 
@@ -890,6 +891,20 @@ function FiscalInner() {
   // Itens do grid (aba inferior)
   const [nfeItens, setNfeItens] = useState<NFeItem[]>([]);
   const [editItemModal, setEditItemModal] = useState<NFeItem | null>(null);
+  // Produtos Agrícolas do cliente: fonte do nome, NCM e unidade do item da NF de venda
+  const [produtosCad, setProdutosCad] = useState<{ id: string; nome: string; ncm: string | null; unidade: string | null }[]>([]);
+  useEffect(() => {
+    const ids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!ids.length) return;
+    supabase.from("insumos").select("id, nome, ncm, unidade, ativo").in("fazenda_id", ids).eq("categoria", "produto_agricola").order("nome")
+      .then(({ data }) => setProdutosCad(((data ?? []) as { id: string; nome: string; ncm: string | null; unidade: string | null; ativo?: boolean }[]).filter(p => p.ativo !== false)));
+  }, [fazendaIds?.join(","), fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Opções de NCM: as do cadastro primeiro, depois a lista de referência
+  const ncmOpcoes = [
+    ...produtosCad.filter(p => fmtNcm(p.ncm)).map(p => ({ codigo: fmtNcm(p.ncm), descricao: p.nome })),
+    ...NCM_OPTIONS,
+  ].filter((o, i, a) => a.findIndex(x => x.codigo === o.codigo) === i);
+  const UNID_NF: Record<string, string> = { sc: "sc", kg: "kg", t: "ton", ton: "ton", "@": "@", L: "L", cx: "cx", un: "un" };
   const [novoItem, setNovoItem] = useState<Omit<NFeItem,"id"|"valor_total"|"valor_financeiro">>({
     tipo_item: "Produto", item: "", ncm: "1201.90.00",
     quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040",
@@ -3184,11 +3199,17 @@ function FiscalInner() {
                             </SelectField>
                           </td>
                           <td style={{ padding: "4px 6px" }}>
-                            <input style={{ ...inSt, width: "100%", minWidth: 140 }} placeholder="Descrição do item" value={novoItem.item} onChange={e => setNovoItem(p => ({...p, item:e.target.value}))} onKeyDown={e => { if (e.key === "Enter") addItem(); }} />
+                            <input list="produtos-agricolas-nf" style={{ ...inSt, width: "100%", minWidth: 140 }} placeholder="Produto do cadastro ou descrição" value={novoItem.item}
+                              onChange={e => {
+                                const v = e.target.value;
+                                const pc = produtosCad.find(p => p.nome.trim().toUpperCase() === v.trim().toUpperCase());
+                                setNovoItem(p => ({ ...p, item: v, ...(pc && fmtNcm(pc.ncm) ? { ncm: fmtNcm(pc.ncm) } : {}), ...(pc?.unidade && UNID_NF[pc.unidade] ? { unidade: UNID_NF[pc.unidade] } : {}) }));
+                              }} onKeyDown={e => { if (e.key === "Enter") addItem(); }} />
+                            <datalist id="produtos-agricolas-nf">{produtosCad.map(p => <option key={p.id} value={p.nome} />)}</datalist>
                           </td>
                           <td style={{ padding: "4px 6px" }}>
                             <SelectField style={{ ...inSt, width: "100%" }} value={novoItem.ncm} onChange={e => setNovoItem(p => ({...p, ncm:e.target.value}))}>
-                              {NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
+                              {[...ncmOpcoes, ...(novoItem.ncm && !ncmOpcoes.some(o => o.codigo === novoItem.ncm) ? [{ codigo: novoItem.ncm, descricao: "" }] : [])].map(o => <option key={o.codigo} value={o.codigo} title={o.descricao}>{o.codigo}</option>)}
                             </SelectField>
                           </td>
                           <td style={{ padding: "4px 6px" }}>
@@ -3287,7 +3308,7 @@ function FiscalInner() {
             {[
               { l:"Tipo Item",   node:<SelectField style={inputSt} value={editItemModal.tipo_item} onChange={e => setEditItemModal(p=>p?({...p,tipo_item:e.target.value}):null)}>{["Produto","Serviço","Combustível"].map(v=><option key={v}>{v}</option>)}</SelectField> },
               { l:"Descrição *", node:<input style={inputSt} value={editItemModal.item} onChange={e => setEditItemModal(p=>p?({...p,item:e.target.value}):null)} /> },
-              { l:"NCM",         node:<SelectField style={inputSt} value={editItemModal.ncm} onChange={e => setEditItemModal(p=>p?({...p,ncm:e.target.value}):null)}>{NCM_OPTIONS.map(o=><option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</SelectField> },
+              { l:"NCM",         node:<SelectField style={inputSt} value={editItemModal.ncm} onChange={e => setEditItemModal(p=>p?({...p,ncm:e.target.value}):null)}>{[...ncmOpcoes, ...(editItemModal.ncm && !ncmOpcoes.some(o => o.codigo === editItemModal.ncm) ? [{ codigo: editItemModal.ncm, descricao: "atual" }] : [])].map(o=><option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</SelectField> },
             ].map(r => <div key={r.l} style={{marginBottom:10}}><label data-arato-label="true" style={labelSt}>{r.l}</label>{r.node}</div>)}
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 80px 120px 120px", gap:10, marginBottom:10 }}>
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Descrição</label><input style={inputSt} readOnly value={editItemModal.item} /></div>

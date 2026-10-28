@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-zb",
+    data: "28/10/2026",
+    titulo: "Produtos Agrícolas são a fonte do item da NF de venda",
+    modulos: ["Cadastros", "Comercial", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "A NF de venda pelo contrato (Faturamento) usa o nome e o NCM do cadastro de Produtos Agrícolas do cliente (todas as fazendas). Sem cadastro ou sem NCM, usa o NCM de referência e mostra um aviso em Itens da Nota." },
+      { tipo: "novo", texto: "Na venda avulsa, o campo Item sugere os produtos do cadastro e preenche NCM e unidade." },
+      { tipo: "melhoria", texto: "NCM obrigatório no cadastro de Produtos Agrícolas, com sugestão pelo nome. Carregar Padrões também preenche o NCM vazio dos produtos existentes." },
+      { tipo: "correcao", texto: "A tabela fixa de NCM usava código de semente para milho (1005.10.90) e arroz, e um código de sorgo inexistente. Agora é o de grão para venda: milho 1005.90.10, sorgo 1007.90.00, arroz em casca 1006.10.92." },
+    ],
+    onde: "Cadastros → Produtos Agrícolas; Comercial → Faturamento; Fiscal → Notas de Venda",
+  },
+  {
     versao: "2026.10.28-za",
     data: "28/10/2026",
     titulo: "Cartão de crédito na baixa do CP e estorno com confirmação",

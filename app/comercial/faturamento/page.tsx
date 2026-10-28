@@ -16,6 +16,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo, ProdutorIE } from "../../../lib/supabase";
 import ProdutorCombo from "../../../components/ProdutorCombo";
+import { fmtNcm, ncmPadraoDoProduto, produtoDoContrato } from "../../../lib/fiscal/ncm-produtos";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
 // cfop_tipo liga cada natureza à tabela textos_legais_uf no banco.
@@ -88,14 +89,15 @@ const NATUREZAS_DEVOLUCAO = [
   { codigo: "5.556", descricao: "Devolução de compra de material de uso ou consumo — interna (CFOP 5.556)", obs: "Devolução de compra de material de uso ou consumo. ICMS com base de cálculo reduzida (CST 20)." },
   { codigo: "6.556", descricao: "Devolução de compra de material de uso ou consumo — interestadual (CFOP 6.556)", obs: "Devolução de compra de material de uso ou consumo. ICMS com base de cálculo reduzida (CST 20)." },
 ];
-// Mapa legado — usado como fallback quando o produto não tem produto_agricola_id vinculado
-const NCM_PRODUTO_LEGADO: Record<string, string> = {
-  "Soja": "1201.90.00", "Milho 1ª": "1005.10.90", "Milho 2ª (Safrinha)": "1005.10.90",
-  "Algodão": "5201.00.20", "Algodão em Pluma": "5201.00.10", "Algodão em Caroço": "5201.00.20",
-  "Caroço de Algodão": "1207.21.00",
-  "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
-  "Milho": "1005.10.90", "Arroz": "1006.10.10",
-};
+// Produtos agrícolas do CLIENTE (todas as fazendas): o cadastro é a fonte do nome, NCM e unidade do item da NF de venda.
+// Antes buscava só a fazenda selecionada — fazenda sem cadastro próprio caía sempre na tabela fixa.
+async function produtosAgricolasDoCliente(contaId: string | null | undefined, fazendaId: string | null | undefined) {
+  const { data: fzs } = contaId ? await supabase.from("fazendas").select("id").eq("conta_id", contaId) : { data: null };
+  const ids = (fzs ?? []).map(f => f.id as string);
+  if (!ids.length && fazendaId) ids.push(fazendaId);
+  return supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade,ativo").in("fazenda_id", ids.length ? ids : [""])
+    .eq("categoria", "produto_agricola").order("nome");
+}
 // kg por saca de referência para conversão de preço R$/sc → R$/kg
 const KG_SACA: Record<string, number> = {
   "Soja": 60, "Milho 1ª": 60, "Milho 2ª (Safrinha)": 60,
@@ -187,6 +189,7 @@ function FaturamentoInner() {
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [pessoas,      setPessoas]      = useState<Pessoa[]>([]);
   const [prodAgricolas,setProdAgricolas]= useState<Insumo[]>([]);
+  const [avisoProdutoNf, setAvisoProdutoNf] = useState("");   // item da NF sem produto/NCM no cadastro
   const [loading,   setLoading]   = useState(true);
   const [filtroAba, setFiltroAba] = useState<"todas"|"processando"|"autorizadas"|"rejeitadas"|"canceladas">("todas");
   const [buscaNota, setBuscaNota] = useState("");
@@ -249,7 +252,7 @@ function FaturamentoInner() {
       listarPessoasDaConta(fazendaId ?? ""),
       listarContratos(fazendaId ?? ""),
       listarAnosSafra(fazendaId ?? ""),
-      supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId ?? "").eq("categoria","produto_agricola").order("nome"),
+      produtosAgricolasDoCliente(contaId, fazendaId),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId ?? "").single(),
       supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
       supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId ?? "").or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
@@ -290,7 +293,7 @@ function FaturamentoInner() {
       listarProdutoresDaConta(contaId ?? "", fazNFe),
       listarContratos(fazNFe),
       listarAnosSafra(fazNFe),
-      supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazNFe).eq("categoria","produto_agricola").order("nome"),
+      produtosAgricolasDoCliente(contaId, fazNFe),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazNFe).single(),
       supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazNFe).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
     ]).then(([p, c, as_, pa, faz, fm]) => {
@@ -333,7 +336,7 @@ function FaturamentoInner() {
         const hoje  = hojeLocal();
         const agora = new Date().toTimeString().slice(0, 8);
         setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
-        setNfeItens([]);
+        setNfeItens([]); setAvisoProdutoNf("");
         setTabNFe("produtor");
         setModalAberto(true);
         preencherDeRomaneio(rom);
@@ -357,7 +360,7 @@ function FaturamentoInner() {
     const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
-    setNfeItens([]);
+    setNfeItens([]); setAvisoProdutoNf("");
     setTabNFe("produtor");
     setPasso("origem");
     setTipoAvulsa("");
@@ -437,13 +440,19 @@ function FaturamentoInner() {
     // precoKg pode ter 3-4 casas decimais (ex: R$0,013/kg para milho R$0,78/sc÷60kg)
     // não usar aplicarMascara (trunca para 2 casas) — formatar diretamente com 4 casas
     const precoKgFmt = precoKg.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+    const cadProd = produtoDoContrato(prodAgricolas.filter(p => (p as { ativo?: boolean }).ativo !== false), contrato.produto_agricola_id, contrato.produto);
+    const ncmCad = fmtNcm(cadProd?.ncm);
+    const ncmRef = ncmPadraoDoProduto(contrato.produto)?.ncm;
+    const produtoNf = { nome: cadProd?.nome ?? contrato.produto, ncm: ncmCad || ncmRef || "1201.90.00" };
+    setAvisoProdutoNf(!cadProd
+      ? `"${contrato.produto}" não está em Cadastros → Produtos Agrícolas: o NCM ${produtoNf.ncm} é o de referência${ncmRef ? "" : " (soja — confira!)"}. Cadastre o produto para a NF sair pelo cadastro.`
+      : !ncmCad ? `"${cadProd.nome}" está sem NCM no cadastro: usado ${produtoNf.ncm} de referência${ncmRef ? "" : " (soja — confira!)"}. Preencha o NCM em Cadastros → Produtos Agrícolas.` : "");
     setNfeItens([{
       id: crypto.randomUUID(),
       tipo_item: "Produto",
-      item:      contrato.produto,
-      ncm:       (prodAgricolas.find(p => p.id === contrato.produto_agricola_id)?.ncm)
-               ?? NCM_PRODUTO_LEGADO[contrato.produto]
-               ?? "1201.90.00",
+      // Nome e NCM do cadastro de Produtos Agrícolas; sem cadastro (ou sem NCM), o NCM de referência de grão — com aviso
+      item:      produtoNf.nome,
+      ncm:       produtoNf.ncm,
       quantidade: String(pesoKg),
       unidade:   "kg",
       valor_unitario: precoKgFmt,
@@ -469,7 +478,7 @@ function FaturamentoInner() {
       data_saida:     hoje,
       hora_saida:     agora,
     }));
-    setNfeItens([]);
+    setNfeItens([]); setAvisoProdutoNf("");
     setPasso("form");
   }
 
@@ -1757,7 +1766,7 @@ function FaturamentoInner() {
               {/* Grid de itens */}
               <div style={{ borderTop:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0 }}>
                 <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota{avisoProdutoNf && <span style={{ marginLeft:10, fontWeight:400, fontSize:11, color:"#7A5200", background:"#FBF3E0", padding:"2px 8px", borderRadius:6 }}>⚠ {avisoProdutoNf}</span>}</span>
                   <OperationalButton data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</OperationalButton>
                 </div>
                 <div data-arato-grid-container="true" style={{ overflowX:"auto", maxHeight:160 }}>

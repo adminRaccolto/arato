@@ -10,6 +10,7 @@ import { falharSeErro } from "./db-util";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
 import { excluirTitulosDaNf } from "./financeiro/titulos-nf";
+import { ncmPadraoDoProduto } from "./fiscal/ncm-produtos";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
@@ -7117,38 +7118,50 @@ const PRODUTOS_AGRICOLAS_PADRAO: {
   { nome: "Milheto",            subgrupo: "milheto",     unidade: "sc" },
 ];
 
-export async function seederProdutosAgricolas(fazenda_id: string): Promise<number> {
+/**
+ * "Carregar Padrões" de Produtos Agrícolas: cadastra os padrões que faltam (já com o NCM de grão) e completa o NCM
+ * vazio dos produtos agrícolas do cliente pela tabela de referência — nunca troca um NCM já preenchido.
+ */
+export async function seederProdutosAgricolas(fazenda_id: string): Promise<{ novos: number; ncmPreenchidos: number }> {
   // O cadastro é do CLIENTE: confere os produtos de todas as fazendas dele (antes só a fazenda → repetia por fazenda).
   const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
   const { data: fzs } = faz?.conta_id ? await supabase.from("fazendas").select("id").eq("conta_id", faz.conta_id) : { data: [{ id: fazenda_id }] };
+  const idsFaz = (fzs ?? []).map((f: { id: string }) => f.id);
   const { data: existentes } = await supabase
     .from("insumos")
-    .select("nome, tipo, ativo, mesclado_em")
-    .in("fazenda_id", (fzs ?? []).map((f: { id: string }) => f.id))
-    .eq("tipo", "produto");
+    .select("id, nome, tipo, ativo, mesclado_em, ncm, categoria")
+    .in("fazenda_id", idsFaz)
+    .or("tipo.eq.produto,categoria.eq.produto_agricola");
 
   const novos = PRODUTOS_AGRICOLAS_PADRAO.filter(
-    p => !itemDoCliente((existentes ?? []) as { nome: string; tipo?: string | null }[], p.nome, "produto")
+    p => !itemDoCliente(((existentes ?? []) as { nome: string; tipo?: string | null }[]).filter(e => e.tipo === "produto"), p.nome, "produto")
   );
-
-  if (novos.length === 0) return 0;
-
-  const { error } = await supabase.from("insumos").insert(
-    novos.map(p => ({
-      fazenda_id,
-      nome:           p.nome,
-      categoria:      "produto_agricola",
-      subgrupo:       p.subgrupo,
-      unidade:        p.unidade,
-      tipo:           "produto",
-      estoque:        0,
-      estoque_minimo: 0,
-      valor_unitario: 0,
-    }))
-  );
-
-  if (error) throw error;
-  return novos.length;
+  if (novos.length) {
+    const { error } = await supabase.from("insumos").insert(
+      novos.map(p => ({
+        fazenda_id,
+        nome:           p.nome,
+        categoria:      "produto_agricola",
+        subgrupo:       p.subgrupo,
+        unidade:        p.unidade,
+        tipo:           "produto",
+        ncm:            ncmPadraoDoProduto(p.nome)?.ncm.replace(/\D/g, "") || null,
+        estoque:        0,
+        estoque_minimo: 0,
+        valor_unitario: 0,
+      }))
+    );
+    if (error) throw error;
+  }
+  let ncmPreenchidos = 0;
+  for (const e of (existentes ?? []) as { id: string; nome: string; ncm: string | null; categoria: string | null }[]) {
+    if (e.categoria !== "produto_agricola" || (e.ncm ?? "").replace(/\D/g, "")) continue;
+    const ref = ncmPadraoDoProduto(e.nome);
+    if (!ref) continue;
+    const { error } = await supabase.from("insumos").update({ ncm: ref.ncm.replace(/\D/g, "") }).eq("id", e.id);
+    if (!error) ncmPreenchidos++;
+  }
+  return { novos: novos.length, ncmPreenchidos };
 }
 
 // ═══════════════════════════════════════════

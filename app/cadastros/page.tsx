@@ -61,6 +61,7 @@ import { liquidoCarteira } from "../../lib/folha-calculo";
 import ConcederFeriasModal from "../../components/ConcederFeriasModal";
 import RescisaoFuncionario from "../../components/RescisaoFuncionario";
 import { cancelarConcessaoFerias, marcarFeriasGozada } from "../../lib/rh-financeiro";
+import { ncmPadraoDoProduto, fmtNcm } from "../../lib/fiscal/ncm-produtos";
 import type {
   Fazenda as FazendaDB, Talhao, Arrendamento,
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
@@ -5308,6 +5309,9 @@ function CadastrosInner() {
               const erros: string[] = [];
               if (!fIns.nome.trim()) erros.push("Nome");
               if (!fIns.cultura_id) erros.push("Cultura");
+              // O NCM vai na NF de venda: obrigatório (do produto, da cultura ou, sem eles, o de referência para grão)
+              const ncmFinal = (fIns.ncm.trim() || culturasList.find(c => c.id === fIns.cultura_id)?.ncm || ncmPadraoDoProduto(fIns.nome)?.ncm || "").trim();
+              if (ncmFinal.replace(/\D/g, "").length !== 8) erros.push("NCM (8 dígitos)");
               if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
               setErroModal("");
               setSalvando(true);
@@ -5318,7 +5322,7 @@ function CadastrosInner() {
                   categoria: "produto_agricola",
                   subgrupo: (cultSel?.nome ?? fIns.subgrupo) || undefined,
                   cultura_id: fIns.cultura_id || undefined,
-                  ncm: fIns.ncm.trim() || cultSel?.ncm || undefined,
+                  ncm: (fIns.ncm.trim() || cultSel?.ncm || ncmPadraoDoProduto(fIns.nome)?.ncm || "").replace(/\D/g, "") || undefined,
                   unidade: fIns.unidade,
                   estoque: parseFloat(fIns.estoque) || 0,
                   estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
@@ -5382,16 +5386,18 @@ function CadastrosInner() {
                   <OperationalButton data-arato-button="secondary"
                     style={{ ...btnE, padding: "6px 12px", fontSize: 12, opacity: seedingProdutos ? 0.6 : 1 }}
                     disabled={seedingProdutos}
-                    title="Insere os 11 produtos agrícolas padrão do sistema (soja, milho, algodão, etc.) que ainda não existem"
+                    title="Cadastra os produtos agrícolas padrão que ainda não existem e preenche o NCM vazio dos produtos (NCM de grão para venda)"
                     onClick={async () => {
                       if (!fazIdEff) return;
                       setSeedingProdutos(true);
                       try {
-                        const n = await seederProdutosAgricolas(fazIdEff);
+                        const r = await seederProdutosAgricolas(fazIdEff);
                         const lista = await listarInsumosParaConta(contaId, fazIdEff ?? undefined);
                         setInsumos(lista);
-                        if (n === 0) alert("Todos os produtos padrão já estão cadastrados.");
-                        else alert(`${n} produto${n > 1 ? "s" : ""} adicionado${n > 1 ? "s" : ""} com sucesso.`);
+                        const partes = [r.novos ? `${r.novos} produto(s) padrão cadastrado(s)` : "", r.ncmPreenchidos ? `NCM preenchido em ${r.ncmPreenchidos} produto(s)` : ""].filter(Boolean);
+                        alert(partes.length
+                          ? `${partes.join(" e ")}. O NCM é o de grão para venda (não semente) — confira com o contador e ajuste no Editar se precisar.`
+                          : "Todos os produtos padrão já estão cadastrados e com NCM.");
                       } catch (e: unknown) {
                         alert("Erro: " + ((e as {message?:string})?.message ?? String(e)));
                       } finally {
@@ -5419,7 +5425,7 @@ function CadastrosInner() {
                           const cultLabel = cultVinc?.nome ?? cultLeg?.label ?? ins.subgrupo ?? "—";
                           const cultBg    = cultVinc ? "#E8E8E8" : (cultLeg?.bg ?? "#F1EFE8");
                           const cultCl    = cultVinc ? "#0D0D0D" : (cultLeg?.cl ?? "var(--text-2)");
-                          const ncmFinal  = ins.ncm ?? cultVinc?.ncm ?? "—";
+                          const ncmFinal  = fmtNcm(ins.ncm || cultVinc?.ncm) || "—";
                           const total = ins.estoque * ins.valor_unitario;
                           return (
                             <tr key={ins.id} style={{ borderBottom: i < prodFiltr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
@@ -5475,10 +5481,15 @@ function CadastrosInner() {
                       </div>
                       {/* NCM — auto-preenchido da cultura, editável para subprodutos (ex: Caroço de Algodão) */}
                       <div>
-                        <label data-arato-label="true" style={lbl}>NCM</label>
+                        <label data-arato-label="true" style={lbl}>NCM * <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(vai na NF de venda)</span></label>
                         <input style={inp} value={fIns.ncm}
                           onChange={e => setFIns(p => ({ ...p, ncm: e.target.value }))}
-                          placeholder="Ex: 1201.10.00" maxLength={12} />
+                          placeholder={ncmPadraoDoProduto(fIns.nome)?.ncm ? `Sugestão: ${ncmPadraoDoProduto(fIns.nome)!.ncm}` : "Ex: 1201.90.00"} maxLength={12} />
+                        {!fIns.ncm.trim() && ncmPadraoDoProduto(fIns.nome) && (
+                          <button type="button" onClick={() => setFIns(p => ({ ...p, ncm: ncmPadraoDoProduto(p.nome)!.ncm }))} style={{ marginTop: 3, border: "none", background: "none", padding: 0, color: "#1A4870", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>
+                            Usar {ncmPadraoDoProduto(fIns.nome)!.ncm} — {ncmPadraoDoProduto(fIns.nome)!.descricao}
+                          </button>
+                        )}
                         {fIns.ncm && fIns.ncm !== (culturasList.find(c => c.id === fIns.cultura_id)?.ncm ?? "") && (
                           <div style={{ fontSize: 10, color: "#C9921B", marginTop: 2 }}>NCM diferente do padrão da cultura — verifique se é intencional</div>
                         )}
@@ -5503,7 +5514,7 @@ function CadastrosInner() {
                           placeholder="Ex: Soja em Grão, Soja Convencional, Milho em Grão, Algodão em Pluma, Caroço de Algodão"
                           value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
                         <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>
-                          Este nome aparecerá na descrição do item na NF-e. O NCM é definido pela Cultura acima.
+                          Este nome, o NCM e a unidade vão na NF-e de venda (Faturamento e venda avulsa).
                         </div>
                       </div>
                       {/* Depósito e estoque */}

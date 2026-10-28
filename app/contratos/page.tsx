@@ -26,6 +26,7 @@ import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, ProdutorIE, An
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
 import AnexoDocumentos from "../../components/AnexoDocumentos";
+import { produtoDoContrato } from "../../lib/fiscal/ncm-produtos";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -808,7 +809,8 @@ export default function Contratos() {
         listarDepositos(fazendaId!),
         listarFazendas(fazendaId ?? undefined),
         supabase.from("culturas").select("*").eq("fazenda_id", fazendaId!).eq("ativa", true).order("ordem").order("nome"),
-        supabase.from("insumos").select("*").eq("fazenda_id", fazendaId!).eq("categoria", "produto_agricola").order("nome"),
+        // Produtos agrícolas do cliente (todas as fazendas): o contrato se liga ao cadastro, que dá nome/NCM da NF de venda
+        supabase.from("insumos").select("*").in("fazenda_id", fazendaIds?.length ? fazendaIds : [fazendaId!]).eq("categoria", "produto_agricola").order("nome"),
         supabase.from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data"),
       ]);
       const rMap: Record<string,Romaneio[]> = {};
@@ -1046,7 +1048,7 @@ export default function Contratos() {
         grupo_vendedor: fC.grupo_vendedor || undefined,
         vendedor: fC.vendedor || undefined,
         produto: primeiroItem?.produto ?? fC.produto,
-        produto_agricola_id: prodAgricolas.find(p => p.nome === (primeiroItem?.produto ?? fC.produto))?.id ?? undefined,
+        produto_agricola_id: produtoDoContrato(prodAgricolas, null, primeiroItem?.produto ?? fC.produto)?.id ?? undefined,
         modalidade: fC.modalidade,
         moeda: fC.moeda,
         preco: primeiroItem?.valor_unitario ?? fC.preco,
