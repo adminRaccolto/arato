@@ -47,6 +47,8 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
   const [loading, setLoading]       = useState(true);
   const [usadoBytes, setUsado]      = useState(0);
   const [cotaBytes, setCota]        = useState(0);
+  // Só afirma "plano sem armazenamento" com a resposta da consulta — falha de login não é plano Essencial
+  const [cotaLida, setCotaLida]     = useState(false);
   const [planId, setPlanId]         = useState("essencial");
   const [uploading, setUploading]   = useState(false);
   const [erro, setErro]             = useState<string | null>(null);
@@ -65,6 +67,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
         setUsado(j.usado_bytes ?? 0);
         setCota(j.cota_bytes ?? 0);
         setPlanId(j.plano_id ?? "essencial");
+        setCotaLida(true);
       }
     } finally {
       setLoading(false);
@@ -117,7 +120,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
     }
   }
 
-  const semStorage = cotaBytes === 0;
+  const semStorage = cotaLida && cotaBytes === 0;
   const cotaPct    = cotaBytes > 0 ? Math.min(100, (usadoBytes / cotaBytes) * 100) : 0;
   const cotaCheia  = cotaBytes > 0 && usadoBytes >= cotaBytes;
 

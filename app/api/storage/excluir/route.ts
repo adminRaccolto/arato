@@ -11,8 +11,8 @@ function sb() {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { getSessionUser } = await import("../../../../lib/api-auth");
-  const user = await getSessionUser();
+  const { getRequestUser } = await import("../../../../lib/api-auth");
+  const user = await getRequestUser(req.headers.get("authorization"));
   if (!user) return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
 
   const id = req.nextUrl.searchParams.get("id");

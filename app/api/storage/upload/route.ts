@@ -19,8 +19,9 @@ function sb() {
 }
 
 export async function POST(req: NextRequest) {
-  const { getSessionUser, validateFazendaAccess } = await import("../../../../lib/api-auth");
-  const user = await getSessionUser();
+  const { getRequestUser, validateFazendaAccess } = await import("../../../../lib/api-auth");
+  const authHeader = req.headers.get("authorization") ?? undefined;
+  const user = await getRequestUser(authHeader);
   if (!user) return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
 
   const form = await req.formData();
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     }, { status: 400 });
   }
 
-  const access = await validateFazendaAccess(fazenda_id);
+  const access = await validateFazendaAccess(fazenda_id, authHeader);
   if (!access.ok) return NextResponse.json({ erro: access.error }, { status: access.status });
 
   const db = sb();

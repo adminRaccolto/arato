@@ -2,6 +2,7 @@
 import { hojeLocal } from "../lib/data-local";
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
+import { instalarFetchComToken } from "../lib/fetch-com-token";
 import { calcularStepsCompletos } from "../lib/onboarding";
 import { planoInclui } from "../lib/planos";
 import type { PlanoId } from "../lib/planos";
@@ -102,6 +103,9 @@ export function useAuth() { return useContext(Ctx); }
 function ehStaffInterno(role: string | null): boolean {
   return role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor" || role === "raccotlo_operacional" || role === "bpo";
 }
+
+// Instala antes do primeiro render: toda chamada a /api/ leva o token renovado da sessão
+instalarFetchComToken();
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [fazendaId,              setFazendaId]              = useState<string | null>(null);

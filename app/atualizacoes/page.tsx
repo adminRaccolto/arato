@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-u",
+    data: "28/10/2026",
+    titulo: "Fim do \"Não autenticado\" com a tela aberta há muito tempo",
+    modulos: ["Geral", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ações feitas numa tela aberta há muito tempo (ex.: Baixar um CP) podiam falhar com \"Não autenticado\", porque o login do navegador tinha vencido. Agora toda ação leva o acesso renovado automaticamente." },
+      { tipo: "correcao", texto: "Anexar comprovante mostrava \"Plano Essencial não inclui armazenamento\" em contas com armazenamento (como as Pro Bono, no pacote Performance) quando a consulta falhava por login vencido. O aviso só aparece quando o plano de fato não tem armazenamento." },
+    ],
+    onde: "Todas as telas",
+  },
+  {
     versao: "2026.10.28-t",
     data: "28/10/2026",
     titulo: "Pedido de compra não volta para Aprovado ao ser salvo",
