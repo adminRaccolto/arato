@@ -5416,10 +5416,23 @@ function CadastrosInner() {
                       {buscaProd ? `Nenhum produto encontrado para "${buscaProd}"` : "Nenhum produto agrícola cadastrado. Clique em '↺ Carregar Padrões' ou use '+ Novo Produto'."}
                     </div>
                   ) : (
+                    <>
+                    {/* Ativos e inativos em blocos separados: inativo não aparece nos seletores (NF, pedido, lavoura) */}
+                    {([["Ativos", prodFiltr.filter(x => x.ativo !== false), false], ["Inativos", prodFiltr.filter(x => x.ativo === false), true]] as [string, Insumo[], boolean][])
+                      .filter(([, l, inativos]) => !inativos || l.length > 0)
+                      .map(([titulo, lista, inativos]) => (
+                      <details key={titulo} open={!inativos} style={{ marginBottom: inativos ? 0 : 14 }}>
+                        <summary style={{ cursor: "pointer", padding: "8px 14px", fontSize: 12, fontWeight: 700, color: inativos ? "var(--text-3)" : "#0B2D50", textTransform: "uppercase", letterSpacing: "0.04em", listStyle: inativos ? undefined : "none" }}>
+                          {titulo} ({lista.length}){inativos ? " — não aparecem nos seletores; clique para ver" : ""}
+                        </summary>
+                        {lista.length === 0 ? (
+                          <div style={{ padding: "16px 14px", fontSize: 12, color: "var(--text-3)" }}>Nenhum produto ativo{buscaProd ? ` para "${buscaProd}"` : ""}.</div>
+                        ) : (
+                    <div style={{ opacity: inativos ? 0.75 : 1 }}>
                     <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Nome do Produto", "Cultura", "NCM", "Unid.", "Estoque", "Valor Unit.", "Total em Estoque", ""]} />
                       <tbody>
-                        {prodFiltr.map((ins, i) => {
+                        {lista.map((ins, i) => {
                           const cultVinc = culturasList.find(c => c.id === ins.cultura_id);
                           const cultLeg  = cultMap[ins.subgrupo ?? "outros"] ?? cultMap["outros"];
                           const cultLabel = cultVinc?.nome ?? cultLeg?.label ?? ins.subgrupo ?? "—";
@@ -5428,7 +5441,7 @@ function CadastrosInner() {
                           const ncmFinal  = fmtNcm(ins.ncm || cultVinc?.ncm) || "—";
                           const total = ins.estoque * ins.valor_unitario;
                           return (
-                            <tr key={ins.id} style={{ borderBottom: i < prodFiltr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                            <tr key={ins.id} style={{ borderBottom: i < lista.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "10px 14px" }}>
                                 <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{ins.nome}</div>
                               </td>
@@ -5453,14 +5466,19 @@ function CadastrosInner() {
                       </tbody>
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)" }}>
-                          <td colSpan={6} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{prodFiltr.length} produtos</td>
+                          <td colSpan={6} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{lista.length} produto{lista.length === 1 ? "" : "s"}{inativos ? " inativo" + (lista.length === 1 ? "" : "s") : ""}</td>
                           <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#111111" }}>
-                            {totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {lista.reduce((t, x) => t + x.estoque * x.valor_unitario, 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
                           <td />
                         </tr>
                       </tfoot>
                     </OperationalGrid>
+                    </div>
+                        )}
+                      </details>
+                    ))}
+                    </>
                   )}
                 </div>
 

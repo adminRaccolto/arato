@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-ze",
+    data: "28/10/2026",
+    titulo: "Produtos Agrícolas: ativos e inativos separados",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "A lista de Produtos Agrícolas mostra os ativos num bloco e os inativos em outro, abaixo e fechado (clique para ver), cada um com o seu total. Inativos não aparecem nos seletores de NF, pedido e lavoura." },
+    ],
+    onde: "Cadastros → Produtos Agrícolas",
+  },
+  {
     versao: "2026.10.28-zd",
     data: "28/10/2026",
     titulo: "Filtros do CP e CR nos cabeçalhos das colunas",
