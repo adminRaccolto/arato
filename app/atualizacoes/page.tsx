@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-f",
+    data: "28/10/2026",
+    titulo: "CIOT no MDF-e: motorista com CPF reconhecido",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao gerar o CIOT no MDF-e, o motorista vindo do CT-e aparecia como \"sem CPF\" mesmo cadastrado. Agora ele é reconhecido pelo cadastro, pelo CPF ou pelo nome, inclusive se foi cadastrado em outra fazenda do cliente." },
+    ],
+    onde: "Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.10.28-e",
     data: "28/10/2026",
     titulo: "Contrato financeiro: taxa da calculadora e contrato excluído",

@@ -351,6 +351,16 @@ function MdfePageInner() {
   const [ctes,      setCtes]      = useState<CteMin[]>([]);
   const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
   const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
+  // Motorista do MDF-e: pelo cadastro escolhido; senão pelo nome ou CPF que vieram do CT-e (digitado livre ou cadastrado em
+  // outra fazenda); por último o nome/CPF do próprio formulário. Sem isso o CIOT dizia "sem CPF" com o CPF na tela.
+  const resolverMotorista = (f: { motorista_id?: string | null; motorista_nome?: string | null; motorista_cpf?: string | null }): MotoristaMin | undefined => {
+    const dig = (v?: string | null) => (v ?? "").replace(/\D/g, "");
+    const nome = (f.motorista_nome ?? "").trim().toUpperCase();
+    return motoristas.find(m => m.id === f.motorista_id)
+      ?? (dig(f.motorista_cpf) ? motoristas.find(m => dig(m.cpf) === dig(f.motorista_cpf)) : undefined)
+      ?? (nome ? motoristas.find(m => m.nome.trim().toUpperCase() === nome) : undefined)
+      ?? (dig(f.motorista_cpf) ? { id: "", nome: f.motorista_nome ?? "", cpf: dig(f.motorista_cpf) } : undefined);
+  };
   // Placas das carretas que o MDF-e levou (foto da viagem, gravada em implemento_ids).
   const placasReboque = (m: Mdfe) => (m.implemento_ids ?? []).map(id => veiculos.find(v => v.id === id)?.placa).filter((p): p is string => !!p);
   const [empresaCpfCnpj, setEmpresaCpfCnpj] = useState("");
@@ -423,7 +433,8 @@ function MdfePageInner() {
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
       // "*": categoria/num_eixos/carroceria (Seção 363) sem quebrar a lista se a migration ainda não rodou.
       supabase.from("veiculos").select("*").in("fazenda_id", fazendaIds).eq("ativo", true),
-      supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
+      // Motoristas do cliente todo (conta) — cadastrados em qualquer fazenda dele
+      supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").or([...(contaId ? [`conta_id.eq.${contaId}`] : []), `fazenda_id.in.(${fazendaIds.join(",")})`].join(",")).eq("ativo", true),
     ]);
     const raw = md ?? [];
     // documentos pode vir como JSON string do banco
@@ -585,7 +596,7 @@ function MdfePageInner() {
   // ── Gerar CIOT via ANTT ──────────────────────────────────
   async function gerarCiot() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar ciot)", perigo: false }))) return;
-    const motorista = motoristas.find(m => m.id === form.motorista_id);
+    const motorista = resolverMotorista(form);
     const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
     // Contratante = transportadora emitente do CT-e vinculado (quem paga/declara o frete); só
     // cai na primeira empresa da conta quando não há CT-e. Ambiente vem de Parâmetros → MDF-e
@@ -759,7 +770,8 @@ function MdfePageInner() {
         // motorista_nome/cpf do CT-e sempre existem, motorista_id só quando bate com o cadastro.
         if (c?.motorista_nome) {
           extra = { ...extra, motorista_nome: c.motorista_nome, motorista_cpf: c.motorista_cpf ?? "" };
-          if (c.motorista_id && motoristas.some(m => m.id === c.motorista_id)) extra = { ...extra, motorista_id: c.motorista_id };
+          const doCadastro = resolverMotorista({ motorista_id: c.motorista_id, motorista_nome: c.motorista_nome, motorista_cpf: c.motorista_cpf });
+          if (doCadastro?.id) extra = { ...extra, motorista_id: doCadastro.id, motorista_cpf: doCadastro.cpf ?? c.motorista_cpf ?? "" };
         }
       }
       // Origem (Município/UF/IBGE de Início) — só preenche se ainda estiver vazio, pra não
@@ -815,7 +827,7 @@ function MdfePageInner() {
     setSaving(true); setErr("");
     try {
       const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
-      const motorista = motoristas.find(m => m.id === form.motorista_id);
+      const motorista = resolverMotorista(form);
 
       // Montar array de documentos
       const documentos: DocVinculado[] = [];
@@ -846,7 +858,7 @@ function MdfePageInner() {
         veiculo_tipo: veiculo?.tipo ?? null,
         // Motorista: cadastro (motorista_id, ao escolher sugestão) ou texto livre digitado —
         // form.motorista_nome/cpf são o que está no campo, prevalecem sobre o cadastro.
-        motorista_id: form.motorista_id || null,
+        motorista_id: form.motorista_id || motorista?.id || null,
         motorista_nome: form.motorista_nome || motorista?.nome || "",
         motorista_cpf: form.motorista_cpf || motorista?.cpf || null,
         documentos,
@@ -1402,7 +1414,7 @@ function MdfePageInner() {
 
               {/* ── CIOT (TAC) ── */}
               {(() => {
-                const mot = motoristas.find(m => m.id === form.motorista_id);
+                const mot = resolverMotorista(form);
                 const vei = veiculos.find(v => v.id === form.veiculo_id);
                 // Regra em lib/mdfe/ciot-regra.ts: motorista TAC ou veículo de terceiro exige CIOT.
                 if (!ciotExigido({ tpEmit: "1", motoristaTipo: mot?.tipo, veiculoProprietarioTipo: vei?.proprietario_tipo })) return null;
