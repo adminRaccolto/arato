@@ -5,7 +5,7 @@ import Link from "next/link";
 // Aqui: emitir a NF-e de remessa pelo Arato OU registrar a remessa emitida em outro sistema; os itens vêm da NF de
 // entrada de origem ou do cadastro; o estoque é TRANSFERIDO do depósito próprio para o depósito do armazém (continua
 // sendo do cliente). O retorno (NF recebida do armazém, emitida pelo Arato ou fora) fica na tela Retornos.
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
@@ -68,6 +68,16 @@ function RemessasConteudo() {
   const [busca, setBusca] = useState("");
   const [filtroSt, setFiltroSt] = useState("");
   const [msg, setMsg] = useState("");
+  // Remessas abertas (seta) e as NF de compra de origem já buscadas para elas
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
+  const [nfOrigemInfo, setNfOrigemInfo] = useState<Record<string, { numero: string | null; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null } | null>>({});
+  function alternarRemessa(r: NfRemessaLogistica) {
+    setExpandidas(p => { const n = new Set(p); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; });
+    if (r.nf_entrada_id && !(r.nf_entrada_id in nfOrigemInfo)) {
+      supabase.from("nf_entradas").select("numero, emitente_nome, data_emissao, valor_total").eq("id", r.nf_entrada_id).maybeSingle()
+        .then(({ data }) => setNfOrigemInfo(p => ({ ...p, [r.nf_entrada_id!]: data as { numero: string | null; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null } | null })));
+    }
+  }
 
   async function carregar() {
     if (!contaId || !ids.length) return;
@@ -341,9 +351,17 @@ function RemessasConteudo() {
               {filtradas.map(r => {
                 const sb = STATUS_BADGE[r.status] ?? STATUS_BADGE.emitida;
                 const falta = Math.max(0, valorRemetido(r) - Number(r.valor_retornado ?? 0));
+                const aberta = expandidas.has(r.id);
+                const itensR = (Array.isArray(r.itens_json) ? r.itens_json : []) as { descricao?: string; descricao_produto?: string; nome?: string; quantidade?: number; unidade?: string; unidade_nf?: string; valor_total?: number }[];
+                const nfo = r.nf_entrada_id ? nfOrigemInfo[r.nf_entrada_id] : null;
                 return (
-                  <tr key={r.id}>
-                    <td style={{ ...td, fontWeight: 600 }}>{r.nf_remessa_numero ?? "—"}</td>
+                  <Fragment key={r.id}>
+                  <tr style={{ background: aberta ? "#F4F6FA" : undefined }}>
+                    <td style={{ ...td, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      <button type="button" onClick={() => alternarRemessa(r)} title={aberta ? "Fechar" : "Ver as NFs ligadas a esta remessa"} aria-expanded={aberta}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#1A4870", fontSize: 11, padding: "0 6px 0 0" }}>{aberta ? "▼" : "▶"}</button>
+                      {r.nf_remessa_numero ?? "—"}
+                    </td>
                     <td style={td}>{fmtData(r.nf_remessa_data)}</td>
                     <td style={td}>{r.destinatario_nome}</td>
                     <td style={td}>{r.cfop_remessa}</td>
@@ -357,6 +375,61 @@ function RemessasConteudo() {
                       {r.status === "emitida" && <Link href="/fiscal/retornos" style={{ fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Retorno →</Link>}
                     </td>
                   </tr>
+                  {aberta && (
+                    <tr>
+                      <td colSpan={10} style={{ padding: "10px 16px 14px 34px", background: "#F4F6FA", borderBottom: "0.5px solid var(--border-table)" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.2fr)", gap: 16 }}>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#0B2D50", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>NF de compra de origem</div>
+                            {r.nf_entrada_id
+                              ? (nfo === undefined ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>Carregando…</div>
+                                : nfo ? <div style={{ fontSize: 12 }}>NF {nfo.numero} · {nfo.emitente_nome} · {fmtData(nfo.data_emissao)} · {fmtBRL(nfo.valor_total)}</div>
+                                : <div style={{ fontSize: 12, color: "var(--text-3)" }}>NF de origem não encontrada.</div>)
+                              : <div style={{ fontSize: 12, color: "var(--text-3)" }}>{r.nf_compra_chave ? `Chave ${r.nf_compra_chave}` : "Sem NF de compra ligada."}</div>}
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#0B2D50", textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 6px" }}>Itens remetidos</div>
+                            {itensR.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>Sem itens registrados.</div> : (
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <tbody>
+                                  {itensR.map((it, k) => (
+                                    <tr key={k}>
+                                      <td style={{ padding: "3px 0", color: "var(--text-1)" }}>{it.descricao ?? it.descricao_produto ?? it.nome ?? "—"}</td>
+                                      <td style={{ padding: "3px 8px", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{Number(it.quantidade ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {it.unidade ?? it.unidade_nf ?? ""}</td>
+                                      <td style={{ padding: "3px 0", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(it.valor_total)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#0B2D50", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>NFs de retorno ligadas ({(r.retornos ?? []).length})</div>
+                            {(r.retornos ?? []).length === 0
+                              ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>{r.status === "retornada" && r.nf_retorno_numero ? `NF ${r.nf_retorno_numero} (${fmtData(r.nf_retorno_data)})` : "Nenhum retorno ainda."}</div>
+                              : (
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead><tr>{["NF", "Data", "Emitente", "Valor"].map(h => <th key={h} style={{ textAlign: h === "Valor" ? "right" : "left", fontSize: 10, color: "var(--text-3)", fontWeight: 600, padding: "2px 0" }}>{h}</th>)}</tr></thead>
+                                <tbody>
+                                  {(r.retornos ?? []).map((x, k) => (
+                                    <tr key={k}>
+                                      <td style={{ padding: "3px 0", fontWeight: 600 }}>
+                                        {x.chave ? <a href={`/api/fiscal/danfe?chave=${x.chave}&fazenda_id=${r.fazenda_id}`} target="_blank" rel="noreferrer" style={{ color: "#1A4870" }} title="Abrir DANFE">{x.numero}</a> : x.numero}
+                                      </td>
+                                      <td style={{ padding: "3px 6px" }}>{fmtData(x.data)}</td>
+                                      <td style={{ padding: "3px 6px", color: "var(--text-2)" }}>{x.emitente ?? "—"}</td>
+                                      <td style={{ padding: "3px 0", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(x.valor)}</td>
+                                    </tr>
+                                  ))}
+                                  <tr><td colSpan={3} style={{ padding: "4px 0", fontWeight: 600, borderTop: "0.5px solid var(--border-table)" }}>Total retornado</td>
+                                    <td style={{ padding: "4px 0", textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--border-table)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL((r.retornos ?? []).reduce((t, x) => t + Number(x.valor ?? 0), 0))}</td></tr>
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>

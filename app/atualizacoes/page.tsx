@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-zf",
+    data: "28/10/2026",
+    titulo: "Remessas: ver as NFs ligadas a cada remessa",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "novo", texto: "Cada remessa tem uma seta ▶ que abre os vínculos dela: a NF de compra de origem, os itens remetidos (quantidade e valor) e as NFs de retorno já ligadas, com data, emitente, valor (DANFE pelo número) e o total retornado." },
+    ],
+    onde: "Documentos Fiscais → Remessas",
+  },
+  {
     versao: "2026.10.28-ze",
     data: "28/10/2026",
     titulo: "Produtos Agrícolas: ativos e inativos separados",
