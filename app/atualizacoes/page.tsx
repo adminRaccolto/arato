@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-h",
+    data: "28/10/2026",
+    titulo: "CIOT: distância barrada por CEP de outra cidade",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Quando o CEP de origem ou de destino é de outro município que o código IBGE informado (ex.: CEP de Sinop com município Tapurah), o CIOT passa a usar a localização do município, e a distância rodoviária certa não é mais barrada como menor que a linha reta." },
+    ],
+    onde: "Fretes e Transporte → MDF-e → CIOT",
+  },
+  {
     versao: "2026.10.28-g",
     data: "28/10/2026",
     titulo: "Aditivo de Repactuação no contrato financeiro",

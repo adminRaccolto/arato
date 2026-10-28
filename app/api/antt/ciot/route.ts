@@ -62,7 +62,14 @@ export async function POST(req: NextRequest) {
         try {
           if (c.length === 8) {
             const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${c}`, { signal: AbortSignal.timeout(8000) });
-            if (r.ok) { const j = await r.json() as { location?: { coordinates?: { latitude?: string; longitude?: string } } }; const co = j.location?.coordinates; if (co?.latitude && co?.longitude) return { lat: Number(co.latitude).toFixed(6), lon: Number(co.longitude).toFixed(6) }; }
+            // CEP de OUTRO município que o código IBGE (achado real: CEP de Sinop com município Tapurah) jogava a
+            // linha reta para a cidade errada e barrava a distância certa (B82): vale o município, referência da ANTT
+            if (r.ok) {
+              const j = await r.json() as { ibge?: { city?: string }; location?: { coordinates?: { latitude?: string; longitude?: string } } };
+              const co = j.location?.coordinates;
+              const mesmoMunicipio = !ibge || !j.ibge?.city || String(j.ibge.city) === String(ibge).replace(/\D/g, "");
+              if (mesmoMunicipio && co?.latitude && co?.longitude) return { lat: Number(co.latitude).toFixed(6), lon: Number(co.longitude).toFixed(6) };
+            }
           }
           if (ibge) {
             const r = await fetch(`https://servicodados.ibge.gov.br/api/v3/malhas/municipios/${ibge}?formato=application/vnd.geo+json`, { signal: AbortSignal.timeout(10000) });
