@@ -64,7 +64,7 @@ import {
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { statusExibido } from "../../../lib/financeiro/titulos";
-import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero } from "../../../lib/financeiro/cp-grid";
+import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
 import { arredondarMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -439,8 +439,13 @@ export default function ContasAPagarPage() {
     if (fAtalho === "barter") return l.moeda === "barter";
     return l.origem_lancamento === fAtalho;
   };
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaPeriodoPadrao(l) && passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")));
-  const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
+  // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
+  // Achado real 28/10/2026: o borderô ignorava esses filtros — "Compra de terra" (que desliga o período) listava todos.
+  const passaExtras = (l: RelLancamento) => passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? ""));
+  const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaPeriodoPadrao(l) && passaExtras(l));
+  const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP)
+    && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),

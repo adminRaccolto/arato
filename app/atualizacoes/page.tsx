@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-p",
+    data: "28/10/2026",
+    titulo: "Borderôs respeitam os atalhos e filtros do Contas a Pagar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Os atalhos Barter, Contratos financeiros, Compra de terra e Vencendo (7 dias), e os filtros de Moeda, Produtor e das colunas, não valiam para os borderôs: ao usar um deles, todos os borderôs apareciam na lista. Agora um borderô só aparece quando algum título dele passa no filtro." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.28-o",
     data: "28/10/2026",
     titulo: "Unidade de medida Dose",
