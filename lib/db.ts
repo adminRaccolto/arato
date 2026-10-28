@@ -5541,6 +5541,16 @@ export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | u
   await recalcularStatusPedidoCompra(pedido_id);
 }
 
+// Depois de salvar o pedido: o status vem das entregas (NFs processadas ou entregas manuais), nunca do formulário.
+// Achado real 28/10/2026: editar e salvar um pedido já 100% entregue gravava "Aprovado" por cima (pedido 46316).
+export async function reavaliarStatusPedidoCompra(pedido_id: string): Promise<void> {
+  const { data: ped } = await supabase.from("pedidos_compra").select("status").eq("id", pedido_id).maybeSingle();
+  if (!ped || ped.status === "rascunho" || ped.status === "cancelado") return;
+  const { count } = await supabase.from("nf_entradas").select("id", { count: "exact", head: true }).eq("pedido_compra_id", pedido_id);
+  if ((count ?? 0) > 0) await recalcularEntregaPedidoFiscal(pedido_id);
+  else await recalcularStatusPedidoCompra(pedido_id);
+}
+
 export async function registrarEntrega(e: Omit<PedidoCompraEntrega, "id" | "created_at">): Promise<PedidoCompraEntrega> {
   let item: { quantidade: number; qtd_entregue: number | null; qtd_cancelada: number | null; nome_item: string } | null = null;
   if (e.item_id) {

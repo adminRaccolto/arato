@@ -33,7 +33,7 @@ import {
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
-  listarGruposInsumoDaConta, listarPrincipiosAtivos, insumoAtivo } from "../../lib/db";
+  listarGruposInsumoDaConta, listarPrincipiosAtivos, insumoAtivo, reavaliarStatusPedidoCompra } from "../../lib/db";
 import type { PedidoCompra, RelPedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -1151,6 +1151,7 @@ export default function ComprasPage() {
           };
         });
       await salvarPedidoCompraItens(pedidoId, fidPedido, itensSalvar);
+      await reavaliarStatusPedidoCompra(pedidoId);
 
       // Gera lançamento quando pedido é aprovado
       const pedidoExistente = pedidoExistenteFull;
@@ -2627,7 +2628,11 @@ export default function ComprasPage() {
                       <span style={{ fontSize: 11, color: "var(--text-2)" }}>
                         Total recebido:{" "}
                         <strong style={{ color: "#111111" }}>{fmtBRL(totalNFs)}</strong>
-                        {totalPedido > 0 && (
+                        {/* Pedido em dólar: as NFs são em reais — a % misturava moedas (ex.: "522% do pedido"); vale a entrega por quantidade acima */}
+                        {totalPedido > 0 && modalEntrega.pedido.moeda === "USD" && (
+                          <span style={{ marginLeft: 6, color: "var(--text-3)" }}>(pedido em US$ {totalPedido.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                        )}
+                        {totalPedido > 0 && modalEntrega.pedido.moeda !== "USD" && (
                           <span style={{ marginLeft: 6, color: totalNFs >= totalPedido ? "#16A34A" : "#C9921B", fontWeight: 600 }}>
                             ({Math.round((totalNFs / totalPedido) * 100)}% do pedido)
                           </span>

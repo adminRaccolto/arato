@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-t",
+    data: "28/10/2026",
+    titulo: "Pedido de compra não volta para Aprovado ao ser salvo",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Editar e salvar um pedido já entregue (ou parcialmente entregue) gravava o status \"Aprovado\" por cima. Agora, ao salvar, o status é recalculado pelas entregas (NFs processadas ou entregas registradas). 9 pedidos que estavam com o status errado foram corrigidos." },
+      { tipo: "correcao", texto: "Em NFs Vinculadas, pedido em dólar não mostra mais a porcentagem do valor recebido (comparava dólar com reais, ex.: \"522% do pedido\"); mostra o valor do pedido em US$. A entrega por quantidade continua na tabela de itens." },
+    ],
+    onde: "Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.28-s",
     data: "28/10/2026",
     titulo: "Remessa: valores certos ao ler o XML ou a NF de origem",
