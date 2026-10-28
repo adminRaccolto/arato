@@ -237,7 +237,6 @@ export default function ContasAReceberPage() {
   const [fAtalho, setFAtalho] = useState("");
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
-  const [fBusca,   setFBusca]   = useState("");
   // Padrão: vencimentos de hoje até hoje + 60 dias (pedido do dono 25/10/2026). Vencidos ficam na aba Vencidos.
   const [fDataDe,  setFDataDe]  = useState(() => hojeLocal());
   const [fDataAte, setFDataAte] = useState(() => maisDiasLocal(60));
@@ -287,6 +286,9 @@ export default function ContasAReceberPage() {
     Math.max(0, (ehUSD(l.moeda) ? (emReais(l, l.valor) ?? l.valor ?? 0) : (l.valor ?? 0)) - (l.valor_pago ?? 0));
   // Filtros por coluna (linha sob o cabeçalho do grid)
   const [filtrosCol, setFiltrosCol] = useState<Record<string, string>>({});
+  // Buscar por cliente: é o filtro do cabeçalho da coluna Cliente (28/10/2026 — o campo Buscar da barra saiu; todos os
+  // filtros de texto ficam nos cabeçalhos). Continua achando pelo nome e pela descrição e, como antes, ignora o período.
+  const fBusca = filtrosCol.pessoa ?? "";
 
   const carregar = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
@@ -386,8 +388,14 @@ export default function ContasAReceberPage() {
     lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
     status: STATUS_OPCOES.find(x => x.v === statusExibido(l.status_normalizado, l.data_vencimento))?.label ?? "",
   } as Record<string, string>)[k] ?? "";
+  // Colunas com filtro de texto no cabeçalho (as mesmas que textoColuna sabe ler) e o exemplo de cada uma
+  const COLUNAS_TEXTO_FILTRO: Record<string, string> = {
+    origem: "PF / PJ", produtor: "produtor", numero: "nº", pessoa: "nome", descricao: "descrição", operacao: "operação",
+    safra: "safra", ciclo: "ciclo", cc: "centro de custo", lancamento: "dd/mm", vencimento: "dd/mm", venc_orig: "dd/mm",
+    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", observacao: "obs.", status: "status",
+  };
   const passaColunas = (l: RelLancamento) => Object.entries(filtrosCol).every(([k, f]) => {
-    if (!f.trim()) return true;
+    if (!f.trim() || k === "pessoa") return true;   // Cliente: pela busca no banco (nome e descrição)
     if (k === "valor" || k === "pago" || k === "saldo") {
       if (k === "valor") return casaFiltroNumero(l.valor, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, l.valor), f));
       return casaFiltroNumero(k === "pago" ? l.valor_pago : saldoBRL(l), f);
@@ -1352,10 +1360,6 @@ export default function ContasAReceberPage() {
           })}
         </div>
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 180px", minWidth: 160 }}>
-            <label data-arato-label="true" style={lblMini}>Buscar</label>
-            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Nome do cliente..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-          </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Origem</label>
             <div style={{ display: "flex", gap: 6 }}>
@@ -1442,16 +1446,16 @@ export default function ContasAReceberPage() {
                   </th>
                 ); })}
               </tr>
-              {/* Filtros de coluna: Valor (exato, >n, <n ou faixa n-m) e Nº NF */}
+              {/* Filtros de coluna em todas as colunas: texto (contém) e valores (exato, >n, <n ou faixa n-m) */}
               <tr className="arato-grid-column-filters" style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
                 {colunasVisiveis.map(c => {
-                  const filtravel = c.key === "valor" || c.key === "nf"; // Valor e Nº NF: as demais colunas já têm filtro na barra acima
-                  const numerico = c.key === "valor";
+                  const numerico = ["valor", "pago", "saldo", "dias"].includes(c.key);
+                  const filtravel = numerico || c.key in COLUNAS_TEXTO_FILTRO;
                   return (
                     <th key={c.key} style={{ padding: "3px 6px", background: "#fff", borderBottom: "0.5px solid #DDE2EE", fontWeight: 400 }}>
                       {filtravel && (
                         <input value={filtrosCol[c.key] ?? ""} onChange={e => setFiltrosCol(p => ({ ...p, [c.key]: e.target.value }))}
-                          placeholder={numerico ? "ex.: >1000" : "nº NF"} aria-label={`Filtrar ${c.label}`}
+                          placeholder={numerico ? "ex.: >1000" : COLUNAS_TEXTO_FILTRO[c.key]} aria-label={`Filtrar ${c.label}`}
                           style={{ width: "100%", boxSizing: "border-box", fontSize: 10, padding: "3px 5px", border: "0.5px solid #DDE2EE", borderRadius: 5, background: filtrosCol[c.key] ? "#FBF3E0" : "#fff" }} />
                       )}
                     </th>

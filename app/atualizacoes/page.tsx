@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-zd",
+    data: "28/10/2026",
+    titulo: "Filtros do CP e CR nos cabeçalhos das colunas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Contas a Pagar e a Receber: o campo Buscar saiu da barra e todas as colunas do grid ganharam filtro sob o cabeçalho — texto nas colunas de texto e de data, e exato/maior/menor/faixa em Valor, Pago, Saldo e Dias. O filtro da coluna Fornecedor (Cliente) faz o que o Buscar fazia: acha pelo nome, pelo emitente da NF e pela descrição, ignorando o período." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.28-zc",
     data: "28/10/2026",
     titulo: "Uma NF de retorno para várias remessas",
