@@ -24,6 +24,7 @@ import { listarTransferenciasMaquinas, atualizarTransferenciaMaquina } from "../
 import Link from "next/link";
 import { fatorUnidade } from "../../../lib/estoque/unidades";
 import { hojeLocal } from "../../../lib/data-local";
+import { chavesReferenciadas, problemasRateio, quantidadesPorRemessa, ratearRetorno } from "../../../lib/fiscal/retorno-rateio";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -68,7 +69,9 @@ function RetornosConteudo() {
   // NF em processamento
   const [nfSel, setNfSel] = useState<NfEntrada | null>(null);
   const [itens, setItens] = useState<ItemEdit[]>([]);
-  const [remessaId, setRemessaId] = useState("");
+  // Remessas que a NF de retorno devolve (uma ou várias) e o valor rateado para cada uma
+  const [remessaIds, setRemessaIds] = useState<string[]>([]);
+  const [alocs, setAlocs] = useState<Record<string, string>>({});
   const [depositoId, setDepositoId] = useState("");
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -122,13 +125,25 @@ function RetornosConteudo() {
     setErro(""); setMsg(""); setNfSel(nf);
     const its = await listarNfEntradaItens(nf.id);
     setItens(its.map(it => ({ item: it, insumo_id: it.insumo_id ?? "", qtd: String(it.qtd_nf ?? it.quantidade ?? 0) })));
-    // remessa sugerida: a referenciada no XML; senão a única aberta do mesmo armazém
-    const ref = (nf as unknown as { xml_content?: string }).xml_content?.match(/<refNFe>(\d{44})<\/refNFe>/)?.[1];
+    // remessas sugeridas: TODAS as referenciadas no XML (o retorno pode devolver mais de uma); senão a única aberta do armazém
+    const refs = chavesReferenciadas((nf as unknown as { xml_content?: string }).xml_content);
     const nome = (nf.emitente_nome ?? "").trim().toUpperCase().split(/\s+/)[0] ?? "";
     const porNome = abertas.filter(r => nome && r.destinatario_nome.toUpperCase().includes(nome));
-    setRemessaId((ref && abertas.find(r => r.nf_remessa_chave === ref)?.id) || (porNome.length === 1 ? porNome[0].id : ""));
+    const porRef = abertas.filter(r => r.nf_remessa_chave && refs.includes(r.nf_remessa_chave));
+    escolherRemessas(porRef.length ? porRef.map(r => r.id) : porNome.length === 1 ? [porNome[0].id] : [], Number(nf.valor_total ?? 0));
     setDepositoId(depositos.find(d => d.fazenda_id === nf.fazenda_id && !["terceiro", "armazem_terceiro"].includes(d.tipo))?.id ?? "");
   }
+  // Marca/desmarca remessas e refaz o rateio sugerido (mais antiga primeiro, até o saldo de cada uma)
+  function escolherRemessas(idsSel: string[], valorNf = Number(nfSel?.valor_total ?? 0)) {
+    setRemessaIds(idsSel);
+    const sel = abertas.filter(r => idsSel.includes(r.id)).map(r => ({ id: r.id, saldo: saldoRemessa(r), data: r.nf_remessa_data ?? r.created_at }));
+    setAlocs(Object.fromEntries(ratearRetorno(valorNf, sel).map(a => [a.id, a.valor.toFixed(2).replace(".", ",")])));
+  }
+  const numBR = (v: string) => parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+  const alocacoes = remessaIds.map(id => ({ id, valor: numBR(alocs[id] ?? "") }));
+  const remsSel = abertas.filter(r => remessaIds.includes(r.id));
+  const problemas = nfSel && remessaIds.length ? problemasRateio(Number(nfSel.valor_total ?? 0), remsSel.map(r => ({ id: r.id, saldo: saldoRemessa(r) })), alocacoes) : [];
+
   useEffect(() => {
     const id = params.get("nf");
     if (id && !nfSel && nfs.length) { const nf = nfs.find(x => x.id === id); if (nf) abrir(nf); }
@@ -150,14 +165,17 @@ function RetornosConteudo() {
     if (!depositoId) { setErro("Escolha o depósito para onde a mercadoria volta."); return; }
     const semQtd = itens.find(e => !(parseFloat(e.qtd.replace(",", ".")) > 0));
     if (semQtd) { setErro(`Informe a quantidade, na unidade do cadastro, de "${semQtd.item.descricao_nf ?? semQtd.item.descricao_produto}".`); return; }
-    const rem = abertas.find(r => r.id === remessaId);
-    // Retorno sempre referencia a remessa de origem: sem ela não há o que baixar no armazém nem como controlar o saldo
-    if (!rem) { setErro("Escolha a remessa que está retornando. Se ela não aparece na lista, registre-a antes em Remessas (inclusive NF emitida em outro sistema)."); return; }
-    if (!("valor_retornado" in rem)) { setErro("Para ligar o retorno à remessa, rode antes a Seção 377 do supabase_migrations.sql (retorno parcial)."); return; }
+    // Retorno sempre referencia a(s) remessa(s) de origem: sem ela não há o que baixar no armazém nem como controlar o saldo
+    if (!remsSel.length) { setErro("Marque a(s) remessa(s) que estão retornando. Se não aparecem na lista, registre-as antes em Remessas (inclusive NF emitida em outro sistema)."); return; }
+    if (remsSel.some(r => !("valor_retornado" in r))) { setErro("Para ligar o retorno à remessa, rode antes a Seção 377 do supabase_migrations.sql (retorno parcial)."); return; }
+    if (problemas.length) { setErro(`Rateio entre as remessas: ${problemas.join("; ")}.`); return; }
     const valorNf = Number(nfSel.valor_total ?? 0);
-    const fecha = rem ? valorNf >= saldoRemessa(rem) - 0.01 : false;
+    const resumo = remsSel.map(r => {
+      const v = alocacoes.find(a => a.id === r.id)!.valor;
+      return `NF ${r.nf_remessa_numero}: ${fmtBRL(v)}${v >= saldoRemessa(r) - 0.01 ? " (retornada)" : ` (parcial — ainda falta ${fmtBRL(saldoRemessa(r) - v)})`}`;
+    }).join("\n");
     if (!(await confirmarAcao({ titulo: "Processar retorno?", perigo: false,
-      mensagem: `A NF ${nfSel.numero} de ${nfSel.emitente_nome} volta ao estoque (${depositos.find(d => d.id === depositoId)?.nome ?? ""}), sem Contas a Pagar.${rem ? (fecha ? ` A remessa NF ${rem.nf_remessa_numero} passa a Retornada.` : ` Retorno parcial da remessa NF ${rem.nf_remessa_numero}: depois deste, ainda falta ${fmtBRL(saldoRemessa(rem) - valorNf)} voltar.`) : " Nenhuma remessa vinculada."}` }))) return;
+      mensagem: `A NF ${nfSel.numero} de ${nfSel.emitente_nome} volta ao estoque (${depositos.find(d => d.id === depositoId)?.nome ?? ""}), sem Contas a Pagar.\n\n${remsSel.length > 1 ? "Remessas devolvidas por esta NF" : "Remessa"}:\n${resumo}` }))) return;
     setSalvando(true); setErro("");
     try {
       // itens: cadastro, depósito e quantidade na unidade do cadastro (estoque)
@@ -176,27 +194,31 @@ function RetornosConteudo() {
       await processarNfEntrada(nfSel.id, nfSel.fazenda_id, itensDB, Number(nfSel.valor_total ?? 0), nfSel.emitente_nome,
         nfSel.data_entrada ?? nfSel.data_emissao, nfSel.emitente_cnpj, { nfeNumero: nfSel.numero, tipoEntrada: "insumos", anoSafraId: nfSel.ano_safra_id, cicloId: nfSel.ciclo_id });
       await atualizarNfEntrada(nfSel.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
-      if (rem) {
-        // Retorno parcial: acumula; a remessa só fica Retornada quando volta tudo (Seção 377)
-        const retornos = [...(rem.retornos ?? []), { numero: nfSel.numero, chave: nfSel.chave_acesso ?? null, data: nfSel.data_emissao ?? null, valor: valorNf, emitente: nfSel.emitente_nome }];
+      // Cada remessa recebe a sua parte do retorno; quando volta tudo, passa a Retornada (Seção 377)
+      const qtdPorRem = quantidadesPorRemessa(itens.map(e => ({ insumo_id: e.insumo_id, quantidade: parseFloat(e.qtd.replace(",", ".")) })), valorNf, alocacoes);
+      const outras = remsSel.length > 1 ? ` (NF ${nfSel.numero} também devolve ${remsSel.length - 1} outra(s) remessa(s))` : "";
+      for (const rem of remsSel) {
+        const v = alocacoes.find(a => a.id === rem.id)!.valor;
+        const fecha = v >= saldoRemessa(rem) - 0.01;
+        const retornos = [...(rem.retornos ?? []), { numero: nfSel.numero, chave: nfSel.chave_acesso ?? null, data: nfSel.data_emissao ?? null, valor: v, emitente: nfSel.emitente_nome }];
         await atualizarNfRemessaLogistica(rem.id, {
           ...(fecha ? { status: "retornada" as const } : {}),
-          valor_retornado: Math.round((Number(rem.valor_retornado ?? 0) + valorNf) * 100) / 100, retornos,
+          valor_retornado: Math.round((Number(rem.valor_retornado ?? 0) + v) * 100) / 100, retornos,
           nf_retorno_chave: nfSel.chave_acesso || undefined, nf_retorno_numero: nfSel.numero,
           nf_retorno_data: nfSel.data_emissao || hojeLocal(),
-          observacao: [rem.observacao, `Retorno${fecha ? "" : " parcial"}: NF ${nfSel.numero} recebida de ${nfSel.emitente_nome} (${fmtBRL(valorNf)})`].filter(Boolean).join(" | "),
+          observacao: [rem.observacao, `Retorno${fecha ? "" : " parcial"}: NF ${nfSel.numero} recebida de ${nfSel.emitente_nome} (${fmtBRL(v)})${outras}`].filter(Boolean).join(" | "),
         });
+        // Remessa que transferiu o estoque para o armazém: o que voltou (a parte desta remessa) sai do depósito do armazém
+        if (rem.estoque_transferido) {
+          const r = await fetch("/api/fiscal/remessas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+            acao: "retorno_estoque", fazenda_id: nfSel.fazenda_id, remessa_id: rem.id, nf_numero: nfSel.numero, data: nfSel.data_emissao || hojeLocal(),
+            itens: qtdPorRem.find(q => q.id === rem.id)?.itens ?? [],
+          }) });
+          const j = await r.json() as { ok: boolean; error?: string };
+          if (!j.ok) throw new Error(`NF processada, mas a saída do depósito do armazém (remessa NF ${rem.nf_remessa_numero}) falhou: ${j.error}`);
+        }
       }
-      // Remessa que transferiu o estoque para o armazém: o que voltou sai do depósito do armazém
-      if (rem?.estoque_transferido) {
-        const r = await fetch("/api/fiscal/remessas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-          acao: "retorno_estoque", fazenda_id: nfSel.fazenda_id, remessa_id: rem.id, nf_numero: nfSel.numero, data: nfSel.data_emissao || hojeLocal(),
-          itens: itens.map(e => ({ insumo_id: e.insumo_id, quantidade: parseFloat(e.qtd.replace(",", ".")) })),
-        }) });
-        const j = await r.json() as { ok: boolean; error?: string };
-        if (!j.ok) throw new Error(`NF processada, mas a saída do depósito do armazém falhou: ${j.error}`);
-      }
-      setMsg(`✓ NF ${nfSel.numero} processada: mercadoria de volta ao estoque${rem ? (fecha ? ` e remessa NF ${rem.nf_remessa_numero} retornada` : ` (retorno parcial da remessa NF ${rem.nf_remessa_numero})`) : ""}.`);
+      setMsg(`✓ NF ${nfSel.numero} processada: mercadoria de volta ao estoque — ${remsSel.map(r => `remessa NF ${r.nf_remessa_numero}${alocacoes.find(a => a.id === r.id)!.valor >= saldoRemessa(r) - 0.01 ? " retornada" : " parcial"}`).join(", ")}.`);
       setNfSel(null);
       await carregar();
     } catch (e) {
@@ -228,6 +250,8 @@ function RetornosConteudo() {
   const [retRem, setRetRem] = useState<NfRemessaLogistica | null>(null);
   const [retModo, setRetModo] = useState<"arato" | "externa">("arato");
   const [retValor, setRetValor] = useState("");
+  // Outras remessas do mesmo armazém devolvidas na mesma NF de retorno: id → valor (texto)
+  const [retExtras, setRetExtras] = useState<Record<string, string>>({});
   const [retVolta, setRetVolta] = useState("");
   const [retNatureza, setRetNatureza] = useState("Retorno de mercadoria depositada em armazém geral");
   const [retData, setRetData] = useState(hojeLocal());
@@ -238,29 +262,40 @@ function RetornosConteudo() {
   const [retSalvando, setRetSalvando] = useState(false);
 
   function abrirRetorno(r: NfRemessaLogistica, modo: "arato" | "externa") {
-    setRetRem(r); setRetModo(modo); setRetValor(saldoRemessa(r).toFixed(2).replace(".", ",")); setRetVolta(r.deposito_origem_id ?? "");
+    setRetRem(r); setRetModo(modo); setRetValor(saldoRemessa(r).toFixed(2).replace(".", ",")); setRetVolta(r.deposito_origem_id ?? ""); setRetExtras({});
     setRetNatureza("Retorno de mercadoria depositada em armazém geral"); setRetData(hojeLocal()); setRetEmitente("");
     setRetTr(TRANSP_VAZIO); setRetExt({ numero: "", serie: "", chave: "" }); setRetErro("");
   }
 
   async function confirmarRetorno() {
     if (!retRem) return;
-    const valor = parseFloat(retValor.replace(/\./g, "").replace(",", ".")) || 0;
-    const saldo = saldoRemessa(retRem);
-    if (!(valor > 0) || valor > saldo + 0.01) { setRetErro(`Informe o valor do retorno (até ${fmtBRL(saldo)}).`); return; }
+    const valorDe = (v: string) => parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+    // A remessa da linha + as outras do mesmo armazém marcadas: cada uma com o seu valor (até o saldo dela)
+    const lote = [{ rem: retRem, valor: valorDe(retValor) },
+      ...Object.entries(retExtras).map(([id, v]) => ({ rem: abertas.find(x => x.id === id)!, valor: valorDe(v) })).filter(x => x.rem)];
+    for (const { rem, valor: v } of lote) {
+      const sal = saldoRemessa(rem);
+      if (!(v > 0) || v > sal + 0.01) { setRetErro(`Informe o valor do retorno da remessa NF ${rem.nf_remessa_numero} (até ${fmtBRL(sal)}).`); return; }
+    }
+    const valor = lote.reduce((t, x) => t + x.valor, 0);
     if (!retVolta) { setRetErro("Escolha o depósito para onde a mercadoria volta."); return; }
     if (retModo === "externa" && !retExt.numero.trim()) { setRetErro("Informe o número da NF de retorno."); return; }
     if (!(await confirmarAcao({ titulo: retModo === "arato" ? "Emitir NF-e de retorno?" : "Registrar retorno?", perigo: false,
-      mensagem: `Retorno de ${fmtBRL(valor)} da remessa NF ${retRem.nf_remessa_numero}${valor < saldo - 0.01 ? " (parcial)" : ""}. A mercadoria volta para "${depositos.find(d => d.id === retVolta)?.nome}".` }))) return;
+      mensagem: `Retorno de ${fmtBRL(valor)}: ${lote.map(x => `remessa NF ${x.rem.nf_remessa_numero} ${fmtBRL(x.valor)}${x.valor < saldoRemessa(x.rem) - 0.01 ? " (parcial)" : ""}`).join("; ")}. A mercadoria volta para "${depositos.find(d => d.id === retVolta)?.nome}".` }))) return;
     setRetSalvando(true); setRetErro("");
     try {
-      const remetido = (Array.isArray(retRem.itens_json) ? (retRem.itens_json as { valor_total?: number }[]) : []).reduce((s, i) => s + Number(i.valor_total ?? 0), 0) || Number(retRem.valor_total ?? 0);
-      const fator = remetido > 0 ? Math.min(1, valor / remetido) : 1;
+      type ItemRem = { descricao?: string; descricao_produto?: string; ncm?: string; unidade?: string; unidade_nf?: string; quantidade: number; valor_unitario?: number; valor_total?: number };
+      // Itens da NF: os de cada remessa, na proporção do valor que volta dela
+      const itensLote = lote.flatMap(({ rem, valor: v }) => {
+        const its = (Array.isArray(rem.itens_json) ? rem.itens_json : []) as ItemRem[];
+        const remetido = its.reduce((t, i) => t + Number(i.valor_total ?? 0), 0) || Number(rem.valor_total ?? 0);
+        const f = remetido > 0 ? Math.min(1, v / remetido) : 1;
+        return its.map(it => ({ it, f, cfop: rem.cfop_retorno }));
+      });
       let nf: { numero: string; serie?: string; chave?: string | null; protocolo?: string | null; xml_url?: string | null; emit?: Record<string, string | undefined> };
       let fazEmissao = retRem.fazenda_id;
       if (retModo === "arato") {
-        const itensRem = (Array.isArray(retRem.itens_json) ? retRem.itens_json : []) as { descricao?: string; descricao_produto?: string; ncm?: string; unidade?: string; unidade_nf?: string; quantidade: number; valor_unitario?: number }[];
-        if (!itensRem.length) throw new Error("A remessa não tem itens registrados para emitir o retorno.");
+        if (!itensLote.length) throw new Error("A remessa não tem itens registrados para emitir o retorno.");
         let cpfHint: string | undefined;
         if (retRem.nf_entrada_id) {
           const { data: nfo } = await supabase.from("nf_entradas").select("produtor_id").eq("id", retRem.nf_entrada_id).maybeSingle();
@@ -278,10 +313,11 @@ function RetornosConteudo() {
             logradouro: dest?.logradouro || undefined, numero: dest?.numero || undefined, bairro: dest?.bairro || undefined, municipio_ibge: dest?.municipio_ibge || undefined,
             municipio_nome: dest?.municipio || undefined, uf: retRem.destinatario_uf || dest?.estado || undefined, cep: dest ? (dest.cep ?? "").replace(/\D/g, "") || undefined : undefined,
           },
-          itens: itensRem.map(it => ({ descricao: it.descricao ?? it.descricao_produto ?? "", ncm: it.ncm || "00000000", cfop: retRem.cfop_retorno, unidade: (it.unidade_nf ?? it.unidade ?? "UN").toUpperCase(),
-            quantidade: Math.round(Number(it.quantidade) * fator * 10000) / 10000, valor_unitario: Number(it.valor_unitario ?? 0) })),
-          natureza: retNatureza, nfe_ref: retRem.nf_remessa_chave || undefined, frete: retTr.frete, transporte, tipo: "1",
-          inf_cpl: [`Retorno de remessa — NF ref: ${retRem.nf_remessa_chave ?? retRem.nf_remessa_numero ?? ""}`, motorista].filter(Boolean).join(" | "),
+          itens: itensLote.map(({ it, f, cfop }) => ({ descricao: it.descricao ?? it.descricao_produto ?? "", ncm: it.ncm || "00000000", cfop, unidade: (it.unidade_nf ?? it.unidade ?? "UN").toUpperCase(),
+            quantidade: Math.round(Number(it.quantidade) * f * 10000) / 10000, valor_unitario: Number(it.valor_unitario ?? 0) })),
+          // Uma NF de retorno pode referenciar várias remessas (um <NFref> por chave)
+          natureza: retNatureza, nfe_ref: lote.map(x => x.rem.nf_remessa_chave).filter((k): k is string => !!k), frete: retTr.frete, transporte, tipo: "1",
+          inf_cpl: [`Retorno de remessa — NF ref: ${lote.map(x => x.rem.nf_remessa_chave ?? x.rem.nf_remessa_numero ?? "").join(", ")}`, motorista].filter(Boolean).join(" | "),
         }) });
         const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string } & Record<string, string | undefined>;
         if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
@@ -290,13 +326,18 @@ function RetornosConteudo() {
       } else {
         nf = { numero: retExt.numero.trim(), serie: retExt.serie.trim() || undefined, chave: retExt.chave.replace(/\D/g, "") || null };
       }
-      const r = await fetch("/api/fiscal/remessas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        acao: "registrar_retorno", fazenda_id: fazEmissao, remessa_id: retRem.id, emissao: retModo, data: retData, natureza: retNatureza,
-        volta_para_deposito_id: retVolta, nf, valor, descricao: retModo === "externa" ? "emitida fora do Arato" : undefined,
-      }) });
-      const j = await r.json() as { ok: boolean; error?: string; retornada?: boolean };
-      if (!j.ok) throw new Error(retModo === "arato" ? `A NF-e ${nf.numero} foi autorizada, mas o registro do retorno falhou: ${j.error}. Avise o suporte antes de emitir de novo.` : j.error);
-      setMsg(`✓ Retorno NF ${nf.numero} ${retModo === "arato" ? "emitido" : "registrado"}${j.retornada ? ": remessa retornada" : " (parcial)"}.`);
+      // Registra o retorno em cada remessa, com o valor dela (estoque e saldo por remessa)
+      const situacao: string[] = [];
+      for (const { rem, valor: v } of lote) {
+        const r = await fetch("/api/fiscal/remessas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+          acao: "registrar_retorno", fazenda_id: fazEmissao, remessa_id: rem.id, emissao: retModo, data: retData, natureza: retNatureza,
+          volta_para_deposito_id: retVolta, nf, valor: v, descricao: retModo === "externa" ? "emitida fora do Arato" : undefined,
+        }) });
+        const j = await r.json() as { ok: boolean; error?: string; retornada?: boolean };
+        if (!j.ok) throw new Error(retModo === "arato" ? `A NF-e ${nf.numero} foi autorizada, mas o registro do retorno da remessa NF ${rem.nf_remessa_numero} falhou: ${j.error}. Avise o suporte antes de emitir de novo.` : `Remessa NF ${rem.nf_remessa_numero}: ${j.error}`);
+        situacao.push(`remessa NF ${rem.nf_remessa_numero} ${j.retornada ? "retornada" : "parcial"}`);
+      }
+      setMsg(`✓ Retorno NF ${nf.numero} ${retModo === "arato" ? "emitido" : "registrado"}: ${situacao.join(", ")}.`);
       setRetRem(null);
       await carregar();
     } catch (e) {
@@ -357,16 +398,43 @@ function RetornosConteudo() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={lbl}>Remessa que está retornando</label>
-                <select value={remessaId} onChange={e => setRemessaId(e.target.value)} style={{ ...inp, ...(remessaId ? {} : { borderColor: "#C9921B" }) }}>
-                  <option value="">— escolha a remessa (obrigatório) —</option>
-                  {abertas.map(r => (
-                    <option key={r.id} value={r.id}>NF {r.nf_remessa_numero ?? "s/nº"}{r.nf_remessa_data ? ` de ${fmtData(r.nf_remessa_data)}` : ""} · {r.destinatario_nome} · CFOP {r.cfop_remessa} · falta voltar {fmtBRL(saldoRemessa(r))}</option>
-                  ))}
-                </select>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{abertas.length === 0
-                  ? <>Nenhuma remessa aguardando retorno. Registre a remessa de origem em <Link href="/fiscal/remessas" style={{ color: "#1A4870" }}>Remessas</Link> antes de processar.</>
-                  : "Obrigatório: o retorno baixa o saldo desta remessa e, quando volta tudo, ela passa a Retornada."}</div>
+                <label style={lbl}>Remessa(s) que esta NF devolve <span style={{ fontWeight: 400, color: "var(--text-3)" }}>· marque todas as que ela referencia</span></label>
+                {abertas.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>Nenhuma remessa aguardando retorno. Registre a remessa de origem em <Link href="/fiscal/remessas" style={{ color: "#1A4870" }}>Remessas</Link> antes de processar.</div>
+                ) : (() => {
+                  const refs = chavesReferenciadas((nfSel as unknown as { xml_content?: string }).xml_content);
+                  const nome = (nfSel.emitente_nome ?? "").trim().toUpperCase().split(/\s+/)[0] ?? "";
+                  // Referenciadas no XML primeiro, depois as do mesmo armazém, depois as demais
+                  const peso = (r: NfRemessaLogistica) => (r.nf_remessa_chave && refs.includes(r.nf_remessa_chave) ? 0 : nome && r.destinatario_nome.toUpperCase().includes(nome) ? 1 : 2);
+                  const lista = [...abertas].sort((a, b) => peso(a) - peso(b) || (a.nf_remessa_data ?? "").localeCompare(b.nf_remessa_data ?? ""));
+                  const soma = alocacoes.reduce((t, a) => t + a.valor, 0);
+                  return (
+                    <div style={{ border: `0.5px solid ${remessaIds.length ? "var(--border-table)" : "#C9921B"}`, borderRadius: 8, maxHeight: 220, overflowY: "auto" }}>
+                      {lista.map(r => {
+                        const marcada = remessaIds.includes(r.id);
+                        return (
+                          <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "0.5px solid var(--border-row)", background: marcada ? "#D5E8F5" : undefined }}>
+                            <input type="checkbox" checked={marcada} onChange={() => escolherRemessas(marcada ? remessaIds.filter(x => x !== r.id) : [...remessaIds, r.id])} style={{ accentColor: "#1A4870" }} />
+                            <div style={{ flex: 1, fontSize: 12 }}>
+                              NF {r.nf_remessa_numero ?? "s/nº"}{r.nf_remessa_data ? ` de ${fmtData(r.nf_remessa_data)}` : ""} · {r.destinatario_nome} · CFOP {r.cfop_remessa}
+                              <div style={{ fontSize: 11, color: "var(--text-3)" }}>Falta voltar {fmtBRL(saldoRemessa(r))}{peso(r) === 0 ? " · referenciada no XML" : ""}</div>
+                            </div>
+                            {marcada && <input value={alocs[r.id] ?? ""} onChange={e => setAlocs(p => ({ ...p, [r.id]: e.target.value }))} title="Valor do retorno que cabe a esta remessa" style={{ ...inp, width: 120, textAlign: "right" }} />}
+                          </div>
+                        );
+                      })}
+                      {remessaIds.length > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", fontSize: 12, fontWeight: 600, background: "var(--bg-page)" }}>
+                          <span>{remessaIds.length} remessa(s) · total da NF {fmtBRL(nfSel.valor_total)}</span>
+                          <span style={{ color: problemas.length ? "#B91C1C" : "#166534" }}>Rateado {fmtBRL(soma)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                <div style={{ fontSize: 11, color: problemas.length ? "#B91C1C" : "var(--text-3)", marginTop: 3 }}>{problemas.length
+                  ? `Ajuste o rateio: ${problemas.join("; ")}.`
+                  : "Obrigatório. O valor é rateado da remessa mais antiga para a mais nova (até o saldo de cada uma) e pode ser ajustado; a remessa que zera passa a Retornada."}</div>
               </div>
               <div>
                 <label style={lbl}>Depósito para onde a mercadoria volta</label>
@@ -503,7 +571,7 @@ function RetornosConteudo() {
                 </div>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                <div><label style={lbl}>Valor do retorno</label><input value={retValor} onChange={e => setRetValor(e.target.value)} style={inp} /></div>
+                <div><label style={lbl}>Valor do retorno{Object.keys(retExtras).length ? ` — NF ${retRem.nf_remessa_numero}` : ""}</label><input value={retValor} onChange={e => setRetValor(e.target.value)} style={inp} /></div>
                 <div><label style={lbl}>Data</label><input type="date" value={retData} onChange={e => setRetData(e.target.value)} style={inp} /></div>
                 <div>
                   <label style={lbl}>Volta para o depósito</label>
@@ -513,6 +581,29 @@ function RetornosConteudo() {
                   </select>
                 </div>
               </div>
+              {(() => {
+                // Outras remessas abertas para o mesmo armazém (mesma fazenda e CFOP de retorno): podem voltar na mesma NF
+                const mesmas = abertas.filter(x => x.id !== retRem.id && x.fazenda_id === retRem.fazenda_id && x.cfop_retorno === retRem.cfop_retorno
+                  && (retRem.destinatario_pessoa_id ? x.destinatario_pessoa_id === retRem.destinatario_pessoa_id : x.destinatario_nome === retRem.destinatario_nome));
+                if (!mesmas.length) return null;
+                return (
+                  <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Devolver na mesma NF outras remessas deste armazém</div>
+                    {mesmas.map(x => {
+                      const marcada = x.id in retExtras;
+                      return (
+                        <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12 }}>
+                          <input type="checkbox" checked={marcada} style={{ accentColor: "#1A4870" }}
+                            onChange={() => setRetExtras(p => { const n = { ...p }; if (marcada) delete n[x.id]; else n[x.id] = saldoRemessa(x).toFixed(2).replace(".", ","); return n; })} />
+                          <span style={{ flex: 1 }}>NF {x.nf_remessa_numero}{x.nf_remessa_data ? ` de ${fmtData(x.nf_remessa_data)}` : ""} · falta voltar {fmtBRL(saldoRemessa(x))}</span>
+                          {marcada && <input value={retExtras[x.id]} onChange={e => setRetExtras(p => ({ ...p, [x.id]: e.target.value }))} style={{ ...inp, width: 120, textAlign: "right" }} />}
+                        </div>
+                      );
+                    })}
+                    {Object.keys(retExtras).length > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{retModo === "arato" ? "A NF-e sai com os itens de todas as remessas marcadas e referencia todas as chaves." : "O retorno é registrado em todas as remessas marcadas, cada uma com o seu valor."}</div>}
+                  </div>
+                );
+              })()}
               {retModo === "arato" && (
                 <>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>

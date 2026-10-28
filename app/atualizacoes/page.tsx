@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-zc",
+    data: "28/10/2026",
+    titulo: "Uma NF de retorno para várias remessas",
+    modulos: ["Documentos Fiscais", "Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Processar retorno: dá para marcar várias remessas. As referenciadas no XML da NF de retorno já vêm marcadas; o valor é rateado da mais antiga para a mais nova (até o saldo de cada uma) e pode ser ajustado. Cada remessa baixa a sua parte e fica Retornada ou parcial." },
+      { tipo: "novo", texto: "Retorno emitido pelo Arato (ou registrado como emitido fora): inclua outras remessas abertas do mesmo armazém na mesma NF. A NF-e sai com os itens de todas e referencia todas as chaves." },
+    ],
+    onde: "Documentos Fiscais → Retornos",
+  },
+  {
     versao: "2026.10.28-zb",
     data: "28/10/2026",
     titulo: "Produtos Agrícolas são a fonte do item da NF de venda",

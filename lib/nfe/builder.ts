@@ -90,7 +90,7 @@ export interface NFeInput {
   natureza: string;
   infCpl?: string;
   frete?: "0" | "1" | "2" | "9"; // 0=emitente, 1=dest, 2=3rd, 9=sem
-  nfe_ref?: string;       // chave da NF-e referenciada (devolução/complemento)
+  nfe_ref?: string | string[];   // chave(s) da NF-e referenciada (devolução/complemento/retorno de várias remessas)
   tipo?: "0" | "1";       // 1=saída (padrão), 0=entrada
   finNFe?: "1" | "2" | "3" | "4";  // 1=normal (padrão), 2=complementar, 3=ajuste, 4=devolução —
                                     // SEFAZ rejeita (328) uma NF com CFOP de devolução (5201/6201/
@@ -426,7 +426,9 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     : dest.nome;
 
   // ── Referência NF-e anterior ──────────────────────────────────────────────
-  const nfeRefTag = nfe_ref ? `<NFref><refNFe>${nfe_ref}</refNFe></NFref>` : "";
+  // Uma ou várias NF-e referenciadas (ex.: retorno que devolve duas remessas) — um <NFref> por chave
+  const nfeRefTag = (Array.isArray(nfe_ref) ? nfe_ref : nfe_ref ? [nfe_ref] : []).filter(k => /^\d{44}$/.test(k))
+    .map(k => `<NFref><refNFe>${k}</refNFe></NFref>`).join("");
 
   // ── Itens ─────────────────────────────────────────────────────────────────
 

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       natureza: string;
       inf_cpl?: string;
       frete?: "0" | "1" | "2" | "9";
-      nfe_ref?: string;
+      nfe_ref?: string | string[];
       tipo?: "0" | "1";
       fin_nfe?: "1" | "2" | "3" | "4";  // 1=normal, 2=complementar, 3=ajuste, 4=devolução
       // Transportadora e veículo (<transporta>/<veicTransp>). Antes este bloco era ignorado aqui: a tela mandava
