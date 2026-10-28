@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-x",
+    data: "28/10/2026",
+    titulo: "Rastreabilidade do Item — o caminho do produto em diagrama",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Novo relatório Rastreabilidade do Item: diagrama de fluxo que mostra de onde o produto veio (NF de cada fornecedor, saldo anterior, ajustes, produção), por quais depósitos passou (transferências e remessas entre eles) e para onde foi (consumo por ciclo ou operação, abastecimento, perdas, devoluções), terminando no saldo final de cada depósito." },
+      { tipo: "novo", texto: "Abaixo do diagrama: saldo por depósito (saldo no início do período, entradas, saídas e saldo pelo caminho), comparado com o saldo do sistema, e a lista de todos os trechos do caminho. Passe o mouse numa faixa ou depósito para destacar o caminho." },
+    ],
+    onde: "Comercial & Logística → Relatórios → Rastreabilidade do Item",
+  },
+  {
     versao: "2026.10.28-w",
     data: "28/10/2026",
     titulo: "Auditor de Estoque — Fiscal × Físico (insumos)",
