@@ -447,8 +447,29 @@ export default function ContratosFinanceiros() {
     setErroModal(null);
     try { setSalvando(true); await fn(); } catch (e) {
       const msg = (e as { message?: string })?.message ?? "";
+      // Contrato apagado por outra pessoa com esta janela aberta: o registro filho (parcela, garantia…) não tem a quem se ligar
+      if (/foreign key/i.test(msg) && /contrato_id/i.test(msg) && contratoModal?.id) {
+        const { data: ainda } = await supabase.from("contratos_financeiros").select("id").eq("id", contratoModal.id).maybeSingle();
+        if (!ainda) {
+          setContratos(p => p.filter(x => x.id !== contratoModal.id));
+          setErroModal("Este contrato foi excluído (provavelmente por outro usuário) enquanto esta janela estava aberta. Nada foi gravado. Feche a janela e, se precisar, cadastre o contrato de novo.");
+          return;
+        }
+      }
       setErroModal(msg || "Erro ao salvar. Tente novamente.");
     } finally { setSalvando(false); }
+  }
+
+  // Taxa mensal da calculadora: fixa → a do contrato; variável → TEF (taxa do indexador + juros fixos) convertida para a.m.
+  function taxaMensalDe(c: { taxa_tipo?: string | null; taxa_juros_am?: number | null; taxa_juros_aa?: number | null; taxa_variavel_ref?: number | null; spread_aa?: number | null } | null | undefined): string | null {
+    if (!c) return null;
+    if (c.taxa_tipo === "variavel") {
+      const tef = Number(c.taxa_variavel_ref ?? 0) + Number(c.spread_aa ?? 0);
+      return tef > 0 ? String(parseFloat(aaParaAm(tef).toFixed(4))) : null;
+    }
+    if (c.taxa_juros_am != null) return String(c.taxa_juros_am);
+    if (c.taxa_juros_aa != null) return String(parseFloat(aaParaAm(Number(c.taxa_juros_aa)).toFixed(4)));
+    return null;
   }
 
   const onChangeAa = (v: string) => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_aa: v, taxa_juros_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); };
@@ -483,7 +504,7 @@ export default function ContratosFinanceiros() {
       crescimento_pct: c.crescimento_pct ? String(c.crescimento_pct) : "",
       rateio_por_vencimento: c.rateio_por_vencimento, fiscal: c.fiscal,
     } : { ...FC_VAZIO });
-    if (c) setFCalc({ nParcelas: "12", taxaMensal: c.taxa_juros_am != null ? String(c.taxa_juros_am) : "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
+    if (c) setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(c) ?? "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
     setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     setFAdit({ ...FA_VAZIO });
@@ -586,18 +607,14 @@ export default function ContratosFinanceiros() {
           nParcelas:    String(d.num_parcelas ?? cronograma.length),
           dataPrimeiro: cronograma[0].data_vencimento,
           periodicidade: periodoInferido != null ? String(periodoInferido) : prev.periodicidade,
-          taxaMensal: d.taxa_tipo === "variavel"
-            ? (d.spread_am ? String(d.spread_am) : prev.taxaMensal)
-            : (d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal),
+          taxaMensal: taxaMensalDe({ taxa_tipo: d.taxa_tipo, taxa_juros_am: d.taxa_juros_am, taxa_juros_aa: d.taxa_juros_aa, taxa_variavel_ref: d.indexador_taxa_aa, spread_aa: d.spread_aa }) ?? prev.taxaMensal,
         }));
       } else if (d.num_parcelas || d.periodicidade_meses) {
         setFCalc(prev => ({
           ...prev,
           nParcelas:    d.num_parcelas ? String(d.num_parcelas) : prev.nParcelas,
           periodicidade: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade,
-          taxaMensal: d.taxa_tipo === "variavel"
-            ? (d.spread_am ? String(d.spread_am) : prev.taxaMensal)
-            : (d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal),
+          taxaMensal: taxaMensalDe({ taxa_tipo: d.taxa_tipo, taxa_juros_am: d.taxa_juros_am, taxa_juros_aa: d.taxa_juros_aa, taxa_variavel_ref: d.indexador_taxa_aa, spread_aa: d.spread_aa }) ?? prev.taxaMensal,
         }));
       }
 
@@ -693,7 +710,7 @@ export default function ContratosFinanceiros() {
       }
       setContratos(p => p.map(x => x.id === contratoModal.id ? atualizado : x));
       setContratoModal(atualizado);
-      setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am != null ? String(payload.taxa_juros_am) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
+      setFCalc(prev => ({ ...prev, taxaMensal: taxaMensalDe(payload as Parameters<typeof taxaMensalDe>[0]) ?? prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
     } else {
       const novo = await criarContratoFinanceiro(payload);
       // Upload do PDF da cédula se houver (o mesmo arquivo que a IA leu)
@@ -706,7 +723,7 @@ export default function ContratosFinanceiros() {
       setContratoModal(novo);
       setPdfUrl(novo.pdf_url ?? null);
       setPdfNome(novo.pdf_nome ?? null);
-      setFCalc({ nParcelas: "12", taxaMensal: novo.taxa_juros_am != null ? String(novo.taxa_juros_am) : "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
+      setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(novo) ?? "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
       setAbaModal("liberacao");
     }
   });

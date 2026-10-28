@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-e",
+    data: "28/10/2026",
+    titulo: "Contrato financeiro: taxa da calculadora e contrato excluído",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na aba Pagamento, a taxa a.m. da calculadora vem convertida da taxa anual do contrato (em taxa fixa + variável, a TEF: taxa do indexador + juros fixos). Antes podia aparecer a taxa anual no campo mensal." },
+      { tipo: "correcao", texto: "Se o contrato for excluído por outro usuário com a janela aberta, o sistema avisa em português e tira o contrato da lista, em vez do erro técnico de chave estrangeira." },
+    ],
+    onde: "Financeiro → Contratos Financeiros",
+  },
+  {
     versao: "2026.10.28-d",
     data: "28/10/2026",
     titulo: "Retorno exige a remessa",
