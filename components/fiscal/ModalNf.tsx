@@ -234,7 +234,7 @@ const UNIDADE_ALIASES: Record<string, string> = {
   // Caixa
   cx: "cx", caixa: "cx", caixas: "cx",
   // Dose
-  dz: "dz", dose: "dz", doses: "dz",
+  ds: "ds", dz: "ds", dose: "ds", doses: "ds",
 };
 
 function canonUnidade(u: string) {
@@ -4180,7 +4180,7 @@ export default function ModalNf({
                     <option value="m">Metro (m)</option>
                     <option value="m2">Metro² (m²)</option>
                     <option value="cx">Caixa (cx)</option>
-                    <option value="dz">Dose (dz)</option>
+                    <option value="ds">Dose (ds)</option>
                     <option value="pc">Peça (pc)</option>
                     <option value="par">Par</option>
                     <option value="outros">Outros</option>
