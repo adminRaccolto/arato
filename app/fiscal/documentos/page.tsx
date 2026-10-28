@@ -39,6 +39,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { sincronizarDocumentosSieg } from "../../../lib/fiscal/sieg-sincronizacao";
 import TopNav from "../../../components/TopNav";
 import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalNf from "../../../components/fiscal/ModalNf";
@@ -48,6 +49,7 @@ import ModalCteEntradaNovo from "../../../components/fiscal/ModalCteEntradaNovo"
 import SelectBusca from "../../../components/SelectBusca";
 import { listarOperacoesGerenciaisAtivasDaConta, listarCentrosCustoGeralDaConta } from "../../../lib/db";
 import type { OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
+import { estornarNfComConfirmacao } from "../../../lib/fiscal/estornar-nf-cliente";
 
 type RelDocFiscal = {
   id: string;
@@ -283,29 +285,11 @@ export default function DocumentosFiscaisPage() {
     const siegDtFim = fDataAte || hoje30(0);
     setSiegSyncing(true); setSiegMsg("");
     try {
-      const res = await fetch("/api/integracoes/sieg-sync", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazAlvo, data_inicio: siegDtIni, data_fim: siegDtFim, force_reimport: siegForce }),
-      });
-      // Período grande + "forçar" pode estourar o tempo da função e voltar HTML; mostra o motivo, não o erro bruto
-      let d: Record<string, unknown>;
-      try { d = await res.json() as Record<string, unknown>; }
-      catch {
-        setSiegMsg(res.ok
-          ? "✗ A sincronização demorou demais. Tente um período menor, ou sem \"Forçar re-importação\"."
-          : `✗ Falha do servidor (HTTP ${res.status}). Tente com um período menor.`);
-        return;
-      }
-      if (d.erro) setSiegMsg(`✗ ${d.erro}`);
-      else {
-        const imp = Number(d.importados_nfe ?? 0);
-        const dup = Number(d.duplicados_nfe ?? 0);
-        const canc = Number(d.canceladas_nfe ?? 0);
-        const avisos = Array.isArray(d.avisos) ? (d.avisos as string[]) : [];
-        const cte = Number(d.importados_cte ?? 0), cteCanc = Number(d.canceladas_cte ?? 0);
-        setSiegMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : ""}${canc > 0 ? ` · ${canc} cancelada${canc !== 1 ? "s" : ""} pelo emitente` : ""}${cte > 0 ? ` · ${cte} CT-e de frete` : ""}${cteCanc > 0 ? ` · ${cteCanc} CT-e cancelado${cteCanc !== 1 ? "s" : ""}` : ""}${avisos.length ? ` · ${avisos.join(" · ")}` : ""}`);
-        await carregar();
-      }
+      setSiegMsg(await sincronizarDocumentosSieg({
+        fazenda_id: fazAlvo, data_inicio: siegDtIni, data_fim: siegDtFim, force_reimport: siegForce,
+      }));
+      // Também atualiza a lista em caso de sucesso parcial: a outra rotina pode ter importado notas.
+      await carregar();
     } catch (e) { setSiegMsg(`✗ Erro de rede: ${e}`); }
     finally { setSiegSyncing(false); }
   }
@@ -433,15 +417,10 @@ export default function DocumentosFiscaisPage() {
     );
     if (!ok) return;
     try {
-      const res = await fetch("/api/compras/estornar-nf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nf_id: d.id }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error((json as { error?: string }).error ?? `Erro HTTP ${res.status}`);
-      }
+      // Rota com service_role; NF paga no cartão pede a confirmação do estorno no cartão antes
+      const r = await estornarNfComConfirmacao(d.id);
+      if (r.cancelado) return;
+      if (!r.ok) throw new Error(r.error ?? "Erro ao estornar NF");
       alert(`NF ${d.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
       setPopover(null);
       carregar();

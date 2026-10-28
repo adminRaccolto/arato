@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-za",
+    data: "28/10/2026",
+    titulo: "Cartão de crédito na baixa do CP e estorno com confirmação",
+    modulos: ["Financeiro", "Documentos Fiscais"],
+    itens: [
+      { tipo: "novo", texto: "Baixar Lançamento ganhou \"Pagar com cartão de crédito\": o título vai para a fatura do cartão escolhido (pela data da baixa), sai do Contas a Pagar e não mexe no banco — o dinheiro sai ao pagar a fatura. A NF de entrada com forma de pagamento Cartão de Crédito já lança direto na fatura." },
+      { tipo: "novo", texto: "Estorno de compra no cartão com confirmação de como aconteceu: retirar da fatura (só com a fatura aberta), crédito numa fatura seguinte (abate o total dela) ou reembolso em dinheiro (vira Contas a Receber). Botão Estornar em cada compra da fatura; no estorno de NF paga no cartão a confirmação aparece sozinha." },
+      { tipo: "melhoria", texto: "Fatura já fechada ou paga não deixa retirar a compra (a operadora já cobrou); no estorno da NF, a compra cobrada continua na fatura e o crédito ou reembolso é lançado." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Baixar; Financeiro → Cartões de Crédito → Faturas; Documentos Fiscais → Estornar NF",
+  },
+  {
     versao: "2026.10.28-z",
     data: "28/10/2026",
     titulo: "Forma de pagamento na baixa do Contas a Pagar",

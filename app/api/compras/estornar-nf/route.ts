@@ -1,5 +1,6 @@
 import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
+import { aplicarEstornoCartao } from "../../../../lib/financeiro/cartao";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -65,7 +66,12 @@ async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: stri
 // lógica corrigida.
 export async function POST(req: NextRequest) {
   try {
-    const { nf_id } = (await req.json()) as { nf_id: string };
+    const { nf_id, cartao_estorno } = (await req.json()) as {
+      nf_id: string;
+      // Confirmação do estorno de títulos pagos no cartão: retirados da fatura aberta; nas faturas já fechadas/pagas,
+      // "credito" (crédito numa fatura seguinte) ou "reembolso" (dinheiro de volta — Contas a Receber).
+      cartao_estorno?: { confirmado: boolean; modo?: "credito" | "reembolso"; mes?: number; ano?: number; data_reembolso?: string };
+    };
 
     const negado = await exigirAcessoRegistro(req, "nf_entradas", nf_id);
     if (negado) return negado;
@@ -80,6 +86,32 @@ export async function POST(req: NextRequest) {
     //    desfazer só o estoque e deixar o título é exatamente o que dobrava o CP ao processar de novo.
     const bloqueio = await titulosBloqueiamEstorno(sb, nf_id);
     if (bloqueio) return NextResponse.json({ error: bloqueio }, { status: 409 });
+
+    // 0b. NF paga no cartão de crédito: o estorno da compra precisa ser confirmado. Fatura aberta → o título sai da fatura;
+    //     fatura fechada/paga → a operadora já cobrou: o título fica (com a fatura) e entra o crédito numa fatura seguinte
+    //     ou o reembolso em dinheiro, conforme o usuário confirmar.
+    const { data: noCartao } = await sb.from("lancamentos").select("*").eq("nf_entrada_id", nf_id).eq("status", "cartao");
+    if (noCartao?.length) {
+      const fatIds = [...new Set(noCartao.map(t => t.fatura_cartao_id).filter(Boolean))] as string[];
+      const { data: fats } = fatIds.length ? await sb.from("faturas_cartao").select("id, status, mes, ano").in("id", fatIds) : { data: [] };
+      const fatDe = (t: { fatura_cartao_id: string | null }) => (fats ?? []).find(f => f.id === t.fatura_cartao_id);
+      const cobrados = noCartao.filter(t => fatDe(t)?.status !== "aberta");
+      if (!cartao_estorno?.confirmado || (cobrados.length && !cartao_estorno.modo)) {
+        return NextResponse.json({
+          error: "Esta NF foi paga no cartão de crédito: confirme o estorno do pagamento no cartão.", codigo: "CARTAO_CONFIRMAR",
+          titulos: noCartao.map(t => ({ id: t.id, descricao: t.descricao, valor: t.valor, fatura: fatDe(t) ?? null })),
+        }, { status: 409 });
+      }
+      for (const t of cobrados) {
+        await aplicarEstornoCartao(sb, t, cartao_estorno.modo!, { mes: cartao_estorno.mes, ano: cartao_estorno.ano, data_reembolso: cartao_estorno.data_reembolso, observacao: `NF estornada` });
+        // A compra continua na fatura que a operadora cobrou: o título sai da NF (não é apagado com ela)
+        await sb.from("nf_entradas").update({ lancamento_id: null }).eq("id", nf_id).eq("lancamento_id", t.id);
+        await falharSeErro(sb.from("lancamentos").update({
+          nf_entrada_id: null, observacao: [t.observacao, "NF estornada — compra mantida na fatura do cartão (já cobrada)"].filter(Boolean).join(" · "),
+        }).eq("id", t.id), "soltar título do cartão da NF");
+      }
+      // Títulos em fatura aberta são apagados com a NF logo abaixo (a fatura é recalculada pelo banco).
+    }
 
     // 1. Reverter movimentações de estoque — por nf_entrada_id (link direto, nunca
     //    fica nulo), não mais só por nf_entrada_item_id.

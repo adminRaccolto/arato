@@ -42,6 +42,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import PlanoGate from "../../../components/PlanoGate";
 import SelectBusca from "../../../components/SelectBusca";
+import { estornarNfComConfirmacao } from "../../../lib/fiscal/estornar-nf-cliente";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -2019,16 +2020,10 @@ export default function NfCompraPage() {
     );
     if (!ok) return;
     try {
-      // Usa API route com service_role_key — imune a JWT expirado e RLS
-      const res = await fetch("/api/compras/estornar-nf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nf_id: nf.id }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error((json as { error?: string }).error ?? `Erro HTTP ${res.status}`);
-      }
+      // Rota com service_role; NF paga no cartão pede a confirmação do estorno no cartão antes
+      const r = await estornarNfComConfirmacao(nf.id);
+      if (r.cancelado) return;
+      if (!r.ok) throw new Error(r.error ?? "Erro ao estornar NF");
       await carregar();
       alert(`NF ${nf.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
     } catch (e: unknown) {

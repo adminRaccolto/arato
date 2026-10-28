@@ -294,7 +294,8 @@ export default function ContasAReceberPage() {
     setCarregando(true);
     setErro("");
     try {
-      let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "receber");
+      // Crédito de estorno no cartão ('receber' com status 'cartao') vive na fatura, não é conta a receber
+      let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "receber").neq("status_normalizado", "cartao");
       q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
       if (fOrigem.size > 0) q = q.in("origem_tabela", Array.from(fOrigem));
       if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));

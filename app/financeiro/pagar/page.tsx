@@ -540,7 +540,7 @@ export default function ContasAPagarPage() {
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
     setBNovaData("");
-    setBForma(""); setBFormaOrig("");
+    setBForma(""); setBFormaOrig(""); setBCartaoId("");
     supabase.from(l.origem_tabela === "empresa_lancamentos" ? "empresa_lancamentos" : "lancamentos").select("forma_pagamento").eq("id", l.id).maybeSingle()
       .then(({ data }) => { const f = (data?.forma_pagamento as string | null) ?? ""; const v = FORMA_DA_NF[f] ?? f; setBForma(v); setBFormaOrig(v); });
     setBClass({ pessoa_id: l.pessoa_id ?? "", ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "", og_id: l.operacao_gerencial_id ?? "", salvar: false });
@@ -608,6 +608,28 @@ export default function ContasAPagarPage() {
       setErroAcao("Erro ao aplicar adiantamento de funcionário: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setAplicandoAdiant(null);
+    }
+  }
+
+  // Pagar com cartão de crédito: o título vai para a fatura (sai do CP, não mexe no banco — o dinheiro sai ao pagar a fatura)
+  const [bCartaoId, setBCartaoId] = useState("");
+  async function pagarComCartao() {
+    if (!modalBaixa || !bCartaoId) { setErroAcao("Escolha o cartão."); return; }
+    const c = cartoesNovo.find(x => x.id === bCartaoId);
+    if (!(await confirmarAcao({ titulo: "Pagar com cartão de crédito?", mensagem: `${fmtBRL(saldoBase(modalBaixa))} vão para a fatura do cartão ${c?.titular ?? ""} (compra em ${fmtData(bData)}). O título sai do Contas a Pagar e o dinheiro só sai do banco ao pagar a fatura.`, perigo: false }))) return;
+    setSalvandoAcao(true); setErroAcao("");
+    try {
+      const r = await fetch("/api/financeiro/cartao", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "pagar_titulo", lancamento_id: modalBaixa.id, cartao_id: bCartaoId, data_compra: bData }) });
+      const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; fatura?: string };
+      if (!j.ok) throw new Error(j.error ?? `Erro HTTP ${r.status}`);
+      setModalBaixa(null);
+      await carregar();
+      alert(`Título lançado na fatura ${j.fatura} do cartão.`);
+    } catch (e) {
+      setErroAcao(e instanceof Error ? e.message : "Erro ao lançar no cartão");
+    } finally {
+      setSalvandoAcao(false);
     }
   }
 
@@ -873,9 +895,9 @@ export default function ContasAPagarPage() {
   // Cartões de crédito da conta — só precisa carregar quando o modal abre
   // (forma de pagamento Cartão de Crédito mostra o seletor condicionalmente)
   useEffect(() => {
-    if (!modalNovo || !contaId) return;
+    if ((!modalNovo && !modalBaixa) || !contaId) return;
     listarCartoesDaConta(contaId).then(setCartoesNovo).catch(() => setCartoesNovo([]));
-  }, [modalNovo, contaId]);
+  }, [modalNovo, !!modalBaixa, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!novoForm.emp_ano_safra_id || !fazendaId) { setEmpCiclos([]); return; }
@@ -2639,6 +2661,19 @@ export default function ContasAPagarPage() {
                     style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #C9921B", background: "#C9921B", color: "#fff", fontSize: 11, fontWeight: 600, cursor: !adiFuncSel ? "default" : "pointer" }}>
                     {aplicandoAdiant === adiFuncSel && adiFuncSel ? "Aplicando…" : "Aplicar"}
                   </button>
+                </div>
+              </details>
+            )}
+            {modalBaixa.origem_tabela === "lancamentos" && (modalBaixa.moeda ?? "BRL") === "BRL" && !(Number(modalBaixa.valor_pago ?? 0) > 0) && cartoesNovo.length > 0 && (
+              <details style={{ background: "#EEF3FA", border: "0.5px solid #C9D3E6", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                <summary style={{ fontSize: 12, fontWeight: 700, color: "#0B2D50", cursor: "pointer" }}>💳 Pagar com cartão de crédito</summary>
+                <div style={{ fontSize: 10, color: "var(--text-3)", margin: "8px 0" }}>O título vai para a fatura do cartão (pela data da compra, abaixo em Data da baixa) e sai do Contas a Pagar. Não mexe no saldo do banco: o dinheiro sai ao pagar a fatura, em Financeiro → Cartões de Crédito.</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <select value={bCartaoId} onChange={e => setBCartaoId(e.target.value)} style={{ ...inp, fontSize: 12, padding: "5px 8px", minWidth: 220 }}>
+                    <option value="">— Escolha o cartão —</option>
+                    {cartoesNovo.map(c => <option key={c.id} value={c.id}>{c.titular}{c.banco ? ` · ${c.banco}` : ""}{c.numero_final ? ` · final ${c.numero_final}` : ""}</option>)}
+                  </select>
+                  <button type="button" disabled={!bCartaoId || salvandoAcao} onClick={pagarComCartao} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontWeight: 600, fontSize: 12, cursor: bCartaoId ? "pointer" : "default", opacity: bCartaoId ? 1 : 0.5 }}>Lançar no cartão</button>
                 </div>
               </details>
             )}

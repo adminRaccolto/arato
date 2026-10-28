@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AuthProvider from "../components/AuthProvider";
 import ConfirmarAcaoHost from "../components/ConfirmarAcao";
+import ConfirmarEstornoCartaoHost from "../components/financeiro/ConfirmarEstornoCartao";
 import BannerInadimplente from "../components/BannerInadimplente";
 import BannerRelogioDessincronizado from "../components/BannerRelogioDessincronizado";
 import VersionChecker from "../components/VersionChecker";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <LayoutProvider />
           <ConfirmarAcaoHost />
+          <ConfirmarEstornoCartaoHost />
           <BannerRelogioDessincronizado />
           <BannerInadimplente />
           <VersionChecker />

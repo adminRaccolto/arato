@@ -18492,3 +18492,18 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE ctes  ADD COLUMN IF NOT EXISTS veiculo_manual jsonb;
 ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS veiculo_manual jsonb;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 385 — Cartão de Crédito: crédito de estorno abate o total da fatura
+-- =============================================================================
+-- Estorno de compra no cartão depois que a fatura fechou vem como crédito numa fatura seguinte: um título 'receber'
+-- no cartão. O total da fatura passa a ser compras (pagar) menos créditos (receber).
+CREATE OR REPLACE FUNCTION fn_fatura_cartao_recalcular(p_fatura uuid) RETURNS void AS $$
+BEGIN
+  IF p_fatura IS NULL THEN RETURN; END IF;
+  UPDATE faturas_cartao SET valor_total = coalesce((
+    SELECT sum(CASE WHEN l.tipo = 'receber' THEN -l.valor ELSE l.valor END)
+      FROM lancamentos l WHERE l.fatura_cartao_id = p_fatura AND l.status = 'cartao'), 0)
+   WHERE id = p_fatura AND status <> 'paga';
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+NOTIFY pgrst, 'reload schema';

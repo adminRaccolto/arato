@@ -22,6 +22,7 @@ import {
   listarContasProdutorDaConta,
 } from "../../../lib/db";
 import type { CartaoCredito, FaturaCartao, Lancamento, ContaBancaria } from "../../../lib/supabase";
+import { confirmarEstornoCartao } from "../../../components/financeiro/ConfirmarEstornoCartao";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -202,6 +203,26 @@ export default function CartoesCredito() {
       const lancs = await listarLancamentosDaFatura(f.id);
       setLançsFatura(lancs as Lancamento[]);
     } finally { setLoadingLanc(false); }
+  };
+
+  // Estorno de compra no cartão — confirma como aconteceu (retirar da fatura aberta, crédito em fatura seguinte ou reembolso)
+  const estornarCompra = async (f: FaturaCartao, l: Lancamento) => {
+    const escolha = await confirmarEstornoCartao({
+      titulos: [{ id: l.id, descricao: l.descricao ?? "", valor: Number(l.valor), fatura: { status: f.status, mes: f.mes, ano: f.ano } }],
+      permitirRetirar: true, permitirValorParcial: true,
+      contexto: f.status === "aberta"
+        ? "Fatura ainda aberta: se a compra foi cancelada antes de fechar, retire da fatura (o título volta ao Contas a Pagar em aberto). Se a loja ou a operadora devolveu, escolha crédito ou reembolso."
+        : "Esta fatura já fechou: a operadora já cobrou a compra. Informe como o estorno chegou.",
+    });
+    if (!escolha) return;
+    const r = await fetch("/api/financeiro/cartao", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "estornar_titulo", lancamento_id: l.id, ...escolha }) });
+    const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; feito?: string };
+    if (!j.ok) { alert(j.error ?? `Erro HTTP ${r.status}`); return; }
+    alert(`Estorno registrado: ${j.feito}.`);
+    const atualizadas = await listarFaturasDaConta(contaId!);
+    setFaturas(atualizadas);
+    await abrirFatura(atualizadas.find(x => x.id === f.id) ?? f);
   };
 
   const toggleFecharFatura = async (f: FaturaCartao) => {
@@ -469,18 +490,24 @@ export default function CartoesCredito() {
                               <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-page)" }}>
-                                    {["Data baixa", "Descrição", "Fornecedor", "Valor"].map((h, i) => (
-                                      <th key={i} style={{ padding: "7px 10px", textAlign: i === 3 ? "right" : "left", fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", fontWeight: 600 }}>{h}</th>
+                                    {["Data", "Descrição", "Categoria", "Valor", ""].map((h, i) => (
+                                      <th key={i} style={{ padding: "7px 10px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", fontWeight: 600 }}>{h}</th>
                                     ))}
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {lançsFatura.map((l, i) => (
                                     <tr key={l.id} style={{ borderBottom: i < lançsFatura.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                                      <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa)}</td>
+                                      <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa ?? l.data_lancamento)}</td>
                                       <td style={{ padding: "7px 10px", color: "var(--text-1)" }}>{l.descricao}</td>
                                       <td style={{ padding: "7px 10px", color: "var(--text-2)" }}>{l.categoria}</td>
-                                      <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(l.valor_pago ?? l.valor)}</td>
+                                      {/* Crédito de estorno (título a receber no cartão) abate o total da fatura */}
+                                      <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{l.tipo === "receber" ? "− " : ""}{fmtBRL(l.valor_pago ?? l.valor)}</td>
+                                      <td style={{ padding: "7px 10px", textAlign: "right" }}>
+                                        {l.tipo === "pagar" && l.status === "cartao" && (
+                                          <button type="button" onClick={() => estornarCompra(f, l)} style={{ padding: "3px 10px", borderRadius: 6, border: "0.5px solid #E8C97A", background: "#FBF3E0", color: "#7A5200", fontSize: 11, cursor: "pointer" }}>Estornar</button>
+                                        )}
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -488,6 +515,7 @@ export default function CartoesCredito() {
                                   <tr style={{ borderTop: "1px solid var(--border-table)", background: "var(--bg-page)" }}>
                                     <td colSpan={3} style={{ padding: "8px 10px", fontWeight: 700, color: "var(--text-1)" }}>Total da fatura</td>
                                     <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(f.valor_total)}</td>
+                                    <td />
                                   </tr>
                                 </tfoot>
                               </OperationalGrid>
