@@ -24,6 +24,9 @@ import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
 const numBR = (s: string) => parseFloat(String(s).replace(/\./g, "").replace(",", ".")) || 0;
+// Número vindo do banco/XML para o campo digitável (formato brasileiro): "2.08" lido por numBR virava 208 — achado
+// real 28/10/2026, remessa com XML externo mostrava os totais ×100.
+const paraCampo = (n: number | null | undefined) => n == null || !Number.isFinite(Number(n)) ? "" : String(n).replace(".", ",");
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
@@ -45,7 +48,7 @@ const valorRemetido = (r: NfRemessaLogistica) => {
   return soma > 0 ? soma : Number(r.valor_total ?? 0);
 };
 
-type ItemRem = { key: string; insumo_id: string; descricao: string; ncm: string; unidade: string; quantidade: string; valor_unitario: string };
+type ItemRem = { key: string; insumo_id: string; descricao: string; ncm: string; unidade: string; quantidade: string; valor_unitario: string; unidade_xml?: string };
 type NfOrigem = { id: string; numero: string; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null; produtor_id: string | null; fazenda_id: string };
 const novoItem = (): ItemRem => ({ key: crypto.randomUUID(), insumo_id: "", descricao: "", ncm: "", unidade: "", quantidade: "", valor_unitario: "" });
 
@@ -127,7 +130,7 @@ function RemessasConteudo() {
     setItens(doEstoque.length ? doEstoque.map(i => ({
       key: crypto.randomUUID(), insumo_id: i.insumo_id!, descricao: insumoPorId.get(i.insumo_id!)?.nome ?? i.descricao_produto,
       ncm: i.ncm ?? insumoPorId.get(i.insumo_id!)?.ncm ?? "", unidade: insumoPorId.get(i.insumo_id!)?.unidade ?? i.unidade,
-      quantidade: String(i.quantidade ?? ""), valor_unitario: i.quantidade ? String(Math.round((Number(i.valor_total ?? 0) / Number(i.quantidade)) * 10000) / 10000) : "",
+      quantidade: paraCampo(i.quantidade), valor_unitario: i.quantidade ? paraCampo(Math.round((Number(i.valor_total ?? 0) / Number(i.quantidade)) * 10000) / 10000) : "",
     })) : [novoItem()]);
     const dep = its.find(i => i.deposito_id)?.deposito_id;
     if (dep) setDepOrigem(dep);
@@ -152,7 +155,9 @@ function RemessasConteudo() {
   function setItem(key: string, patch: Partial<ItemRem>) { setItens(p => p.map(i => i.key === key ? { ...i, ...patch } : i)); }
   function escolherInsumo(key: string, id: string) {
     const ins = insumoPorId.get(id);
-    setItem(key, { insumo_id: id, descricao: ins?.nome ?? "", ncm: ins?.ncm ?? "", unidade: ins?.unidade ?? "", valor_unitario: ins?.custo_medio ? String(ins.custo_medio) : "" });
+    // Valor que veio da NF/XML fica; o custo médio só preenche o que está vazio
+    setItens(p => p.map(i => i.key !== key ? i : { ...i, insumo_id: id, descricao: ins?.nome ?? "", ncm: ins?.ncm || i.ncm, unidade: ins?.unidade ?? "",
+      valor_unitario: i.valor_unitario || (ins?.custo_medio ? paraCampo(Math.round(ins.custo_medio * 10000) / 10000) : "") }));
   }
   const totalItens = itens.reduce((s, i) => s + numBR(i.quantidade) * numBR(i.valor_unitario), 0);
 
@@ -165,7 +170,7 @@ function RemessasConteudo() {
     const doc = x.cnpj_destinatario.replace(/\D/g, "");
     const p = pessoas.find(pp => (pp.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
     if (p) escolherArmazem(p.id);
-    if (!itens.some(i => i.insumo_id) && x.itens.length) setItens(x.itens.map(i => ({ key: crypto.randomUUID(), insumo_id: "", descricao: i.descricao, ncm: i.ncm, unidade: i.unidade, quantidade: String(i.quantidade), valor_unitario: String(i.valor_unitario) })));
+    if (!itens.some(i => i.insumo_id) && x.itens.length) setItens(x.itens.map(i => ({ key: crypto.randomUUID(), insumo_id: "", descricao: i.descricao, ncm: i.ncm, unidade: i.unidade, unidade_xml: i.unidade, quantidade: paraCampo(i.quantidade), valor_unitario: paraCampo(i.valor_unitario) })));
   }
 
   async function salvar() {
@@ -424,7 +429,7 @@ function RemessasConteudo() {
                             <SelectBusca value={i.insumo_id} onChange={v => escolherInsumo(i.key, v)} placeholder={i.descricao || "Produto…"} options={insumos.map(s => ({ value: s.id, label: `${s.nome} (${s.unidade})` }))} />
                           </td>
                           <td style={td}><input value={i.ncm} onChange={e => setItem(i.key, { ncm: e.target.value.replace(/\D/g, "").slice(0, 8) })} style={{ ...inp, width: 100 }} /></td>
-                          <td style={td}>{i.unidade || "—"}</td>
+                          <td style={td}>{i.unidade || "—"}{i.insumo_id && i.unidade_xml && i.unidade_xml.toLowerCase() !== i.unidade.toLowerCase() && <div style={{ fontSize: 10, color: "var(--text-3)" }} title="Unidade escrita no XML da remessa. A quantidade entra no estoque na unidade do cadastro — confira se precisa converter.">XML: {i.unidade_xml}</div>}</td>
                           <td style={td}><input value={i.quantidade} onChange={e => setItem(i.key, { quantidade: e.target.value })} style={{ ...inp, width: 110 }} /></td>
                           <td style={td}><input value={i.valor_unitario} onChange={e => setItem(i.key, { valor_unitario: e.target.value })} style={{ ...inp, width: 110 }} /></td>
                           <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(numBR(i.quantidade) * numBR(i.valor_unitario))}</td>

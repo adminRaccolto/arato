@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-s",
+    data: "28/10/2026",
+    titulo: "Remessa: valores certos ao ler o XML ou a NF de origem",
+    modulos: ["Documentos Fiscais", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Em Nova Remessa, o valor unitário que vinha do XML (ou da NF de entrada) era lido como 100 vezes maior — R$ 2,08 virava R$ 208 — e o total da remessa saía errado. Agora o valor aparece certo." },
+      { tipo: "melhoria", texto: "Ao ligar o item do XML a um produto do cadastro, o valor da nota fica (o custo médio só preenche quando o valor está vazio), e a unidade mostra a do cadastro com a do XML embaixo quando são diferentes, para conferir a conversão." },
+    ],
+    onde: "Documentos Fiscais → Remessas → Nova Remessa",
+  },
+  {
     versao: "2026.10.28-r",
     data: "28/10/2026",
     titulo: "Relatório CP/CR em PDF mais enxuto",
