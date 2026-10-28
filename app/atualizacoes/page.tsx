@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-w",
+    data: "28/10/2026",
+    titulo: "Auditor de Estoque — Fiscal × Físico (insumos)",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Novo relatório Auditor Fiscal × Físico: para cada insumo compara o estoque fiscal (NFs de entrada processadas, transferências entre fazendas com NF e devoluções) com o saldo do sistema, e explica a diferença por tipo de movimento: consumo em operações, ajustes/inventário, apropriação direta, entradas e transferências sem NF, perdas e remessa/retorno." },
+      { tipo: "novo", texto: "Semáforo por item: Não fecha (NF processada que não movimentou o estoque, ou movimentou em dobro, ou saldo negativo), Atenção (entrada ou transferência sem NF) e Explicado. Visão consolidada do cliente ou por fazenda, posição até uma data e exportação XLSX." },
+    ],
+    onde: "Comercial & Logística → Relatórios → Auditor Fiscal × Físico",
+  },
+  {
     versao: "2026.10.28-v",
     data: "28/10/2026",
     titulo: "Transferência entre depósitos sem NF",

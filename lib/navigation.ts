@@ -163,6 +163,7 @@ export const NAV: NavItem[] = [
       { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/relatorios/pedidos-compra",                       moduleId: "compras", bloco: "Compras" },
       { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque",                                         bloco: "Estoque" },
       { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex",                                  bloco: "Estoque" },
+      { id: "com-rel-aud-fiscal", label: "Auditor Fiscal × Físico",     path: "/estoque/auditoria-fiscal",                        bloco: "Estoque" },
       { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos",                                   bloco: "Comercialização" },
       { id: "com-rel-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf",                        bloco: "Integração de Documentos" },
     ],
