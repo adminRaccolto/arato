@@ -136,7 +136,14 @@ export class CiotService {
         res.on("data", d => { buf += d; });
         res.on("end", () => {
           try { resolve(JSON.parse(buf) as ApiResponseANTT<T>); }
-          catch { resolve({ Sucesso: false, Dados: null as unknown as T, Mensagem: `Resposta inesperada da ANTT (HTTP ${res.statusCode}): ${buf.slice(0, 300)}`, Erros: [] }); }
+          catch {
+            // 5xx com página HTML = o serviço da ANTT está fora do ar ou sobrecarregado — não é erro nos dados do CIOT
+            const st = res.statusCode ?? 0;
+            const msg = st >= 500
+              ? `O serviço da ANTT está fora do ar no momento (HTTP ${st}). Não é erro nos dados: tente de novo em alguns minutos. Se o CIOT já aparecer no site da ANTT, use "Já emitiu o CIOT no site?".`
+              : `Resposta inesperada da ANTT (HTTP ${st}): ${buf.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200)}`;
+            resolve({ Sucesso: false, Dados: null as unknown as T, Mensagem: msg, Erros: [] });
+          }
         });
       });
       req.on("timeout", () => { req.destroy(new Error("Tempo esgotado ao falar com a ANTT.")); });
