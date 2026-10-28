@@ -508,7 +508,7 @@ export default function ContasAReceberPage() {
     try {
       if (modalBaixa.origem_tabela === "lancamentos") {
         await baixarLancamento(modalBaixa.id, numBR(bValor), bData, bConta, {
-          multa_valor: numBR(bMulta) || undefined, juros_valor: numBR(bJuros) || undefined, desconto_valor: numBR(bDesc) || undefined,
+          multa_valor: numBR(bMulta), juros_valor: numBR(bJuros), desconto_valor: numBR(bDesc), // 0 explícito: zera o que ficou gravado
           pessoa_id: bClass.pessoa_id || undefined, operacao_gerencial_id: bClass.og_id || undefined,
           ano_safra_id: bClass.ano_safra_id || undefined, ciclo_id: bClass.ciclo_id || undefined,
           nova_data_vencimento: bNovaData || undefined,
@@ -1057,7 +1057,7 @@ export default function ContasAReceberPage() {
   async function baixarUmItem(l: RelLancamento, valor: number, data: string, conta: string, e: { multa: string; juros: string; desconto: string }) {
     if (l.origem_tabela === "lancamentos") {
       await baixarLancamento(l.id, valor, data, conta, {
-        multa_valor: numBR(e.multa) || undefined, juros_valor: numBR(e.juros) || undefined, desconto_valor: numBR(e.desconto) || undefined,
+        multa_valor: numBR(e.multa), juros_valor: numBR(e.juros), desconto_valor: numBR(e.desconto),
       });
     } else {
       const res = await fetch("/api/empresa-lancamentos/baixar", {

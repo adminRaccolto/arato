@@ -276,9 +276,11 @@ export async function POST(req: NextRequest) {
     // Detalhamento de encargos — só informativo/relatório, não entra no
     // cálculo de status (o valor_pago_agora já vem com tudo embutido,
     // calculado na tela antes de chegar aqui).
-    if (body.multa_valor)            patch.valor_multa            = body.multa_valor;
-    if (body.juros_valor)            patch.valor_juros            = body.juros_valor;
-    if (body.desconto_valor)         patch.valor_desconto         = body.desconto_valor;
+    // Informado (inclusive 0) substitui o que estava gravado — achado real 28/10/2026: um desconto de R$ 40 que
+    // ficou no título de uma tentativa anterior entrava no teto da baixa mesmo com 0 na tela, e barrava os juros.
+    if (body.multa_valor !== undefined)    patch.valor_multa    = body.multa_valor || null;
+    if (body.juros_valor !== undefined)    patch.valor_juros    = body.juros_valor || null;
+    if (body.desconto_valor !== undefined) patch.valor_desconto = body.desconto_valor || null;
 
     // Pagamento parcial divide o título (Seção 375): esta parte fica baixada com o valor pago e o saldo vira um título
     // novo, com o vencimento informado (vencimento_saldo, na mesma gravação). Título parcial antigo (já tinha valor

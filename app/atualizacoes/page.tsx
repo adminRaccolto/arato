@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-n",
+    data: "28/10/2026",
+    titulo: "Baixa com juros não é mais recusada por desconto antigo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na baixa de CP/CR, multa, juros e desconto em 0 na tela não eram enviados, e o sistema usava o que tinha ficado gravado no título de uma tentativa anterior. Um desconto antigo anulava os juros digitados e a baixa era recusada como \"valor pago maior que o título\". Agora vale sempre o que está na tela." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Baixar",
+  },
+  {
     versao: "2026.10.28-m",
     data: "28/10/2026",
     titulo: "MDF-e autorizado não volta mais para rascunho",
