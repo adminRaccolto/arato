@@ -123,7 +123,20 @@ export class CiotService {
     this.basePath = u.pathname; // /pefServices
   }
 
-  private post<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T>> {
+  // A ANTT devolve 5xx esporádicos (gateway sobrecarregado) e responde normalmente segundos depois:
+  // tenta de novo até 2 vezes antes de mostrar o erro. Um 5xx não processa nada, então repetir é seguro.
+  private async post<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T>> {
+    let r = await this.postUmaVez<T>(path, body);
+    for (const espera of [3000, 7000]) {
+      if (!r.status5xx) break;
+      await new Promise(ok => setTimeout(ok, espera));
+      r = await this.postUmaVez<T>(path, body);
+    }
+    const { status5xx: _s, ...resp } = r; // eslint-disable-line @typescript-eslint/no-unused-vars
+    return resp;
+  }
+
+  private postUmaVez<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T> & { status5xx?: boolean }> {
     const payload = JSON.stringify(body);
     return new Promise((resolve, reject) => {
       const req = https.request({
@@ -139,10 +152,12 @@ export class CiotService {
           catch {
             // 5xx com página HTML = o serviço da ANTT está fora do ar ou sobrecarregado — não é erro nos dados do CIOT
             const st = res.statusCode ?? 0;
+            const texto = buf.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
             const msg = st >= 500
-              ? `O serviço da ANTT está fora do ar no momento (HTTP ${st}). Não é erro nos dados: tente de novo em alguns minutos. Se o CIOT já aparecer no site da ANTT, use "Já emitiu o CIOT no site?".`
-              : `Resposta inesperada da ANTT (HTTP ${st}): ${buf.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200)}`;
-            resolve({ Sucesso: false, Dados: null as unknown as T, Mensagem: msg, Erros: [] });
+              ? `A ANTT não atendeu o pedido (HTTP ${st}) mesmo após 3 tentativas — instabilidade no serviço deles, não erro nos dados. Clique em Gerar de novo em alguns minutos; se o CIOT já aparecer no site da ANTT, use "Já emitiu o CIOT no site?".${texto ? ` Resposta: ${texto}` : ""}`
+              : `Resposta inesperada da ANTT (HTTP ${st}): ${texto}`;
+            if (st >= 500) console.warn(`[ciot] ANTT HTTP ${st} em ${path}: ${texto}`);
+            resolve({ Sucesso: false, Dados: null as unknown as T, Mensagem: msg, Erros: [], status5xx: st >= 500 });
           }
         });
       });
