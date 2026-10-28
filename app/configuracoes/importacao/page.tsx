@@ -877,7 +877,7 @@ function validarLanc(r: Record<string, string>): LancRow {
 }
 
 // Unidades aceitas para conversão automática de sementes
-const UNIDADES_NAO_KG_SEMENTE = ["bag","sc","t","g","L","mL","un","cx","fardo","saco"];
+const UNIDADES_NAO_KG_SEMENTE = ["bag","sc","t","g","L","mL","un","cx","dz","fardo","saco"];
 
 function validarInsumo(r: Record<string, string>): InsumoRow {
   const row = r as unknown as InsumoRow;
@@ -902,7 +902,7 @@ function validarInsumo(r: Record<string, string>): InsumoRow {
 }
 
 const CATS_PRODUTO = ["peca","material","uso_consumo","escritorio","outros"];
-const UNITS_VALIDAS = ["kg","g","L","mL","sc","t","un","m","m2","cx","pc","par","outros"];
+const UNITS_VALIDAS = ["kg","g","L","mL","sc","t","un","m","m2","cx","dz","pc","par","outros"];
 
 function validarProduto(r: Record<string, string>): ProdutoRow {
   const row = r as unknown as ProdutoRow;

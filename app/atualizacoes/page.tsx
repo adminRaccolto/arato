@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-o",
+    data: "28/10/2026",
+    titulo: "Unidade de medida Dúzia (dz)",
+    modulos: ["Cadastros", "Estoque", "Documentos Fiscais", "Compras"],
+    itens: [
+      { tipo: "novo", texto: "Dúzia (dz) disponível como unidade no cadastro de insumos e itens, no cadastro de item feito pela NF, no estoque, nos pedidos de compra e na importação por planilha. \"DZ\" no XML da NF é reconhecido como dúzia." },
+    ],
+    onde: "Cadastros → Insumos / Documentos Fiscais → NF",
+  },
+  {
     versao: "2026.10.28-n",
     data: "28/10/2026",
     titulo: "Baixa com juros não é mais recusada por desconto antigo",
