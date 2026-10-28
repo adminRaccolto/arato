@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-j",
+    data: "28/10/2026",
+    titulo: "CIOT: campos que faltam e ANTT fora do ar",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Gerar CIOT diz quais campos faltam (antes só \"Preencha todos os campos obrigatórios\"); os exemplos em cinza ficaram marcados como exemplo. O CEP passa a ser opcional quando há o código IBGE." },
+      { tipo: "melhoria", texto: "As placas das carretas vêm do conjunto do veículo também quando o MDF-e é aberto a partir do CT-e." },
+      { tipo: "melhoria", texto: "Quando o serviço da ANTT está fora do ar, a mensagem diz isso claramente, em vez de mostrar o código da página de erro." },
+    ],
+    onde: "Fretes e Transporte → MDF-e → CIOT",
+  },
+  {
     versao: "2026.10.28-i",
     data: "28/10/2026",
     titulo: "Conciliação: extrato reimportado não duplica",

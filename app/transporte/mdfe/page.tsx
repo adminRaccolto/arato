@@ -415,6 +415,13 @@ function MdfePageInner() {
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
   const [ciotReservado, setCiotReservado] = useState("");
   const [ciotSemImpl, setCiotSemImpl] = useState(false);
+  // MDF-e aberto do CT-e ou de rascunho já com o conjunto escolhido: as placas das carretas vêm dele (antes só ao trocar o veículo)
+  useEffect(() => {
+    if (ciotForm.implementos.trim() || !form.implemento_ids?.length) return;
+    const placas = form.implemento_ids.map(id => veiculos.find(v => v.id === id)?.placa ?? "").filter(Boolean).join(", ");
+    if (placas) setCiotForm(c => ({ ...c, implementos: placas }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.implemento_ids, veiculos]);
   const [ciotErro,     setCiotErro]     = useState("");
 
   // Modal encerramento
@@ -607,9 +614,14 @@ function MdfePageInner() {
     if (!contratanteDoc) { setCiotErro("Contratante (transportadora emitente) não identificado — vincule um CT-e."); return; }
     if (!motorista?.cpf) { setCiotErro("Motorista sem CPF cadastrado."); return; }
     if (!veiculo?.placa) { setCiotErro("Selecione um veículo."); return; }
-    if (!ciotForm.valor_frete || !ciotForm.data_fim || !ciotForm.cep_origem || !ciotForm.cep_destino || !ciotForm.distancia_km) {
-      setCiotErro("Preencha todos os campos obrigatórios do CIOT."); return;
-    }
+    // Diz QUAIS campos faltam (o texto cinza de exemplo parecia valor preenchido). CEP é opcional quando há o código
+    // IBGE: a ANTT recebe a localização pelo município.
+    const faltam = [
+      !ciotForm.valor_frete && "Valor do Frete", !ciotForm.data_fim && "Data Fim da Viagem", !ciotForm.distancia_km && "Distância (km)",
+      !ciotForm.cep_origem && !ciotForm.ibge_origem && "CEP ou Cód. IBGE de Origem", !ciotForm.cep_destino && !ciotForm.ibge_destino && "CEP ou Cód. IBGE de Destino",
+      !ciotSemImpl && !ciotForm.implementos.trim() && "Placa(s) do implemento (ou marque Caminhão simples)",
+    ].filter(Boolean);
+    if (faltam.length) { setCiotErro(`Preencha: ${faltam.join(", ")}.`); return; }
     setGerandoCiot(true); setCiotErro("");
     try {
       const res = await fetch("/api/antt/ciot", {
@@ -1455,7 +1467,7 @@ function MdfePageInner() {
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Distância (km) *</label>
-                        <input style={inp} placeholder="850" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value }))} />
+                        <input style={inp} placeholder="ex.: 850 (km rodoviários)" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value }))} />
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>CEP Origem *</label>
@@ -1463,7 +1475,7 @@ function MdfePageInner() {
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Placa(s) do implemento/carreta *</label>
-                        <input style={{ ...inp, textTransform: "uppercase" }} placeholder="ABC1D23, ABC1D24" value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} />
+                        <input style={{ ...inp, textTransform: "uppercase" }} placeholder="ex.: ABC1D23, ABC1D24" value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} />
                         <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label>
                       </div>
                       <div>
@@ -1472,7 +1484,7 @@ function MdfePageInner() {
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>CEP Destino *</label>
-                        <input style={{ ...inp, fontFamily:"monospace" }} placeholder="11015-000" value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} />
+                        <input style={{ ...inp, fontFamily:"monospace" }} placeholder="opcional com o IBGE (ex.: 11015-000)" value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} />
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Cód. IBGE Município Destino *</label>
