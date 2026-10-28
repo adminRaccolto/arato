@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-q",
+    data: "28/10/2026",
+    titulo: "CT-e de frete lançado à mão (XML ou digitado)",
+    modulos: ["Documentos Fiscais", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Botão \"+ CT-e de Frete\" em Documentos Fiscais: lança um CT-e recebido que não veio do SIEG, importando o arquivo XML ou digitando os dados (chave de acesso, transportadora, rota, carga e valor). O número, a série e o CNPJ da transportadora saem da própria chave." },
+      { tipo: "melhoria", texto: "Depois de lançado, o CT-e é processado como os do SIEG: gera o Contas a Pagar para a transportadora. CT-e já lançado ou emitido pela própria conta não entra em dobro. O lançado à mão e ainda pendente pode ser excluído." },
+    ],
+    onde: "Documentos Fiscais → + CT-e de Frete",
+  },
+  {
     versao: "2026.10.28-p",
     data: "28/10/2026",
     titulo: "Borderôs respeitam os atalhos e filtros do Contas a Pagar",

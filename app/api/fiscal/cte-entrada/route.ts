@@ -3,10 +3,14 @@
  *   processar: gera o Contas a Pagar para a transportadora (produtor → lancamentos; empresa → empresa_lancamentos)
  *              e marca o CT-e como processado. A transportadora entra no cadastro de Pessoas se ainda não existir.
  *   estornar:  apaga o título (se ainda não foi pago, conciliado nem posto em borderô) e volta o CT-e a pendente.
+ *   criar:     lança um CT-e recebido fora do SIEG — pelo arquivo XML (lido como na importação do SIEG) ou digitado.
+ *              Entra pendente; o processamento é o mesmo.
+ *   excluir:   apaga um CT-e lançado à mão (XML ou digitado) que ainda está pendente.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { exigirAcessoFazenda, getRequestUser } from "../../../../lib/api-auth";
+import { parseCTeXml } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -15,9 +19,18 @@ const dig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 const fmtDoc = (d: string) => d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
   : d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : d;
 
+type CteDigitado = {
+  chave: string; numero?: string; serie?: string; data_emissao: string; cfop?: string;
+  emitente_nome: string; emitente_cnpj?: string; emitente_uf?: string;
+  municipio_origem?: string; uf_origem?: string; municipio_destino?: string; uf_destino?: string;
+  produto_descricao?: string; peso_kg?: number | null; valor_mercadoria?: number | null; valor_prestacao: number;
+  nfe_chaves?: string[];
+};
 type Corpo = {
-  acao: "processar" | "estornar";
+  acao: "processar" | "estornar" | "criar" | "excluir";
   id: string;
+  xml?: string;
+  digitado?: CteDigitado;
   pagador_tipo?: "produtor" | "empresa";
   pagador_id?: string;
   fazenda_id?: string;
@@ -32,8 +45,9 @@ type Corpo = {
 export async function POST(req: NextRequest) {
   try {
     const b = await req.json() as Corpo;
-    if (!b.id) return NextResponse.json({ ok: false, error: "id obrigatório" }, { status: 400 });
     const db = admin();
+    if (b.acao === "criar") return criar(req, db, b);
+    if (!b.id) return NextResponse.json({ ok: false, error: "id obrigatório" }, { status: 400 });
     const { data: cte, error: eCte } = await db.from("cte_entradas").select("*").eq("id", b.id).maybeSingle();
     if (eCte) return NextResponse.json({ ok: false, error: eCte.code === "42P01" || eCte.code === "PGRST205" ? "Rode a Seção 381 do supabase_migrations.sql." : eCte.message }, { status: 400 });
     if (!cte) return NextResponse.json({ ok: false, error: "CT-e não encontrado." }, { status: 404 });
@@ -138,8 +152,92 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (b.acao === "excluir") {
+      if (cte.status !== "pendente") return NextResponse.json({ ok: false, error: "Só CT-e pendente pode ser excluído (estorne antes, se já foi processado)." }, { status: 409 });
+      if (cte.origem === "sieg") return NextResponse.json({ ok: false, error: "CT-e que veio do SIEG não é excluído: ele voltaria na próxima sincronização." }, { status: 409 });
+      if (cte.xml_storage_path) await db.storage.from("arquivos").remove([cte.xml_storage_path as string]);
+      const { error: eD } = await db.from("cte_entradas").delete().eq("id", cte.id).eq("status", "pendente");
+      if (eD) return NextResponse.json({ ok: false, error: eD.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ ok: false, error: "Ação inválida" }, { status: 400 });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
+}
+
+// Chave do CT-e: cUF(2) AAMM(4) CNPJ emitente(14) modelo 57(2) série(3) número(9) tpEmis(1) código(8) DV(1)
+function chaveValida(chave: string) {
+  if (!/^\d{44}$/.test(chave) || chave.slice(20, 22) !== "57") return false;
+  let peso = 2, soma = 0;
+  for (let i = 42; i >= 0; i--) { soma += Number(chave[i]) * peso; peso = peso === 9 ? 2 : peso + 1; }
+  const resto = soma % 11;
+  return Number(chave[43]) === (resto < 2 ? 0 : 11 - resto);
+}
+
+async function criar(req: NextRequest, db: ReturnType<typeof admin>, b: Corpo) {
+  if (!b.fazenda_id) return NextResponse.json({ ok: false, error: "Escolha a fazenda." }, { status: 400 });
+  const negado = await exigirAcessoFazenda(req, b.fazenda_id);
+  if (negado) return negado;
+  const { data: fz } = await db.from("fazendas").select("conta_id").eq("id", b.fazenda_id).maybeSingle();
+  const contaId = (fz?.conta_id as string | null) ?? null;
+
+  let dados: Record<string, unknown>;
+  let chave: string;
+  let origem: "xml" | "manual";
+  if (b.xml) {
+    const c = parseCTeXml(b.xml);
+    if (!c || !c.numero) return NextResponse.json({ ok: false, error: "Arquivo não é o XML de um CT-e." }, { status: 400 });
+    chave = c.chave; origem = "xml";
+    dados = {
+      numero: c.numero, serie: c.serie, data_emissao: c.data_emissao || null, cfop: c.cfop, natureza_operacao: c.natureza,
+      emitente_nome: c.emitente.nome, emitente_cnpj: c.emitente.cnpj, emitente_ie: c.emitente.ie, emitente_uf: c.emitente.uf,
+      tomador_tipo: c.tomador.tipo, tomador_nome: c.tomador.nome, tomador_cnpj: c.tomador.cnpj,
+      remetente_nome: c.remetente.nome, remetente_cnpj: c.remetente.cnpj, destinatario_nome: c.destinatario.nome, destinatario_cnpj: c.destinatario.cnpj,
+      municipio_origem: c.municipio_origem, uf_origem: c.uf_origem, municipio_destino: c.municipio_destino, uf_destino: c.uf_destino,
+      produto_descricao: c.produto || null, peso_kg: c.peso_kg, valor_mercadoria: c.valor_mercadoria,
+      valor_prestacao: c.valor_prestacao, valor_receber: c.valor_receber, valor_icms: c.valor_icms, nfe_chaves: c.nfe_chaves,
+    };
+  } else if (b.digitado) {
+    const d = b.digitado;
+    chave = dig(d.chave); origem = "manual";
+    if (!chaveValida(chave)) return NextResponse.json({ ok: false, error: "Chave de acesso inválida: confira os 44 dígitos do CT-e." }, { status: 400 });
+    if (!d.emitente_nome?.trim()) return NextResponse.json({ ok: false, error: "Informe a transportadora." }, { status: 400 });
+    if (!d.data_emissao || !/^\d{4}-\d{2}-\d{2}$/.test(d.data_emissao)) return NextResponse.json({ ok: false, error: "Informe a data de emissão." }, { status: 400 });
+    const valor = Math.round(Number(d.valor_prestacao) * 100) / 100;
+    if (!(valor > 0)) return NextResponse.json({ ok: false, error: "Informe o valor do frete." }, { status: 400 });
+    const up = (v?: string) => v?.trim().toUpperCase() || null;
+    dados = {
+      // número, série e CNPJ da transportadora estão na própria chave
+      numero: dig(d.numero) || chave.slice(25, 34).replace(/^0+/, ""), serie: dig(d.serie) || chave.slice(22, 25).replace(/^0+/, "") || "0",
+      data_emissao: d.data_emissao, cfop: dig(d.cfop) || null,
+      emitente_nome: d.emitente_nome.trim().toUpperCase(), emitente_cnpj: dig(d.emitente_cnpj) || chave.slice(6, 20), emitente_uf: up(d.emitente_uf),
+      municipio_origem: up(d.municipio_origem), uf_origem: up(d.uf_origem), municipio_destino: up(d.municipio_destino), uf_destino: up(d.uf_destino),
+      produto_descricao: up(d.produto_descricao), peso_kg: d.peso_kg ?? null, valor_mercadoria: d.valor_mercadoria ?? null,
+      valor_prestacao: valor, valor_receber: valor, nfe_chaves: (d.nfe_chaves ?? []).map(dig).filter(k => k.length === 44),
+    };
+  } else {
+    return NextResponse.json({ ok: false, error: "Envie o XML ou os dados do CT-e." }, { status: 400 });
+  }
+
+  // CT-e emitido pela própria conta (Fretes e Transporte) já tem o financeiro da emissão
+  const { data: fazConta } = await db.from("fazendas").select("id").eq("conta_id", contaId ?? "");
+  const { data: proprio } = await db.from("ctes").select("id").in("fazenda_id", (fazConta ?? []).map(f => f.id as string)).eq("chave_acesso", chave).limit(1);
+  if (proprio?.length) return NextResponse.json({ ok: false, error: "Este CT-e foi emitido pelo próprio sistema (Fretes e Transporte) — não entra como frete contratado." }, { status: 409 });
+  const { data: ja, error: eJa } = await db.from("cte_entradas").select("id, status, origem").eq("conta_id", contaId ?? "").eq("chave", chave).limit(1);
+  if (eJa) return NextResponse.json({ ok: false, error: eJa.code === "42P01" || eJa.code === "PGRST205" ? "Rode a Seção 381 do supabase_migrations.sql." : eJa.message }, { status: 400 });
+  if (ja?.length) return NextResponse.json({ ok: false, error: `Este CT-e já está lançado (${ja[0].origem === "sieg" ? "veio do SIEG" : "lançado à mão"}, ${ja[0].status}).`, existente_id: ja[0].id }, { status: 409 });
+
+  let xmlPath: string | null = null;
+  if (b.xml) {
+    const caminho = `ctes-entrada/${b.fazenda_id}/${chave}.xml`;
+    const up = await db.storage.from("arquivos").upload(caminho, b.xml, { contentType: "application/xml", upsert: true });
+    if (!up.error) xmlPath = caminho;
+  }
+  const { data: novo, error: eIns } = await db.from("cte_entradas").insert({
+    ...dados, conta_id: contaId, fazenda_id: b.fazenda_id, chave, origem, status: "pendente", xml_storage_path: xmlPath,
+  }).select("id").single();
+  if (eIns) return NextResponse.json({ ok: false, error: eIns.message }, { status: 500 });
+  return NextResponse.json({ ok: true, id: novo.id });
 }

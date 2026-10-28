@@ -44,6 +44,7 @@ import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalNf from "../../../components/fiscal/ModalNf";
 import ModalProcessarLote from "../../../components/fiscal/ModalProcessarLote";
 import ModalCteEntrada from "../../../components/fiscal/ModalCteEntrada";
+import ModalCteEntradaNovo from "../../../components/fiscal/ModalCteEntradaNovo";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarOperacoesGerenciaisAtivasDaConta, listarCentrosCustoGeralDaConta } from "../../../lib/db";
 import type { OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
@@ -398,6 +399,7 @@ export default function DocumentosFiscaisPage() {
 
   // CT-e recebido do SIEG (frete contratado, Seção 381): abre a janela de processamento, não o detalhe do CT-e emitido
   const [cteEntradaId, setCteEntradaId] = useState<string | null>(null);
+  const [cteNovo, setCteNovo] = useState(false);
   function abrirPopover(d: RelDocFiscal, x: number, y: number) {
     if (d.origem_tabela === "cte_entradas") { setCteEntradaId(d.id); return; }
     setPopover(p => p?.d.id === d.id ? null : { d, x, y });
@@ -510,6 +512,9 @@ export default function DocumentosFiscaisPage() {
             </OperationalButton>
             <OperationalButton data-arato-button="primary" onClick={() => setModalNfs({ id: null })} style={{ ...inp, background: "#5B21B6", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
               + Nova NF de Serviço
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={() => setCteNovo(true)} style={{ ...inp, background: "#C9921B", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+              + CT-e de Frete
             </OperationalButton>
           </div>
         </OperationalHeading>
@@ -1090,6 +1095,11 @@ export default function DocumentosFiscaisPage() {
           onClose={() => setModalLote(false)}
           onSaved={() => { carregar(); setSelecionados(new Set()); }}
         />
+      )}
+
+      {cteNovo && (
+        <ModalCteEntradaNovo fazendaIds={fazendaIds ?? (fazendaId ? [fazendaId] : [])} fazendaPadrao={fazendaId ?? null}
+          onClose={() => setCteNovo(false)} onCriado={id => { setCteNovo(false); carregar(); setCteEntradaId(id); }} />
       )}
 
       {cteEntradaId && (

@@ -16,7 +16,7 @@ type CteEntrada = {
   tomador_tipo: string | null; tomador_nome: string | null; tomador_cnpj: string | null; remetente_nome: string | null; destinatario_nome: string | null;
   municipio_origem: string | null; uf_origem: string | null; municipio_destino: string | null; uf_destino: string | null;
   produto_descricao: string | null; peso_kg: number | null; valor_mercadoria: number | null; valor_prestacao: number; valor_receber: number | null;
-  valor_icms: number | null; nfe_chaves: string[] | null; xml_storage_path: string | null; status: string; lancamento_id: string | null;
+  valor_icms: number | null; nfe_chaves: string[] | null; xml_storage_path: string | null; origem: string | null; status: string; lancamento_id: string | null;
   produtor_id: string | null; empresa_id: string | null; operacao_gerencial_id: string | null; ano_safra_id: string | null; ciclo_id: string | null;
   centro_custo_id: string | null; data_vencimento: string | null; observacao: string | null; processado_em: string | null; processado_por: string | null;
 };
@@ -100,11 +100,12 @@ export default function ModalCteEntrada({ id, fazendaIds, contaId, onClose, onSa
   const processado = c?.status === "processada";
   const valorPagar = c ? (c.valor_receber ?? c.valor_prestacao) : 0;
 
-  async function enviar(acao: "processar" | "estornar") {
+  async function enviar(acao: "processar" | "estornar" | "excluir") {
     if (!c) return;
     setErro("");
     if (acao === "processar" && !pagador) { setErro("Escolha quem paga o frete."); return; }
     if (acao === "estornar" && !confirm(`Estornar o CT-e ${c.numero}? O Contas a Pagar dele é apagado e o CT-e volta a pendente.`)) return;
+    if (acao === "excluir" && !confirm(`Excluir o CT-e ${c.numero}, lançado à mão?`)) return;
     setSalvando(true);
     try {
       const [tipo, pid] = pagador.split(":");
@@ -112,7 +113,7 @@ export default function ModalCteEntrada({ id, fazendaIds, contaId, onClose, onSa
       const r = await fetch("/api/fiscal/cte-entrada", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-        body: JSON.stringify(acao === "estornar" ? { acao, id: c.id } : {
+        body: JSON.stringify(acao !== "processar" ? { acao, id: c.id } : {
           acao, id: c.id, pagador_tipo: tipo, pagador_id: pid, operacao_gerencial_id: og || null, ano_safra_id: ano || null,
           ciclo_id: ciclo || null, centro_custo_id: centro || null, data_vencimento: venc, observacao: obs || null,
         }),
@@ -218,7 +219,7 @@ export default function ModalCteEntrada({ id, fazendaIds, contaId, onClose, onSa
           {erro && <div style={{ marginTop: 10, padding: 10, background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, fontSize: 12 }}>{erro}</div>}
 
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 16 }}>
-            <div>{c.xml_storage_path && <OperationalButton data-arato-button="secondary" onClick={abrirXml} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", cursor: "pointer", fontSize: 13 }}>Ver XML</OperationalButton>}</div>
+            <div style={{ display: "flex", gap: 8 }}>{c.status === "pendente" && c.origem !== "sieg" && <OperationalButton data-arato-button="danger" disabled={salvando} onClick={() => enviar("excluir")} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#B91C1C", cursor: "pointer", fontSize: 13 }}>Excluir</OperationalButton>}{c.xml_storage_path && <OperationalButton data-arato-button="secondary" onClick={abrirXml} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", cursor: "pointer", fontSize: 13 }}>Ver XML</OperationalButton>}</div>
             <div style={{ display: "flex", gap: 8 }}>
               <OperationalButton data-arato-button="secondary" onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</OperationalButton>
               {c.status === "pendente" && <OperationalButton data-arato-button="primary" disabled={salvando} onClick={() => enviar("processar")} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>{salvando ? "Processando…" : "Processar e lançar CP"}</OperationalButton>}
