@@ -583,6 +583,7 @@ function CtePageInner() {
     pred_bc_icms: "0",
     cst_icms: "00" as "00" | "20" | "40" | "41" | "51",
     veiculo_id: "", conjunto_id: null as string | null, implemento_ids: [] as string[],
+    veiculo_manual: null as VeiculoManual | null,   // conjunto digitado sem cadastro
     motorista_id: "", motorista_nome: "", motorista_cpf: "",
     nfe_chave: "", observacao: "",
   });
@@ -813,6 +814,7 @@ function CtePageInner() {
       pred_bc_icms: String(c.pred_bc_icms ?? 0),
       cst_icms: (c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40")) as "00" | "20" | "40" | "41" | "51",
       veiculo_id: c.veiculo_id ?? "", conjunto_id: c.conjunto_id ?? null, implemento_ids: c.implemento_ids ?? [],
+      veiculo_manual: ((c as { veiculo_manual?: VeiculoManual | null }).veiculo_manual) ?? null,
       motorista_id: c.motorista_id ?? "",
       motorista_nome: c.motorista_nome ?? "", motorista_cpf: c.motorista_cpf ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
@@ -969,7 +971,11 @@ function CtePageInner() {
 
   function selecionarVeiculo(id: string, conjunto_id: string | null = null, implemento_ids: string[] = []) {
     const v = veiculos.find(v => v.id === id);
-    setForm(f => ({ ...f, veiculo_id: id, conjunto_id, implemento_ids, _placa: v?.placa ?? "" } as typeof f & { _placa: string }));
+    // Conjunto/veículo cadastrado traz o motorista habitual do cavalo (se o motorista ainda estiver vazio)
+    const habitual = (v as { motorista_habitual_id?: string | null } | undefined)?.motorista_habitual_id;
+    const mot = habitual ? motoristas.find(m => m.id === habitual) : undefined;
+    setForm(f => ({ ...f, veiculo_id: id, conjunto_id, implemento_ids, veiculo_manual: id ? null : f.veiculo_manual, _placa: v?.placa ?? "",
+      ...(mot && !f.motorista_nome.trim() ? { motorista_id: mot.id, motorista_nome: mot.nome, motorista_cpf: mot.cpf ?? "" } : {}) } as typeof f & { _placa: string }));
     // CIOT: placas das carretas vêm do conjunto (antes digitadas à mão a cada viagem).
     setCiotForm(c => ({ ...c, implementos: implemento_ids.map(i => veiculos.find(x => x.id === i)?.placa ?? "").filter(Boolean).join(", ") }));
     setCiotSemImpl(implemento_ids.length === 0 && !!id);
@@ -1041,6 +1047,13 @@ function CtePageInner() {
       const veiculo = veiculos.find(v => v.id === form.veiculo_id);
       const motorista = motoristas.find(m => m.id === form.motorista_id);
       const emitente = empresasTransp.find(e => e.id === form.emitente_id);
+      if (form.veiculo_manual) {
+        const f = faltasVeiculoManual(form.veiculo_manual, false);
+        if (f.length) { setErr(`Veículo sem cadastro: ${f.join(", ")}.`); setSaving(false); return; }
+      }
+      if (form.motorista_nome.trim() && !form.motorista_id && form.motorista_cpf.replace(/\D/g, "").length !== 11) {
+        setErr("Motorista sem cadastro: informe o CPF (11 dígitos)."); setSaving(false); return;
+      }
       // Placas digitadas no CIOT para cavalo sem conjunto: cadastra as carretas e o conjunto e grava no CT-e
       let conjSalvar = { conjunto_id: form.conjunto_id, implemento_ids: form.implemento_ids };
       if (form.veiculo_id && !form.implemento_ids.length && !ciotSemImpl && ciotForm.implementos.trim()) {
@@ -1099,8 +1112,10 @@ function CtePageInner() {
           ? { conjunto_id: conjSalvar.conjunto_id || null, implemento_ids: conjSalvar.implemento_ids.length ? conjSalvar.implemento_ids : null } : {}),
         // Dados do CIOT (distância, placas, CEPs…) ficam no CT-e e alimentam o MDF-e — Seção 383
         ...(Object.entries(ciotDados).some(([k, v]) => k !== "natureza" && k !== "sem_implemento" && v) || ciotSemImpl ? { ciot_dados: ciotDados } : {}),
-        veiculo_placa: veiculo?.placa ?? "",
-        veiculo_tipo: veiculo?.tipo ?? null,
+        veiculo_placa: form.veiculo_manual ? placaLimpa(form.veiculo_manual.cavalo.placa) : (veiculo?.placa ?? ""),
+        veiculo_tipo: form.veiculo_manual ? null : (veiculo?.tipo ?? null),
+        // Conjunto digitado sem cadastro (Seção 384) — o MDF-e puxa daqui
+        ...(form.veiculo_manual || (cteEdit as { veiculo_manual?: unknown } | null)?.veiculo_manual ? { veiculo_manual: form.veiculo_manual } : {}),
         // Motorista: pode vir do cadastro (motorista_id setado ao escolher uma sugestão do
         // datalist) OU só texto livre digitado, sem precisar cadastrar — form.motorista_nome/cpf
         // são sempre o que está no campo, prevalecem sobre o cadastro.
@@ -1150,7 +1165,10 @@ function CtePageInner() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar ciot cte)", perigo: false }))) return;
     if (!fazendaId) return;
     const motorista = motoristas.find(m => m.id === form.motorista_id);
-    const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
+    // Veículo do cadastro ou digitado sem cadastro (cavalo + carretas lançados no CT-e)
+    const vm = form.veiculo_manual;
+    const veiculo = veiculos.find(v => v.id === form.veiculo_id)
+      ?? (vm && placaLimpa(vm.cavalo.placa).length === 7 ? { placa: placaLimpa(vm.cavalo.placa), num_eixos: null, rntrc: vm.cavalo.rntrc || null, proprietario_tipo: "terceiro" } as unknown as (typeof veiculos)[number] : undefined);
     const cpfMot = (form.motorista_cpf || motorista?.cpf || "").replace(/\D/g, "");
     const contratante = (empresasTransp.find(e => e.id === form.emitente_id)?.cpf_cnpj ?? form.emitente_cnpj ?? "").replace(/\D/g, "");
     // CEP: digitado; senão o do cadastro de Pessoa; senão o da IE do produtor (remetente/destinatário produtor rural)
@@ -2374,7 +2392,8 @@ function CtePageInner() {
                   <div style={{ flex: 1 }}>
                     <SeletorConjunto contaId={contaId} fazendaIds={fazendaIds} veiculos={veiculos} style={inp}
                       veiculoId={form.veiculo_id} conjuntoId={form.conjunto_id} implementoIds={form.implemento_ids}
-                      onChange={sel => selecionarVeiculo(sel.veiculo_id, sel.conjunto_id, sel.implemento_ids)} />
+                      onChange={sel => selecionarVeiculo(sel.veiculo_id, sel.conjunto_id, sel.implemento_ids)}
+                      manual={form.veiculo_manual} onManual={m => { setForm(f => ({ ...f, veiculo_manual: m })); if (m) { setCiotForm(c => ({ ...c, implementos: m.reboques.map(r => r.placa).filter(Boolean).join(", ") })); setCiotSemImpl(m.reboques.length === 0); } }} />
                   </div>
                   <OperationalButton data-arato-button="secondary" type="button" title="Cadastrar novo veículo sem sair daqui" onClick={() => setModalNovoVeiculo(true)}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
@@ -2388,16 +2407,11 @@ function CtePageInner() {
                     bater com um nome cadastrado, resolve o motorista_id (mantém CPF e vínculo
                     estruturado); digitando um nome fora da lista, salva só como texto mesmo. */}
                 <div style={{ display: "flex", gap: 4 }}>
-                  <input list="cte-motoristas" value={form.motorista_nome}
-                    onChange={e => {
-                      const nome = e.target.value;
-                      const achado = motoristas.find(m => m.nome === nome);
-                      setForm(f => ({ ...f, motorista_nome: nome, motorista_id: achado?.id ?? "", motorista_cpf: achado?.cpf ?? f.motorista_cpf }));
-                    }}
-                    style={inp} placeholder="Nome do motorista" />
-                  <datalist id="cte-motoristas">
-                    {motoristas.map(m => <option key={m.id} value={m.nome} />)}
-                  </datalist>
+                  <div style={{ flex: 1 }}>
+                    <CampoMotorista id="cte-motoristas" motoristas={motoristas} style={inp}
+                      valor={{ motorista_id: form.motorista_id, motorista_nome: form.motorista_nome, motorista_cpf: form.motorista_cpf }}
+                      onChange={v => setForm(f => ({ ...f, ...v }))} />
+                  </div>
                   <OperationalButton data-arato-button="secondary" type="button" title="Cadastrar novo motorista sem sair daqui" onClick={() => setModalNovoMotorista(true)}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
                     + Novo
@@ -2623,6 +2637,8 @@ function CtePageInner() {
 
 import { Suspense } from "react";
 import { registrarConjuntoDigitado } from "../../../lib/transporte/conjunto-digitado";
+import CampoMotorista from "../../../components/transporte/CampoMotorista";
+import { placaLimpa, faltasVeiculoManual, type VeiculoManual } from "../../../lib/transporte/conjuntos";
 export default function CtePage() {
   return (
     <Suspense fallback={null}>

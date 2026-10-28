@@ -21,7 +21,7 @@ import { pfxParaPem } from "../nfe/signer";
 import { resolverConfigMDFe } from "./config";
 import { validarProdutoMDFe } from "./produto";
 import type { MDFeInput, EmitenteMDFe, MunicipioDescarga, ReboqueMDFe } from "./builder";
-import { tpCarPorCarroceria, tpRodDoVeiculo } from "../transporte/conjuntos";
+import { tpCarPorCarroceria, tpRodDoVeiculo, faltasVeiculoManual, placaLimpa, type VeiculoManual } from "../transporte/conjuntos";
 
 export type { MDFeInput };
 
@@ -211,21 +211,33 @@ export async function emitirMDFe(
   const pem = pfxParaPem(pfxBuffer, certSenha);
 
   // 3. Veículo (placa + tara) e motorista(es)
-  if (!m.veiculo_id) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Selecione o Veículo antes de autorizar — a tara é obrigatória no MDF-e." };
-  const { data: veic } = await sb().from("veiculos").select("*").eq("id", m.veiculo_id).maybeSingle();
-  if (!veic) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Veículo selecionado não encontrado no cadastro." };
-  if (!veic.tara_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Veículo ${veic.placa} sem Tara (kg) cadastrada — obrigatório pra montar o MDF-e. Preencha em Cadastros → Veículos.` };
-
-  // Implementos do conjunto escolhido (Seção 363) → <veicReboque>, na ordem do engate. Tara e capacidade são obrigatórias.
-  const implementoIds = ((m as { implemento_ids?: string[] | null }).implemento_ids ?? []).filter(Boolean);
+  // Conjunto digitado sem cadastro (Seção 384): placas, UF, tara e capacidade lançadas no próprio MDF-e.
+  const vm = (m as { veiculo_manual?: VeiculoManual | null }).veiculo_manual ?? null;
+  type VeicMDFe = { placa: string; renavam?: string | null; tara_kg: number; uf_placa?: string | null; uf?: string | null; tipo?: string | null; tipo_carroceria?: string | null; proprietario_tipo?: string | null };
+  let veic: VeicMDFe;
   const reboques: ReboqueMDFe[] = [];
-  if (implementoIds.length) {
-    const { data: imps } = await sb().from("veiculos").select("*").in("id", implementoIds);
-    for (const id of implementoIds) {
-      const r = (imps ?? []).find(x => x.id === id);
-      if (!r) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Um implemento do conjunto não foi encontrado no cadastro. Escolha o conjunto de novo no MDF-e." };
-      if (!r.tara_kg || !r.cap_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Implemento ${r.placa} sem Tara ou Capacidade (kg) — obrigatórios pro reboque no MDF-e. Preencha em Fretes e Transporte → Transportadoras e Veículos.` };
-      reboques.push({ placa: r.placa, renavam: r.renavam ?? undefined, tara_kg: r.tara_kg, cap_kg: r.cap_kg, tpCar: tpCarPorCarroceria(r.tipo_carroceria), uf: (r.uf_placa || r.uf) ?? undefined });
+  if (!m.veiculo_id && vm) {
+    const faltas = faltasVeiculoManual(vm, true);
+    if (faltas.length) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Veículo sem cadastro — falta: ${faltas.join(", ")}.` };
+    veic = { placa: placaLimpa(vm.cavalo.placa), tara_kg: Number(vm.cavalo.tara_kg), uf: vm.cavalo.uf, tipo: null, tipo_carroceria: null, proprietario_tipo: null };
+    for (const r of vm.reboques) reboques.push({ placa: placaLimpa(r.placa), tara_kg: Number(r.tara_kg), cap_kg: Number(r.cap_kg), tpCar: "03", uf: r.uf || vm.cavalo.uf || undefined });
+  } else {
+    if (!m.veiculo_id) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Selecione o Veículo (ou digite as placas do conjunto sem cadastro) antes de autorizar — a tara é obrigatória no MDF-e." };
+    const { data: vc } = await sb().from("veiculos").select("*").eq("id", m.veiculo_id).maybeSingle();
+    if (!vc) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Veículo selecionado não encontrado no cadastro." };
+    if (!vc.tara_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Veículo ${vc.placa} sem Tara (kg) cadastrada — obrigatório pra montar o MDF-e. Preencha em Cadastros → Veículos.` };
+    veic = vc as VeicMDFe;
+
+    // Implementos do conjunto escolhido (Seção 363) → <veicReboque>, na ordem do engate. Tara e capacidade são obrigatórias.
+    const implementoIds = ((m as { implemento_ids?: string[] | null }).implemento_ids ?? []).filter(Boolean);
+    if (implementoIds.length) {
+      const { data: imps } = await sb().from("veiculos").select("*").in("id", implementoIds);
+      for (const id of implementoIds) {
+        const r = (imps ?? []).find(x => x.id === id);
+        if (!r) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Um implemento do conjunto não foi encontrado no cadastro. Escolha o conjunto de novo no MDF-e." };
+        if (!r.tara_kg || !r.cap_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Implemento ${r.placa} sem Tara ou Capacidade (kg) — obrigatórios pro reboque no MDF-e. Preencha em Fretes e Transporte → Transportadoras e Veículos.` };
+        reboques.push({ placa: r.placa, renavam: r.renavam ?? undefined, tara_kg: r.tara_kg, cap_kg: r.cap_kg, tpCar: tpCarPorCarroceria(r.tipo_carroceria), uf: (r.uf_placa || r.uf) ?? undefined });
+      }
     }
   }
 

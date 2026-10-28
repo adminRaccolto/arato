@@ -15,6 +15,8 @@ import { supabase } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import { TIPOS_CARGA, type ProdutoMDFe } from "../../../lib/mdfe/produto";
 import { registrarConjuntoDigitado } from "../../../lib/transporte/conjunto-digitado";
+import CampoMotorista from "../../../components/transporte/CampoMotorista";
+import { placaLimpa, faltasVeiculoManual, type VeiculoManual } from "../../../lib/transporte/conjuntos";
 
 const produtoVazio = (): ProdutoMDFe => ({ descricao: "", tipo_carga: "", ncm: "", cep_carregamento: "", cep_descarregamento: "" });
 
@@ -389,6 +391,7 @@ function MdfePageInner() {
     uf_fim: mdfeConfig.uf_fim || "MT",
     percurso_ufs: [] as string[],
     veiculo_id: "", conjunto_id: null as string | null, implemento_ids: [] as string[],
+    veiculo_manual: null as VeiculoManual | null,   // conjunto digitado sem cadastro (Seção 384)
     motorista_id: "", motorista_nome: "", motorista_cpf: "",
     peso_total_kg: 0, valor_total_carga: 0,
     produto_predominante: produtoVazio(),
@@ -591,6 +594,7 @@ function MdfePageInner() {
       uf_fim: m.uf_fim,
       percurso_ufs: m.percurso_ufs ?? [],
       veiculo_id: m.veiculo_id ?? "", conjunto_id: m.conjunto_id ?? null, implemento_ids: m.implemento_ids ?? [],
+      veiculo_manual: ((m as { veiculo_manual?: VeiculoManual | null }).veiculo_manual) ?? null,
       motorista_id: m.motorista_id ?? "",
       motorista_nome: m.motorista_nome ?? "", motorista_cpf: m.motorista_cpf ?? "",
       peso_total_kg: m.peso_total_kg ?? 0,
@@ -617,7 +621,10 @@ function MdfePageInner() {
   async function gerarCiot() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar ciot)", perigo: false }))) return;
     const motorista = resolverMotorista(form);
-    const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
+    // Veículo do cadastro ou digitado sem cadastro
+    const vm = form.veiculo_manual;
+    const veiculo = veiculos.find(v => v.id === form.veiculo_id)
+      ?? (vm && placaLimpa(vm.cavalo.placa).length === 7 ? { id: "", placa: placaLimpa(vm.cavalo.placa), num_eixos: null, rntrc: vm.cavalo.rntrc || null, proprietario_tipo: "terceiro" } as unknown as (typeof veiculos)[number] : undefined);
     // Contratante = transportadora emitente do CT-e vinculado (quem paga/declara o frete); só
     // cai na primeira empresa da conta quando não há CT-e. Ambiente vem de Parâmetros → MDF-e
     // (antes fixo em homologação — CIOT de teste, sem valor legal).
@@ -682,7 +689,7 @@ function MdfePageInner() {
       if (data.Sucesso && data.Dados?.IdOperacaoTransporte) {
         const gerado = { id: data.Dados.IdOperacaoTransporte, cv: data.Dados.CodigoVerificador, protocolo: data.Dados.Protocolo ?? "" };
         setCiotGerado(gerado);
-        if (fazendaId) registrarConjuntoDigitado(supabase, { fazendaId, contaId: contaId ?? null, cavaloId: veiculo.id, texto: ciotForm.implementos, veiculos }).catch(() => {/* best-effort: não atrapalha o CIOT */});
+        if (fazendaId && veiculo.id) registrarConjuntoDigitado(supabase, { fazendaId, contaId: contaId ?? null, cavaloId: veiculo.id, texto: ciotForm.implementos, veiculos }).catch(() => {/* best-effort: não atrapalha o CIOT */});
         // Persiste CIOT imediatamente via API route (service_role_key — imune a JWT expirado)
         if (mdfeEdit?.id) {
           fetch("/api/mdfe/salvar-ciot", {
@@ -751,6 +758,10 @@ function MdfePageInner() {
       // CEPs também alimentam o formulário do CIOT (se ainda vazios)
       // Dados do CIOT gravados no CT-e (Seção 383): distância, placas, CEPs, data fim e natureza — só o que estiver vazio
       const { data: cd } = await supabase.from("ctes").select("ciot_dados").eq("id", id).maybeSingle();
+      // Conjunto digitado no CT-e (sem cadastro) vem para o MDF-e quando ainda não há veículo escolhido (Seção 384)
+      const { data: cvm } = await supabase.from("ctes").select("veiculo_manual").eq("id", id).maybeSingle();
+      const vmCte = (cvm as { veiculo_manual?: VeiculoManual | null } | null)?.veiculo_manual;
+      if (vmCte) setForm(f => f.veiculo_id || f.veiculo_manual ? f : { ...f, veiculo_manual: vmCte });
       const dc = ((cd as { ciot_dados?: Record<string, string> } | null)?.ciot_dados ?? {}) as Record<string, string>;
       setCiotForm(f => ({ ...f,
         cep_origem: f.cep_origem || dc.cep_origem || cepRem, cep_destino: f.cep_destino || dc.cep_destino || cepDest,
@@ -890,6 +901,13 @@ function MdfePageInner() {
     try {
       const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
       const motorista = resolverMotorista(form);
+      if (form.veiculo_manual) {
+        const f = faltasVeiculoManual(form.veiculo_manual, true);
+        if (f.length) { setErr(`Veículo sem cadastro — falta: ${f.join(", ")}.`); setSaving(false); return; }
+      }
+      if (form.motorista_nome.trim() && !motorista?.id && (form.motorista_cpf ?? "").replace(/\D/g, "").length !== 11) {
+        setErr("Motorista sem cadastro: informe o CPF (11 dígitos)."); setSaving(false); return;
+      }
 
       // Montar array de documentos
       const documentos: DocVinculado[] = [];
@@ -916,8 +934,9 @@ function MdfePageInner() {
         // Só com conjunto (ou ao trocar um que já tinha): sem a Seção 363 essas colunas não existem.
         ...(form.conjunto_id || form.implemento_ids.length || mdfeEdit?.conjunto_id
           ? { conjunto_id: form.conjunto_id || null, implemento_ids: form.implemento_ids.length ? form.implemento_ids : null } : {}),
-        veiculo_placa: veiculo?.placa ?? "",
-        veiculo_tipo: veiculo?.tipo ?? null,
+        veiculo_placa: form.veiculo_manual ? placaLimpa(form.veiculo_manual.cavalo.placa) : (veiculo?.placa ?? ""),
+        veiculo_tipo: form.veiculo_manual ? null : (veiculo?.tipo ?? null),
+        ...(form.veiculo_manual || (mdfeEdit as { veiculo_manual?: unknown } | null)?.veiculo_manual ? { veiculo_manual: form.veiculo_manual } : {}),
         // Motorista: cadastro (motorista_id, ao escolher sugestão) ou texto livre digitado —
         // form.motorista_nome/cpf são o que está no campo, prevalecem sobre o cadastro.
         motorista_id: form.motorista_id || motorista?.id || null,
@@ -950,7 +969,7 @@ function MdfePageInner() {
       };
       // Colunas adicionadas por migrations recentes (Seções 293, 297, 298). Se alguma ainda não
       // existe no banco, salva SEM elas (em vez de travar o salvamento) e avisa quais ficaram de fora.
-      const COLUNAS_NOVAS = ["seguradora_nome", "seguradora_cnpj", "apolice_numero", "averbacao_numero", "pag_pix", "pag_cod_banco", "pag_agencia", "emitente_id", "emitente_cnpj", "emitente_razao_social"];
+      const COLUNAS_NOVAS = ["veiculo_manual", "seguradora_nome", "seguradora_cnpj", "apolice_numero", "averbacao_numero", "pag_pix", "pag_cod_banco", "pag_agencia", "emitente_id", "emitente_cnpj", "emitente_razao_social"];
       const gravar = async (dados: Record<string, unknown>) => mdfeEdit
         ? supabase.from("mdfes").update(dados).eq("id", mdfeEdit.id)
         : supabase.from("mdfes").insert(dados);
@@ -1456,21 +1475,20 @@ function MdfePageInner() {
                     // CIOT: placas das carretas vêm do conjunto (antes digitadas à mão a cada viagem).
                     setCiotForm(c => ({ ...c, implementos: sel.implemento_ids.map(id => veiculos.find(v => v.id === id)?.placa ?? "").filter(Boolean).join(", ") }));
                     setCiotSemImpl(sel.implemento_ids.length === 0 && !!sel.veiculo_id);
-                  }} />
+                    // Conjunto/veículo cadastrado traz o motorista habitual do cavalo (se ainda vazio)
+                    const cav = veiculos.find(v => v.id === sel.veiculo_id) as { motorista_habitual_id?: string | null } | undefined;
+                    const mot = cav?.motorista_habitual_id ? motoristas.find(m => m.id === cav.motorista_habitual_id) : undefined;
+                    if (mot) setForm(f => f.motorista_nome.trim() ? f : { ...f, motorista_id: mot.id, motorista_nome: mot.nome, motorista_cpf: mot.cpf ?? "" });
+                  }}
+                  manual={form.veiculo_manual} exigeMdfe
+                  onManual={m => { setForm(f => ({ ...f, veiculo_manual: m })); if (m) { setCiotForm(c => ({ ...c, implementos: m.reboques.map(r => r.placa).filter(Boolean).join(", ") })); setCiotSemImpl(m.reboques.length === 0); } }} />
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Motorista</label>
                 {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
-                <input list="mdfe-motoristas" value={form.motorista_nome}
-                  onChange={e => {
-                    const nome = e.target.value;
-                    const achado = motoristas.find(m => m.nome === nome);
-                    setForm(f => ({ ...f, motorista_nome: nome, motorista_id: achado?.id ?? "", motorista_cpf: achado?.cpf ?? f.motorista_cpf }));
-                  }}
-                  style={inp} placeholder="Nome do motorista" />
-                <datalist id="mdfe-motoristas">
-                  {motoristas.map(m => <option key={m.id} value={m.nome} />)}
-                </datalist>
+                <CampoMotorista id="mdfe-motoristas" motoristas={motoristas} style={inp}
+                  valor={{ motorista_id: form.motorista_id ?? "", motorista_nome: form.motorista_nome, motorista_cpf: form.motorista_cpf ?? "" }}
+                  onChange={v => setForm(f => ({ ...f, ...v }))} />
               </div>
               <div data-arato-dialog-body="true" />
 

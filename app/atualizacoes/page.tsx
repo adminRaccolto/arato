@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-l",
+    data: "28/10/2026",
+    titulo: "CT-e e MDF-e com conjunto e motorista sem cadastro",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "No campo Veículo do CT-e e do MDF-e, além dos conjuntos e cavalos cadastrados, há a opção \"Digitar placas (conjunto sem cadastro)\": placa, UF e tara do cavalo e até 3 carretas com tara e capacidade." },
+      { tipo: "novo", texto: "Motorista: escolha um motorista cadastrado (o CPF vem do cadastro) ou digite o nome e o CPF de quem não tem cadastro." },
+      { tipo: "melhoria", texto: "Ao escolher um conjunto ou cavalo cadastrado, o motorista habitual do cavalo já vem preenchido. O conjunto digitado no CT-e passa para o MDF-e que o usa." },
+    ],
+    onde: "Fretes e Transporte → CT-e e MDF-e",
+  },
+  {
     versao: "2026.10.28-k",
     data: "28/10/2026",
     titulo: "CT-e guarda os dados do CIOT e o MDF-e puxa do CT-e",

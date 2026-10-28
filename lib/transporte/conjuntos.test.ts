@@ -52,3 +52,13 @@ test("códigos do MDF-e", () => {
   assert.equal(tpRodDoVeiculo("Toco", false), "02");
   assert.equal(tpRodDoVeiculo("Truck", false), "01");
 });
+
+test("veículo digitado sem cadastro: o que falta para o MDF-e", async () => {
+  const { faltasVeiculoManual } = await import("./conjuntos.ts");
+  const ok = { cavalo: { placa: "GGX-6F96", uf: "MT", tara_kg: "9000" }, reboques: [{ placa: "BEV3H24", uf: "MT", tara_kg: "8000", cap_kg: "30000" }] };
+  assert.deepEqual(faltasVeiculoManual(ok, true), []);
+  assert.deepEqual(faltasVeiculoManual({ cavalo: { placa: "GGX6F9", uf: "", tara_kg: "" }, reboques: [{ placa: "BEV3H24", uf: "MT", tara_kg: "", cap_kg: "" }] }, true),
+    ["placa do cavalo (7 caracteres)", "UF da placa do cavalo", "tara do cavalo (kg)", "tara da 1ª carreta", "capacidade da 1ª carreta"]);
+  // CT-e só precisa das placas
+  assert.deepEqual(faltasVeiculoManual({ cavalo: { placa: "GGX6F96", uf: "", tara_kg: "" }, reboques: [] }, false), []);
+});

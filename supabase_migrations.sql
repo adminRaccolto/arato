@@ -18483,3 +18483,12 @@ NOTIFY pgrst, 'reload schema';
 -- e as placas. ciot_dados guarda o que foi informado; o MDF-e lê do CT-e vinculado.
 ALTER TABLE ctes ADD COLUMN IF NOT EXISTS ciot_dados jsonb;
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 384 — Conjunto digitado sem cadastro no CT-e e no MDF-e
+-- veiculo_manual = { cavalo: {placa, uf, tara_kg, rntrc}, reboques: [{placa, uf, tara_kg, cap_kg}] }
+-- Usado quando o caminhão/carretas não estão cadastrados em Fretes e Transporte.
+-- ============================================================
+ALTER TABLE ctes  ADD COLUMN IF NOT EXISTS veiculo_manual jsonb;
+ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS veiculo_manual jsonb;
+NOTIFY pgrst, 'reload schema';

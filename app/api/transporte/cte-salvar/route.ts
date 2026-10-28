@@ -34,8 +34,9 @@ export async function POST(req: NextRequest) {
     const db = sb();
 
     // Sem a Seção 383 a coluna ciot_dados não existe: grava o CT-e sem ela em vez de recusar tudo
-    const semColuna = (e: { code?: string; message?: string } | null) => !!e && (e.code === "PGRST204" || e.code === "42703") && /ciot_dados/.test(e.message ?? "");
-    const p2 = { ...(payload as Record<string, unknown>) }; delete p2.ciot_dados;
+    // Idem veiculo_manual (Seção 384)
+    const semColuna = (e: { code?: string; message?: string } | null) => !!e && (e.code === "PGRST204" || e.code === "42703") && /ciot_dados|veiculo_manual/.test(e.message ?? "");
+    const p2 = { ...(payload as Record<string, unknown>) }; delete p2.ciot_dados; delete p2.veiculo_manual;
 
     if (cte_id) {
       // UPDATE

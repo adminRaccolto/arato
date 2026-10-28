@@ -107,3 +107,30 @@ export function tpRodDoVeiculo(tipo: string | null | undefined, comImplemento: b
   if (t.startsWith("outro")) return "06";
   return "01";
 }
+
+// ── Veículo digitado sem cadastro (CT-e / MDF-e) ─────────────────────────────────────────────────────────────────
+// Cavalo e carretas lançados direto no documento, para conjuntos de terceiros ou ainda não cadastrados. Os campos são os
+// que o MDF-e exige (placa, UF, tara; nas carretas também a capacidade). Fica gravado no documento (veiculo_manual).
+export type PecaManual = { placa: string; uf: string; tara_kg: string; cap_kg?: string; rntrc?: string };
+export type VeiculoManual = { cavalo: PecaManual; reboques: PecaManual[] };
+export const VEICULO_MANUAL_VAZIO: VeiculoManual = { cavalo: { placa: "", uf: "", tara_kg: "", rntrc: "" }, reboques: [] };
+
+export const placaLimpa = (p?: string | null) => (p ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+
+/** O que falta no veículo digitado para o MDF-e (placa válida, UF, tara; carretas com tara e capacidade). */
+export function faltasVeiculoManual(m: VeiculoManual | null | undefined, exigeMdfe: boolean): string[] {
+  if (!m) return ["Informe o veículo"];
+  const f: string[] = [];
+  if (placaLimpa(m.cavalo.placa).length !== 7) f.push("placa do cavalo (7 caracteres)");
+  if (exigeMdfe) {
+    if (!m.cavalo.uf) f.push("UF da placa do cavalo");
+    if (!(parseFloat(m.cavalo.tara_kg) > 0)) f.push("tara do cavalo (kg)");
+  }
+  m.reboques.forEach((r, i) => {
+    if (placaLimpa(r.placa).length !== 7) f.push(`placa da ${i + 1}ª carreta`);
+    if (exigeMdfe && !(parseFloat(r.tara_kg) > 0)) f.push(`tara da ${i + 1}ª carreta`);
+    if (exigeMdfe && !(parseFloat(r.cap_kg ?? "") > 0)) f.push(`capacidade da ${i + 1}ª carreta`);
+  });
+  if (m.reboques.length > MAX_IMPLEMENTOS) f.push(`no máximo ${MAX_IMPLEMENTOS} carretas`);
+  return f;
+}
