@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-v",
+    data: "28/10/2026",
+    titulo: "Transferência entre depósitos sem NF",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Na Movimentação de Estoque, o Tipo \"Transferência entre depósitos (sem NF)\" tem depósito de origem (com o saldo do item em cada um) e de destino. Grava a saída e a entrada juntas; o saldo total do item não muda. Só entre depósitos da mesma fazenda — entre fazendas, a transferência continua em Estoque → Transferências, com NF." },
+    ],
+    onde: "Estoque → Movimentação de Estoque",
+  },
+  {
     versao: "2026.10.28-u",
     data: "28/10/2026",
     titulo: "Fim do \"Não autenticado\" com a tela aberta há muito tempo",

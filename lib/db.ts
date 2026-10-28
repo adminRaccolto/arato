@@ -804,6 +804,27 @@ export async function criarMovimentacaoManual(
   });
 }
 
+/**
+ * Transferência entre depósitos da mesma fazenda, sem NF: saída no depósito de origem e entrada no de destino,
+ * gravadas juntas (um insert só). O saldo total do item não muda — só onde ele está.
+ */
+export async function transferirEntreDepositos(p: {
+  fazenda_id: string; insumo_id: string; quantidade: number; deposito_origem_id: string; deposito_destino_id: string;
+  origem_nome: string; destino_nome: string; data: string; observacao?: string; usuario_nome?: string;
+  variedade?: string; lote_semente?: string;
+}): Promise<void> {
+  if (!(p.quantidade > 0)) throw new Error("Quantidade deve ser maior que zero.");
+  if (p.deposito_origem_id === p.deposito_destino_id) throw new Error("Origem e destino são o mesmo depósito.");
+  const base = { fazenda_id: p.fazenda_id, insumo_id: p.insumo_id, motivo: "transferencia" as const, quantidade: p.quantidade,
+    data: p.data, auto: false, usuario_nome: p.usuario_nome ?? null, variedade: p.variedade || null, lote_semente: p.lote_semente || null };
+  const obs = (rota: string) => [rota, p.observacao?.trim()].filter(Boolean).join(" · ");
+  const { error } = await supabase.from("movimentacoes_estoque").insert([
+    { ...base, tipo: "saida", deposito_id: p.deposito_origem_id, observacao: obs(`Transferência entre depósitos → ${p.destino_nome}`) },
+    { ...base, tipo: "entrada", deposito_id: p.deposito_destino_id, observacao: obs(`Transferência entre depósitos ← ${p.origem_nome}`) },
+  ]);
+  if (error) throw error;
+}
+
 export async function registrarMovimentacao(m: Omit<MovimentacaoEstoque, "id" | "created_at">): Promise<void> {
   const { error } = await supabase.from("movimentacoes_estoque").insert(m);
   if (error) throw error;

@@ -11,7 +11,7 @@ import InputNumerico from "../../components/InputNumerico";
 import { supabase } from "../../lib/supabase";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
-  listarMovimentacoes, criarMovimentacaoManual,
+  listarMovimentacoes, criarMovimentacaoManual, transferirEntreDepositos,
   listarMovimentacoesRel,
   listarSaldoPorDeposito,
   listarDepositos, listarFazendasDaConta,
@@ -329,7 +329,7 @@ export default function Estoque() {
 
   // modal movimentação manual
   const [modalMov, setModalMov]   = useState(false);
-  const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
+  const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste"|"transferencia", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", deposito_destino_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
 
   // relatórios
   const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos"|"auditoria"|"lotes">("saldos");
@@ -649,6 +649,25 @@ export default function Estoque() {
     if (fMov.tipo !== "ajuste" && qtd <= 0) { alert("Quantidade deve ser maior que zero."); return; }
     if (fMov.tipo === "ajuste" && !fMov.observacao.trim()) { alert("Informe a justificativa do ajuste."); return; }
     const insNome = insumos.find(x => x.id === fMov.insumo_id)?.nome ?? fMov.insumo_id;
+    if (fMov.tipo === "transferencia") {
+      const orig = depositos.find(d => d.id === fMov.deposito_id), dest = depositos.find(d => d.id === fMov.deposito_destino_id);
+      if (!orig || !dest) { alert("Escolha o depósito de origem e o de destino."); return; }
+      const saldoOrig = saldoPorDeposito.filter(r => r.insumo_id === fMov.insumo_id && r.deposito_id === orig.id).reduce((a, r) => a + Number(r.saldo), 0);
+      if (qtd > saldoOrig + 0.0005 && !confirm(`O saldo deste item em ${orig.nome} é ${fmtNum(saldoOrig)}. Transferir ${fmtNum(qtd)} deixa o depósito negativo. Continuar mesmo assim?`)) return;
+      await transferirEntreDepositos({
+        fazenda_id: orig.fazenda_id, insumo_id: fMov.insumo_id, quantidade: qtd, deposito_origem_id: orig.id, deposito_destino_id: dest.id,
+        origem_nome: orig.nome, destino_nome: dest.nome, data: fMov.data, observacao: fMov.observacao || undefined,
+        usuario_nome: nomeUsuario ?? undefined, variedade: fMov.variedade || undefined, lote_semente: fMov.lote_semente || undefined,
+      });
+      registrarLog(fazAtiva!, "insert", "estoque", `Transferência entre depósitos: ${insNome} — ${qtd} de ${orig.nome} para ${dest.nome}`,
+        { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: "transferencia", quantidade: qtd, origem: orig.nome, destino: dest.nome, observacao: fMov.observacao } });
+      const [ins3, movsRel3] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRel(fazLeitura)]);
+      setInsumos(ins3); setMovsRel(movsRel3);
+      listarSaldoPorDeposito(fazLeitura).then(setSaldoPorDeposito).catch(() => {});
+      setModalMov(false);
+      setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", deposito_destino_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
+      return;
+    }
     await criarMovimentacaoManual(
       fazAtiva!, fMov.insumo_id, fMov.tipo, fMov.motivo,
       qtd, fMov.deposito_id || undefined, fMov.data, fMov.observacao || undefined,
@@ -665,7 +684,7 @@ export default function Estoque() {
     const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRel(fazLeitura)]);
     setInsumos(ins2); setMovsRel(movsRelNovo);
     setModalMov(false);
-    setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
+    setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", deposito_destino_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
   });
 
   // ── Relatório histórico ──
@@ -2487,7 +2506,7 @@ export default function Estoque() {
         const ins = insumos.find(x => x.id === fMov.insumo_id);
         const isAjuste = fMov.tipo === "ajuste";
         const obsObrig = isAjuste && !fMov.observacao.trim();
-        const canSave = !salvando && !!fMov.insumo_id && !!fMov.data && !obsObrig;
+        const canSave = !salvando && !!fMov.insumo_id && !!fMov.data && !obsObrig && (fMov.tipo !== "transferencia" || (!!fMov.deposito_id && !!fMov.deposito_destino_id));
         return (
           <Modal titulo={isAjuste ? "Ajuste de Estoque" : "Movimentação de Estoque"} width={600} onClose={() => setModalMov(false)}>
             {isAjuste && (
@@ -2507,12 +2526,14 @@ export default function Estoque() {
                 <label data-arato-label="true" style={lbl}>Tipo *</label>
                 <SelectField style={inp} value={fMov.tipo} onChange={e => {
                   const tipo = e.target.value as typeof fMov.tipo;
-                  const motivo = tipo === "entrada" ? "compra" : tipo === "ajuste" ? "ajuste_saldo" : "baixa_uso";
-                  setFMov(p => ({ ...p, tipo, motivo: motivo as typeof p.motivo, observacao: "" }));
+                  const motivo = tipo === "entrada" ? "compra" : tipo === "ajuste" ? "ajuste_saldo" : tipo === "transferencia" ? "transferencia" : "baixa_uso";
+                  setFMov(p => ({ ...p, tipo, motivo: motivo as typeof p.motivo, observacao: "", deposito_destino_id: "" }));
+                  if (tipo === "transferencia") listarSaldoPorDeposito(fazLeitura).then(setSaldoPorDeposito).catch(() => {});
                 }}>
                   <option value="entrada">Entrada de estoque</option>
                   <option value="saida">Saída de estoque</option>
                   <option value="ajuste">Ajuste de saldo</option>
+                  <option value="transferencia">Transferência entre depósitos (sem NF)</option>
                 </SelectField>
               </div>
               <div>
@@ -2534,6 +2555,7 @@ export default function Estoque() {
                     <option value="ajuste_saldo">Ajuste de saldo</option>
                     <option value="inventario">Inventário físico</option>
                   </>}
+                  {fMov.tipo === "transferencia" && <option value="transferencia">Movimentação entre depósitos</option>}
                 </SelectField>
               </div>
               {isAjuste ? (
@@ -2547,6 +2569,27 @@ export default function Estoque() {
                   <InputNumerico style={inp} decimais={3} min="0" value={fMov.quantidade} onChange={v => setFMov(p => ({ ...p, quantidade: v }))} />
                 </div>
               )}
+              {fMov.tipo === "transferencia" ? (() => {
+                const orig = depositos.find(d => d.id === fMov.deposito_id);
+                const saldoDep = (id: string) => saldoPorDeposito.filter(r => r.insumo_id === fMov.insumo_id && r.deposito_id === id).reduce((a, r) => a + Number(r.saldo), 0);
+                return <>
+                  <div>
+                    <label data-arato-label="true" style={lbl}>Depósito de origem *</label>
+                    <SelectField style={inp} value={fMov.deposito_id} onChange={e => setFMov(p => ({ ...p, deposito_id: e.target.value, deposito_destino_id: "" }))}>
+                      <option value="">— Selecionar —</option>
+                      {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}{fMov.insumo_id ? ` — saldo ${fmtNum(saldoDep(d.id))}` : ""}</option>)}
+                    </SelectField>
+                  </div>
+                  <div>
+                    <label data-arato-label="true" style={lbl}>Depósito de destino *</label>
+                    <SelectField style={inp} value={fMov.deposito_destino_id} onChange={e => setFMov(p => ({ ...p, deposito_destino_id: e.target.value }))}>
+                      <option value="">— Selecionar —</option>
+                      {/* Só depósitos da mesma fazenda: entre fazendas a transferência tem NF (Estoque → Transferências) */}
+                      {depositos.filter(d => d.id !== fMov.deposito_id && (!orig || d.fazenda_id === orig.fazenda_id)).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                    </SelectField>
+                  </div>
+                </>;
+              })() : (
               <div>
                 <label data-arato-label="true" style={lbl}>Depósito</label>
                 <SelectField style={inp} value={fMov.deposito_id} onChange={e => setFMov(p => ({ ...p, deposito_id: e.target.value }))}>
@@ -2554,6 +2597,7 @@ export default function Estoque() {
                   {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                 </SelectField>
               </div>
+              )}
               <div>
                 <label data-arato-label="true" style={lbl}>Data *</label>
                 <InputData style={inp} type="date" value={fMov.data} onChange={e => setFMov(p => ({ ...p, data: e.target.value }))} />
@@ -2586,7 +2630,12 @@ export default function Estoque() {
                 />
               </div>
             </div>
-            {ins && !isAjuste && (
+            {ins && fMov.tipo === "transferencia" && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "#D5E8F5", padding: "8px 12px", borderRadius: 7 }}>
+                O saldo total do item não muda (<strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>): sai do depósito de origem e entra no de destino. Entre fazendas diferentes, use Estoque → Transferências (com NF).
+              </div>
+            )}
+            {ins && !isAjuste && fMov.tipo !== "transferencia" && (
               <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", padding: "8px 12px", borderRadius: 7 }}>
                 Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
                 {" → "}
