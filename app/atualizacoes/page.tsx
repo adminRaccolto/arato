@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-r",
+    data: "28/10/2026",
+    titulo: "Relatório CP/CR em PDF mais enxuto",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "No PDF do relatório CP/CR, a coluna Nº NF ficou estreita e o status aparece como \"Aberto\" em vez de \"Em Aberto\", sobrando espaço para as demais colunas." },
+      { tipo: "correcao", texto: "A coluna Fornecedor / Cliente volta ao relatório de quem tinha as colunas salvas sem ela (entra logo depois do Tipo e pode ser tirada na janela do relatório)." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR",
+  },
+  {
     versao: "2026.10.28-q",
     data: "28/10/2026",
     titulo: "CT-e de frete lançado à mão (XML ou digitado)",

@@ -269,7 +269,7 @@ function FinanceiroRelatoriosInner() {
   // ── Grid configurável CP/CR ──────────────────────────────────
   const COLUNAS_CPCR_DEF = [
     { key: "tipo",           label: "Tipo",              defaultW: 60,  align: "left"  as const },
-    { key: "fornecedor",     label: "Fornecedor",        defaultW: 190, align: "left"  as const },
+    { key: "fornecedor",     label: "Fornecedor / Cliente", defaultW: 190, align: "left"  as const },
     { key: "numero_nf",      label: "Nº NF",             defaultW: 110, align: "left"  as const },
     { key: "emissao",        label: "Emissão",           defaultW: 95,  align: "left"  as const },
     { key: "vencimento",     label: "Vencimento",        defaultW: 100, align: "left"  as const },
@@ -315,7 +315,17 @@ function FinanceiroRelatoriosInner() {
     if (!emailUsuario || typeof window === "undefined") return;
     try {
       const salvo = localStorage.getItem(`cpcr_relCols_${emailUsuario}`);
-      if (salvo) { const arr = (JSON.parse(salvo) as string[]).filter(k => COLUNAS_REL.some(c => c.key === k)); if (arr.length) setRelCols(arr); }
+      if (salvo) {
+        const arr = (JSON.parse(salvo) as string[]).filter(k => COLUNAS_REL.some(c => c.key === k));
+        // 28/10/2026: listas salvas antes ficaram sem Fornecedor / Cliente — entra uma vez, logo depois do Tipo (dá para tirar de novo)
+        const chaveV2 = `cpcr_relCols_v2_${emailUsuario}`;
+        if (!localStorage.getItem(chaveV2)) {
+          if (!arr.includes("fornecedor")) arr.splice(arr.includes("tipo") ? arr.indexOf("tipo") + 1 : 0, 0, "fornecedor");
+          localStorage.setItem(chaveV2, "1");
+          localStorage.setItem(`cpcr_relCols_${emailUsuario}`, JSON.stringify(arr));
+        }
+        if (arr.length) setRelCols(arr);
+      }
     } catch { /* ok */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailUsuario]);
@@ -2141,7 +2151,7 @@ function FinanceiroRelatoriosInner() {
                   }
                   for (const l of lancsCPCR) if (l.operacao_gerencial_id && porId.has(l.operacao_gerencial_id)) extras.og.set(l.id, porId.get(l.operacao_gerencial_id)!);
                 };
-                const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
+                const statusLabel: Record<string, string> = { em_aberto: "Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
                 // Colunas respeitam a ordem e visibilidade do grid
                 const colsGrid = cpcrColOrder
                   .filter(k => cpcrColVis[k] !== false)
@@ -2231,7 +2241,7 @@ function FinanceiroRelatoriosInner() {
                   const numCols = new Set(["valor", "valor_pago", "saldo", "dias"]);
                   // PDF: tabela de largura FIXA (cada coluna com fração da folha, texto quebra dentro da célula) — antes a
                   // tabela era encolhida por escala medida na tela e, na impressão, as colunas a partir de OG ficavam fora da folha.
-                  const PESO_COL: Record<string, number> = { tipo: 30, moeda: 34, status: 56, emissao: 62, vencimento: 62, data_baixa: 62, venc_orig: 62, dias: 46, valor: 80, valor_pago: 80, saldo: 80 };
+                  const PESO_COL: Record<string, number> = { tipo: 30, moeda: 34, status: 50, numero_nf: 52, emissao: 62, vencimento: 62, data_baixa: 62, venc_orig: 62, dias: 46, valor: 80, valor_pago: 80, saldo: 80 };
                   const pesos = colsVisiveis.map(c => PESO_COL[c.key] ?? Math.max(70, Math.min(160, (c as { defaultW?: number }).defaultW ?? 110)));
                   const somaPeso = pesos.reduce((a, b) => a + b, 0) || 1;
                   const colgroup = `<colgroup>${pesos.map(w => `<col style="width:${(w / somaPeso * 100).toFixed(2)}%">`).join("")}</colgroup>`;
