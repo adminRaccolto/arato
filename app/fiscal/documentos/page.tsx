@@ -500,13 +500,6 @@ export default function DocumentosFiscaisPage() {
       <TopNav />
       <div style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
 
-        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "8px 14px", marginBottom: 10, fontSize: 11, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 14 }}>ℹ</span>
-          <div style={{ color: "#7A5200" }}>
-            Esta tela mostra documentos emitidos <strong>contra</strong> o produtor/empresa (NF, NFS e CT-e recebidos) — não é onde você emite os seus. CT-e de frete contratado (vindo do SIEG) é processado aqui e gera o Contas a Pagar da transportadora; CT-e emitido por você é só visualização — emissão/edição continua em <strong>Fretes e Transporte → CT-e</strong>.
-          </div>
-        </div>
-
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais</h1>
