@@ -9,10 +9,10 @@ const RELEASES = [
   {
     versao: "2026.10.28-o",
     data: "28/10/2026",
-    titulo: "Unidade de medida Dúzia (dz)",
+    titulo: "Unidade de medida Dose (dz)",
     modulos: ["Cadastros", "Estoque", "Documentos Fiscais", "Compras"],
     itens: [
-      { tipo: "novo", texto: "Dúzia (dz) disponível como unidade no cadastro de insumos e itens, no cadastro de item feito pela NF, no estoque, nos pedidos de compra e na importação por planilha. \"DZ\" no XML da NF é reconhecido como dúzia." },
+      { tipo: "novo", texto: "Dose (dz) disponível como unidade no cadastro de insumos e itens, no cadastro de item feito pela NF, no estoque, nos pedidos de compra e na importação por planilha. \"DZ\" ou \"DOSE\" no XML da NF é reconhecido como dose." },
     ],
     onde: "Cadastros → Insumos / Documentos Fiscais → NF",
   },
