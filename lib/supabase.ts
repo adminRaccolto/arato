@@ -1757,8 +1757,9 @@ export type AditivoContrato = {
   contrato_id: string;
   fazenda_id: string;
   data_aditivo: string;
-  tipo: "prorrogacao" | "renegociacao" | "capitalizacao" | "reducao_taxa" | "ampliacao_valor" | "outros";
+  tipo: "prorrogacao" | "renegociacao" | "capitalizacao" | "reducao_taxa" | "ampliacao_valor" | "repactuacao" | "outros";
   descricao: string;
+  periodos_deslocados?: number;   // repactuação: quantos períodos (na periodicidade do contrato) as parcelas em aberto foram adiadas
   nova_data_vencimento?: string;
   nova_taxa_aa?: number;
   nova_taxa_am?: number;

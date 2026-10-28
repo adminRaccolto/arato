@@ -190,8 +190,17 @@ const FC_VAZIO = {
 const FA_VAZIO = {
   data_aditivo: "", tipo: "prorrogacao" as AditivoContrato["tipo"],
   descricao: "", nova_data_vencimento: "", nova_taxa_aa: "", nova_taxa_am: "",
-  novo_valor_financiado: "", novo_num_parcelas: "", obs: "",
+  novo_valor_financiado: "", novo_num_parcelas: "", obs: "", periodos: "1",
 };
+
+// Soma meses mantendo o dia (31/01 + 1 mês → 28/02)
+function somarMeses(iso: string, meses: number): string {
+  const [a, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const alvo = new Date(Date.UTC(a, m - 1 + meses, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimo));
+  return alvo.toISOString().slice(0, 10);
+}
 
 
 
@@ -1135,9 +1144,21 @@ export default function ContratosFinanceiros() {
     if (!fAdit.descricao.trim()) errosAdit.push("Descrição");
     if (errosAdit.length) { setErroModal(`Preencha antes de salvar: ${errosAdit.join(", ")}`); return; }
     setErroModal(null);
+    // Repactuação: adia TODO o contrato — cada parcela em aberto anda N períodos (na periodicidade do contrato); pagas ficam
+    const ehRepact = fAdit.tipo === "repactuacao";
+    const periodos = Math.max(1, parseInt(fAdit.periodos || "1") || 1);
+    const mesesPorPeriodo = Number(contratoModal.periodicidade_meses ?? 0) || 12;
+    let abertasRepact: ParcelaPagamento[] = [];
+    if (ehRepact) {
+      abertasRepact = (await listarParcelasPagamento(contratoModal.id)).filter(p => p.status !== "pago");
+      if (!abertasRepact.length) { setErroModal("Repactuação: o contrato não tem parcelas em aberto para adiar."); return; }
+      const ult = [...abertasRepact].sort((a, b) => b.data_vencimento.localeCompare(a.data_vencimento))[0];
+      if (!confirm(`Repactuação: ${abertasRepact.length} parcela(s) em aberto vão ser adiadas em ${periodos * mesesPorPeriodo} meses (${periodos} período(s) de ${mesesPorPeriodo} meses). A última passa de ${fmtData(ult.data_vencimento)} para ${fmtData(somarMeses(ult.data_vencimento, periodos * mesesPorPeriodo))}. Os vencimentos no Contas a Pagar mudam junto; parcelas pagas não mudam. Confirmar?`)) return;
+    }
     const nova = await criarAditivo({
       contrato_id: contratoModal.id, fazenda_id: fazendaId!,
       data_aditivo: fAdit.data_aditivo, tipo: fAdit.tipo, descricao: fAdit.descricao.trim(),
+      ...(ehRepact ? { periodos_deslocados: periodos } : {}),
       ...(fAdit.nova_data_vencimento ? { nova_data_vencimento: fAdit.nova_data_vencimento } : {}),
       ...(fAdit.nova_taxa_aa ? { nova_taxa_aa: parseFloat(fAdit.nova_taxa_aa.replace(",", ".")) } : {}),
       ...(fAdit.nova_taxa_am ? { nova_taxa_am: parseFloat(fAdit.nova_taxa_am.replace(",", ".")) } : {}),
@@ -1145,6 +1166,27 @@ export default function ContratosFinanceiros() {
       ...(fAdit.novo_num_parcelas ? { novo_num_parcelas: parseInt(fAdit.novo_num_parcelas) } : {}),
       ...(fAdit.obs ? { obs: fAdit.obs.trim() } : {}),
     });
+    if (ehRepact) {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const meses = periodos * mesesPorPeriodo;
+      for (const p of abertasRepact) {
+        const novaData = somarMeses(p.data_vencimento, meses);
+        const { error } = await supabase.from("parcelas_pagamento").update({ data_vencimento: novaData, ...(p.status === "vencido" && novaData >= hoje ? { status: "em_aberto" } : {}) }).eq("id", p.id);
+        if (error) throw error;
+        // Título no Contas a Pagar: só o que ainda não foi pago, nem posto em borderô ou conciliado
+        if (p.lancamento_id) {
+          const { error: eL } = await supabase.from("lancamentos").update({ data_vencimento: novaData, ...(novaData >= hoje ? { status: "em_aberto" } : {}) })
+            .eq("id", p.lancamento_id).in("status", ["em_aberto", "vencido", "vencendo"]).is("lote_id", null).or("conciliado.is.null,conciliado.eq.false");
+          if (eL) throw eL;
+        }
+      }
+      const ultima = abertasRepact.map(p => somarMeses(p.data_vencimento, meses)).sort().slice(-1)[0];
+      if (ultima) {
+        await supabase.from("contratos_financeiros").update({ data_vencimento: ultima }).eq("id", contratoModal.id);
+        setContratos(p => p.map(c => c.id === contratoModal.id ? { ...c, data_vencimento: ultima } : c));
+      }
+      setParcelasPagamento(await listarParcelasPagamento(contratoModal.id));
+    }
     setAditivos(p => [...p, nova]);
     setFAdit({ ...FA_VAZIO });
   });
@@ -2417,6 +2459,7 @@ export default function ContratosFinanceiros() {
                   capitalizacao:   { label: "Capitalização",      bg: "#FCF0F0", cl: "#7A1A1A" },
                   reducao_taxa:    { label: "Redução de Taxa",    bg: "#E8F5EB", cl: "#1A5C35" },
                   ampliacao_valor: { label: "Ampliação de Valor", bg: "#EDE9FB", cl: "#4B3B9B" },
+                  repactuacao:     { label: "Repactuação (adia todo o contrato)", bg: "#E3EAF3", cl: "#1A4870" },
                   outros:          { label: "Outros",             bg: "#F3F4F6", cl: "var(--text-2)"    },
                 };
                 // contratos disponíveis para vincular como origem (exclui o atual e já vinculados)
@@ -2497,7 +2540,7 @@ export default function ContratosFinanceiros() {
                     </div>
 
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
-                      Registre alterações formais: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
+                      Registre alterações formais: prorrogações, renegociações de taxa, capitalizações, repactuação (adia todo o contrato por mais um período) e outros termos aditados entre as partes.
                     </div>
                     <div data-arato-panel="true" style={{ background: "#F8F9FB", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 16, marginBottom: 18 }}>
                       <SecTitle>Novo Aditivo</SecTitle>
@@ -2513,6 +2556,15 @@ export default function ContratosFinanceiros() {
                         <div><label data-arato-label="true" style={lbl}>Novo Valor Financiado</label><InputMonetario style={inp} value={fAdit.novo_valor_financiado} onChange={v => setFAdit(p => ({ ...p, novo_valor_financiado: String(v) }))} /></div>
                         <div><label data-arato-label="true" style={lbl}>Novas Parcelas</label><InputNumerico style={inp} decimais={0} value={fAdit.novo_num_parcelas} onChange={v => setFAdit(p => ({ ...p, novo_num_parcelas: v }))} /></div>
                       </div>
+                      {fAdit.tipo === "repactuacao" && (
+                        <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 12, alignItems: "end", marginBottom: 10, background: "#E3EAF3", borderRadius: 8, padding: "10px 12px" }}>
+                          <div><label data-arato-label="true" style={lbl}>Períodos a adiar *</label><InputNumerico style={inp} decimais={0} value={fAdit.periodos} onChange={v => setFAdit(p => ({ ...p, periodos: v }))} /></div>
+                          <div style={{ fontSize: 12, color: "#1A4870" }}>
+                            Todas as parcelas em aberto andam {Math.max(1, parseInt(fAdit.periodos || "1") || 1)} período(s) de {Number(contratoModal.periodicidade_meses ?? 0) || 12} meses
+                            ({(Math.max(1, parseInt(fAdit.periodos || "1") || 1)) * (Number(contratoModal.periodicidade_meses ?? 0) || 12)} meses). O vencimento no Contas a Pagar muda junto; parcelas pagas, em borderô ou conciliadas não mudam. Valores das parcelas ficam como estão — ajuste na aba Pagamento se o banco recalculou.
+                          </div>
+                        </div>
+                      )}
                       <div style={{ marginBottom: 12 }}><label data-arato-label="true" style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 52, resize: "vertical" } as React.CSSProperties} value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
                       <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end" }}>
                         <OperationalButton data-arato-button="secondary" style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</OperationalButton>

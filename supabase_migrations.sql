@@ -18464,3 +18464,14 @@ CREATE TRIGGER trg_rel_doc_fiscal_cte_entrada
 AFTER INSERT OR UPDATE OR DELETE ON cte_entradas
 FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_doc_fiscal_cte_entrada();
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 382 — Aditivo de contrato financeiro: Repactuação
+-- =============================================================================
+-- Repactuação adia TODO o contrato: cada parcela em aberto anda N períodos (na periodicidade do contrato) e o vencimento
+-- do título no Contas a Pagar muda junto. periodos_deslocados guarda quantos períodos foram adiados.
+ALTER TABLE aditivos_contrato DROP CONSTRAINT IF EXISTS aditivos_contrato_tipo_check;
+ALTER TABLE aditivos_contrato ADD CONSTRAINT aditivos_contrato_tipo_check
+  CHECK (tipo IN ('prorrogacao','renegociacao','capitalizacao','reducao_taxa','ampliacao_valor','repactuacao','outros'));
+ALTER TABLE aditivos_contrato ADD COLUMN IF NOT EXISTS periodos_deslocados integer;
+NOTIFY pgrst, 'reload schema';

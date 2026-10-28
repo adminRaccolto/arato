@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-g",
+    data: "28/10/2026",
+    titulo: "Aditivo de Repactuação no contrato financeiro",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Novo tipo de aditivo Repactuação: adia todas as parcelas em aberto por um ou mais períodos (na periodicidade do contrato) e atualiza o vencimento no Contas a Pagar e o vencimento final do contrato. Parcelas pagas não mudam." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → aba Aditivos",
+  },
+  {
     versao: "2026.10.28-f",
     data: "28/10/2026",
     titulo: "CIOT no MDF-e: motorista com CPF reconhecido",
