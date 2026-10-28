@@ -14,7 +14,7 @@ const numBR = (s: string) => { const n = parseFloat(s.replace(/\./g, "").replace
 const fmtCnpj = (d: string) => d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : d;
 
 const VAZIO = {
-  chave: "", data_emissao: new Date().toISOString().slice(0, 10), emitente_nome: "", emitente_uf: "",
+  chave: "", numero: "", serie: "", data_emissao: new Date().toISOString().slice(0, 10), emitente_nome: "", emitente_uf: "",
   municipio_origem: "", uf_origem: "", municipio_destino: "", uf_destino: "", produto_descricao: "", peso_kg: "", valor_prestacao: "", nfe_chaves: "",
 };
 
@@ -43,6 +43,11 @@ export default function ModalCteEntradaNovo({ fazendaIds, fazendaPadrao, onClose
   // Número, série e CNPJ da transportadora vêm da própria chave de acesso
   const daChave = chave.length === 44 ? { numero: chave.slice(25, 34).replace(/^0+/, ""), serie: chave.slice(22, 25).replace(/^0+/, "") || "0", cnpj: chave.slice(6, 20) } : null;
   const set = (k: keyof typeof VAZIO) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }));
+  // Número e série vêm preenchidos pela chave (podem ser corrigidos)
+  const setChave = (v: string) => setF(p => {
+    const d = dig(v);
+    return d.length === 44 ? { ...p, chave: v, numero: d.slice(25, 34).replace(/^0+/, ""), serie: d.slice(22, 25).replace(/^0+/, "") || "0" } : { ...p, chave: v };
+  });
 
   async function lerArquivo(file: File | undefined) {
     setErro(""); setExistente(null);
@@ -58,6 +63,7 @@ export default function ModalCteEntradaNovo({ fazendaIds, fazendaPadrao, onClose
     if (modo === "xml" && !arquivo) { setErro("Escolha o arquivo XML do CT-e."); return; }
     if (modo === "digitar") {
       if (chave.length !== 44) { setErro("A chave de acesso tem 44 dígitos."); return; }
+      if (!dig(f.numero)) { setErro("Informe o número do CT-e."); return; }
       if (!f.emitente_nome.trim()) { setErro("Informe a transportadora."); return; }
       if (!(numBR(f.valor_prestacao) ?? 0)) { setErro("Informe o valor do frete."); return; }
     }
@@ -69,7 +75,7 @@ export default function ModalCteEntradaNovo({ fazendaIds, fazendaPadrao, onClose
         headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
         body: JSON.stringify(modo === "xml" ? { acao: "criar", fazenda_id: fazenda, xml: arquivo!.xml } : {
           acao: "criar", fazenda_id: fazenda, digitado: {
-            chave, data_emissao: f.data_emissao, emitente_nome: f.emitente_nome, emitente_uf: f.emitente_uf,
+            chave, numero: f.numero, serie: f.serie, data_emissao: f.data_emissao, emitente_nome: f.emitente_nome, emitente_uf: f.emitente_uf,
             municipio_origem: f.municipio_origem, uf_origem: f.uf_origem, municipio_destino: f.municipio_destino, uf_destino: f.uf_destino,
             produto_descricao: f.produto_descricao, peso_kg: numBR(f.peso_kg), valor_prestacao: numBR(f.valor_prestacao) ?? 0,
             nfe_chaves: f.nfe_chaves.split(/[\s,;]+/).map(dig).filter(k => k.length === 44),
@@ -123,9 +129,14 @@ export default function ModalCteEntradaNovo({ fazendaIds, fazendaPadrao, onClose
           ) : <>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={lbl}>Chave de acesso (44 dígitos) *</label>
-              <input value={f.chave} onChange={set("chave")} maxLength={60} style={{ ...inp, fontFamily: "monospace" }} placeholder="ex.: 5126 1021 0169 5900 0195 5700 2000 0035 2517 7521 6766" />
-              {daChave && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>CT-e {daChave.numero}/{daChave.serie} · transportadora CNPJ {fmtCnpj(daChave.cnpj)}</div>}
+              <input value={f.chave} onChange={e => setChave(e.target.value)} maxLength={60} style={{ ...inp, fontFamily: "monospace" }} placeholder="ex.: 5126 1021 0169 5900 0195 5700 2000 0035 2517 7521 6766" />
+              {daChave && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>Transportadora CNPJ {fmtCnpj(daChave.cnpj)}</div>}
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
+              <div><label style={lbl}>Nº do CT-e *</label><input value={f.numero} onChange={e => setF(p => ({ ...p, numero: dig(e.target.value) }))} inputMode="numeric" style={inp} placeholder="pela chave" /></div>
+              <div><label style={lbl}>Série</label><input value={f.serie} onChange={e => setF(p => ({ ...p, serie: dig(e.target.value) }))} inputMode="numeric" style={inp} /></div>
+            </div>
+            <div />
             <div>
               <label style={lbl}>Transportadora (nome) *</label>
               <input value={f.emitente_nome} onChange={set("emitente_nome")} style={inp} />

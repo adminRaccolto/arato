@@ -35,7 +35,7 @@ const RELEASES = [
     titulo: "CT-e de frete lançado à mão (XML ou digitado)",
     modulos: ["Documentos Fiscais", "Financeiro"],
     itens: [
-      { tipo: "novo", texto: "Botão \"+ CT-e de Frete\" em Documentos Fiscais: lança um CT-e recebido que não veio do SIEG, importando o arquivo XML ou digitando os dados (chave de acesso, transportadora, rota, carga e valor). O número, a série e o CNPJ da transportadora saem da própria chave." },
+      { tipo: "novo", texto: "Botão \"+ CT-e de Frete\" em Documentos Fiscais: lança um CT-e recebido que não veio do SIEG, importando o arquivo XML ou digitando os dados (chave de acesso, número e série, transportadora, rota, carga e valor). Número e série vêm preenchidos pela chave e podem ser corrigidos; o CNPJ da transportadora sai da própria chave." },
       { tipo: "melhoria", texto: "Depois de lançado, o CT-e é processado como os do SIEG: gera o Contas a Pagar para a transportadora. CT-e já lançado ou emitido pela própria conta não entra em dobro. O lançado à mão e ainda pendente pode ser excluído." },
     ],
     onde: "Documentos Fiscais → + CT-e de Frete",
