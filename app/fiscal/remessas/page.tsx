@@ -170,7 +170,44 @@ function RemessasConteudo() {
     const doc = x.cnpj_destinatario.replace(/\D/g, "");
     const p = pessoas.find(pp => (pp.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
     if (p) escolherArmazem(p.id);
-    if (!itens.some(i => i.insumo_id) && x.itens.length) setItens(x.itens.map(i => ({ key: crypto.randomUUID(), insumo_id: "", descricao: i.descricao, ncm: i.ncm, unidade: i.unidade, unidade_xml: i.unidade, quantidade: paraCampo(i.quantidade), valor_unitario: paraCampo(i.valor_unitario) })));
+    if (!itens.some(i => i.insumo_id) && x.itens.length) vincularItensXml(x.itens).then(setItens);
+  }
+
+  // Liga cada item do XML externo ao produto do cadastro, para entrar no estoque na unidade dele (o XML de outro
+  // sistema pode vir em outra unidade — achado real 28/10/2026: remessa em "L" de inoculante comprado em doses).
+  // 1) NF de origem escolhida: o item dela com a mesma quantidade e valor unitário (ou a mesma descrição);
+  // 2) senão, a mesma descrição de produto já processada numa NF de entrada da conta, ligada a um único produto.
+  async function vincularItensXml(xmlItens: ReturnType<typeof lerXmlNfe>["itens"]): Promise<ItemRem[]> {
+    const norm = (t: unknown) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+    const origem = nfOrigem ? (await listarNfEntradaItens(nfOrigem.id)).filter(i => i.insumo_id) : [];
+    const usados = new Set<number>();
+    const porDescricao = new Map<string, Set<string>>();
+    if (!origem.length && ids.length) {
+      const descs = [...new Set(xmlItens.map(i => i.descricao).filter(Boolean))];
+      if (descs.length) {
+        const { data } = await supabase.from("nf_entrada_itens").select("descricao_nf, insumo_id, nf_entradas!inner(fazenda_id, status)")
+          .in("descricao_nf", descs).not("insumo_id", "is", null).in("nf_entradas.fazenda_id", ids).eq("nf_entradas.status", "processada").limit(1000);
+        for (const h of (data ?? []) as { descricao_nf: string; insumo_id: string }[]) {
+          const k = norm(h.descricao_nf); (porDescricao.get(k) ?? porDescricao.set(k, new Set()).get(k)!).add(h.insumo_id);
+        }
+      }
+    }
+    return xmlItens.map(i => {
+      let insumoId = "";
+      if (origem.length) {
+        const achar = (cond: (o: (typeof origem)[number]) => boolean) => origem.findIndex((o, k) => !usados.has(k) && cond(o));
+        let k = achar(o => Math.abs(Number(o.qtd_nf ?? o.quantidade) - i.quantidade) < 0.001 && Math.abs(Number(o.valor_unitario ?? 0) - i.valor_unitario) < 0.01);
+        if (k < 0) k = achar(o => norm(o.descricao_nf) === norm(i.descricao));
+        if (k >= 0) { usados.add(k); insumoId = origem[k].insumo_id!; }
+      } else {
+        const cand = porDescricao.get(norm(i.descricao));
+        if (cand?.size === 1) insumoId = [...cand][0];
+      }
+      const ins = insumoId ? insumoPorId.get(insumoId) : undefined;
+      return { key: crypto.randomUUID(), insumo_id: insumoId, descricao: ins?.nome ?? i.descricao, ncm: i.ncm || ins?.ncm || "",
+        unidade: insumoId ? (ins?.unidade ?? i.unidade) : i.unidade, unidade_xml: i.unidade,
+        quantidade: paraCampo(i.quantidade), valor_unitario: paraCampo(i.valor_unitario) };
+    });
   }
 
   async function salvar() {
