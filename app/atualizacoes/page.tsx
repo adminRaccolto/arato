@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-y",
+    data: "28/10/2026",
+    titulo: "Folha no Contas a Pagar com funcionário e operação gerencial",
+    modulos: ["Financeiro", "Folha"],
+    itens: [
+      { tipo: "correcao", texto: "O \"Processar folha do mês\" de Cadastros → Funcionários (e do eSocial) criava o salário no Contas a Pagar sem o funcionário — coluna Fornecedor vazia. Agora grava o funcionário." },
+      { tipo: "correcao", texto: "Salários e adiantamentos da folha ficavam sem operação gerencial quando o plano de contas do cliente estava gravado em outra fazenda. Agora a operação é buscada em todas as fazendas do cliente, preferindo a da própria fazenda." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.28-x",
     data: "28/10/2026",
     titulo: "Rastreabilidade do Item — o caminho do produto em diagrama",

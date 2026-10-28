@@ -2168,10 +2168,12 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
   // Precisa cobrir as OGs globais/da conta (fazenda_id NULL), não só as legadas por fazenda —
   // senão os salários saem sempre sem classificação contábil.
   const contaIdFolha = await resolverContaIdDaFazenda(fazenda_id);
+  // Plano de contas antigo pode estar gravado em outra fazenda do cliente: busca em todas, preferindo a da folha
+  const fazendasCliente = await resolverFazendaIdsDaConta(fazenda_id);
   const { data: opsData } = await supabase.from("operacoes_gerenciais")
-    .select("id, classificacao").or(ogOrFilter(contaIdFolha, fazenda_id));
+    .select("id, classificacao, fazenda_id").or(ogOrFilter(contaIdFolha, [...new Set([fazenda_id, ...fazendasCliente])]));
   const opsByClass: Record<string, string> = {};
-  for (const op of (opsData ?? [])) opsByClass[op.classificacao] = op.id;
+  for (const op of (opsData ?? [])) if (!opsByClass[op.classificacao] || op.fazenda_id === fazenda_id) opsByClass[op.classificacao] = op.id;
 
   const anoMes = mes_referencia; // YYYY-MM
   let gerados = 0;
@@ -2209,6 +2211,8 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
         auto: true,
         operacao_gerencial_id: opsByClass[l.class] ?? null,
         categoria: l.label,
+        // O funcionário é o "fornecedor" do título (coluna Fornecedor do CP); sem ele o título ficava sem nome
+        funcionario_id: f.id,
         origem_lancamento: "manual",
       });
       gerados++;

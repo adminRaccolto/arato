@@ -11,9 +11,17 @@ async function resolverOgPorClassificacao(sb: any, fazenda_id: string, classific
   const parts = ["and(fazenda_id.is.null,conta_id.is.null)"];
   if (fazendaRow?.conta_id) parts.push(`conta_id.eq.${fazendaRow.conta_id}`);
   parts.push(`fazenda_id.eq.${fazenda_id}`);
-  const { data } = await sb.from("operacoes_gerenciais")
-    .select("id").or(parts.join(",")).eq("classificacao", classificacao).eq("inativo", false)
-    .limit(1).maybeSingle();
+  const { data: rows } = await sb.from("operacoes_gerenciais")
+    .select("id, fazenda_id").or(parts.join(",")).eq("classificacao", classificacao).eq("inativo", false).limit(10);
+  const daFazenda = (rows ?? []).find((r: { fazenda_id: string | null }) => r.fazenda_id === fazenda_id) ?? (rows ?? [])[0];
+  if (daFazenda) return daFazenda.id;
+  // Plano de contas antigo fica gravado numa fazenda do cliente: a fazenda da folha sem cópia própria usava nenhuma OG
+  // (achado real 28/10/2026 — adiantamentos sem operação gerencial no CP). Vale a mesma classificação de outra fazenda do cliente.
+  if (!fazendaRow?.conta_id) return null;
+  const { data: fzs } = await sb.from("fazendas").select("id").eq("conta_id", fazendaRow.conta_id);
+  const ids = (fzs ?? []).map((f: { id: string }) => f.id);
+  if (!ids.length) return null;
+  const { data } = await sb.from("operacoes_gerenciais").select("id").in("fazenda_id", ids).eq("classificacao", classificacao).eq("inativo", false).limit(1).maybeSingle();
   return data?.id ?? null;
 }
 
