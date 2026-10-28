@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       juros_valor?:      number;
       desconto_valor?:   number;
       nova_data_vencimento?: string;
+      forma_pagamento?: string;   // troca da forma de pagamento na baixa (ex.: NF dizia boleto, pagou por PIX)
       // aplicar_adiantamento
       adiantamento_id?:  string;
       adiantamento_salario_id?: string;   // aplicar_adiantamento_funcionario
@@ -273,6 +274,7 @@ export async function POST(req: NextRequest) {
     if (body.ano_safra_id)           patch.ano_safra_id           = body.ano_safra_id;
     if (body.ciclo_id)               patch.ciclo_id               = body.ciclo_id;
     if (body.observacao)             patch.observacao             = body.observacao;
+    if (body.forma_pagamento?.trim()) patch.forma_pagamento       = body.forma_pagamento.trim();
     // Detalhamento de encargos — só informativo/relatório, não entra no
     // cálculo de status (o valor_pago_agora já vem com tudo embutido,
     // calculado na tela antes de chegar aqui).

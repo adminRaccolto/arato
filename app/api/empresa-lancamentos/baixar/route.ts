@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       juros_valor?: number;
       desconto_valor?: number;
       nova_data_vencimento?: string;
+      forma_pagamento?: string;   // troca da forma de pagamento na baixa (ex.: NF dizia boleto, pagou por PIX)
     };
 
     const sb = admin();
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
       conta_bancaria: body.conta_bancaria || null,
     };
     if (body.observacao)      patch.observacao = body.observacao;
+    if (body.forma_pagamento?.trim()) patch.forma_pagamento = body.forma_pagamento.trim();
     if (body.multa_valor)     patch.valor_multa = body.multa_valor;
     if (body.juros_valor)     patch.valor_juros = body.juros_valor;
     if (body.desconto_valor)  patch.valor_desconto = descAcum;

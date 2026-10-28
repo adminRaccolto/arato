@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-z",
+    data: "28/10/2026",
+    titulo: "Forma de pagamento na baixa do Contas a Pagar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "A janela Baixar Lançamento mostra a forma de pagamento do título (a informada no processamento da NF, ex.: A Prazo — Boleto aparece como Boleto) e permite trocar na hora da baixa (ex.: pagou por PIX). A troca fica gravada no título; sem troca, nada muda." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Baixar",
+  },
+  {
     versao: "2026.10.28-y",
     data: "28/10/2026",
     titulo: "Folha no Contas a Pagar com funcionário e operação gerencial",

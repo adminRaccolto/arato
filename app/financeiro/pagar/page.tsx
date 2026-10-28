@@ -167,6 +167,8 @@ const ORIGEM_LANC_LABEL: Record<string, string> = {
 };
 
 const FORMAS_PAGAMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
+// Forma gravada pelo processamento da NF (códigos do wizard) → a lista do Contas a Pagar
+const FORMA_DA_NF: Record<string, string> = { prazo_boleto: "Boleto", prazo_pix: "PIX", prazo_debito: "Débito Automático", prazo_cheque: "Cheque", a_vista: "Dinheiro", cartao_credito: "Cartão de Crédito", outros: "Outros" };
 // Categorias do lado Empresa (lista própria — empresa não usa as categorias de produtor rural)
 const CATS_CP_EMPRESA = [
   "Salários e Encargos", "Combustível e Lubrificantes", "Manutenção de Veículos", "Manutenção Predial",
@@ -467,6 +469,9 @@ export default function ContasAPagarPage() {
   const [bData,   setBData]   = useState("");
   const [bConta,  setBConta]  = useState("");
   const [bMulta,  setBMulta]  = useState("0,00");
+  // Forma de pagamento: vem do título (ex.: a da NF) e pode ser trocada na baixa; só é gravada se mudar
+  const [bForma, setBForma] = useState("");
+  const [bFormaOrig, setBFormaOrig] = useState("");
   const [bJuros,  setBJuros]  = useState("0,00");
   const [bDesc,   setBDesc]   = useState("0,00");
   // Classificação na baixa (fornecedor, safra, ciclo e operação gerencial) + nova data do saldo em baixa parcial
@@ -535,6 +540,9 @@ export default function ContasAPagarPage() {
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
     setBNovaData("");
+    setBForma(""); setBFormaOrig("");
+    supabase.from(l.origem_tabela === "empresa_lancamentos" ? "empresa_lancamentos" : "lancamentos").select("forma_pagamento").eq("id", l.id).maybeSingle()
+      .then(({ data }) => { const f = (data?.forma_pagamento as string | null) ?? ""; const v = FORMA_DA_NF[f] ?? f; setBForma(v); setBFormaOrig(v); });
     setBClass({ pessoa_id: l.pessoa_id ?? "", ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "", og_id: l.operacao_gerencial_id ?? "", salvar: false });
     setBClassAberta(!l.operacao_gerencial_id);
     try {
@@ -616,6 +624,7 @@ export default function ContasAPagarPage() {
           ano_safra_id: bClass.ano_safra_id || undefined, ciclo_id: bClass.ciclo_id || undefined,
           salvar_classificacao: bClass.salvar && !!bClass.pessoa_id && !!bClass.og_id ? true : undefined,
           nova_data_vencimento: bNovaData || undefined,
+          forma_pagamento: bForma && bForma !== bFormaOrig ? bForma : undefined,
         });
       } else {
         const res = await fetch("/api/empresa-lancamentos/baixar", {
@@ -625,6 +634,7 @@ export default function ContasAPagarPage() {
             valor_pago_agora: numBR(bValor), data_baixa: bData, conta_bancaria: bConta,
             multa_valor: numBR(bMulta), juros_valor: numBR(bJuros), desconto_valor: numBR(bDesc),
             nova_data_vencimento: bNovaData || undefined,
+            forma_pagamento: bForma && bForma !== bFormaOrig ? bForma : undefined,
           }),
         });
         const json = await res.json() as { ok: boolean; error?: string };
@@ -2654,6 +2664,14 @@ export default function ContasAPagarPage() {
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Data da baixa</label>
                 <InputData type="date" value={bData} onChange={e => setBData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Forma de pagamento{bFormaOrig && bForma !== bFormaOrig ? <span style={{ color: "#C9921B", fontWeight: 400 }}> (era {bFormaOrig})</span> : null}</label>
+                <SelectField value={bForma} onChange={e => setBForma(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                  <option value="">— Não informada —</option>
+                  {[...FORMAS_PAGAMENTO.filter(f => f !== "Cartão de Crédito"), ...(bForma && !FORMAS_PAGAMENTO.includes(bForma) ? [bForma] : [])].map(f => <option key={f} value={f}>{f}</option>)}
+                  {bForma === "Cartão de Crédito" && <option value="Cartão de Crédito">Cartão de Crédito</option>}
+                </SelectField>
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Conta bancária</label>
