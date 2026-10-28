@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-a",
+    data: "28/10/2026",
+    titulo: "Processar em lote completo e de um fornecedor só",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O pedido de compra no lote aparecia só com o código (\"— — PC 78042\"): agora mostra o fornecedor, o nº do pedido e o nº do pedido do fornecedor, com os pedidos do mesmo fornecedor primeiro." },
+      { tipo: "melhoria", texto: "O lote passa a ser de um fornecedor só, e Operação Gerencial e Centro de Custo aparecem em qualquer tipo de processamento, com busca." },
+      { tipo: "melhoria", texto: "Apropriação Direta em lote segue as regras do individual: exige OG, centro de custo e ano safra; usa as parcelas do XML quando não há vencimento do lote; leva o produtor e o fornecedor do pedido; recusa NF de retorno; resumo do que foi processado e do que ficou pendente." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → ⚡ Processar em lote",
+  },
+  {
     versao: "2026.10.27-zm",
     data: "27/10/2026",
     titulo: "Menu Fiscal sem atalhos repetidos",

@@ -610,6 +610,12 @@ export default function DocumentosFiscaisPage() {
               <OperationalButton data-arato-button="secondary"
                 onClick={() => {
                   if (!selPendentesNf.length) { alert("Nenhuma NF pendente selecionada para processar."); return; }
+                  // Lote é de um fornecedor só: a OG, o centro de custo e o pedido valem para todas as NFs
+                  const forns = [...new Map(selPendentesNf.map(l => [(l.participante_cnpj ?? "").replace(/\D/g, "") || `nome:${l.participante_nome ?? ""}`, l.participante_nome ?? "sem emitente"])).values()];
+                  if (forns.length > 1) {
+                    alert(`O processamento em lote é de um fornecedor só, e a seleção tem ${forns.length}: ${forns.slice(0, 4).join(", ")}${forns.length > 4 ? "…" : ""}.\n\nSelecione as NFs de um fornecedor por vez.`);
+                    return;
+                  }
                   setModalLote(true);
                 }}
                 style={{ padding: "6px 16px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
@@ -1087,7 +1093,7 @@ export default function DocumentosFiscaisPage() {
 
       {modalLote && (
         <ModalProcessarLote
-          nfs={linhas.filter(l => l.tipo_doc === "NF" && l.status_normalizado === "pendente" && selecionados.has(l.id)).map(l => ({ id: l.id, fazenda_id: l.fazenda_id, numero: l.numero }))}
+          nfs={linhas.filter(l => l.tipo_doc === "NF" && l.status_normalizado === "pendente" && selecionados.has(l.id)).map(l => ({ id: l.id, fazenda_id: l.fazenda_id, numero: l.numero, emitente_nome: l.participante_nome, emitente_cnpj: l.participante_cnpj, valor: l.valor_total }))}
           onClose={() => setModalLote(false)}
           onSaved={() => { carregar(); setSelecionados(new Set()); }}
         />

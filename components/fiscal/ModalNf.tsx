@@ -312,7 +312,7 @@ interface ItemRascunho {
   valor_icms_st: number;
 }
 
-interface PedidoMin { id: string; nr_pedido?: string; numero?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
+interface PedidoMin { id: string; nr_pedido?: string; numero?: string; nr_pedido_fornecedor?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; ano_safra_id?: string; ciclo_id?: string; data_vencimento?: string; }
 
 const ITEM_VAZIO = (): ItemRascunho => ({
   key: crypto.randomUUID(),
@@ -587,7 +587,7 @@ export default function ModalNf({
     try {
       const { data } = await supabase
         .from("pedidos_compra")
-        .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
+        .select("id, numero, nr_pedido, nr_pedido_fornecedor, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
         .in("fazenda_id", fazendaIds)
         .in("status", ["rascunho", "aprovado", "parcialmente_entregue", "entregue"])
         .order("created_at", { ascending: false });
@@ -2107,7 +2107,7 @@ export default function ModalNf({
       if (!allIds.length) { setWPedidos([]); return; }
       const { data } = await supabase
         .from("pedidos_compra")
-        .select("id, numero, nr_pedido, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
+        .select("id, numero, nr_pedido, nr_pedido_fornecedor, fornecedor_id, contato_fornecedor, status, ano_safra_id, ciclo_id, data_vencimento")
         .in("fazenda_id", allIds)
         .in("status", ["rascunho", "aprovado", "parcialmente_entregue", "entregue"])
         .order("created_at", { ascending: false });
@@ -2611,7 +2611,8 @@ export default function ModalNf({
                           const cnpjNf = cab.emitente_cnpj?.replace(/\D/g, "") ?? "";
                           const fornCnpj = pessoas.find(x => x.id === p.fornecedor_id)?.cpf_cnpj?.replace(/\D/g, "") ?? "";
                           const match = cnpjNf && fornCnpj && (fornCnpj === cnpjNf || (fornCnpj.length === 14 && cnpjNf.length === 14 && fornCnpj.slice(0, 8) === cnpjNf.slice(0, 8)));
-                          return { value: p.id, label: `${match ? "★ " : ""}${forn} — PC ${nr} (${p.status})` };
+                          const nrForn = p.nr_pedido_fornecedor && p.nr_pedido_fornecedor !== nr ? ` · ped. fornecedor ${p.nr_pedido_fornecedor}` : "";
+                          return { value: p.id, label: `${match ? "★ " : ""}${forn} — PC ${nr}${nrForn} (${p.status.replace("_", " ")})` };
                         })}
                       />
                       {cab.pedido_compra_id && (
