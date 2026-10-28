@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
-import { ajustarVinculosParaFk, linhaMudou } from "../../../../lib/financeiro/conciliacao";
+import { ajustarVinculosParaFk, linhaMudou, linhasJaImportadas } from "../../../../lib/financeiro/conciliacao";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -69,7 +69,28 @@ export async function POST(req: NextRequest) {
       for (const e of ((data ?? []) as unknown as Existente[])) mapaExistente.set(e.fitid, e);
     }
 
-    const rows = unicas.map(l => {
+    // Reimportação do mesmo período com FITID diferente (Cresol gera um código novo a cada exportação): a linha que já
+    // existe na conta com mesma data, valor, tipo e descrição não entra de novo — antes duplicava o extrato inteiro
+    let linhasImport = unicas;
+    if (modo === "import") {
+      const novas = unicas.filter(l => !mapaExistente.has(l.id));
+      if (novas.length) {
+        const datas = novas.map(l => l.data.slice(0, 10)).sort();
+        const idsArquivo = new Set(unicas.map(l => l.id));
+        const existentes: { fitid: string; data: string; valor: number; descricao: string | null; tipo: string | null }[] = [];
+        for (let de = 0; ; de += 1000) {
+          const { data, error } = await sb.from("extrato_transacoes").select("id, fitid, data, valor, descricao, tipo")
+            .eq("conta_bancaria_id", conta_id).gte("data", datas[0]).lte("data", datas[datas.length - 1]).order("id").range(de, de + 999);
+          if (error) return NextResponse.json({ ok: false, error: `leitura: ${error.message}` }, { status: 500 });
+          existentes.push(...((data ?? []) as typeof existentes).filter(e => !idsArquivo.has(e.fitid)));
+          if (!data || data.length < 1000) break;
+        }
+        const repetidas = linhasJaImportadas(novas, existentes);
+        if (repetidas.size) linhasImport = unicas.filter(l => !repetidas.has(l.id));
+      }
+    }
+
+    const rows = linhasImport.map(l => {
       const ex = mapaExistente.get(l.id);
       // Só confia que é a mesma transação se o valor bater (FITID instável em alguns bancos)
       const mesmaTransacao = !ex || Math.abs(ex.valor - l.valor) < 0.01;
@@ -116,7 +137,7 @@ export async function POST(req: NextRequest) {
       const { error } = await sb.from("extrato_transacoes").upsert(aGravar.slice(i, i + LOTE), { onConflict: "conta_bancaria_id,fitid" });
       if (error) return NextResponse.json({ ok: false, error: `gravação: ${error.message}` }, { status: 500 });
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ignoradas_repetidas: unicas.length - linhasImport.length });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-i",
+    data: "28/10/2026",
+    titulo: "Conciliação: extrato reimportado não duplica",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Importar de novo o OFX de um período já importado não duplica mais as linhas quando o banco gera códigos novos a cada exportação (caso da Cresol): a linha com mesma data, valor, tipo e descrição já existente na conta é reconhecida. Transações reais iguais no mesmo dia continuam contando separadas." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.28-h",
     data: "28/10/2026",
     titulo: "CIOT: distância barrada por CEP de outra cidade",

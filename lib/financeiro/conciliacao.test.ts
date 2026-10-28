@@ -76,3 +76,19 @@ test("dois pagamentos parciais registrados no CP: cada linha cobre um pedaço", 
 test("linha ligada a vários títulos cobre o título inteiro", () => {
   assert.equal(pagoSemExtrato(500, [{ valor: -1500, titulos: 3 }]), 0);
 });
+
+test("reimportação com FITID novo: mesma transação não entra de novo, por contagem", async () => {
+  const { linhasJaImportadas } = await import("./conciliacao.ts");
+  const ex = [
+    { data: "2026-09-10", valor: 20000, descricao: "PIX DEBITO PARA: SANTA RITA", tipo: "debito" },
+    { data: "2026-09-10", valor: 500, descricao: "Tarifa", tipo: "debito" },
+  ];
+  const novas = [
+    { id: "a", data: "2026-09-10", valor: 20000, descricao: "pix debito para:  santa rita", tipo: "debito" },
+    { id: "b", data: "2026-09-10", valor: 500, descricao: "TARIFA", tipo: "debito" },
+    { id: "c", data: "2026-09-10", valor: 500, descricao: "TARIFA", tipo: "debito" },   // segunda tarifa igual: nova
+    { id: "d", data: "2026-09-11", valor: 20000, descricao: "PIX DEBITO PARA: SANTA RITA", tipo: "debito" },
+    { id: "e", data: "2026-09-10", valor: 20000, descricao: "PIX DEBITO PARA: SANTA RITA", tipo: "credito" },
+  ];
+  assert.deepEqual([...linhasJaImportadas(novas, ex)].sort(), ["a", "b"]);
+});

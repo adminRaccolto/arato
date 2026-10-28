@@ -79,3 +79,26 @@ export function pagoSemExtrato(valorPago: number, linhasVinculadas: { valor: num
   }
   return centavos(Math.max(0, valorPago - coberto));
 }
+
+type TransacaoExtrato = { data: string; valor: number; descricao: string | null; tipo?: string | null };
+const chaveConteudo = (t: TransacaoExtrato) =>
+  [t.data.slice(0, 10), Math.round(Math.abs(Number(t.valor)) * 100), (t.tipo ?? "").toLowerCase(),
+    (t.descricao ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim()].join("|");
+
+/**
+ * Reimportação de OFX com FITID novo (Cresol e outros bancos geram um código diferente a cada exportação): a linha do
+ * arquivo que já existe na conta com a mesma data, valor, tipo e descrição é a MESMA transação e não entra de novo.
+ * Casamento por contagem — dois PIX iguais no mesmo dia no arquivo e dois no banco casam os dois; dois no arquivo e um
+ * no banco deixam um entrar. Devolve os ids das linhas novas que já existem.
+ */
+export function linhasJaImportadas<N extends TransacaoExtrato & { id: string }>(novas: N[], existentes: TransacaoExtrato[]): Set<string> {
+  const saldo = new Map<string, number>();
+  for (const e of existentes) saldo.set(chaveConteudo(e), (saldo.get(chaveConteudo(e)) ?? 0) + 1);
+  const repetidas = new Set<string>();
+  for (const n of novas) {
+    const k = chaveConteudo(n);
+    const resto = saldo.get(k) ?? 0;
+    if (resto > 0) { repetidas.add(n.id); saldo.set(k, resto - 1); }
+  }
+  return repetidas;
+}
