@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-k",
+    data: "28/10/2026",
+    titulo: "CT-e guarda os dados do CIOT e o MDF-e puxa do CT-e",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "No CT-e, distância, placas das carretas, CEPs, data fim e natureza do CIOT agora ficam gravados (antes sumiam ao salvar) e voltam ao reabrir." },
+      { tipo: "novo", texto: "Placas de carreta digitadas para um cavalo sem conjunto são cadastradas sozinhas como implementos + conjunto do cavalo; os próximos CT-e e MDF-e já trazem as carretas." },
+      { tipo: "melhoria", texto: "O MDF-e puxa do CT-e selecionado a distância, as placas e os CEPs; o CEP também é encontrado pela inscrição estadual ou CPF/CNPJ do produtor remetente/destinatário." },
+    ],
+    onde: "Fretes e Transporte → CT-e e MDF-e",
+  },
+  {
     versao: "2026.10.28-j",
     data: "28/10/2026",
     titulo: "CIOT: campos que faltam e ANTT fora do ar",

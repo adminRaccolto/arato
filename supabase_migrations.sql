@@ -18475,3 +18475,11 @@ ALTER TABLE aditivos_contrato ADD CONSTRAINT aditivos_contrato_tipo_check
   CHECK (tipo IN ('prorrogacao','renegociacao','capitalizacao','reducao_taxa','ampliacao_valor','repactuacao','outros'));
 ALTER TABLE aditivos_contrato ADD COLUMN IF NOT EXISTS periodos_deslocados integer;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 383 — CT-e guarda os dados do CIOT (distância, placas, CEPs, data fim, natureza)
+-- =============================================================================
+-- Os campos do CIOT na tela do CT-e não eram gravados: sumiam ao salvar e o MDF-e não tinha de onde puxar a distância
+-- e as placas. ciot_dados guarda o que foi informado; o MDF-e lê do CT-e vinculado.
+ALTER TABLE ctes ADD COLUMN IF NOT EXISTS ciot_dados jsonb;
+NOTIFY pgrst, 'reload schema';

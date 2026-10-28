@@ -785,7 +785,13 @@ function CtePageInner() {
     setOrigemExterna(c.tipo_cte === "substituto" && !c.cte_substituido_id);
     setChaveExterna(c.tipo_cte === "substituto" && !c.cte_substituido_id ? (c.cte_substituido_chave ?? "") : "");
     setSubstituindo(c.tipo_cte === "substituto" && c.cte_substituido_id ? (ctes.find(x => x.id === c.cte_substituido_id) ?? null) : null);
-    setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "", implementos: "" });
+    // Dados do CIOT gravados no CT-e (Seção 383) voltam ao reabrir — antes se perdiam ao salvar
+    const cdados = ((c as { ciot_dados?: Record<string, unknown> | null }).ciot_dados ?? {}) as Record<string, unknown>;
+    const txt = (k: string) => (cdados[k] == null ? "" : String(cdados[k]));
+    const placasConjunto = (c.implemento_ids ?? []).map(i => veiculos.find(x => x.id === i)?.placa ?? "").filter(Boolean).join(", ");
+    setCiotErro(""); setCiotForm({ data_fim: txt("data_fim"), distancia_km: txt("distancia_km"), natureza: txt("natureza") || "2202", chave_pix: txt("chave_pix"),
+      cep_origem: txt("cep_origem"), cep_destino: txt("cep_destino"), implementos: placasConjunto || txt("implementos") });
+    setCiotSemImpl(!!cdados.sem_implemento);
     setCiotGerado(c.ciot ? { id: c.ciot, cv: c.ciot_codigo_verificador ?? "", protocolo: c.ciot_protocolo ?? "" } : null);
     setForm({
       emitente_id: c.emitente_id ?? "", emitente_razao_social: c.emitente_razao_social ?? "", emitente_cnpj: c.emitente_cnpj ?? "",
@@ -1035,6 +1041,15 @@ function CtePageInner() {
       const veiculo = veiculos.find(v => v.id === form.veiculo_id);
       const motorista = motoristas.find(m => m.id === form.motorista_id);
       const emitente = empresasTransp.find(e => e.id === form.emitente_id);
+      // Placas digitadas no CIOT para cavalo sem conjunto: cadastra as carretas e o conjunto e grava no CT-e
+      let conjSalvar = { conjunto_id: form.conjunto_id, implemento_ids: form.implemento_ids };
+      if (form.veiculo_id && !form.implemento_ids.length && !ciotSemImpl && ciotForm.implementos.trim()) {
+        const r = await registrarConjuntoDigitado(supabase, { fazendaId, contaId: contaId ?? null, cavaloId: form.veiculo_id, texto: ciotForm.implementos, veiculos }).catch(() => null);
+        if (r) conjSalvar = { conjunto_id: r.conjuntoId, implemento_ids: r.implementoIds };
+      }
+      const ciotDados = { data_fim: ciotForm.data_fim || null, distancia_km: ciotForm.distancia_km || null, natureza: ciotForm.natureza || null,
+        chave_pix: ciotForm.chave_pix || null, cep_origem: ciotForm.cep_origem || null, cep_destino: ciotForm.cep_destino || null,
+        implementos: ciotForm.implementos || null, sem_implemento: ciotSemImpl };
       const payload = {
         fazenda_id: fazendaId,
         emitente_id: form.emitente_id || null,
@@ -1080,8 +1095,10 @@ function CtePageInner() {
         valor_icms: valorIcms,
         veiculo_id: form.veiculo_id || null,
         // Só com conjunto (ou ao trocar um que já tinha): sem a Seção 363 essas colunas não existem.
-        ...(form.conjunto_id || form.implemento_ids.length || cteEdit?.conjunto_id
-          ? { conjunto_id: form.conjunto_id || null, implemento_ids: form.implemento_ids.length ? form.implemento_ids : null } : {}),
+        ...(conjSalvar.conjunto_id || conjSalvar.implemento_ids.length || cteEdit?.conjunto_id
+          ? { conjunto_id: conjSalvar.conjunto_id || null, implemento_ids: conjSalvar.implemento_ids.length ? conjSalvar.implemento_ids : null } : {}),
+        // Dados do CIOT (distância, placas, CEPs…) ficam no CT-e e alimentam o MDF-e — Seção 383
+        ...(Object.entries(ciotDados).some(([k, v]) => k !== "natureza" && k !== "sem_implemento" && v) || ciotSemImpl ? { ciot_dados: ciotDados } : {}),
         veiculo_placa: veiculo?.placa ?? "",
         veiculo_tipo: veiculo?.tipo ?? null,
         // Motorista: pode vir do cadastro (motorista_id setado ao escolher uma sugestão do
@@ -1136,8 +1153,10 @@ function CtePageInner() {
     const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
     const cpfMot = (form.motorista_cpf || motorista?.cpf || "").replace(/\D/g, "");
     const contratante = (empresasTransp.find(e => e.id === form.emitente_id)?.cpf_cnpj ?? form.emitente_cnpj ?? "").replace(/\D/g, "");
-    const cepOrig = (ciotForm.cep_origem || pessoas.find(p => p.id === form.remetente_id)?.cep || "").replace(/\D/g, "");
-    const cepDest = (ciotForm.cep_destino || pessoas.find(p => p.id === form.destinatario_id)?.cep || "").replace(/\D/g, "");
+    // CEP: digitado; senão o do cadastro de Pessoa; senão o da IE do produtor (remetente/destinatário produtor rural)
+    const dg = (v?: string | null) => (v ?? "").replace(/\D/g, "");
+    const cepOrig = (ciotForm.cep_origem || pessoas.find(p => p.id === form.remetente_id)?.cep || iesRemetente.find(i => dg(i.inscricao_estadual) === dg(form.remetente_ie))?.cep || "").replace(/\D/g, "");
+    const cepDest = (ciotForm.cep_destino || pessoas.find(p => p.id === form.destinatario_id)?.cep || iesDestinatario.find(i => dg(i.inscricao_estadual) === dg(form.destinatario_ie))?.cep || "").replace(/\D/g, "");
     if (!contratante) { setCiotErro("Selecione o Emitente (transportadora) do CT-e — ele é o contratante do CIOT."); return; }
     if (!cpfMot) { setCiotErro("Informe o CPF do motorista."); return; }
     if (!veiculo?.placa) { setCiotErro("Selecione o veículo."); return; }
@@ -2457,14 +2476,14 @@ function CtePageInner() {
                     <>
                       {ciotErro && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#791F1F" }}>{ciotErro}</div>}
                       <div><label data-arato-label="true" style={lbl}>Data fim da viagem</label><InputData type="date" style={inp} value={ciotForm.data_fim || form.data_emissao} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} /></div>
-                      <div><label data-arato-label="true" style={lbl}>Distância (km) *</label><input style={inp} placeholder="850" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value.replace(/\D/g, "") }))} /></div>
+                      <div><label data-arato-label="true" style={lbl}>Distância (km) *</label><input style={inp} placeholder="ex.: 850 (km rodoviários)" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value.replace(/\D/g, "") }))} /></div>
                       <div><label data-arato-label="true" style={lbl}>Natureza da carga</label>
                         <SelectField style={inp} value={ciotForm.natureza === "2202" ? naturezaCiot(form.produto_descricao) : ciotForm.natureza} onChange={e => setCiotForm(f => ({ ...f, natureza: e.target.value }))}>
                           {NAT.map(([c, n]) => <option key={c} value={c}>{c} — {n}</option>)}
                         </SelectField></div>
-                      <div><label data-arato-label="true" style={lbl}>CEP origem</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.remetente_id)?.cep ?? "78450-000"} value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} /></div>
-                      <div><label data-arato-label="true" style={lbl}>CEP destino</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.destinatario_id)?.cep ?? "78455-000"} value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} /></div>
-                      <div><label data-arato-label="true" style={lbl}>Placa(s) do implemento/carreta (cavalo-trator exige)</label><input style={{ ...inp, textTransform: "uppercase" }} value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} placeholder="ABC1D23, ABC1D24" /><label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label></div>
+                      <div><label data-arato-label="true" style={lbl}>CEP origem</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.remetente_id)?.cep ?? iesRemetente.find(i => i.inscricao_estadual === form.remetente_ie)?.cep ?? "do cadastro do remetente"} value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} /></div>
+                      <div><label data-arato-label="true" style={lbl}>CEP destino</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.destinatario_id)?.cep ?? iesDestinatario.find(i => i.inscricao_estadual === form.destinatario_ie)?.cep ?? "do cadastro do destinatário"} value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} /></div>
+                      <div><label data-arato-label="true" style={lbl}>Placa(s) do implemento/carreta (cavalo-trator exige)</label><input style={{ ...inp, textTransform: "uppercase" }} value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} placeholder="ex.: ABC1D23, ABC1D24 (fica no conjunto do cavalo)" /><label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label></div>
                       <div><label data-arato-label="true" style={lbl}>Chave PIX do motorista (vazio = CPF)</label><input style={inp} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} /></div>
                       <div data-arato-panel="true" style={{ gridColumn: "1 / -1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
                         <div style={{ flex: "1 1 200px" }}><label data-arato-label="true" style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>
@@ -2603,6 +2622,7 @@ function CtePageInner() {
 }
 
 import { Suspense } from "react";
+import { registrarConjuntoDigitado } from "../../../lib/transporte/conjunto-digitado";
 export default function CtePage() {
   return (
     <Suspense fallback={null}>

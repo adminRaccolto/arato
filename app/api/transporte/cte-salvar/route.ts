@@ -33,14 +33,20 @@ export async function POST(req: NextRequest) {
 
     const db = sb();
 
+    // Sem a Seção 383 a coluna ciot_dados não existe: grava o CT-e sem ela em vez de recusar tudo
+    const semColuna = (e: { code?: string; message?: string } | null) => !!e && (e.code === "PGRST204" || e.code === "42703") && /ciot_dados/.test(e.message ?? "");
+    const p2 = { ...(payload as Record<string, unknown>) }; delete p2.ciot_dados;
+
     if (cte_id) {
       // UPDATE
-      const { error } = await db.from("ctes").update(payload).eq("id", cte_id).eq("fazenda_id", fazenda_id);
+      let { error } = await db.from("ctes").update(payload).eq("id", cte_id).eq("fazenda_id", fazenda_id);
+      if (semColuna(error)) ({ error } = await db.from("ctes").update(p2).eq("id", cte_id).eq("fazenda_id", fazenda_id));
       if (error) return NextResponse.json({ erro: error.message, code: error.code }, { status: 400 });
       return NextResponse.json({ sucesso: true, operacao: "update" });
     } else {
       // INSERT
-      const { data, error } = await db.from("ctes").insert({ ...payload, fazenda_id }).select("id").single();
+      let { data, error } = await db.from("ctes").insert({ ...payload, fazenda_id }).select("id").single();
+      if (semColuna(error)) ({ data, error } = await db.from("ctes").insert({ ...p2, fazenda_id }).select("id").single());
       if (error) return NextResponse.json({ erro: error.message, code: error.code }, { status: 400 });
       return NextResponse.json({ sucesso: true, operacao: "insert", id: data?.id });
     }

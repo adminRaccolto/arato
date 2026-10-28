@@ -14,6 +14,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import { TIPOS_CARGA, type ProdutoMDFe } from "../../../lib/mdfe/produto";
+import { registrarConjuntoDigitado } from "../../../lib/transporte/conjunto-digitado";
 
 const produtoVazio = (): ProdutoMDFe => ({ descricao: "", tipo_carga: "", ncm: "", cep_carregamento: "", cep_descarregamento: "" });
 
@@ -415,6 +416,18 @@ function MdfePageInner() {
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
   const [ciotReservado, setCiotReservado] = useState("");
   const [ciotSemImpl, setCiotSemImpl] = useState(false);
+  // Sem carretas no CT-e nem no MDF-e: usa o conjunto ativo cadastrado para o cavalo
+  useEffect(() => {
+    if (!form.veiculo_id || form.implemento_ids?.length || ciotForm.implementos.trim()) return;
+    supabase.from("conjuntos_veiculos").select("implemento_ids").eq("cavalo_id", form.veiculo_id).eq("ativo", true).order("updated_at", { ascending: false }).limit(1)
+      .then(({ data }) => {
+        const ids = ((data?.[0]?.implemento_ids ?? []) as string[]);
+        const placas = ids.map(i => veiculos.find(v => v.id === i)?.placa ?? "").filter(Boolean).join(", ");
+        if (placas) setCiotForm(c => c.implementos.trim() ? c : { ...c, implementos: placas });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.veiculo_id, veiculos]);
+
   // MDF-e aberto do CT-e ou de rascunho já com o conjunto escolhido: as placas das carretas vêm dele (antes só ao trocar o veículo)
   useEffect(() => {
     if (ciotForm.implementos.trim() || !form.implemento_ids?.length) return;
@@ -434,7 +447,7 @@ function MdfePageInner() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade, ciot, ciot_codigo_verificador, ciot_protocolo, ibge_destino, tomador_tipo, remetente_cnpj, destinatario_cnpj").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade, ciot, ciot_codigo_verificador, ciot_protocolo, ibge_destino, tomador_tipo, remetente_cnpj, destinatario_cnpj, remetente_ie, destinatario_ie, conjunto_id, implemento_ids").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
@@ -669,6 +682,7 @@ function MdfePageInner() {
       if (data.Sucesso && data.Dados?.IdOperacaoTransporte) {
         const gerado = { id: data.Dados.IdOperacaoTransporte, cv: data.Dados.CodigoVerificador, protocolo: data.Dados.Protocolo ?? "" };
         setCiotGerado(gerado);
+        if (fazendaId) registrarConjuntoDigitado(supabase, { fazendaId, contaId: contaId ?? null, cavaloId: veiculo.id, texto: ciotForm.implementos, veiculos }).catch(() => {/* best-effort: não atrapalha o CIOT */});
         // Persiste CIOT imediatamente via API route (service_role_key — imune a JWT expirado)
         if (mdfeEdit?.id) {
           fetch("/api/mdfe/salvar-ciot", {
@@ -704,22 +718,52 @@ function MdfePageInner() {
     if (!c) return;
     try {
       const ids = [c.remetente_id, c.destinatario_id].filter(Boolean) as string[];
+      // CEP também quando remetente/destinatário é PRODUTOR (sem id de Pessoa no CT-e): pela IE e depois pelo CPF/CNPJ
+      const cx = c as typeof c & { remetente_ie?: string | null; destinatario_ie?: string | null };
+      const dig = (v?: string | null) => (v ?? "").replace(/\D/g, "");
+      const cepPorDoc = async (doc?: string | null, ie?: string | null): Promise<string> => {
+        if (dig(ie)) {
+          const { data } = await supabase.from("produtor_inscricoes_estaduais").select("inscricao_estadual, cep").in("fazenda_id", fazendaIds).not("cep", "is", null);
+          const hit = (data ?? []).find(r => dig(r.inscricao_estadual as string) === dig(ie) && dig(r.cep as string));
+          if (hit) return dig(hit.cep as string);
+        }
+        const d = dig(doc);
+        if (!d) return "";
+        const fmt = d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+        const [{ data: pr }, { data: pe }] = await Promise.all([
+          supabase.from("produtores").select("cep").or(`cpf_cnpj.eq.${d},cpf_cnpj.eq.${fmt}`).not("cep", "is", null).limit(5),
+          supabase.from("pessoas").select("cep").in("fazenda_id", fazendaIds).or(`cpf_cnpj.eq.${d},cpf_cnpj.eq.${fmt}`).not("cep", "is", null).limit(5),
+        ]);
+        return dig(((pr ?? []).find(x => dig(x.cep as string)) ?? (pe ?? []).find(x => dig(x.cep as string)))?.cep as string | undefined);
+      };
+      const [cepRemDoc, cepDestDoc] = await Promise.all([
+        c.remetente_id ? Promise.resolve("") : cepPorDoc(c.remetente_cnpj, cx.remetente_ie),
+        c.destinatario_id ? Promise.resolve("") : cepPorDoc(c.destinatario_cnpj, cx.destinatario_ie),
+      ]);
       const [pes, cfg] = await Promise.all([
         ids.length ? supabase.from("pessoas").select("id, cep").in("id", ids) : Promise.resolve({ data: [] as { id: string; cep: string | null }[] }),
         c.emitente_cnpj
           ? supabase.from("configuracoes_modulo").select("config").in("fazenda_id", fazendaIds).eq("modulo", `mdfe_emp_${c.emitente_cnpj.replace(/\D/g, "")}`)
           : Promise.resolve({ data: [] as { config: Record<string, string> }[] }),
       ]);
-      const cepDe = (pid?: string | null) => (pes.data ?? []).find(p => p.id === pid)?.cep?.replace(/\D/g, "") ?? "";
+      const cepPessoa = (pid?: string | null) => (pes.data ?? []).find(p => p.id === pid)?.cep?.replace(/\D/g, "") ?? "";
+      const cepRem = cepPessoa(c.remetente_id) || cepRemDoc, cepDest = cepPessoa(c.destinatario_id) || cepDestDoc;
       // CEPs também alimentam o formulário do CIOT (se ainda vazios)
-      setCiotForm(f => ({ ...f, cep_origem: f.cep_origem || cepDe(c.remetente_id), cep_destino: f.cep_destino || cepDe(c.destinatario_id) }));
+      // Dados do CIOT gravados no CT-e (Seção 383): distância, placas, CEPs, data fim e natureza — só o que estiver vazio
+      const { data: cd } = await supabase.from("ctes").select("ciot_dados").eq("id", id).maybeSingle();
+      const dc = ((cd as { ciot_dados?: Record<string, string> } | null)?.ciot_dados ?? {}) as Record<string, string>;
+      setCiotForm(f => ({ ...f,
+        cep_origem: f.cep_origem || dc.cep_origem || cepRem, cep_destino: f.cep_destino || dc.cep_destino || cepDest,
+        distancia_km: f.distancia_km || dc.distancia_km || "", implementos: f.implementos || dc.implementos || "",
+        data_fim: f.data_fim || dc.data_fim || "", natureza: dc.natureza || f.natureza, chave_pix: f.chave_pix || dc.chave_pix || "",
+      }));
       const conf = ((cfg.data ?? []) as { config: Record<string, string> }[]).map(r => r.config).find(x => x?.seguradora_nome || x?.apolice_numero) ?? {};
       setForm(f => ({
         ...f,
         produto_predominante: {
           ...f.produto_predominante,
-          cep_carregamento: f.produto_predominante.cep_carregamento || cepDe(c.remetente_id),
-          cep_descarregamento: f.produto_predominante.cep_descarregamento || cepDe(c.destinatario_id),
+          cep_carregamento: f.produto_predominante.cep_carregamento || cepRem,
+          cep_descarregamento: f.produto_predominante.cep_descarregamento || cepDest,
         },
         seguradora_nome: f.seguradora_nome || conf.seguradora_nome || "",
         seguradora_cnpj: f.seguradora_cnpj || conf.seguradora_cnpj || "",
@@ -768,6 +812,12 @@ function MdfePageInner() {
       const cteIds = marcando ? [...f.cte_ids, id] : f.cte_ids.filter(c => c !== id);
       const c = ctes.find(x => x.id === id);
       let extra: Partial<typeof f> = {};
+      // Carretas do CT-e → placas do CIOT (quando o CT-e foi emitido com o conjunto)
+      const implCte = (c as { implemento_ids?: string[] | null } | undefined)?.implemento_ids ?? [];
+      if (marcando && implCte.length) {
+        const placas = implCte.map(i => veiculos.find(v => v.id === i)?.placa ?? "").filter(Boolean).join(", ");
+        if (placas) setCiotForm(cf => cf.implementos.trim() ? cf : { ...cf, implementos: placas });
+      }
       // CIOT já emitido no CT-e vale para o MDF-e (Seção 296)
       if (marcando && c?.ciot && !ciotGerado) setCiotGerado({ id: c.ciot, cv: c.ciot_codigo_verificador ?? "", protocolo: c.ciot_protocolo ?? "" });
       // Emitente do MDF-e acompanha a transportadora do CT-e (se ainda não escolhido)
