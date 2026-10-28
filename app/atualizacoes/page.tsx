@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-b",
+    data: "28/10/2026",
+    titulo: "Lote processa NFs de insumos e associa itens pelo histórico",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Processar em lote com Estoque / Insumos agora processa as NFs de Insumos Agrícolas prontas: entram no estoque e geram o Contas a Pagar." },
+      { tipo: "novo", texto: "Itens sem insumo são associados sozinhos quando o mesmo produto do mesmo fornecedor já foi processado antes, ligado a um único insumo, com a mesma conversão de unidade." },
+      { tipo: "melhoria", texto: "Valem as travas do processamento individual (unidade, pedido, saldo, lotes de semente, OG, ano safra); a NF que não passa fica pendente com o motivo no resumo." },
+      { tipo: "correcao", texto: "Com \"não alterar\", NF ainda sem tipo de entrada não é mais processada como Apropriação Direta." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → ⚡ Processar em lote",
+  },
+  {
     versao: "2026.10.28-a",
     data: "28/10/2026",
     titulo: "Processar em lote completo e de um fornecedor só",

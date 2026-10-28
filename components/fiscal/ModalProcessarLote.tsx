@@ -19,7 +19,7 @@ import { useState, useEffect } from "react";
 import {
   atualizarNfEntrada,
   listarNfEntradaItens,
-  processarNfEntrada, verificarMovimentoEmpresaNf, registrarAutorizacaoMovimentoEmpresa,
+  processarNfEntrada, verificarMovimentoEmpresaNf, registrarAutorizacaoMovimentoEmpresa, limparMovimentacoesEFinanceiroDaNf,
   listarCentrosCustoGeralDaConta,
   listarDepositosMulti,
   listarOperacoesGerenciaisAtivasDaConta,
@@ -32,6 +32,7 @@ import type { NfEntrada, NfEntradaItem, Deposito, CentroCusto, OperacaoGerencial
 import { supabase } from "../../lib/supabase";
 import SelectBusca from "../SelectBusca";
 import { CFOPS_RETORNO_ARMAZENAGEM, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
+import { fatorUnidade } from "../../lib/estoque/unidades";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -44,6 +45,88 @@ const STATUS_PEDIDO: Record<string, string> = { rascunho: "rascunho", aprovado: 
 const dig = (v?: string | null) => (v ?? "").replace(/\D/g, "");
 // Mesma empresa = mesma raiz de CNPJ (matriz e filiais); CPF compara inteiro
 const raiz = (v?: string | null) => { const d = dig(v); return d.length === 14 ? d.slice(0, 8) : d; };
+
+
+type ItemPedido = { id: string; insumo_id: string | null; quantidade: number; qtd_cancelada: number | null; qtd_entregue: number | null; unidade: string | null };
+
+/** NF de Insumos pronta para processar em lote: as mesmas travas do processamento individual (ModalNf). Devolve o
+ *  motivo quando não está pronta — a NF fica pendente para ser aberta e ajustada. */
+async function motivoNaoProntaEstoque(itens: NfEntradaItem[], pedidoId: string | null | undefined, observacao: string | null | undefined): Promise<string | null> {
+  const comDescricao = itens.filter(it => (it.descricao_nf ?? it.descricao_produto ?? "").trim());
+  if (!comDescricao.length) return "sem itens";
+  const semProduto = comDescricao.filter(it => !it.insumo_id && !it.principio_ativo_id);
+  if (semProduto.length) return `${semProduto.length} item(ns) sem insumo associado ao catálogo`;
+  // Unidade que vai para o estoque = unidade do cadastro do insumo
+  const ids = [...new Set(comDescricao.map(it => it.insumo_id).filter((x): x is string => !!x))];
+  const { data: ins } = ids.length ? await supabase.from("insumos").select("id, nome, unidade").in("id", ids) : { data: [] };
+  const insPor = new Map((ins ?? []).map(i => [i.id as string, i as { id: string; nome: string; unidade: string }]));
+  for (const it of comDescricao) {
+    if (!it.insumo_id) continue;
+    const cad = insPor.get(it.insumo_id);
+    if (!cad) return `item "${it.descricao_nf}": insumo não encontrado`;
+    if (fatorUnidade(it.unidade, cad.unidade) !== 1) return `item "${it.descricao_nf}": unidade ${it.unidade || "—"} diferente da do cadastro (${cad.unidade}) — confira a conversão`;
+  }
+  // Lotes de semente: cada lote precisa de peso
+  for (const it of comDescricao) {
+    const lotes = it.lotes_semente ?? [];
+    if (lotes.length >= 2 && lotes.some(l => l.numero && !(l.quantidade_kg ?? 0))) return `item "${it.descricao_nf}": lote de semente sem peso`;
+  }
+  // Pedido vinculado: o item precisa constar no pedido, na linha certa e dentro do saldo (exceção só com justificativa)
+  if (pedidoId) {
+    const { data: linhasPed } = await supabase.from("pedidos_compra_itens").select("id, insumo_id, quantidade, qtd_cancelada, qtd_entregue, unidade").eq("pedido_id", pedidoId);
+    const linhas = (linhasPed ?? []) as ItemPedido[];
+    const excecoes: string[] = [];
+    for (const it of comDescricao) {
+      if (!it.insumo_id) continue;
+      const doProduto = linhas.filter(l => l.insumo_id === it.insumo_id);
+      if (doProduto.length > 1 && !it.pedido_item_id) return `item "${it.descricao_nf}": o pedido tem o produto em mais de uma linha — indique a linha na NF`;
+      if (!doProduto.length) { excecoes.push(`"${it.descricao_nf}" não consta no pedido`); continue; }
+      const linha = doProduto.length === 1 ? doProduto[0] : doProduto.find(l => l.id === it.pedido_item_id);
+      if (!linha || fatorUnidade(linha.unidade, insPor.get(it.insumo_id)?.unidade) !== 1) continue;
+      const saldo = Number(linha.quantidade) - Number(linha.qtd_cancelada ?? 0) - Number(linha.qtd_entregue ?? 0);
+      if (Number(it.quantidade) > saldo + 0.001) excecoes.push(`"${it.descricao_nf}" acima do saldo do pedido (${Math.max(0, saldo)})`);
+    }
+    if (excecoes.length && (observacao ?? "").trim().length < 15) return `divergência com o pedido: ${excecoes.join("; ")} — corrija ou justifique na Observação da NF`;
+  }
+  return null;
+}
+
+
+const normTxt = (t: unknown) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+
+/** Associa ao catálogo os itens ainda sem insumo pelo histórico: o mesmo produto (descrição e unidade da NF) do mesmo
+ *  fornecedor já processado antes ligado a UM único insumo, com a mesma conversão de unidade. Item ambíguo ou sem
+ *  histórico fica como está. Não grava nada: devolve os itens com a associação aplicada. */
+async function associarPeloHistorico(itens: NfEntradaItem[], emitenteCnpj: string | null | undefined, fazendaIds: string[]): Promise<NfEntradaItem[]> {
+  const doc = dig(emitenteCnpj);
+  if (!doc || !itens.some(it => !it.insumo_id && !it.principio_ativo_id)) return itens;
+  const fmt = doc.length === 14 ? doc.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : doc;
+  const { data: nfsAnt } = await supabase.from("nf_entradas").select("id").in("fazenda_id", fazendaIds)
+    .eq("status", "processada").or(`emitente_cnpj.eq.${doc},emitente_cnpj.eq.${fmt}`).order("data_emissao", { ascending: false }).limit(300);
+  const ids = (nfsAnt ?? []).map(n => n.id as string);
+  if (!ids.length) return itens;
+  const hist = new Map<string, { insumos: Set<string>; fatores: Set<string>; unidade: string; nome: string }>();
+  for (let k = 0; k < ids.length; k += 150) {
+    const { data } = await supabase.from("nf_entrada_itens").select("descricao_nf, unidade_nf, unidade, insumo_id, descricao_produto, quantidade, qtd_nf, tipo_apropiacao")
+      .in("nf_entrada_id", ids.slice(k, k + 150)).eq("tipo_apropiacao", "estoque").not("insumo_id", "is", null);
+    for (const h of (data ?? []) as { descricao_nf: string; unidade_nf: string | null; unidade: string | null; insumo_id: string; descricao_produto: string | null; quantidade: number; qtd_nf: number | null }[]) {
+      const chave = `${normTxt(h.descricao_nf)}|${normTxt(h.unidade_nf)}`;
+      const fator = h.qtd_nf && Number(h.qtd_nf) > 0 ? Math.round(Number(h.quantidade) / Number(h.qtd_nf) * 1e6) / 1e6 : 1;
+      const e = hist.get(chave) ?? { insumos: new Set<string>(), fatores: new Set<string>(), unidade: h.unidade ?? "", nome: h.descricao_produto ?? "" };
+      e.insumos.add(h.insumo_id); e.fatores.add(String(fator));
+      hist.set(chave, e);
+    }
+  }
+  return itens.map(it => {
+    if (it.insumo_id || it.principio_ativo_id) return it;
+    const h = hist.get(`${normTxt(it.descricao_nf)}|${normTxt(it.unidade_nf ?? it.unidade)}`);
+    if (!h || h.insumos.size !== 1 || h.fatores.size !== 1) return it;
+    const fator = Number([...h.fatores][0]) || 1;
+    const qtdNf = Number(it.qtd_nf ?? it.quantidade);
+    return { ...it, insumo_id: [...h.insumos][0], unidade: h.unidade || it.unidade, unidade_nf: it.unidade_nf ?? it.unidade,
+      qtd_nf: qtdNf, quantidade: Math.round(qtdNf * fator * 1e6) / 1e6, fator_conversao: fator, descricao_produto: h.nome || it.descricao_produto };
+  });
+}
 
 export default function ModalProcessarLote({
   nfs, onClose, onSaved,
@@ -138,7 +221,8 @@ export default function ModalProcessarLote({
     if (!nfs.length || !fornecedorUnico) return;
     setSaving(true);
     const erros: string[] = [];
-    let processadas = 0, salvas = 0;
+    let processadas = 0;
+    const salvas: string[] = [];
     const tipoDest = settings.tipo_destino;
     const ped = settings.pedido_compra_id ? pedidos.find(x => x.id === settings.pedido_compra_id) : undefined;
 
@@ -178,21 +262,47 @@ export default function ModalProcessarLote({
         if (Object.keys(upd).length) await atualizarNfEntrada(nfTyped.id, upd);
 
         // 2. Apropriação direta processa agora; estoque fica pendente para associar os itens ao catálogo
+        // "— não alterar —" com NF ainda sem tipo (a maioria das que chegam pelo SIEG): não adivinha — antes virava
+        // Apropriação Direta sem ninguém ter escolhido
         const tipoEfetivo = tipoDest === "direto" ? "custo_direto"
           : tipoDest === "estoque" ? settings.tipo_estoque
-          : (nfTyped.tipo_entrada ?? "custo_direto");
+          : nfTyped.tipo_entrada;
+        if (!tipoEfetivo) { salvas.push(`NF ${nfRef.numero}: sem tipo de entrada — escolha Estoque ou Apropriação Direta no lote`); continue; }
 
-        if (tipoEfetivo !== "custo_direto") { salvas++; continue; }
-        // Mesmas exigências do processamento individual: OG, centro de custo e ano safra
+        // Peças e combustível pedem dados por item (máquina, bomba): ficam para o processamento individual
+        if (tipoEfetivo !== "custo_direto" && tipoEfetivo !== "insumos") {
+          const rotulo: Record<string, string> = { combustivel: "combustível", pecas: "peças / manutenção", vef: "entrega de compra futura (VEF)", remessa: "entrega de compra futura (VEF)" };
+          salvas.push(`NF ${nfRef.numero}: ${rotulo[tipoEfetivo] ?? tipoEfetivo} — processe individualmente`); continue;
+        }
+        // Operação gerencial é obrigatória (como no individual); centro de custo só na apropriação direta
         if (!ogId) { erros.push(`NF ${nfRef.numero}: sem Operação Gerencial — escolha no lote ou na NF`); continue; }
-        if (!ccId) { erros.push(`NF ${nfRef.numero}: sem Centro de Custo — escolha no lote ou na NF`); continue; }
+        if (tipoEfetivo === "custo_direto" && !ccId) { erros.push(`NF ${nfRef.numero}: sem Centro de Custo — escolha no lote ou na NF`); continue; }
 
         const itensNf = await listarNfEntradaItens(nfTyped.id);
-        const itensDireto = itensNf.map(it => ({
-          ...it,
-          tipo_apropiacao: "direto" as NfEntradaItem["tipo_apropiacao"],
-          centro_custo_id: ccId,
-        }));
+        let itensProc: NfEntradaItem[];
+        if (tipoEfetivo === "custo_direto") {
+          itensProc = itensNf.map(it => ({ ...it, tipo_apropiacao: "direto" as NfEntradaItem["tipo_apropiacao"], centro_custo_id: ccId }));
+        } else {
+          // Insumos: associa pelo histórico do fornecedor o que ainda não tem insumo; processa só se todos os itens
+          // ficaram associados ao catálogo e passam nas travas do individual
+          const associados = await associarPeloHistorico(itensNf, nfTyped.emitente_cnpj, fazendaIds.length ? fazendaIds : [batchFazendaId]);
+          const motivo = await motivoNaoProntaEstoque(associados, settings.pedido_compra_id || nfTyped.pedido_compra_id, nfTyped.observacao);
+          if (motivo) { salvas.push(`NF ${nfRef.numero}: ${motivo}`); continue; }
+          // Estoque nunca leva centro de custo na entrada (custo é apropriado no consumo); depósito do item, do lote ou da NF
+          const dep = settings.deposito_destino_id || (nfTyped as unknown as { deposito_destino_id?: string }).deposito_destino_id || undefined;
+          itensProc = associados.map(it => ({ ...it, tipo_apropiacao: (it.tipo_apropiacao === "direto" ? "direto" : "estoque") as NfEntradaItem["tipo_apropiacao"],
+            centro_custo_id: it.tipo_apropiacao === "direto" ? it.centro_custo_id : undefined, maquina_id: undefined, deposito_id: it.deposito_id || dep }));
+          // Grava nos itens a associação, a conversão, o depósito e a apropriação (o individual recria os itens; aqui atualiza)
+          for (const it of itensProc) {
+            const { error: eIt } = await supabase.from("nf_entrada_itens").update({
+              insumo_id: it.insumo_id ?? null, unidade: it.unidade ?? null, unidade_nf: it.unidade_nf ?? null, qtd_nf: it.qtd_nf ?? null,
+              quantidade: it.quantidade, fator_conversao: it.fator_conversao ?? 1, descricao_produto: it.descricao_produto ?? null,
+              deposito_id: it.deposito_id ?? null, tipo_apropiacao: it.tipo_apropiacao, centro_custo_id: it.centro_custo_id ?? null, maquina_id: null,
+            }).eq("id", it.id);
+            if (eIt) throw eIt;
+          }
+          await limparMovimentacoesEFinanceiroDaNf(nfTyped.id);
+        }
         const movEmp = await verificarMovimentoEmpresaNf(nfTyped.id);
         if (movEmp) {
           const ok = window.confirm(`NF ${nfTyped.numero}: destinada à empresa ${movEmp.empresa} (CNPJ ${movEmp.cnpj}). O financeiro vai para o CP da EMPRESA e os CPs do produtor desta NF serão cancelados.\n\nAutoriza? Fica registrado no log.`);
@@ -206,7 +316,7 @@ export default function ModalProcessarLote({
         await processarNfEntrada(
           nfTyped.id,
           nfTyped.fazenda_id ?? batchFazendaId,
-          itensDireto,
+          itensProc,
           nfTyped.valor_total,
           nfTyped.emitente_nome,
           // Bug real 02/10/2026: ordem invertida (data_emissao primeiro) descartava a
@@ -217,11 +327,11 @@ export default function ModalProcessarLote({
             nfeNumero:             nfTyped.numero,
             dataVencimentoCp:      settings.data_vencimento_cp || nfTyped.data_vencimento_cp || dups[0]?.data_vencimento || undefined,
             formaPagamento:        nfTyped.forma_pagamento || undefined,
-            tipoEntrada:           "custo_direto",
+            tipoEntrada:           tipoEfetivo,
             anoSafraId:            settings.ano_safra_id || nfTyped.ano_safra_id || undefined,
             cicloId:               cicId || undefined,
             operacaoGerencialId:   ogId,
-            centroCustoId:         ccId,
+            centroCustoId:         ccId || undefined,
             pedidoCompraId:        settings.pedido_compra_id || nfTyped.pedido_compra_id || undefined,
             produtorId:            nfTyped.produtor_id || undefined,
             parcelas,
@@ -235,9 +345,12 @@ export default function ModalProcessarLote({
     setSaving(false);
     onSaved();
     onClose();
-    const resumo = [processadas ? `${processadas} processada(s)` : "", salvas ? `${salvas} salva(s) pendente(s) para associar os itens` : ""].filter(Boolean).join(" · ");
-    if (erros.length) alert(`${resumo ? resumo + "\n\n" : ""}Não processadas:\n${erros.join("\n")}`);
-    else if (resumo) alert(resumo);
+    const partes = [
+      `${processadas} NF(s) processada(s).`,
+      salvas.length ? `\nCampos gravados, NF continua pendente (abra para ajustar):\n${salvas.join("\n")}` : "",
+      erros.length ? `\nNão processadas:\n${erros.join("\n")}` : "",
+    ].filter(Boolean);
+    alert(partes.join("\n"));
   }
 
   return (
@@ -389,12 +502,12 @@ export default function ModalProcessarLote({
         )}
         {settings.tipo_destino === "estoque" && (
           <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1D4ED8", marginBottom: 16 }}>
-            ℹ <strong>Estoque / Insumos</strong>: os campos acima são gravados em todas as NFs, que continuam <em>Pendentes</em> — abra cada uma para associar os itens ao catálogo e processar.
+            ℹ <strong>Estoque / Insumos</strong>: os campos acima são gravados em todas as NFs. As de <strong>Insumos Agrícolas</strong> com todos os itens já associados ao catálogo (unidade do cadastro, linha e saldo do pedido conferidos) são processadas agora: entram no estoque e geram o Contas a Pagar. As demais — e as de Peças e Combustível — continuam <em>Pendentes</em>, e o resumo diz o que falta em cada uma. Cada NF precisa de Operação Gerencial e Ano Safra.
           </div>
         )}
         {settings.tipo_destino === "" && (
           <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>
-            NFs já marcadas como <strong>Apropriação Direta</strong> são processadas; as de estoque só recebem os campos acima e continuam pendentes.
+            Cada NF segue o tipo que já tem: Apropriação Direta e Insumos com os itens já associados são processadas; as outras recebem os campos acima e continuam pendentes.
           </div>
         )}
 
@@ -405,7 +518,7 @@ export default function ModalProcessarLote({
             disabled={saving || !fornecedorUnico}
             style={{ ...btnV, opacity: (saving || !fornecedorUnico) ? 0.5 : 1, cursor: saving || !fornecedorUnico ? "default" : "pointer" }}
           >
-            {saving ? "Processando…" : settings.tipo_destino === "estoque" ? "Aplicar às NFs" : "Aplicar e Processar"}
+            {saving ? "Processando…" : "Aplicar e Processar"}
           </button>
         </div>
       </div>
