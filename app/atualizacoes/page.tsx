@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-d",
+    data: "28/10/2026",
+    titulo: "Retorno exige a remessa",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Em Retornos, a NF de retorno de mercadoria só é processada ligada à remessa de origem. Se a remessa não aparece, registre-a antes em Remessas (inclusive emitida em outro sistema)." },
+    ],
+    onde: "Documentos Fiscais → Retornos",
+  },
+  {
     versao: "2026.10.28-c",
     data: "28/10/2026",
     titulo: "Contrato financeiro: TFB/TFBD, credor e data lidos do PDF",

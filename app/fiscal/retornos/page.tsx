@@ -151,7 +151,9 @@ function RetornosConteudo() {
     const semQtd = itens.find(e => !(parseFloat(e.qtd.replace(",", ".")) > 0));
     if (semQtd) { setErro(`Informe a quantidade, na unidade do cadastro, de "${semQtd.item.descricao_nf ?? semQtd.item.descricao_produto}".`); return; }
     const rem = abertas.find(r => r.id === remessaId);
-    if (rem && !("valor_retornado" in rem)) { setErro("Para ligar o retorno à remessa, rode antes a Seção 377 do supabase_migrations.sql (retorno parcial)."); return; }
+    // Retorno sempre referencia a remessa de origem: sem ela não há o que baixar no armazém nem como controlar o saldo
+    if (!rem) { setErro("Escolha a remessa que está retornando. Se ela não aparece na lista, registre-a antes em Remessas (inclusive NF emitida em outro sistema)."); return; }
+    if (!("valor_retornado" in rem)) { setErro("Para ligar o retorno à remessa, rode antes a Seção 377 do supabase_migrations.sql (retorno parcial)."); return; }
     const valorNf = Number(nfSel.valor_total ?? 0);
     const fecha = rem ? valorNf >= saldoRemessa(rem) - 0.01 : false;
     if (!(await confirmarAcao({ titulo: "Processar retorno?", perigo: false,
@@ -356,13 +358,15 @@ function RetornosConteudo() {
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={lbl}>Remessa que está retornando</label>
-                <select value={remessaId} onChange={e => setRemessaId(e.target.value)} style={inp}>
-                  <option value="">— não vincular a nenhuma remessa —</option>
+                <select value={remessaId} onChange={e => setRemessaId(e.target.value)} style={{ ...inp, ...(remessaId ? {} : { borderColor: "#C9921B" }) }}>
+                  <option value="">— escolha a remessa (obrigatório) —</option>
                   {abertas.map(r => (
                     <option key={r.id} value={r.id}>NF {r.nf_remessa_numero ?? "s/nº"}{r.nf_remessa_data ? ` de ${fmtData(r.nf_remessa_data)}` : ""} · {r.destinatario_nome} · CFOP {r.cfop_remessa} · falta voltar {fmtBRL(saldoRemessa(r))}</option>
                   ))}
                 </select>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{abertas.length === 0 ? "Nenhuma remessa aguardando retorno." : "Ao processar, a remessa escolhida passa a Retornada com os dados desta NF."}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{abertas.length === 0
+                  ? <>Nenhuma remessa aguardando retorno. Registre a remessa de origem em <Link href="/fiscal/remessas" style={{ color: "#1A4870" }}>Remessas</Link> antes de processar.</>
+                  : "Obrigatório: o retorno baixa o saldo desta remessa e, quando volta tudo, ela passa a Retornada."}</div>
               </div>
               <div>
                 <label style={lbl}>Depósito para onde a mercadoria volta</label>
