@@ -920,7 +920,7 @@ function MdfePageInner() {
       }
 
       const payload = {
-        fazenda_id: fazendaId,
+        fazenda_id: mdfeEdit?.fazenda_id ?? fazendaId, // editar não muda a fazenda do documento
         numero_mdfe: form.numero_mdfe.trim(),
         serie: form.serie,
         chave_acesso: mdfeEdit?.chave_acesso ?? null,
@@ -970,6 +970,22 @@ function MdfePageInner() {
       // Colunas adicionadas por migrations recentes (Seções 293, 297, 298). Se alguma ainda não
       // existe no banco, salva SEM elas (em vez de travar o salvamento) e avisa quais ficaram de fora.
       const COLUNAS_NOVAS = ["veiculo_manual", "seguradora_nome", "seguradora_cnpj", "apolice_numero", "averbacao_numero", "pag_pix", "pag_cod_banco", "pag_agencia", "emitente_id", "emitente_cnpj", "emitente_razao_social"];
+      // MDF-e já transmitido: o documento não muda mais — só o CIOT pode ser gravado. Confere no banco (não na cópia
+      // aberta na tela): achado real 28/10/2026, a tela aberta antes da autorização salvou por cima e devolveu o
+      // MDF-e 3342 autorizado para "rascunho", sem chave.
+      if (mdfeEdit) {
+        const { data: atual } = await supabase.from("mdfes").select("status, chave_acesso").eq("id", mdfeEdit.id).maybeSingle();
+        if (atual && (atual.status !== "rascunho" || atual.chave_acesso)) {
+          if (ciotGerado?.id) {
+            const { error: e2 } = await supabase.from("mdfes").update({ ciot: ciotGerado.id, ciot_codigo_verificador: ciotGerado.cv ?? null, ciot_protocolo: ciotGerado.protocolo ?? null }).eq("id", mdfeEdit.id);
+            if (e2) throw e2;
+          }
+          await carregar();
+          setModal(false);
+          alert(`Este MDF-e já foi transmitido (${atual.status}) — os dados do documento não podem mais ser alterados.${ciotGerado?.id ? " O CIOT foi gravado." : ""}`);
+          return;
+        }
+      }
       const gravar = async (dados: Record<string, unknown>) => mdfeEdit
         ? supabase.from("mdfes").update(dados).eq("id", mdfeEdit.id)
         : supabase.from("mdfes").insert(dados);

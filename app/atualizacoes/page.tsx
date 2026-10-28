@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.28-m",
+    data: "28/10/2026",
+    titulo: "MDF-e autorizado não volta mais para rascunho",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar um MDF-e numa tela aberta antes da autorização gravava por cima e devolvia o MDF-e autorizado para rascunho, sem chave. Agora o sistema confere no banco: MDF-e já transmitido não tem os dados alterados — só o CIOT é gravado." },
+      { tipo: "correcao", texto: "Editar um MDF-e não troca mais a fazenda do documento pela fazenda selecionada na tela." },
+    ],
+    onde: "Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.10.28-l",
     data: "28/10/2026",
     titulo: "CT-e e MDF-e com conjunto e motorista sem cadastro",
