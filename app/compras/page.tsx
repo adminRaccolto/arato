@@ -2317,7 +2317,7 @@ export default function ComprasPage() {
                                     }
                                     return (
                                       <SelectField style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, unidade: e.target.value } : x))}>
-                                        {["kg","sc","bag","t","L","mL","g","un","cx","ds","m","m²","m³","hr", ...(it.unidade && !["kg","sc","bag","t","L","mL","g","un","cx","ds","m","m²","m³","hr"].includes(it.unidade) ? [it.unidade] : [])].map(u => <option key={u} value={u}>{u}</option>)}
+                                        {["kg","sc","bag","t","L","mL","g","un","cx","dose","m","m²","m³","hr", ...(it.unidade && !["kg","sc","bag","t","L","mL","g","un","cx","dose","m","m²","m³","hr"].includes(it.unidade) ? [it.unidade] : [])].map(u => <option key={u} value={u}>{u}</option>)}
                                       </SelectField>
                                     );
                                   })()}
@@ -2952,7 +2952,7 @@ export default function ComprasPage() {
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Unidade *</label>
                 <SelectField style={inp} value={novoInsumoForm.unidade} onChange={e => setNovoInsumoForm(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                  {(["kg","g","L","mL","sc","t","un","m","m2","cx","ds","pc","par","outros"] as Insumo["unidade"][]).map(u => <option key={u} value={u}>{u === "t" ? "t (tonelada)" : u}</option>)}
+                  {(["kg","g","L","mL","sc","t","un","m","m2","cx","dose","pc","par","outros"] as Insumo["unidade"][]).map(u => <option key={u} value={u}>{u === "t" ? "t (tonelada)" : u}</option>)}
                 </SelectField>
               </div>
             </div>

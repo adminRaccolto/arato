@@ -5165,7 +5165,7 @@ function CadastrosInner() {
                             <option value="m">m (metro)</option>
                             <option value="m2">m² (metro quadrado)</option>
                             <option value="cx">cx (caixa)</option>
-                            <option value="ds">ds (dose)</option>
+                            <option value="dose">dose</option>
                             <option value="pc">pc (peça)</option>
                             <option value="par">par</option>
                             <option value="outros">outros</option>
@@ -5733,7 +5733,7 @@ function CadastrosInner() {
                           <option value="m">m (metro)</option>
                           <option value="m2">m² (metro quadrado)</option>
                           <option value="cx">cx (caixa)</option>
-                          <option value="ds">ds (dose)</option>
+                          <option value="dose">dose</option>
                           <option value="pc">pc (peça)</option>
                           <option value="par">par</option>
                           <option value="outros">outros</option>

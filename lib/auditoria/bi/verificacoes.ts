@@ -8,7 +8,7 @@ const UNIDADES: Record<string, string> = {
   l: "L", lt: "L", lts: "L", litro: "L", litros: "L",
   un: "UN", und: "UN", unid: "UN", unidade: "UN", unidades: "UN", pc: "UN", pca: "UN", peca: "UN", pecas: "UN",
   sc: "SC", saca: "SC", sacas: "SC", t: "T", ton: "T", tonelada: "T", toneladas: "T",
-  g: "G", gr: "G", grama: "G", ml: "ML", bag: "BAG", bg: "BAG", bags: "BAG", cx: "CX", caixa: "CX", ds: "DS", dz: "DS", dose: "DS", doses: "DS", gl: "GL", galao: "GL",
+  g: "G", gr: "G", grama: "G", ml: "ML", bag: "BAG", bg: "BAG", bags: "BAG", cx: "CX", caixa: "CX", ds: "DOSE", dz: "DOSE", dose: "DOSE", doses: "DOSE", gl: "GL", galao: "GL",
 };
 /** KG, L, UN, SC… — "Kg", "KGS" e "quilo" são a mesma unidade. */
 export const normalizarUnidade = (u?: string | null): string => {

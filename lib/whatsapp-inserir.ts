@@ -1988,7 +1988,7 @@ function mapearUnidade(u: string): string {
   if (n === "t" || n.startsWith("tonelada")) return "t";
   if (n === "sc" || n.startsWith("saca")) return "sc";
   if (n === "cx" || n.startsWith("caixa")) return "cx";
-  if (n === "ds" || n === "dz" || n.startsWith("dose")) return "ds";
+  if (n === "ds" || n === "dz" || n.startsWith("dose")) return "dose";
   if (n === "m2" || n === "m²") return "m2";
   if (n === "m") return "m";
   if (n === "par") return "par";

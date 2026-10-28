@@ -147,7 +147,7 @@ function normalizarUnidadeMed(u: string): string {
   if (["un","uni","unid","unidade","unidades","und","unit","pç","pc","peca","pecas"].includes(s)) return "un";
   if (["ha","hect","hectare","hectares"].includes(s)) return "ha";
   if (["cx","caixa","caixas"].includes(s)) return "cx";
-  if (["ds","dz","dose","doses"].includes(s)) return "ds";
+  if (["dose","doses","ds","dz"].includes(s)) return "dose";
   return s;
 }
 
@@ -2667,7 +2667,7 @@ export default function Estoque() {
                   <option value="m">m (metro)</option>
                   <option value="m2">m²</option>
                   <option value="cx">cx (caixa)</option>
-                  <option value="ds">ds (dose)</option>
+                  <option value="dose">dose</option>
                   <option value="pc">pc (peça)</option>
                   <option value="par">par</option>
                   <option value="outros">outros</option>

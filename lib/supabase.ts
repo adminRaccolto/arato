@@ -180,7 +180,7 @@ export type Insumo = {
   grupo_id?: string;     // FK grupos_insumos
   cultura_id?: string | null;  // FK culturas.id — só para categoria=produto_agricola
   ncm?: string | null;         // NCM do produto — herdado de culturas.ncm, editável para subprodutos
-  unidade: "kg" | "g" | "L" | "mL" | "sc" | "bag" | "t" | "ton" | "un" | "m" | "m2" | "cx" | "ds" | "pc" | "par" | "outros";
+  unidade: "kg" | "g" | "L" | "mL" | "sc" | "bag" | "t" | "ton" | "un" | "m" | "m2" | "cx" | "dose" | "pc" | "par" | "outros";
   fabricante?: string;
   estoque: number;
   estoque_minimo: number;

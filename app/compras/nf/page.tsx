@@ -5330,7 +5330,7 @@ export default function NfCompraPage() {
                     <option value="m">Metro (m)</option>
                     <option value="m2">Metro² (m²)</option>
                     <option value="cx">Caixa (cx)</option>
-                    <option value="ds">Dose (ds)</option>
+                    <option value="dose">Dose</option>
                     <option value="pc">Peça (pc)</option>
                     <option value="par">Par</option>
                     <option value="outros">Outros</option>
