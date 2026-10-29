@@ -18617,3 +18617,13 @@ ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_100_horas numeric(8,2
 ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_valor numeric(14,2) DEFAULT 0;
 ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_dsr numeric(14,2) DEFAULT 0;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 391 — NF de entrada: tipo "Máquinas e Equipamentos (Imobilizado)"
+-- =============================================================================
+-- Novo tipo_entrada 'imobilizado' (compra de máquina/equipamento: sem estoque, OG de aquisição/CAPEX, cadastra ou
+-- vincula a máquina). O check passa a listar todos os tipos usados hoje (inclui 'pecas', que já existe nos dados).
+ALTER TABLE nf_entradas DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check;
+ALTER TABLE nf_entradas ADD CONSTRAINT nf_entradas_tipo_entrada_check
+  CHECK (tipo_entrada IS NULL OR tipo_entrada IN ('consumo','insumos','combustivel','pecas','custo_direto','imobilizado','vef','remessa','devolucao_compra'));
+NOTIFY pgrst, 'reload schema';

@@ -40,7 +40,7 @@ import {
   aplicarRegraClassificacao,
   listarOperacoesGerenciaisAtivasDaConta,
   verificarExclusaoNf,
-  listarMaquinas,
+  listarMaquinas, criarMaquina,
   listarBombas,
   listarAnosSafra,
   listarCiclos,
@@ -51,6 +51,7 @@ import type { ItemDevolucao } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
 import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
+import { tipoMaquinaDaDescricao, aquisicaoParaAtualizar } from "../../lib/maquinas/da-nf";
 import InputMonetario from "../InputMonetario";
 import InputNumerico from "../InputNumerico";
 import SelectBusca from "../SelectBusca";
@@ -136,6 +137,7 @@ const TIPO_META: Record<string, { bg: string; cl: string; label: string }> = {
   combustivel:      { bg: "#FFF0E0", cl: "#7C3A00", label: "Combustível"  },
   pecas:            { bg: "#E0F0FF", cl: "#0A4B8C", label: "Peças / Manut." },
   custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
+  imobilizado:      { bg: "#EDE9FB", cl: "#4B3B9B", label: "Imobilizado" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"           },
   remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"       },
   devolucao_compra: { bg: "#FCEBEB", cl: "#791F1F", label: "Devolução"     },
@@ -336,12 +338,13 @@ const ITEM_VAZIO = (): ItemRascunho => ({
 
 type Etapa = "cabecalho" | "itens";
 type OrigEscolha = "manual" | "xml" | "sieg" | "leitor";
-type TipoEntrada = "insumos" | "pecas" | "vef" | "remessa" | "custo_direto";
+type TipoEntrada = "insumos" | "pecas" | "vef" | "remessa" | "custo_direto" | "imobilizado";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
   insumos:      { label: "Insumos/Combustíveis (Para Estoque)", desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo de insumos ou combustíveis.",          cor: "#E8E8E8" },
   pecas:        { label: "Peças / Manutenção",       desc: "Compra de peças, pneus ou serviços de manutenção. Cada item é vinculado à maquinário do cadastro.",                    cor: "#E0F0FF" },
   custo_direto: { label: "Apropriação Direta",       desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).",       cor: "#E8F5E9" },
+  imobilizado:  { label: "Máquinas e Equipamentos (Imobilizado)", desc: "Compra de máquina, veículo, implemento ou equipamento (investimento, fora da DRE). Não entra no estoque; gera o Contas a Pagar e cadastra/vincula a máquina com NF, data e valor de aquisição.", cor: "#EDE9FB" },
   vef:          { label: "Entrega Futura (VEF)",     desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                            cor: "#FAEEDA" },
   remessa:      { label: "Entrega de compra futura",desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                         cor: "#E6F1FB" },
 };
@@ -447,6 +450,16 @@ export default function ModalNf({
   // Operações Gerenciais ativas — usado no select do cabeçalho e no cálculo
   // de modoDireto (combustível/manutenção/CC) em Apropriação Direta.
   const [reclassOps, setReclassOps] = useState<OperacaoGerencial[]>([]);
+  // Máquinas e Equipamentos (Imobilizado): OG de aquisição (CAPEX, fora da DRE) e item sem estoque; cada item, por
+  // padrão, cadastra uma máquina nova ("__nova__") — o usuário pode trocar por uma já cadastrada ou não vincular
+  useEffect(() => {
+    if (tipo !== "imobilizado") return;
+    const ogCapex = reclassOps.find(o => o.classificacao === OG_ATIVO_IMOBILIZADO_CODIGO);
+    if (ogCapex) setCab(p => (p.operacao_gerencial_id ? p : { ...p, operacao_gerencial_id: ogCapex.id }));
+    // NF já gravada como imobilizado mantém a escolha feita ("" = não vincular)
+    const jaGravada = nfEdit?.tipo_entrada === "imobilizado";
+    setItens(prev => prev.map(it => ({ ...it, tipo_apropiacao: "direto", maquina_id: it.maquina_id || (jaGravada ? "" : "__nova__") })));
+  }, [tipo, reclassOps]); // eslint-disable-line react-hooks/exhaustive-deps
   // Previsão de Gastos (Seção 352): NF que consome uma previsão em aberto ao ser processada
   type PrevAbertaNf = { id: string; og_classificacao: string; og_nome: string; pessoa_nome: string; descricao: string | null; saldo: number; data_vencimento: string };
   const [prevAbertasNf, setPrevAbertasNf] = useState<PrevAbertaNf[]>([]);
@@ -684,7 +697,7 @@ export default function ModalNf({
     // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
     // Sem tipo gravado, o CFOP sugere: simples faturamento → Entrega Futura (VEF); remessa de entrega futura → Entrega
     const cfopNfAbrir = String(nf.cfop ?? "").replace(/\D/g, "");
-    const tipoPeloCfop: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(cfopNfAbrir) ? "vef" : CFOPS_ENTREGA_FUTURA.has(cfopNfAbrir) ? "remessa" : null;
+    const tipoPeloCfop: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(cfopNfAbrir) ? "vef" : CFOPS_ENTREGA_FUTURA.has(cfopNfAbrir) ? "remessa" : CFOPS_COMPRA_BEM.has(cfopNfAbrir) ? "imobilizado" : null;
     setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? tipoPeloCfop ?? "insumos")) as TipoEntrada);
     // "pecas" é um TipoEntrada válido — não remapeia
     setCab({
@@ -1373,7 +1386,7 @@ export default function ModalNf({
     // forma correta de lançar algo sem produto — continua permitido sem associação.
     for (const it of itens) {
       if (!it.descricao_nf.trim()) continue;
-      if (tipo === "custo_direto" || it.tipo_apropiacao === "direto" || it.tipo_apropiacao === "maquinario") continue;
+      if (tipo === "custo_direto" || tipo === "imobilizado" || it.tipo_apropiacao === "direto" || it.tipo_apropiacao === "maquinario") continue;
       if (!it.insumo_id && !it.principio_ativo_id) {
         setErr(`Item "${it.descricao_nf}": associe um insumo ou princípio ativo do catálogo antes de processar. Se não for um produto de estoque, lance-o numa NF do tipo "Apropriação Direta".`);
         return;
@@ -1433,6 +1446,11 @@ export default function ModalNf({
     // decide o que cada item precisa — combustível pede o veículo, manutenção
     // pede rateio por frota somando 100%, qualquer outra OG pede o CC. Os três
     // são obrigatórios no seu respectivo modo (nenhum item passa em branco).
+    // Máquinas e Equipamentos: precisa da Operação Gerencial (normalmente AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM., CAPEX)
+    if (tipo === "imobilizado" && !cab.operacao_gerencial_id) {
+      setErr("Máquinas e Equipamentos: escolha a Operação Gerencial (ex.: AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM.) no cabeçalho.");
+      return;
+    }
     if (tipo === "custo_direto") {
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
@@ -1527,6 +1545,29 @@ export default function ModalNf({
       await limparMovimentacoesEFinanceiroDaNf(nfEdit.id);
       await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
 
+      // 1a. Máquinas e Equipamentos: cadastra a máquina dos itens marcados "nova" (descrição, NF, data e valor de
+      //     aquisição) e completa NF/data/valor das já cadastradas que estiverem em branco. A máquina criada fica no
+      //     item (maquina_id) — reprocessar a NF não cria de novo.
+      if (tipo === "imobilizado") {
+        for (const it of itens) {
+          if (!it.descricao_nf.trim()) continue;
+          if (it.maquina_id === "__nova__") {
+            const nova = await criarMaquina({
+              fazenda_id: fazendaId, nome: it.descricao_nf.trim().slice(0, 120), tipo: tipoMaquinaDaDescricao(it.descricao_nf),
+              nr_nf_aquisicao: cab.numero || undefined, data_aquisicao: cab.data_emissao || undefined,
+              valor_aquisicao: Math.round((it.valor_total || 0) * 100) / 100, status_financiamento: "proprio", ativa: true,
+            } as Omit<Maquina, "id" | "created_at">);
+            it.maquina_id = nova.id;
+            setMaquinas(prev => [...prev, nova]);
+          } else if (it.maquina_id) {
+            const m = maquinas.find(x => x.id === it.maquina_id);
+            const patch = m ? aquisicaoParaAtualizar(m, { numero: cab.numero, data: cab.data_emissao, valor: Math.round((it.valor_total || 0) * 100) / 100 }) : {};
+            if (Object.keys(patch).length) await supabase.from("maquinas").update(patch).eq("id", it.maquina_id);
+          }
+        }
+        setItens(prev => prev.map(p => itens.find(x => x.key === p.key) ?? p));
+      }
+
       // 1b. Recriar todos os itens do estado atual
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
@@ -1537,6 +1578,7 @@ export default function ModalNf({
           tipo === "vef"          ? "vef"     :
           tipo === "remessa"      ? "remessa" :
           tipo === "custo_direto" ? "direto"  :
+          tipo === "imobilizado"  ? "direto"  :
           it.tipo_apropiacao;
         // Insumo/estoque nunca leva centro de custo na entrada — a apropriação
         // de custo é no consumo (quando sai do estoque pra uma operação), não
@@ -1568,7 +1610,7 @@ export default function ModalNf({
           pedido_item_id:      it.pedido_item_id       || undefined,
           deposito_id:         it.deposito_id         || undefined,
           bomba_id:            it.bomba_id             || undefined,
-          maquina_id:          it.maquina_id          || undefined,
+          maquina_id:          (it.maquina_id && it.maquina_id !== "__nova__") ? it.maquina_id : undefined,
           descricao_produto:   isPAItem ? it.pa_nome! : (it.insumo_id ? nomeInsumo(it.insumo_id) : it.descricao_nf),
           descricao_nf:        it.descricao_nf,
           ncm:                 it.ncm   || undefined,
@@ -2393,6 +2435,7 @@ export default function ModalNf({
       t === "vef"          ? "vef"        :
       t === "remessa"      ? "remessa"    :
       t === "custo_direto" ? "direto"     :
+      t === "imobilizado"  ? "direto"     :
       t === "pecas"        ? "maquinario" :
       "estoque"
     );
@@ -2558,11 +2601,11 @@ export default function ModalNf({
                         )}
                         {(() => {
                           const c = String(cab.cfop || nfEdit?.cfop || "").replace(/\D/g, "");
-                          const sug: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(c) ? "vef" : CFOPS_ENTREGA_FUTURA.has(c) ? "remessa" : null;
+                          const sug: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(c) ? "vef" : CFOPS_ENTREGA_FUTURA.has(c) ? "remessa" : CFOPS_COMPRA_BEM.has(c) ? "imobilizado" : null;
                           if (!sug || sug === tipo) return null;
                           return (
                             <div style={{ fontSize: 11, color: "#7A5200", background: "#FBF3E0", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
-                              CFOP {c} é {sug === "vef" ? "simples faturamento de compra para entrega futura" : "remessa de compra para entrega futura"}.{" "}
+                              CFOP {c} é {sug === "vef" ? "simples faturamento de compra para entrega futura" : sug === "imobilizado" ? "compra de bem para o ativo imobilizado" : "remessa de compra para entrega futura"}.{" "}
                               <button type="button" onClick={() => setTipo(sug)} style={{ border: "none", background: "none", color: "#1A4870", fontWeight: 600, cursor: "pointer", padding: 0, fontSize: 11, textDecoration: "underline" }}>Usar &quot;{TIPO_LABELS[sug].label}&quot;</button>
                             </div>
                           );
@@ -3295,6 +3338,7 @@ export default function ModalNf({
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)" }}>
                         {tipo === "insumos"      ? "Associação de produtos" :
                          tipo === "custo_direto" ? "Itens — Apropriação Direta" :
+                         tipo === "imobilizado"  ? "Itens — Máquinas e Equipamentos" :
                          tipo === "vef"          ? "Itens da VEF"           : "Itens da remessa"}
                       </span>
                       {tipo === "insumos" && (
@@ -3404,7 +3448,7 @@ export default function ModalNf({
                       display: "grid",
                       gridTemplateColumns: tipo === "insumos"
                         ? "3fr 68px 90px 90px 110px 180px 28px"
-                        : tipo === "custo_direto"
+                        : tipo === "custo_direto" || tipo === "imobilizado"
                         ? "2fr 80px 90px 100px 110px 1.5fr 32px"
                         : "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
                       gap: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)"
@@ -3413,6 +3457,8 @@ export default function ModalNf({
                         ? ["Descrição NF / Catálogo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Conversão de Unidade", ""]
                         : tipo === "custo_direto"
                         ? ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro de Custo", ""]
+                        : tipo === "imobilizado"
+                        ? ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Máquina / Equipamento (cadastro)", ""]
                         : ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro Custo", "Apropriação", ""]
                       ).map((h, i) => (
                         <div key={i} style={{ padding: "7px 10px", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</div>
@@ -3437,7 +3483,7 @@ export default function ModalNf({
                           display: "grid",
                           gridTemplateColumns: tipo === "insumos"
                             ? "3fr 68px 90px 90px 110px 180px 28px"
-                            : tipo === "custo_direto"
+                            : tipo === "custo_direto" || tipo === "imobilizado"
                             ? "2fr 80px 90px 100px 110px 1.5fr 32px"
                             : "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
                           gap: 0, alignItems: "start"
@@ -3614,6 +3660,36 @@ export default function ModalNf({
                                   })()}
                                 </>
                               )}
+                            </div>
+                          </>
+                        ) : tipo === "imobilizado" ? (
+                          <>
+                            <div style={{ padding: "6px 8px" }}>
+                              <input value={it.descricao_nf} onChange={e => setItem(it.key, { descricao_nf: e.target.value })} placeholder="Descrição" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <InputNumerico decimais={3} value={it.quantidade || ""} onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0, qtd_nf: parseFloat(v)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <InputMonetario decimais={5} value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v, vunit_nf: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+                              {fmtBRL(it.valor_total)}
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              {/* Máquina do cadastro: nova (criada ao processar, com a descrição do item, NF, data e valor de
+                                  aquisição), uma já cadastrada (recebe NF/data/valor de aquisição) ou nenhuma */}
+                              <SelectBusca value={it.maquina_id} onChange={v => setItem(it.key, { maquina_id: v })}
+                                placeholder="— não vincular —"
+                                style={{ ...inp, fontSize: 12, padding: "5px 8px", background: it.maquina_id === "__nova__" ? "#EDE9FB" : undefined }}
+                                options={[
+                                  { value: "__nova__", label: "➕ Cadastrar nova máquina com este item" },
+                                  { value: "", label: "— não vincular a máquina —" },
+                                  ...maquinas.map(m => ({ value: m.id, label: `${m.nome}${m.placa ? ` · ${m.placa}` : ""}${m.patrimonio ? ` · Pat. ${m.patrimonio}` : ""}` })),
+                                ]} />
                             </div>
                           </>
                         ) : tipo === "custo_direto" ? (

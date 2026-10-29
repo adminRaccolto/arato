@@ -1096,7 +1096,8 @@ export default function NfCompraPage() {
     setNfEdit(nf);
     setOrig((nf.origem ?? "manual") as OrigEscolha);
     // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
-    setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? "insumos")) as TipoEntrada);
+    // "imobilizado" (Máquinas e Equipamentos) só existe no modal novo — aqui abre como Apropriação Direta
+    setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : nf.tipo_entrada === "imobilizado" ? "custo_direto" : (nf.tipo_entrada ?? "insumos")) as TipoEntrada);
     // "pecas" é um TipoEntrada válido — não remapeia
     setCab({
       numero: nf.numero,

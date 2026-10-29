@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-o",
+    data: "29/10/2026",
+    titulo: "NF de compra de máquinas e equipamentos",
+    modulos: ["Documentos Fiscais", "Máquinas"],
+    itens: [
+      { tipo: "novo", texto: "Novo tipo de entrada \"Máquinas e Equipamentos (Imobilizado)\": sem estoque, Operação Gerencial de aquisição (CAPEX, fora da DRE) já preenchida, Contas a Pagar normal e, por item, cadastra a máquina nova (com NF, data e valor de aquisição) ou vincula a uma já cadastrada." },
+      { tipo: "melhoria", texto: "NF com CFOP de compra para o ativo imobilizado (1551/2551/1556/2556) já abre nesse tipo." },
+    ],
+  },
+  {
     versao: "2026.10.29-n",
     data: "29/10/2026",
     titulo: "Folha: exportar para XLSX",
