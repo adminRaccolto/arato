@@ -56,6 +56,8 @@ import InputNumerico from "../InputNumerico";
 import SelectBusca from "../SelectBusca";
 import { estornarNfComConfirmacao } from "../../lib/fiscal/estornar-nf-cliente";
 import { cobrancaDaNf, motivoSemCp, CFOPS_ENTREGA_FUTURA, CFOPS_SIMPLES_FATURAMENTO } from "../../lib/fiscal/cfop-cobranca";
+import { alocarRemessa } from "../../lib/estoque/entrega-futura";
+import { chavesReferenciadas } from "../../lib/fiscal/retorno-rateio";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -431,6 +433,10 @@ export default function ModalNf({
   const [etapa,   setEtapa]   = useState<Etapa>("cabecalho");
   const [orig,    setOrig]    = useState<OrigEscolha>("manual");
   const [tipo,    setTipo]    = useState<TipoEntrada>("insumos");
+  // Remessa de entrega futura: faturamentos (VEF) do fornecedor com saldo a entregar e os escolhidos para baixar
+  type VefSaldo = { nf_id: string; numero: string | null; data: string | null; chave: string | null; itens: { id: string; insumo_id: string | null; descricao: string; saldo: number; original: number; created_at: string | null }[] };
+  const [vefSaldos, setVefSaldos] = useState<VefSaldo[]>([]);
+  const [vefSel, setVefSel] = useState<string[]>([]);
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
   const [carregandoNf, setCarregandoNf] = useState(!!id);
@@ -676,7 +682,10 @@ export default function ModalNf({
     setNfEdit(nf);
     setOrig((nf.origem ?? "manual") as OrigEscolha);
     // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
-    setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? "insumos")) as TipoEntrada);
+    // Sem tipo gravado, o CFOP sugere: simples faturamento → Entrega Futura (VEF); remessa de entrega futura → Entrega
+    const cfopNfAbrir = String(nf.cfop ?? "").replace(/\D/g, "");
+    const tipoPeloCfop: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(cfopNfAbrir) ? "vef" : CFOPS_ENTREGA_FUTURA.has(cfopNfAbrir) ? "remessa" : null;
+    setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? tipoPeloCfop ?? "insumos")) as TipoEntrada);
     // "pecas" é um TipoEntrada válido — não remapeia
     setCab({
       numero: nf.numero,
@@ -1297,6 +1306,32 @@ export default function ModalNf({
     setNfParcelas(novas);
   }
 
+  // Saldos de entrega futura do fornecedor (para a remessa escolher quais faturamentos baixa)
+  useEffect(() => {
+    if (tipo !== "remessa" || !nfEdit) { setVefSaldos([]); setVefSel([]); return; }
+    const raw = String(cab.emitente_cnpj || nfEdit.emitente_cnpj || "").replace(/\D/g, "");
+    if (!raw) { setVefSaldos([]); return; }
+    const fmt = raw.length === 14 ? raw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : raw;
+    (async () => {
+      const ids = fazendaIds?.length ? fazendaIds : [fazendaId];
+      const { data: ets } = await supabase.from("estoque_terceiros").select("id, nf_entrada_id, insumo_id, descricao, quantidade_saldo, quantidade_original, created_at")
+        .in("fazenda_id", ids).in("status", ["aberto", "parcial"]).or(`terceiro_cnpj.eq.${raw},terceiro_cnpj.eq.${fmt}`).not("nf_entrada_id", "is", null);
+      const nfIds = [...new Set((ets ?? []).map(e => e.nf_entrada_id as string))];
+      const { data: nfs } = nfIds.length ? await supabase.from("nf_entradas").select("id, numero, data_emissao, chave_acesso").in("id", nfIds) : { data: [] };
+      const lista: VefSaldo[] = nfIds.map(id => {
+        const n = (nfs ?? []).find(x => x.id === id);
+        return { nf_id: id, numero: (n?.numero as string) ?? null, data: (n?.data_emissao as string) ?? null, chave: (n?.chave_acesso as string) ?? null,
+          itens: (ets ?? []).filter(e => e.nf_entrada_id === id).map(e => ({ id: e.id as string, insumo_id: e.insumo_id as string | null, descricao: e.descricao as string, saldo: Number(e.quantidade_saldo), original: Number(e.quantidade_original), created_at: e.created_at as string | null })) };
+      }).sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
+      setVefSaldos(lista);
+      // Sugestão: os faturamentos cujas chaves a remessa referencia no XML; sem referência, todos do fornecedor
+      const refs = chavesReferenciadas((nfEdit as unknown as { xml_content?: string }).xml_content);
+      const porRef = lista.filter(v => v.chave && refs.includes(v.chave)).map(v => v.nf_id);
+      setVefSel(porRef.length ? porRef : lista.map(v => v.nf_id));
+    })().catch(() => setVefSaldos([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, nfEdit?.id, cab.emitente_cnpj]);
+
   // ── Processar NF (finalizar) ──────────────────────────────
   async function processarNF() {
     if (!fazendaId || !nfEdit) return;
@@ -1600,6 +1635,13 @@ export default function ModalNf({
         setErr("Forma de pagamento Cartão de Crédito: escolha o cartão (aba Cabeçalho → Pagamento e Classificação).");
         setSaving(false); return;
       }
+      // Remessa de entrega futura: avisa o que não tem saldo nos faturamentos escolhidos (entra no estoque mesmo assim)
+      if (tipo === "remessa") {
+        const saldos = vefSaldos.flatMap(v => v.itens.map(i => ({ id: i.id, nf_entrada_id: v.nf_id, insumo_id: i.insumo_id, quantidade_saldo: i.saldo, created_at: i.created_at })));
+        const { sobras } = alocarRemessa(saldos, itensDB.filter(i => i.insumo_id).map(i => ({ item_id: i.id, insumo_id: i.insumo_id!, quantidade: Number(i.quantidade) })), vefSel);
+        if (sobras.length && !(await confirmarAcao({ titulo: "Remessa sem saldo de entrega futura", perigo: false, textoConfirmar: "Processar mesmo assim",
+          mensagem: `${sobras.map(x => { const it = itensDB.find(i => i.id === x.item_id); return `${it?.descricao_produto ?? it?.descricao_nf ?? "item"}: ${x.quantidade.toLocaleString("pt-BR")} sem saldo`; }).join("\n")}\n\n${vefSaldos.length ? "Os faturamentos escolhidos não cobrem toda a quantidade desta remessa." : "Não há faturamento (Entrega Futura/VEF) com saldo deste fornecedor."} O que passar do saldo entra no estoque sem baixar nenhum faturamento.` }))) { setSaving(false); return; }
+      }
       // Pelo CFOP: remessa de entrega futura / comodato / conserto… não geram CP; 5949 genérico: o usuário decide
       const cobranca = cobrancaDaNf(cab.cfop || nfEdit.cfop, itensDB.map(i => (i as { cfop?: string | null }).cfop));
       let gerarCp: boolean | undefined;
@@ -1641,6 +1683,7 @@ export default function ModalNf({
         {
           nfeNumero:           nfEdit.numero,
           gerarCp,
+          vefNfIds:            tipo === "remessa" && vefSel.length ? vefSel : undefined,
           dataVencimentoCp:    cab.data_vencimento_cp || nfEdit.data_vencimento_cp,
           formaPagamento:      cab.forma_pagamento || (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
           // Cartão de Crédito: os títulos nascem no cartão escolhido (na fatura do mês), não como CP em aberto.
@@ -2513,6 +2556,17 @@ export default function ModalNf({
                         {TIPO_LABELS[tipo] && (
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{TIPO_LABELS[tipo].desc}</div>
                         )}
+                        {(() => {
+                          const c = String(cab.cfop || nfEdit?.cfop || "").replace(/\D/g, "");
+                          const sug: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(c) ? "vef" : CFOPS_ENTREGA_FUTURA.has(c) ? "remessa" : null;
+                          if (!sug || sug === tipo) return null;
+                          return (
+                            <div style={{ fontSize: 11, color: "#7A5200", background: "#FBF3E0", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
+                              CFOP {c} é {sug === "vef" ? "simples faturamento de compra para entrega futura" : "remessa de compra para entrega futura"}.{" "}
+                              <button type="button" onClick={() => setTipo(sug)} style={{ border: "none", background: "none", color: "#1A4870", fontWeight: 600, cursor: "pointer", padding: 0, fontSize: 11, textDecoration: "underline" }}>Usar &quot;{TIPO_LABELS[sug].label}&quot;</button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -3046,6 +3100,21 @@ export default function ModalNf({
                   {/* Campos específicos por tipo */}
                   {tipo === "remessa" && (
                     <div data-arato-panel="true" style={{ background: "#E6F1FB30", border: "0.5px solid #93C5FD", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#0C447C", marginBottom: 6 }}>Faturamento(s) que esta remessa entrega</div>
+                      {vefSaldos.length === 0 ? (
+                        <div style={{ fontSize: 11, color: "#7A5200", marginBottom: 10 }}>Nenhum faturamento (Entrega Futura/VEF) com saldo a entregar deste fornecedor. Processe antes a NF de simples faturamento como &quot;Entrega Futura (VEF)&quot;.</div>
+                      ) : (
+                        <div style={{ display: "grid", gap: 4, marginBottom: 10 }}>
+                          {vefSaldos.map(v => (
+                            <label key={v.nf_id} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, cursor: "pointer" }}>
+                              <input type="checkbox" checked={vefSel.includes(v.nf_id)} onChange={() => setVefSel(p => p.includes(v.nf_id) ? p.filter(x => x !== v.nf_id) : [...p, v.nf_id])} style={{ marginTop: 2 }} />
+                              <span>NF {v.numero ?? "—"}{v.data ? ` de ${v.data.split("-").reverse().join("/")}` : ""}
+                                <span style={{ color: "var(--text-3)" }}> · falta entregar: {v.itens.map(i => `${i.descricao} ${i.saldo.toLocaleString("pt-BR")} de ${i.original.toLocaleString("pt-BR")}`).join("; ")}</span></span>
+                            </label>
+                          ))}
+                          <div style={{ fontSize: 10, color: "var(--text-3)" }}>A remessa baixa os marcados, do mais antigo para o mais novo. Já vêm marcados os referenciados no XML da remessa (ou todos, sem referência).</div>
+                        </div>
+                      )}
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#0C447C", marginBottom: 10 }}>Remessa — Depósito Operacional de Destino</div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Depósito de destino (onde o insumo será armazenado)</label>

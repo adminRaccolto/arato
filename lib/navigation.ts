@@ -116,6 +116,7 @@ export const NAV: NavItem[] = [
       { type: "divider", label: "Remessas e Retornos" },
       { id: "docfis-remessas",   label: "Remessas (armazém, máquinas)",      path: "/fiscal/remessas",               moduleId: "fiscal_nfe" },
       { id: "docfis-retornos",   label: "Retornos",                          path: "/fiscal/retornos",               moduleId: "fiscal_nfe" },
+      { id: "docfis-entregas-fut", label: "Entregas Futuras",                path: "/fiscal/entregas-futuras",       moduleId: "fiscal_nfe" },
       { type: "divider", label: "Transporte" },
       { id: "docfis-cte",        label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",                moduleId: "transporte" },
       { id: "docfis-mdfe",       label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",               moduleId: "transporte" },

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-f",
+    data: "29/10/2026",
+    titulo: "Compra para entrega futura: faturamento × remessas",
+    modulos: ["Documentos Fiscais", "Estoque"],
+    itens: [
+      { tipo: "novo", texto: "NF de simples faturamento (5922/6922) abre como \"Entrega Futura (VEF)\" e NF de remessa (5116/5117) como \"Entrega de compra futura\"; com outro tipo escolhido, um aviso sugere o certo." },
+      { tipo: "novo", texto: "Na remessa, escolha qual(is) faturamento(s) ela entrega — já vêm marcados os referenciados no XML da remessa — com o saldo a entregar de cada um. Aviso quando a remessa passa do saldo ou não há faturamento." },
+      { tipo: "novo", texto: "Nova tela Documentos Fiscais → Entregas Futuras: por NF de faturamento, comprado, entregue e o que falta por produto; a seta abre as remessas recebidas." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada; Documentos Fiscais → Entregas Futuras",
+  },
+  {
     versao: "2026.10.29-e",
     data: "29/10/2026",
     titulo: "Estorno de NF desfaz o vínculo com a remessa e com a entrega futura",
