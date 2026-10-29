@@ -513,7 +513,7 @@ export async function emitirNFe(
     return {
       sucesso: false,
       cStat: "CFG",
-      xMotivo: `Série "${confg.serie_nfe ?? ""}" inválida para emitente CPF. Configure entre 920 e 969 em Parâmetros → Fiscal → Série NF-e.`,
+      xMotivo: `Série "${confg.serie_nfe ?? ""}" inválida para emitente CPF${confg.ie_emitente ? ` (IE ${confg.ie_emitente})` : ""}. Configure a série (920 a 969) desta IE em Parâmetros → Fiscal → Inscrições Estaduais, ou escolha na emissão a IE que tem série.`,
     };
   }
   if (!isCPFEmit && (isNaN(serieConfg) || serieConfg < 0 || serieConfg > 889)) {

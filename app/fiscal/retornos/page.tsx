@@ -13,7 +13,7 @@ import SelectBusca from "../../../components/SelectBusca";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { supabase } from "../../../lib/supabase";
 import type { Deposito, Insumo, NfEntrada, NfEntradaItem, NfRemessaLogistica, Pessoa } from "../../../lib/supabase";
-import { BlocoTransporte, TRANSP_VAZIO, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
+import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import {
   listarInsumosParaConta, listarDepositosMulti, listarNfRemessasLogisticas, listarNfEntradaItens,
   atualizarNfEntrada, atualizarNfRemessaLogistica, processarNfEntrada, insumoAtivo, listarPessoasDaConta,
@@ -256,6 +256,14 @@ function RetornosConteudo() {
   const [retNatureza, setRetNatureza] = useState("Retorno de mercadoria depositada em armazém geral");
   const [retData, setRetData] = useState(hojeLocal());
   const [retEmitente, setRetEmitente] = useState("");
+  // IE (estabelecimento) emitente do retorno — sugerida pela fazenda da remessa
+  const [retIe, setRetIe] = useState("");
+  const cpfRetEmitente = dados.emitentes.find(e => `${e.modulo}|${e.fazenda_id}` === retEmitente)?.cpf ?? "";
+  const iesRetorno = dados.inscricoes.filter(i => !cpfRetEmitente || i.cpf === cpfRetEmitente.replace(/\D/g, ""));
+  useEffect(() => {
+    if (retIe && iesRetorno.some(i => i.id === retIe)) return;
+    setRetIe(ieSugerida(iesRetorno, retRem?.fazenda_id, cpfRetEmitente)?.id ?? "");
+  }, [retRem?.fazenda_id, cpfRetEmitente, dados.inscricoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const [retTr, setRetTr] = useState<Transp>(TRANSP_VAZIO);
   const [retExt, setRetExt] = useState({ numero: "", serie: "", chave: "" });
   const [retErro, setRetErro] = useState("");
@@ -301,13 +309,15 @@ function RetornosConteudo() {
           const { data: nfo } = await supabase.from("nf_entradas").select("produtor_id").eq("id", retRem.nf_entrada_id).maybeSingle();
           if (nfo?.produtor_id) { const { data: pr } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfo.produtor_id).maybeSingle(); cpfHint = pr?.cpf_cnpj ?? undefined; }
         }
-        const em = resolverEmitente(dados.emitentes, retEmitente, cpfHint);
+        const ie = dados.inscricoes.find(i => i.id === retIe);
+        if (ie && !ie.serie) { setRetErro(`A IE ${ie.ie} não tem série NF-e configurada. Configure em Parâmetros → Fiscal → Inscrições Estaduais ou escolha outra IE.`); setRetSalvando(false); return; }
+        const em = resolverEmitente(dados.emitentes, retEmitente, ie?.cpf ?? cpfHint);
         if ("erro" in em) { setRetErro(em.erro); setRetSalvando(false); return; }
         fazEmissao = em.fazenda_id;
         const dest = pessoas.find(p => p.id === retRem.destinatario_pessoa_id);
         const { transporte, motorista } = montarTransporte(dados, retTr);
         const resp = await fetch("/api/fiscal/emitir-nfe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-          fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf,
+          fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf, emit_ie_override: ie?.ie || undefined,
           destinatario: {
             nome: retRem.destinatario_nome, cpf_cnpj: dest ? (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined : undefined, ie: dest?.inscricao_est || undefined,
             logradouro: dest?.logradouro || undefined, numero: dest?.numero || undefined, bairro: dest?.bairro || undefined, municipio_ibge: dest?.municipio_ibge || undefined,
@@ -616,6 +626,7 @@ function RetornosConteudo() {
                       </select>
                     </div>
                   </div>
+                  <SeletorIE ies={iesRetorno} value={retIe} onChange={setRetIe} inp={inp} lbl={lbl} />
                   <BlocoTransporte d={dados} t={retTr} set={setRetTr} inp={inp} lbl={lbl} />
                 </>
               )}

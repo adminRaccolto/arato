@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-p",
+    data: "29/10/2026",
+    titulo: "Remessa e retorno: escolher a IE emitente",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Produtor com várias Inscrições Estaduais: a NF-e de remessa e de retorno de armazém agora tem o campo \"IE emitente\", com a série de cada IE, já sugerida pela fazenda do depósito. Antes o sistema escolhia a IE sozinho e podia cair numa IE sem série (erro Série \"\" inválida)." },
+    ],
+  },
+  {
     versao: "2026.10.29-o",
     data: "29/10/2026",
     titulo: "NF de compra de máquinas e equipamentos",

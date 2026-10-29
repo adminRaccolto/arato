@@ -18,7 +18,7 @@ import { supabase } from "../../../lib/supabase";
 import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/supabase";
 import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
 import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
-import { BlocoTransporte, TRANSP_VAZIO, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
+import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -108,6 +108,7 @@ function RemessasConteudo() {
   const [dataRem, setDataRem] = useState(hojeLocal());
   const [obs, setObs] = useState("");
   const [emitenteSel, setEmitenteSel] = useState("");
+  const [ieSel, setIeSel] = useState("");   // IE (estabelecimento) emitente; sugerida pela fazenda do depósito de origem
   const [tr, setTr] = useState<Transp>(TRANSP_VAZIO);
   const [ext, setExt] = useState({ numero: "", serie: "", chave: "", xml: "" });
   const [erro, setErro] = useState("");
@@ -116,6 +117,13 @@ function RemessasConteudo() {
   const insumoPorId = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
   const armazem = pessoas.find(p => p.id === armazemId);
   const fazendaRem = nfOrigem?.fazenda_id ?? depositos.find(d => d.id === depOrigem)?.fazenda_id ?? fazendaId ?? ids[0];
+  // IEs do emitente escolhido (ou de todos, no automático) e a sugerida pela fazenda da remessa
+  const cpfEmitenteSel = dados.emitentes.find(e => `${e.modulo}|${e.fazenda_id}` === emitenteSel)?.cpf ?? "";
+  const iesRemessa = dados.inscricoes.filter(i => !cpfEmitenteSel || i.cpf === cpfEmitenteSel.replace(/\D/g, ""));
+  useEffect(() => {
+    if (ieSel && iesRemessa.some(i => i.id === ieSel)) return;
+    setIeSel(ieSugerida(iesRemessa, fazendaRem, cpfEmitenteSel)?.id ?? "");
+  }, [fazendaRem, cpfEmitenteSel, dados.inscricoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrirNova() {
     setModo("arato"); setNfOrigem(null); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
@@ -237,14 +245,17 @@ function RemessasConteudo() {
       if (modo === "arato") {
         let cpfHint: string | undefined;
         if (nfOrigem?.produtor_id) { const { data: pr } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfOrigem.produtor_id).maybeSingle(); cpfHint = pr?.cpf_cnpj ?? undefined; }
-        const em = resolverEmitente(dados.emitentes, emitenteSel, cpfHint);
+        // A IE escolhida define o titular (CPF/CNPJ) do emitente; sem IE, cai na regra antiga (dono da NF de origem)
+        const ie = dados.inscricoes.find(i => i.id === ieSel);
+        if (ie && !ie.serie) { setErro(`A IE ${ie.ie} não tem série NF-e configurada. Configure em Parâmetros → Fiscal → Inscrições Estaduais ou escolha outra IE.`); setSalvando(false); return; }
+        const em = resolverEmitente(dados.emitentes, emitenteSel, ie?.cpf ?? cpfHint);
         if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
         fazEmissao = em.fazenda_id;
         const { transporte, motorista } = montarTransporte(dados, tr);
         const resp = await fetch("/api/fiscal/emitir-nfe", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf,
+            fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf, emit_ie_override: ie?.ie || undefined,
             destinatario: {
               nome: armazem.nome, cpf_cnpj: (armazem.cpf_cnpj ?? "").replace(/\D/g, "") || undefined, ie: armazem.inscricao_est || undefined,
               logradouro: armazem.logradouro || undefined, numero: armazem.numero || undefined, bairro: armazem.bairro || undefined,
@@ -526,6 +537,11 @@ function RemessasConteudo() {
                   </div>
                 ) : <div />}
               </div>
+              {modo === "arato" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
+                </div>
+              )}
 
               <div>
                 <label style={lbl}>Itens (no cadastro e na unidade do estoque)</label>
