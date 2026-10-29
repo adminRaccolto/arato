@@ -11,13 +11,15 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { supabase } from "../../../lib/supabase";
 import { avosDecimo, calcularDecimo } from "../../../lib/folha/decimo-terceiro";
 
-type Func = { id: string; nome: string; fazenda_id: string; data_admissao: string | null; data_demissao: string | null; salario_base: number | null; area_trabalho: string | null; funcao?: string | null; ativo: boolean };
+type Func = { id: string; nome: string; fazenda_id: string; data_admissao: string | null; data_demissao: string | null; salario_base: number | null; complemento_salarial?: number | null; area_trabalho: string | null; funcao?: string | null; ativo: boolean };
 type Reg = { id: string; funcionario_id: string; avos: number; base: number; bruto: number; inss: number; irrf: number; parcela1_valor: number | null; parcela1_vencimento: string | null; parcela1_lancamento_id: string | null; parcela2_valor: number | null; parcela2_vencimento: string | null; parcela2_lancamento_id: string | null };
 type StatusTit = { status: string; valor_pago: number | null };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
 const numBR = (v: string) => parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+const fmtBase = (v: number) => v.toFixed(2).replace(".", ",");
+const baseCadastro = (f: Func, comComplemento: boolean) => Number(f.salario_base ?? 0) + (comComplemento ? Number(f.complemento_salarial ?? 0) : 0);
 const th: CSSProperties = { padding: "7px 8px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)" };
 const td: CSSProperties = { padding: "6px 8px", fontSize: 12, textAlign: "right", fontVariantNumeric: "tabular-nums", borderBottom: "0.5px solid var(--border-row)", verticalAlign: "top" };
 const inp: CSSProperties = { padding: "6px 9px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-input)", color: "var(--text-1)" };
@@ -38,6 +40,8 @@ export default function DecimoTerceiroPage() {
   const [tits, setTits] = useState<Map<string, StatusTit>>(new Map());
   const [fazendas, setFazendas] = useState<Map<string, string>>(new Map());
   const [bases, setBases] = useState<Record<string, string>>({});
+  // Base do 13º: só o salário da carteira ou salário + complemento salarial (escolha do usuário; lembrada no navegador)
+  const [comComplemento, setComComplemento] = useState(false);
   const [avosEd, setAvosEd] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [venc1, setVenc1] = useState(`${anoAtual}-11-30`);
@@ -52,7 +56,7 @@ export default function DecimoTerceiroPage() {
     setCarregando(true); setErro("");
     try {
       const [{ data: fs, error: eF }, { data: fz }] = await Promise.all([
-        supabase.from("funcionarios").select("id, nome, fazenda_id, data_admissao, data_demissao, salario_base, area_trabalho, funcao, ativo").in("fazenda_id", ids).order("nome"),
+        supabase.from("funcionarios").select("id, nome, fazenda_id, data_admissao, data_demissao, salario_base, complemento_salarial, area_trabalho, funcao, ativo").in("fazenda_id", ids).order("nome"),
         supabase.from("fazendas").select("id, nome").in("id", ids),
       ]);
       if (eF) throw eF;
@@ -68,7 +72,7 @@ export default function DecimoTerceiroPage() {
       const idsT = [...mapa.values()].flatMap(r => [r.parcela1_lancamento_id, r.parcela2_lancamento_id]).filter((x): x is string => !!x);
       const { data: ts } = idsT.length ? await supabase.from("lancamentos").select("id, status, valor_pago").in("id", idsT) : { data: [] };
       setTits(new Map((ts ?? []).map(t => [t.id as string, { status: t.status as string, valor_pago: t.valor_pago as number | null }])));
-      setBases(Object.fromEntries(lista.map(f => [f.id, (Number(mapa.get(f.id)?.base ?? f.salario_base ?? 0)).toFixed(2).replace(".", ",")])));
+      setBases(Object.fromEntries(lista.map(f => [f.id, fmtBase(Number(mapa.get(f.id)?.base ?? baseCadastro(f, comComplemento)))])));
       setAvosEd(Object.fromEntries(lista.map(f => [f.id, String(mapa.get(f.id)?.avos || avosDecimo(f.data_admissao, null, ano))])));
       setSel(new Set());
     } catch (e) {
@@ -77,7 +81,16 @@ export default function DecimoTerceiroPage() {
       setCarregando(false);
     }
   }
+  // Preferência lida após montar (evita divergência com o HTML do servidor)
+  useEffect(() => { try { if (localStorage.getItem("decimo_base_complemento") === "1") trocarBase(true); } catch { /* sem storage */ } }, [funcs]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); setVenc1(`${ano}-11-30`); setVenc2(`${ano}-12-20`); }, [ids.join(","), ano]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trocar a base recalcula quem ainda não tem a 1ª parcela lançada (depois dela a base fica travada)
+  function trocarBase(com: boolean) {
+    setComComplemento(com);
+    try { localStorage.setItem("decimo_base_complemento", com ? "1" : "0"); } catch { /* sem storage */ }
+    setBases(prev => ({ ...prev, ...Object.fromEntries(funcs.filter(f => situacao(regs.get(f.id)?.parcela1_lancamento_id) === "lancar").map(f => [f.id, fmtBase(baseCadastro(f, com))])) }));
+  }
 
   const situacao = (lancId: string | null | undefined) => {
     if (!lancId) return "lancar";
@@ -142,6 +155,11 @@ export default function DecimoTerceiroPage() {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
           <div><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>Ano</div>
             <select value={ano} onChange={e => setAno(Number(e.target.value))} style={inp}>{[anoAtual - 1, anoAtual, anoAtual + 1].map(a => <option key={a} value={a}>{a}</option>)}</select></div>
+          <div><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>Base do 13º</div>
+            <select value={comComplemento ? "com" : "sem"} onChange={e => trocarBase(e.target.value === "com")} style={inp}>
+              <option value="sem">Salário da carteira</option>
+              <option value="com">Salário + complemento</option>
+            </select></div>
           <div style={{ flex: "1 1 200px" }}><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>Funcionário</div>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="nome" style={{ ...inp, width: "100%", boxSizing: "border-box" }} /></div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
@@ -153,7 +171,7 @@ export default function DecimoTerceiroPage() {
             <OperationalButton data-arato-button="primary" onClick={() => lancar(2)} style={{ ...inp, background: "#1A4870", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}>Lançar 2ª parcela</OperationalButton>
           </div>
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{sel.size ? `${sel.size} funcionário(s) marcado(s) — os botões lançam só os marcados.` : "Sem marcação, os botões lançam todos os que ainda não têm a parcela."} A base vem do salário da carteira e pode ser ajustada (ex.: média de horas extras e variáveis) antes de lançar. INSS e IRRF são estimativa pela tabela da folha — confira com o contador.</div>
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{sel.size ? `${sel.size} funcionário(s) marcado(s) — os botões lançam só os marcados.` : "Sem marcação, os botões lançam todos os que ainda não têm a parcela."} A base vem do salário da carteira (ou salário + complemento, conforme o seletor Base do 13º) e pode ser ajustada (ex.: média de horas extras e variáveis) antes de lançar. INSS e IRRF são estimativa pela tabela da folha — confira com o contador.</div>
 
         {msg && <div style={{ padding: 10, background: "#E8F5E9", color: "#1A6B3C", borderRadius: 8, fontSize: 12, marginBottom: 8 }}>{msg}</div>}
         {erro && <div style={{ padding: 10, background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, fontSize: 12, marginBottom: 8 }}>{erro}</div>}

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-h",
+    data: "29/10/2026",
+    titulo: "13º: base com ou sem complemento",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "Tela 13º Salário: novo seletor \"Base do 13º\" — Salário da carteira ou Salário + complemento. Ao trocar, a base, o bruto, as parcelas e o INSS/IRRF são recalculados para quem ainda não teve a 1ª parcela lançada. A escolha fica lembrada." },
+    ],
+  },
+  {
     versao: "2026.10.29-g",
     data: "29/10/2026",
     titulo: "Folha puxa salário novo do cadastro · busca no catálogo da NF",
