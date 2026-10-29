@@ -574,6 +574,9 @@ export default function ModalNf({
   const [devData,    setDevData]    = useState(hojeLocal());
   const [devVenc,    setDevVenc]    = useState("");
   const [devObs,     setDevObs]     = useState("");
+  // Devolução já emitida em outro sistema: só registra (estoque, CR, Monitor de NF-e), sem transmitir à SEFAZ
+  const [devExterna, setDevExterna] = useState(false);
+  const [devExt, setDevExt] = useState({ numero: "", serie: "", chave: "" });
   const [devSaving,  setDevSaving]  = useState(false);
   const [devErr,     setDevErr]     = useState("");
 
@@ -1952,6 +1955,7 @@ export default function ModalNf({
     } catch {
       setDevItens([]);
     }
+    setDevExterna(false); setDevExt({ numero: "", serie: "", chave: "" });
     setDevModal(true);
   }
 
@@ -1971,7 +1975,7 @@ export default function ModalNf({
         setDevErr(`Quantidade de "${i.descricao_produto}" excede o original (${i.qtdOriginal} ${i.unidade}).`);
         return;
       }
-      if (!i.ncm) {
+      if (!i.ncm && !devExterna) {
         setDevErr(`"${i.descricao_produto}" está sem NCM na NF original — corrija o cadastro do insumo (ou o item da NF) antes de devolver.`);
         return;
       }
@@ -1986,6 +1990,40 @@ export default function ModalNf({
     // Uma NF tem um só destino: todos os CFOPs dela precisam ser do mesmo grupo (5xxx dentro do estado ou 6xxx fora)
     if (new Set(itensParaDevolver.map(i => i.cfop.charAt(0))).size > 1) {
       setDevErr("Os itens misturam CFOP 5xxx (dentro do estado) e 6xxx (interestadual). Uma NF de devolução tem um só destino: use o mesmo grupo em todos.");
+      return;
+    }
+    // Já emitida em outro sistema: registra no Arato com o número/série/chave informados, sem SEFAZ
+    if (devExterna) {
+      const chave = devExt.chave.replace(/\D/g, "");
+      if (!devExt.numero.trim()) { setDevErr("Informe o número da NF de devolução emitida no outro sistema."); return; }
+      if (chave && chave.length !== 44) { setDevErr("A chave de acesso tem 44 dígitos (ou deixe em branco)."); return; }
+      const serie = devExt.serie.trim() || (chave ? (chave.substring(22, 25).replace(/^0+(?=\d)/, "") || "0") : "1");
+      const cfopCab = [...itensParaDevolver].sort((a, b) => b.valor_total - a.valor_total)[0].cfop;
+      setDevSaving(true); setDevErr("");
+      try {
+        const nfDevolucao = await processarDevolucaoCompra(
+          devNfOrig.fazenda_id, devNfOrig.id, devExt.numero.trim(), serie, cfopCab,
+          devNfOrig.emitente_nome, devNfOrig.emitente_cnpj, devNfOrig.pessoa_id, devData, devVenc || undefined,
+          itensParaDevolver, chave ? { chave_acesso: chave } : undefined,
+        );
+        try {
+          await criarNotaFiscal({
+            fazenda_id: devNfOrig.fazenda_id, numero: devExt.numero.trim(), serie, tipo: "saida",
+            cfop: cfopCab.length === 4 ? `${cfopCab.slice(0, 1)}.${cfopCab.slice(1)}` : cfopCab,
+            natureza: "Devolução de Compra", destinatario: devNfOrig.emitente_nome,
+            cnpj_destinatario: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
+            valor_total: itensParaDevolver.reduce((t, i) => t + i.valor_total, 0), data_emissao: devData,
+            status: "autorizada", chave_acesso: chave || undefined, auto: false, tipo_emissao: 1,
+            observacao: `Devolução da NF ${devNfOrig.numero}/${devNfOrig.serie} — emitida em outro sistema${devObs ? ` — ${devObs}` : ""}`,
+            itens_json: itensParaDevolver.map(i => ({ item: i.descricao_produto, ncm: i.ncm ?? "", cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade_devolver, valor_unitario: i.quantidade_devolver ? Math.round(i.valor_total / i.quantidade_devolver * 1e6) / 1e6 : 0 })),
+            dados_nf_json: { origem_externa: true, devolucao_nf_entrada_id: nfDevolucao.id, nf_origem_id: devNfOrig.id },
+          } as never);
+        } catch (e) { console.error("[devolucao externa] não registrou no Monitor de NF-e:", e); }
+        onSaved();
+        setDevModal(false);
+      } catch (e: unknown) {
+        setDevErr(e instanceof Error ? e.message : "Erro ao registrar devolução");
+      } finally { setDevSaving(false); }
       return;
     }
     if (!fiscalModulos[0]) {
@@ -4398,7 +4436,7 @@ export default function ModalNf({
             {/* Cabeçalho */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div data-arato-dialog-body="true">
-                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Devolução de Compra</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{devExterna ? "Registrar NF de Devolução de Compra (emitida em outro sistema)" : "Emitir NF de Devolução de Compra"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                   NF de origem: <strong>{devNfOrig.numero}/{devNfOrig.serie}</strong> · {devNfOrig.emitente_nome} · {fmtBRL(devNfOrig.valor_total)}
                 </div>
@@ -4414,6 +4452,19 @@ export default function ModalNf({
             <div data-arato-dialog-body="true" style={{ padding: 24 }}>
               {devErr && (
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{devErr}</div>
+              )}
+
+              {/* Emitir pelo Arato × registrar NF já emitida em outro sistema */}
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12, padding: "8px 12px", background: "var(--bg-page)", borderRadius: 8, fontSize: 12 }}>
+                <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}><input type="radio" checked={!devExterna} onChange={() => setDevExterna(false)} /> Emitir a NF-e pelo Arato (SEFAZ)</label>
+                <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}><input type="radio" checked={devExterna} onChange={() => setDevExterna(true)} /> Já emitida em outro sistema — só registrar</label>
+              </div>
+              {devExterna && (
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12, marginBottom: 12 }}>
+                  <div><label data-arato-label="true" style={lbl}>Nº da NF de devolução *</label><input value={devExt.numero} onChange={e => setDevExt(p => ({ ...p, numero: e.target.value.replace(/\D/g, "") }))} style={inp} /></div>
+                  <div><label data-arato-label="true" style={lbl}>Série</label><input value={devExt.serie} onChange={e => setDevExt(p => ({ ...p, serie: e.target.value.replace(/\D/g, "") }))} placeholder="da chave, se vazio" style={inp} /></div>
+                  <div><label data-arato-label="true" style={lbl}>Chave de acesso (44 dígitos)</label><input value={devExt.chave} onChange={e => setDevExt(p => ({ ...p, chave: e.target.value.replace(/\D/g, "").slice(0, 44) }))} placeholder="opcional" style={inp} /></div>
+                </div>
               )}
 
               {/* Cabeçalho da devolução */}
@@ -4525,7 +4576,7 @@ export default function ModalNf({
                   disabled={devSaving || devItens.filter(i => i.quantidade_devolver > 0).length === 0}
                   style={{ ...btnV, background: devSaving ? "#ccc" : "#E24B4A", cursor: devSaving ? "default" : "pointer" }}
                 >
-                  {devSaving ? "Processando…" : "↩ Emitir Devolução"}
+                  {devSaving ? "Processando…" : devExterna ? "↩ Registrar Devolução" : "↩ Emitir Devolução"}
                 </button>
               </div>
             </div>

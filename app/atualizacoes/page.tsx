@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-t",
+    data: "29/10/2026",
+    titulo: "Devolução de compra emitida em outro sistema",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "novo", texto: "Janela Devolver: opção \"Já emitida em outro sistema — só registrar\". Informe nº, série e chave da NF de devolução; o Arato registra estoque, título a receber do fornecedor e o Monitor de NF-e, sem transmitir à SEFAZ." },
+    ],
+  },
+  {
     versao: "2026.10.29-s",
     data: "29/10/2026",
     titulo: "Financiamento liberado direto ao fornecedor",
