@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-a",
+    data: "29/10/2026",
+    titulo: "Remessa, comodato e garantia não geram mais Contas a Pagar",
+    modulos: ["Documentos Fiscais", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "NF de remessa de compra para entrega futura (CFOP 5116/5117) gerava CP, que ficava em dobro com o do simples faturamento (5922/6922). Agora a remessa é processada sem CP; a cobrança é o faturamento. Comodato, conserto, demonstração, industrialização, armazenagem e vasilhame também não geram CP." },
+      { tipo: "novo", texto: "CFOP genérico 5949/6949: ao processar, o sistema pergunta se é compra a pagar (garantia ou brinde não geram CP). No lote, essas NFs são processadas uma a uma." },
+      { tipo: "novo", texto: "Ao processar um simples faturamento, aviso de CP em dobro se remessas do mesmo fornecedor já tiverem títulos em aberto." },
+      { tipo: "correcao", texto: "Apagados 17 títulos em aberto (R$ 72.031,20) de remessas e comodato que não deviam existir; os já pagos ficaram intactos." },
+    ],
+    onde: "Documentos Fiscais → Processar NF",
+  },
+  {
     versao: "2026.10.28-zf",
     data: "28/10/2026",
     titulo: "Remessas: ver as NFs ligadas a cada remessa",

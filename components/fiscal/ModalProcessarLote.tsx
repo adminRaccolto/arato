@@ -33,6 +33,7 @@ import { supabase } from "../../lib/supabase";
 import SelectBusca from "../SelectBusca";
 import { CFOPS_RETORNO_ARMAZENAGEM, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
 import { fatorUnidade } from "../../lib/estoque/unidades";
+import { CFOPS_CONFIRMAR } from "../../lib/fiscal/cfop-cobranca";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -235,6 +236,8 @@ export default function ModalProcessarLote({
         // Retorno de armazém ou de máquina não é compra: vai para Documentos Fiscais → Retornos
         const cfopDig = dig(nfTyped.cfop);
         if (CFOPS_RETORNO_ARMAZENAGEM.has(cfopDig) || CFOPS_RETORNO_DE_REMESSA.has(cfopDig)) { erros.push(`NF ${nfRef.numero}: é retorno (CFOP ${nfTyped.cfop}) — processe em Documentos Fiscais → Retornos`); continue; }
+        // CFOP genérico 5949/6949: só o usuário sabe se é compra a pagar — no lote não dá para perguntar
+        if (CFOPS_CONFIRMAR.has(cfopDig)) { erros.push(`NF ${nfRef.numero}: CFOP ${nfTyped.cfop} ("outras entradas") — processe individualmente para confirmar se é compra a pagar`); continue; }
         // Ano Safra é obrigatório: vale o do lote ou o que a NF já tem
         if (!settings.ano_safra_id && !nfTyped.ano_safra_id) { erros.push(`NF ${nfRef.numero}: sem Ano Safra — escolha um no lote ou indique na NF`); continue; }
 

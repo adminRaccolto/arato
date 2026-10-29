@@ -55,6 +55,7 @@ import InputMonetario from "../InputMonetario";
 import InputNumerico from "../InputNumerico";
 import SelectBusca from "../SelectBusca";
 import { estornarNfComConfirmacao } from "../../lib/fiscal/estornar-nf-cliente";
+import { cobrancaDaNf, motivoSemCp, CFOPS_ENTREGA_FUTURA, CFOPS_SIMPLES_FATURAMENTO } from "../../lib/fiscal/cfop-cobranca";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -1599,6 +1600,33 @@ export default function ModalNf({
         setErr("Forma de pagamento Cartão de Crédito: escolha o cartão (aba Cabeçalho → Pagamento e Classificação).");
         setSaving(false); return;
       }
+      // Pelo CFOP: remessa de entrega futura / comodato / conserto… não geram CP; 5949 genérico: o usuário decide
+      const cobranca = cobrancaDaNf(cab.cfop || nfEdit.cfop, itensDB.map(i => (i as { cfop?: string | null }).cfop));
+      let gerarCp: boolean | undefined;
+      if (cobranca === "entrega_futura" || cobranca === "sem_cobranca") {
+        if (!(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
+          mensagem: `A NF ${nfEdit.numero} (CFOP ${cab.cfop || nfEdit.cfop}) é ${motivoSemCp(cobranca)}. Os itens são processados normalmente, mas NÃO nasce título no Contas a Pagar.` }))) { setSaving(false); return; }
+      } else if ([cab.cfop || nfEdit.cfop, ...itensDB.map(i => (i as { cfop?: string | null }).cfop)].some(c => CFOPS_SIMPLES_FATURAMENTO.has(String(c ?? "").replace(/\D/g, "")))) {
+        // Simples faturamento: o CP nasce aqui. Remessa de entrega futura do mesmo fornecedor processada antes da regra
+        // nova pode ter gerado CP também — avisa para não pagar em dobro.
+        const doc = String(nfEdit.emitente_cnpj ?? "").replace(/\D/g, "");
+        const { data: rems } = doc ? await supabase.from("nf_entradas").select("id, numero, cfop").eq("status", "processada")
+          .or(`emitente_cnpj.eq.${doc},emitente_cnpj.eq.${nfEdit.emitente_cnpj}`).in("fazenda_id", fazendaIds?.length ? fazendaIds : [fazendaId]) : { data: [] };
+        const remFut = (rems ?? []).filter(r => CFOPS_ENTREGA_FUTURA.has(String(r.cfop ?? "").replace(/\D/g, "")));
+        const { data: cpsRem } = remFut.length ? await supabase.from("lancamentos").select("nf_entrada_id, valor").in("nf_entrada_id", remFut.map(r => r.id))
+          .eq("tipo", "pagar").in("status", ["em_aberto", "vencido", "vencendo"]) : { data: [] };
+        if (cpsRem?.length) {
+          const nums = [...new Set(cpsRem.map(c => remFut.find(r => r.id === c.nf_entrada_id)?.numero))].join(", ");
+          const tot = cpsRem.reduce((t, c) => t + Number(c.valor ?? 0), 0);
+          if (!(await confirmarAcao({ titulo: "Atenção: CP em dobro", perigo: true, textoConfirmar: "Processar mesmo assim",
+            mensagem: `Este é o simples faturamento (o Contas a Pagar nasce aqui), mas remessas de entrega futura deste fornecedor (NF ${nums}) já têm ${cpsRem.length} título(s) em aberto, R$ ${tot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.\n\nSe forem do mesmo pedido, apague esses títulos das remessas para não pagar em dobro.` }))) { setSaving(false); return; }
+        }
+      } else if (cobranca === "confirmar") {
+        gerarCp = await confirmarAcao({ titulo: "Esta NF é uma compra a pagar?", perigo: false, textoConfirmar: "Sim, gerar Contas a Pagar",
+          mensagem: `A NF ${nfEdit.numero} usa o CFOP genérico ${cab.cfop || nfEdit.cfop} ("outras entradas/saídas"), que serve tanto para compra quanto para garantia, bonificação ou remessa.\n\nÉ uma compra que vai ser paga? Se não for (garantia paga pela fábrica, brinde, troca), clique em Cancelar e escolha processar sem CP.` });
+        if (!gerarCp && !(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
+          mensagem: `A NF ${nfEdit.numero} será processada sem título no Contas a Pagar.` }))) { setSaving(false); return; }
+      }
       await processarNfEntrada(
         nfEdit.id,
         fazendaId,
@@ -1612,6 +1640,7 @@ export default function ModalNf({
         nfEdit.emitente_cnpj,
         {
           nfeNumero:           nfEdit.numero,
+          gerarCp,
           dataVencimentoCp:    cab.data_vencimento_cp || nfEdit.data_vencimento_cp,
           formaPagamento:      cab.forma_pagamento || (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
           // Cartão de Crédito: os títulos nascem no cartão escolhido (na fatura do mês), não como CP em aberto.

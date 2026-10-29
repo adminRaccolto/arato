@@ -11,6 +11,7 @@ import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
 import { excluirTitulosDaNf } from "./financeiro/titulos-nf";
 import { ncmPadraoDoProduto } from "./fiscal/ncm-produtos";
+import { cobrancaDaNf } from "./fiscal/cfop-cobranca";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
@@ -2940,6 +2941,8 @@ export async function processarNfEntrada(
     parcelas?: { data: string; valor: number }[];
     /** Forma de pagamento Cartão de Crédito: os títulos nascem no cartão (status 'cartao', na fatura do mês). */
     cartaoId?: string;
+    /** CFOP genérico 5949/6949: o usuário confirmou se é compra (true = gera CP; false = sem CP). Sem resposta, gera CP. */
+    gerarCp?: boolean;
   },
 ): Promise<void> {
   // Normaliza CNPJ do emitente para dígitos puros — o XML entrega sem máscara,
@@ -3356,7 +3359,11 @@ export async function processarNfEntrada(
   const { data: nfCfopRow } = await supabase.from("nf_entradas").select("cfop").eq("id", nfId).maybeSingle();
   const cfopNf = ((nfCfopRow?.cfop as string | null) ?? "").replace(/\D/g, "");
   // Retorno de armazém geral (5906/6906…) também não tem cobrança: os itens voltam ao estoque, sem CP
-  const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(cfopNf) || CFOPS_RETORNO_ARMAZENAGEM.has(cfopNf);
+  // Remessa de entrega futura (o CP vem do simples faturamento), comodato, conserto, demonstração, industrialização,
+  // armazenagem e vasilhame: sem cobrança, sem CP (lib/fiscal/cfop-cobranca). 5949 genérico: o que o usuário confirmou.
+  const cobranca = cobrancaDaNf(cfopNf, itens.map(i => (i as { cfop?: string | null }).cfop));
+  const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(cfopNf) || CFOPS_RETORNO_ARMAZENAGEM.has(cfopNf)
+    || cobranca === "entrega_futura" || cobranca === "sem_cobranca" || (cobranca === "confirmar" && opts?.gerarCp === false);
 
   // Trava de duplicidade: se a NF JÁ tem título ativo do produtor, processar de novo nunca cria outro.
   // Achado 14/10/2026: reprocessamentos da mesma NF geraram um segundo CP em aberto ao lado do já baixado
