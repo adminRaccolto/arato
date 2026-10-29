@@ -13,6 +13,8 @@ import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
 import DecimoTerceiro from "../../../components/folha/DecimoTerceiro";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
+import { nomeRelatorio } from "../../../lib/print";
 
 // ─── Tipos ────────────────────────────────────────────────────
 interface Funcionario {
@@ -214,6 +216,7 @@ export default function FolhaPagamentoPage() {
   const [repDesc, setRepDesc] = useState<Record<string, { valor: string; competencia: string }>>({});
   const [repErro, setRepErro] = useState("");
   const [aba, setAba]             = useState<Aba>("processamento");
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome do arquivo
   // ?aba=decimo (endereço antigo do 13º Salário) abre direto na aba
   useEffect(() => { try { if (new URLSearchParams(window.location.search).get("aba") === "decimo") setAba("decimo"); } catch { /* sem URL */ } }, []);
   const [loading, setLoading]     = useState(true);
@@ -989,6 +992,34 @@ export default function FolhaPagamentoPage() {
     finally { setSaving(false); }
   }
 
+  // Exportar a folha aberta para XLSX: todos os proventos, descontos (INSS, IRRF, adiantamentos, outros descontos com o
+  // motivo), benefícios, líquido e encargos do empregador, uma linha por funcionário + total
+  async function exportarFolhaXlsx() {
+    const funcs = folhaEdit.funcionarios ?? [];
+    if (!funcs.length) return;
+    const XLSX = await import("xlsx");
+    const empregador = (f: FolhaFunc) => f.empresa_id ? (empresasMap[f.empresa_id] ?? "Empresa") : f.produtor_id ? (produtoresMap[f.produtor_id] ?? "Produtor") : "Sem vínculo";
+    const linha = (f: FolhaFunc) => ({
+      "Empregador": empregador(f), "Funcionário": f.nome_funcionario, "Cargo": f.cargo ?? "",
+      "Salário Base": f.salario_base, "Gratificação": f.gratificacao,
+      "HE 50% (h)": f.he_50_horas ?? 0, "HE 100% (h)": f.he_100_horas ?? 0, "Horas Extras (R$)": f.he_valor ?? 0, "DSR s/ HE (R$)": f.he_dsr ?? 0,
+      "Bruto": f.salario_bruto, "INSS": f.inss_trabalhador, "IRRF": f.irrf, "Adiantamentos": f.adiantamento,
+      "Outros Descontos": f.outros_descontos, "Motivo dos Descontos": f.desc_outros_descontos ?? "",
+      "Total Descontos": Math.round((f.inss_trabalhador + f.irrf + f.adiantamento + f.outros_descontos) * 100) / 100,
+      "Complemento": f.complemento_salarial ?? 0, "Vale Transporte": f.vale_transporte, "Vale Refeição": f.vale_refeicao, "Outros Benefícios": f.outros_beneficios,
+      "Salário Líquido": liquido(f), "INSS Patronal": f.inss_patronal, "FGTS": f.fgts,
+    });
+    const linhas = funcs.map(linha);
+    const numericas = Object.keys(linhas[0]).filter(k => typeof (linhas[0] as Record<string, unknown>)[k] === "number");
+    const total: Record<string, string | number> = { "Empregador": "TOTAL", "Funcionário": `${funcs.length} funcionário(s)` };
+    for (const k of numericas) total[k] = Math.round(linhas.reduce((t, l) => t + Number((l as Record<string, unknown>)[k] ?? 0), 0) * 100) / 100;
+    const ws = XLSX.utils.json_to_sheet([...linhas, total]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Folha");
+    const tipo = `FOLHA ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` ${empresasMap[folhaEdit.empresa_id] ?? ""}` : folhaEdit.produtor_id ? ` ${produtoresMap[folhaEdit.produtor_id] ?? ""}` : ""}`;
+    XLSX.writeFile(wb, `${nomeRelatorio(tipo, clienteRelatorio)}.xlsx`);
+  }
+
   function setFuncField(idx: number, field: keyof FolhaFunc, val: number | string) {
     setFolhaEdit(prev => {
       const funcs = [...prev.funcionarios];
@@ -1417,6 +1448,12 @@ export default function FolhaPagamentoPage() {
                   {l}
                 </OperationalButton>
               ))}
+              {(folhaEdit.funcionarios ?? []).length > 0 && (
+                <OperationalButton data-arato-button="secondary" onClick={exportarFolhaXlsx} title="Planilha com proventos, descontos, benefícios, líquido e encargos de cada funcionário"
+                  style={{ marginLeft:"auto", alignSelf:"center", padding:"5px 12px", border:"0.5px solid #1A4870", borderRadius:8, background:"#fff", color:"#1A4870", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  ⬇ Exportar XLSX
+                </OperationalButton>
+              )}
             </div>
 
             {/* Sub-aba: Funcionários */}

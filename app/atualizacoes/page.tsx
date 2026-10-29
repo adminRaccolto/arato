@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-n",
+    data: "29/10/2026",
+    titulo: "Folha: exportar para XLSX",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "novo", texto: "Botão ⬇ Exportar XLSX na folha aberta: uma linha por funcionário com proventos, horas extras, INSS, IRRF, adiantamentos, outros descontos (com o motivo), total de descontos, benefícios, líquido, INSS patronal e FGTS, mais a linha de total." },
+    ],
+  },
+  {
     versao: "2026.10.29-m",
     data: "29/10/2026",
     titulo: "Carência capitalizada: data do 1º pagamento",
