@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-m",
+    data: "29/10/2026",
+    titulo: "Carência capitalizada: data do 1º pagamento",
+    modulos: ["Contratos Financeiros"],
+    itens: [
+      { tipo: "correcao", texto: "Com Carência total (capitaliza), a \"Data 1º Pagto. (após carência)\" é a do primeiro pagamento de verdade — os períodos de carência entram antes dela. Antes ela virava o 1º ano de carência e jogava o cronograma anos para frente." },
+      { tipo: "correcao", texto: "Sem a Seção 389 no banco, o cálculo com juros capitalizados avisa e mantém o cronograma atual (não apaga as parcelas)." },
+    ],
+  },
+  {
     versao: "2026.10.29-l",
     data: "29/10/2026",
     titulo: "13º Salário dentro da Folha de Pagamento",

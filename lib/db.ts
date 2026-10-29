@@ -4241,10 +4241,16 @@ export async function listarParcelasPagamento(contrato_id: string): Promise<Parc
 }
 
 export async function salvarParcelasPagamento(contrato_id: string, fazenda_id: string, parcelas: Omit<ParcelaPagamento, "id" | "created_at" | "lancamento_id" | "contrato_id" | "fazenda_id">[]): Promise<ParcelaPagamento[]> {
+  // Colunas de juros capitalizados (Seção 389) só vão quando há capitalização — o resto salva mesmo sem a Seção.
+  // Confere a coluna ANTES de apagar as parcelas atuais (sem a Seção, o contrato não pode ficar sem cronograma).
+  const temCap = parcelas.some(p => (p.juros_capitalizado ?? 0) > 0 || (p.juros_cap_pago ?? 0) > 0);
+  if (temCap) {
+    const { error: eCol } = await supabase.from("parcelas_pagamento").select("juros_capitalizado").limit(1);
+    if (eCol && (eCol.code === "42703" || eCol.code === "PGRST204" || /juros_capitalizado/.test(eCol.message)))
+      throw new Error("Carência com juros capitalizados precisa da Seção 389 do supabase_migrations.sql (colunas juros_capitalizado e juros_cap_pago). Rode a Seção no Supabase e calcule de novo — o cronograma atual não foi alterado.");
+  }
   // Remove as existentes e recria (recalculo)
   await falharSeErro(supabase.from("parcelas_pagamento").delete().eq("contrato_id", contrato_id), "excluir parcelas_pagamento");
-  // Colunas de juros capitalizados (Seção 389) só vão quando há capitalização — o resto salva mesmo sem a Seção
-  const temCap = parcelas.some(p => (p.juros_capitalizado ?? 0) > 0 || (p.juros_cap_pago ?? 0) > 0);
   const { data, error } = await supabase.from("parcelas_pagamento").insert(
     parcelas.map(p => {
       const { juros_capitalizado, juros_cap_pago, ...resto } = p;

@@ -390,10 +390,13 @@ export default function ContratosFinanceiros() {
       setParcelasPagamento(p); setParcelasEditadas({});
       // Auto-preenche calculadora a partir das parcelas existentes
       if (p.length > 0 && p[0].data_vencimento) {
+        // Carência capitalizada: as linhas da carência (sem pagamento) não contam como parcela e a data é a do 1º pagamento
+        const comAmort = p.filter(x => Number(x.amortizacao) > 0 || Number(x.juros_cap_pago ?? 0) > 0).length;
+        const primeiroPg = p.find(x => Number(x.valor_parcela) > 0)?.data_vencimento ?? p[0].data_vencimento;
         setFCalc(prev => ({
           ...prev,
-          nParcelas: String(p.length),
-          dataPrimeiro: prev.dataPrimeiro || p[0].data_vencimento,
+          nParcelas: String(comAmort || p.length),
+          dataPrimeiro: prev.dataPrimeiro || primeiroPg,
         }));
       }
     }).catch(() => {});
@@ -808,7 +811,14 @@ export default function ContratosFinanceiros() {
     // Juros capitalizados na carência: a parte da amortização que quita esse juro volta a ser juro (amortização = principal)
     base = separarCapitalizado(base.map(p => ({ ...p, amortizacao: Math.round(p.amortizacao * 100) / 100, juros: Math.round(p.juros * 100) / 100, juros_capitalizado: Math.round((p.juros_capitalizado ?? 0) * 100) / 100 })));
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
-    const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
+    // Carência total (capitaliza): a data informada é o 1º PAGAMENTO; os anos/meses de carência ficam antes dela
+    let dataInicio = fCalc.dataPrimeiro;
+    if (carTipo === "total" && car > 0) {
+      const d0 = new Date(fCalc.dataPrimeiro + "T12:00:00");
+      d0.setMonth(d0.getMonth() - car * period);
+      dataInicio = d0.toISOString().slice(0, 10);
+    }
+    const comDatas = aplicarDatas(base, dataInicio, period);
     // Calcular só monta o grid (e persiste o cronograma em parcelas_pagamento,
     // pra ter id de banco e permitir baixa/edição) — NÃO lança mais em CP aqui.
     // O lançamento em CP só acontece quando o usuário confirma explicitamente em
@@ -2121,7 +2131,7 @@ export default function ContratosFinanceiros() {
                         </label>
                         <InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} />
                       </div>
-                      <div><label data-arato-label="true" style={lbl}>Data 1º Pagto.</label><InputData style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
+                      <div><label data-arato-label="true" style={lbl} title={fC.carencia_tipo === "total" && Number(fC.carencia_meses ?? 0) > 0 ? "Data do primeiro pagamento depois da carência — os períodos de carência (juros capitalizados) ficam antes dela" : undefined}>{fC.carencia_tipo === "total" && Number(fC.carencia_meses ?? 0) > 0 ? "Data 1º Pagto. (após carência)" : "Data 1º Pagto."}</label><InputData style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
                       <div><label data-arato-label="true" style={lbl}>Periodicidade</label><SelectField style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></SelectField></div>
                       <div><label data-arato-label="true" style={lbl}>Acessórios/parc. ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
                     </div>
