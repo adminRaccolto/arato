@@ -316,7 +316,7 @@ export default function TesourariaPage() {
                     </td>
                     <td style={{ padding: "9px 12px" }}>
                       <span style={{ fontSize: 10, background: l.status === "baixado" ? "#DCFCE7" : "#E6F1FB", color: l.status === "baixado" ? "#166534" : "#0C447C", padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>
-                        {l.status === "baixado" ? "Baixado" : "Em aberto"}
+                        {l.status === "baixado" ? "Baixado" : "Aberto"}
                       </span>
                     </td>
                     <td style={{ padding: "9px 8px", textAlign: "center" }}>

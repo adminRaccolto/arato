@@ -4316,7 +4316,7 @@ export default function BI() {
                   l.data_vencimento,
                   isCaptacao(l) ? "Captação" : isJurosPgto(l) ? "Juros/Encargo" : "Amortização",
                   l.valor,
-                  l.status === "baixado" ? "Baixado" : l.status === "vencido" ? "Vencido" : "Em aberto",
+                  l.status === "baixado" ? "Baixado" : l.status === "vencido" ? "Vencido" : "Aberto",
                 ];
               }),
             ];
@@ -4540,7 +4540,7 @@ export default function BI() {
                                                 <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600, color: isCaptacao(l) ? "#16A34A" : "var(--text-1)" }}>{fmtR(l.valor)}</td>
                                                 <td style={{ padding: "5px 8px", textAlign: "right" }}>
                                                   <span style={{ background: baixado ? "#DCFCE7" : "#FEF3C7", color: baixado ? "#166534" : "#92400E", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
-                                                    {baixado ? "Baixado" : l.status === "vencido" ? "Vencido" : "Em aberto"}
+                                                    {baixado ? "Baixado" : l.status === "vencido" ? "Vencido" : "Aberto"}
                                                   </span>
                                                 </td>
                                               </tr>
@@ -5387,7 +5387,7 @@ export default function BI() {
         const tipoLabel: Record<string, string> = { custeio: "Custeio", investimento: "Investimento", securitizacao: "Securitização", cpr: "CPR", egf: "EGF", outros: "Outros" };
         const garantiaLabel: Record<string, string> = { alienacao_fiduciaria: "Alienação Fiduciária", hipoteca: "Hipoteca", penhor_rural: "Penhor Rural", aval: "Aval", nota_promissoria: "Nota Promissória", cpr_garantia: "CPR Garantia", cessao_recebiveis: "Cessão de Recebíveis", outros: "Outros" };
         const bemLabel: Record<string, string> = { imovel: "Imóvel", maquina: "Máquina/Equipamento", semovente: "Animal", produto_agricola: "Produto Agrícola", outro: "Outro" };
-        const statusLabel: Record<string, string> = { pago: "Pago", em_aberto: "Em aberto", vencido: "Vencido" };
+        const statusLabel: Record<string, string> = { pago: "Pago", em_aberto: "Aberto", vencido: "Vencido" };
         const statusCor:   Record<string, { bg: string; txt: string }> = {
           pago:      { bg: "#DCFCE7", txt: "#166534" },
           em_aberto: { bg: "#EBF3FC", txt: "#0C447C" },
@@ -5421,7 +5421,7 @@ export default function BI() {
               <td style="padding:4px 6px;text-align:right;font-family:monospace;font-weight:700">${isUSD ? `USD ${fmtN(p.valor_parcela,2)}` : fmtR(p.valor_parcela)}</td>
               ${isUSD ? `<td style="padding:4px 6px;text-align:right;font-family:monospace;color:#555">${valBRL ? fmtR(valBRL) : "—"}</td>` : ""}
               ${isUSD ? `<td style="padding:4px 6px;text-align:right;color:#888">${ptax > 0 ? `R$ ${fmtN(ptax,4)}` : "—"}</td>` : ""}
-              <td style="padding:4px 6px;text-align:center"><span style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;${statusCss}">${p.status === "pago" ? "Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span></td>
+              <td style="padding:4px 6px;text-align:center"><span style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;${statusCss}">${p.status === "pago" ? "Pago" : p.status === "vencido" ? "Vencido" : "Aberto"}</span></td>
             </tr>`;
           }).join("");
           const garantiasHtml = c.garantias.length > 0

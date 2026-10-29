@@ -329,7 +329,7 @@ function PagamentoInner() {
               <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 2 }}>
                 <div>Status: <strong style={{ color: inadimplente ? "#E24B4A" : "#16A34A" }}>{inadimplente ? "Inadimplente" : contaStatus ?? "—"}</strong></div>
                 <div>Plano: <strong>{plano?.nome ?? "—"}</strong></div>
-                <div>Em aberto: <strong style={{ color: "#E24B4A" }}>{fmtPreco(totalDevido)}</strong></div>
+                <div>Aberto: <strong style={{ color: "#E24B4A" }}>{fmtPreco(totalDevido)}</strong></div>
               </div>
 
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>

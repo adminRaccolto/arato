@@ -1379,7 +1379,7 @@ export default function FolhaPagamentoPage() {
                     <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginBottom:10, padding:"8px 12px", background:"#F4F6FA", borderRadius:8, fontSize:12, color:"#555" }}>
                       <span><strong>Salários no Contas a Pagar:</strong> {qPagos} de {vals.length} pagos</span>
                       <span>Pago <strong style={{ color:"#166534" }}>{moeda(pago)}</strong></span>
-                      <span>Em aberto <strong style={{ color: aberto > 0.005 ? "#B91C1C" : "#555" }}>{moeda(aberto)}</strong></span>
+                      <span>Aberto <strong style={{ color: aberto > 0.005 ? "#B91C1C" : "#555" }}>{moeda(aberto)}</strong></span>
                     </div>
                   );
                 })()}
@@ -1490,7 +1490,7 @@ export default function FolhaPagamentoPage() {
                                     const [txt, cor, bg] = sc.previsao ? ["Previsão", "#555", "#EEF0F4"]
                                       : aberto <= 0.005 ? [`Pago${sc.ultimaBaixa ? ` ${dataFmt(sc.ultimaBaixa)}` : ""}`, "#166534", "#DCFCE7"]
                                       : sc.pago > 0 ? [`Parcial · falta ${moeda(aberto)}`, "#7A5200", "#FBF3E0"]
-                                      : ["Em aberto no CP", "#B91C1C", "#FEF2F2"];
+                                      : ["Aberto no CP", "#B91C1C", "#FEF2F2"];
                                     return <div style={{ marginTop: 2 }}><span style={{ fontSize: 10, fontWeight: 700, color: cor, background: bg, padding: "1px 6px", borderRadius: 6 }}>{txt}</span></div>;
                                   })()}
                                 </td>

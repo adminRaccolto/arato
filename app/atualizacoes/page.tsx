@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-b",
+    data: "29/10/2026",
+    titulo: "Pendências do painel batem com o Contas a Pagar/Receber; status \"Aberto\"",
+    modulos: ["Início", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Alertas & Pendências do painel inicial: os vencidos e a vencer agora usam o mesmo critério do Contas a Pagar e a Receber — saldo (não o valor cheio de título parcial), dólar convertido em reais, títulos do produtor e da Empresa, sem previsões e sem o corte de 180 dias. Antes os números não batiam com a tela." },
+      { tipo: "correcao", texto: "O \"ver\" de cada pendência abre o Contas a Pagar/Receber já filtrado (Vencidos ou o período do alerta); antes a tela ignorava o link e abria no período padrão." },
+      { tipo: "melhoria", texto: "O status \"Em Aberto\" passou a se chamar \"Aberto\" em todas as telas, filtros, relatórios e exportações." },
+    ],
+    onde: "Início → Alertas & Pendências; Financeiro",
+  },
+  {
     versao: "2026.10.29-a",
     data: "29/10/2026",
     titulo: "Remessa, comodato e garantia não geram mais Contas a Pagar",

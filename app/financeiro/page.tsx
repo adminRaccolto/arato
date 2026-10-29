@@ -86,7 +86,7 @@ const categoriasCor: Record<string, { bg: string; color: string }> = {
 
 const corStatus = (s: string) => ({
   previsto:  { bg: "#F0EEF9", color: "#5B4FA8", label: "Pedido de Venda" },
-  em_aberto: { bg: "#E6F1FB", color: "#0C447C", label: "Em aberto" },
+  em_aberto: { bg: "#E6F1FB", color: "#0C447C", label: "Aberto" },
   vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido"   },
   vencendo:  { bg: "#FAEEDA", color: "#633806", label: "Vencendo"  },
   baixado:   { bg: "#E8E8E8", color: "#0D0D0D", label: "Baixado"   },

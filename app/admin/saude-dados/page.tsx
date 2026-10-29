@@ -201,7 +201,7 @@ export default function SaudeDadosPage() {
             {Object.entries(regras).map(([k, r]) => <option key={k} value={k}>{r.nome}</option>)}
           </SelectField>
           <SelectField value={fStatus} onChange={e => setFStatus(e.target.value)} style={inp}>
-            <option value="abertos">Em aberto (novo + em análise)</option>
+            <option value="abertos">Abertos (novo + em análise)</option>
             <option value="novo">Novo</option><option value="em_analise">Em análise</option><option value="resolvido">Resolvido</option><option value="ignorado">Ignorado</option><option value="">Todos</option>
           </SelectField>
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar item ou cliente…" style={{ ...inp, minWidth: 220 }} />
@@ -347,7 +347,7 @@ function PorUsuario(p: {
       filtros: [
         { rotulo: "Cliente", valor: cliente },
         { rotulo: "Usuário", valor: p.fUsuario || "Todos" },
-        { rotulo: "Situação", valor: p.fStatus === "abertos" ? "Em aberto" : p.fStatus ? (STATUS as Record<string, { rot: string }>)[p.fStatus]?.rot ?? p.fStatus : "Todas" },
+        { rotulo: "Situação", valor: p.fStatus === "abertos" ? "Aberto" : p.fStatus ? (STATUS as Record<string, { rot: string }>)[p.fStatus]?.rot ?? p.fStatus : "Todas" },
         { rotulo: "Período", valor: p.fDe || p.fAte ? `${p.fDe ? fmtData(p.fDe) : "início"} a ${p.fAte ? fmtData(p.fAte) : "hoje"}` : "Todo o período" },
       ],
     });
@@ -368,7 +368,7 @@ function PorUsuario(p: {
           </SelectField></div>
         <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Situação</div>
           <SelectField value={p.fStatus} onChange={e => p.setFStatus(e.target.value)} style={inp}>
-            <option value="abertos">Em aberto</option><option value="resolvido">Resolvido</option><option value="ignorado">Ignorado</option><option value="">Todas</option>
+            <option value="abertos">Aberto</option><option value="resolvido">Resolvido</option><option value="ignorado">Ignorado</option><option value="">Todas</option>
           </SelectField></div>
         <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Ação de</div><InputData type="date" value={p.fDe} onChange={e => p.setFDe(e.target.value)} style={inp} /></div>
         <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Até</div><InputData type="date" value={p.fAte} onChange={e => p.setFAte(e.target.value)} style={inp} /></div>

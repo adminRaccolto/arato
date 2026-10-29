@@ -240,7 +240,7 @@ const FRETES    = ["destinatario","remetente","cif","fob","sem_frete"] as const;
 const FRETE_LBL: Record<string,string> = { destinatario:"Destinatário", remetente:"Remetente", cif:"CIF", fob:"FOB", sem_frete:"Sem frete" };
 
 const corStatus = (s: string) => ({
-  aberto:    { bg: "#E6F1FB", color: "#0C447C", label: "Em aberto"  },
+  aberto:    { bg: "#E6F1FB", color: "#0C447C", label: "Aberto"  },
   parcial:   { bg: "#FAEEDA", color: "#633806", label: "Parcial"    },
   encerrado: { bg: "#E8E8E8", color: "#0D0D0D", label: "Encerrado"  },
   cancelado: { bg: "#FCEBEB", color: "#791F1F", label: "Cancelado"  },

@@ -21,7 +21,7 @@ const mesInicio = () => { const d = new Date(); d.setDate(1); return d.toISOStri
 
 // ─── constantes ──────────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
-  em_aberto: "Em Aberto", vencendo: "A Vencer",
+  em_aberto: "Aberto", vencendo: "A Vencer",
   vencido: "Vencido", parcial: "Parcial", baixado: "Pago",
 };
 const STATUS_COR: Record<string, string> = {

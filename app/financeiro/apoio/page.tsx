@@ -342,7 +342,7 @@ export default function ApoioFinanceiroPage() {
 
   // ── Reabrir baixa oficial (reverte para em_aberto sem tocar apoio_baixas) ─
   async function reabrirBaixaOficial(l: Lancamento) {
-    if (!confirm(`Reabrir a baixa de "${l.descricao}"? O status voltará para Em Aberto.`)) return;
+    if (!confirm(`Reabrir a baixa de "${l.descricao}"? O status voltará para Aberto.`)) return;
     setAcaoId(l.id);
     await supabase.from("lancamentos").update({ status: "em_aberto", data_baixa: null }).eq("id", l.id);
     await carregar();

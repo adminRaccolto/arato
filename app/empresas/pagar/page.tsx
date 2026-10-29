@@ -227,7 +227,7 @@ export default function EmpresaPagarPage() {
         {/* KPIs */}
         <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
           {[
-            { label: "Em Aberto",  val: totAberto,  color: "#C9921B", onClick: () => setFStatus("aberto") },
+            { label: "Aberto",  val: totAberto,  color: "#C9921B", onClick: () => setFStatus("aberto") },
             { label: "Vencido",    val: totVencido, color: "#E24B4A", onClick: () => setFStatus("vencido") },
             { label: "Pago no período", val: totPago, color: "#16A34A", onClick: () => setFStatus("pago") },
           ].map(k => (
@@ -272,7 +272,7 @@ export default function EmpresaPagarPage() {
           <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
             {(["aberto","vencido","pago","todos"] as StatusFiltro[]).map(s => (
               <OperationalButton data-arato-button="secondary" key={s} onClick={() => setFStatus(s)} style={{ ...S.btn(fStatus === s ? "#1A4870" : "transparent", fStatus === s ? "#fff" : "#555"), border: "0.5px solid #DDE2EE", fontSize: 12, padding: "5px 12px" }}>
-                {{ aberto: "Em Aberto", vencido: "Vencidos", pago: "Pagos", todos: "Todos" }[s]}
+                {{ aberto: "Aberto", vencido: "Vencidos", pago: "Pagos", todos: "Todos" }[s]}
                 {" "}({s === "aberto" ? lancamentos.filter(l => l.status==="pendente" && l.data_vencimento>=hoje).length
                        : s === "vencido" ? lancamentos.filter(l => l.status==="pendente" && l.data_vencimento<hoje).length
                        : s === "pago"    ? lancamentos.filter(l => l.status==="pago").length

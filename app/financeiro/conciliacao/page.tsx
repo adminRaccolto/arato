@@ -3577,7 +3577,7 @@ function ConciliacaoInner() {
                       <div style={{ fontWeight: 700, color: "#7A5200", marginBottom: 4 }}>Histórico do título — pago em partes</div>
                       {h.partes.map(p => (
                         <div key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "1px 0", fontWeight: p.id === idSelUnico ? 700 : 400 }}>
-                          <span>{p.status === "baixado" ? `Pago em ${fmtDt(p.data_baixa ?? p.data_vencimento)}${p.conciliado ? " · conciliado" : ""}` : `Em aberto · vence ${fmtDt(p.data_vencimento)}`}</span>
+                          <span>{p.status === "baixado" ? `Pago em ${fmtDt(p.data_baixa ?? p.data_vencimento)}${p.conciliado ? " · conciliado" : ""}` : `Aberto · vence ${fmtDt(p.data_vencimento)}`}</span>
                           <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(p.valor)}</span>
                         </div>
                       ))}
@@ -3607,7 +3607,7 @@ function ConciliacaoInner() {
                       <div style={{ fontWeight: 700, color: "#7A5200", marginBottom: 4 }}>Histórico do borderô — pago em partes</div>
                       {partesLote.map(p => (
                         <div key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "1px 0", fontWeight: p.id === loteId ? 700 : 400 }}>
-                          <span>{p.status === "pago" ? `Pago em ${fmtDt(p.data_pagamento ?? "")}${p.conciliado ? " · conciliado" : ""}` : `Em aberto${p.data_vencimento ? ` · vence ${fmtDt(p.data_vencimento)}` : ""}`}</span>
+                          <span>{p.status === "pago" ? `Pago em ${fmtDt(p.data_pagamento ?? "")}${p.conciliado ? " · conciliado" : ""}` : `Aberto${p.data_vencimento ? ` · vence ${fmtDt(p.data_vencimento)}` : ""}`}</span>
                           <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtBRL(p.valor_total)}</span>
                         </div>
                       ))}

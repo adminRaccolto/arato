@@ -6,6 +6,7 @@ import OnboardingPanel from "../components/OnboardingPanel";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../components/AuthProvider";
 import type { PrecosData } from "./api/precos/route";
+import { titulosAbertosAte } from "../lib/financeiro/titulos-abertos";
 
 // ─── Helpers ─────────────────────────────────────────────────
 const fmtMoeda = (v: number) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -115,7 +116,7 @@ function saudar(): string {
 
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
-  const { fazendaId, fazendaIds, onboardingAtivo, nomeUsuario, anoSafraVigenteDesc } = useAuth();
+  const { fazendaId, fazendaIds, contaId, onboardingAtivo, nomeUsuario, anoSafraVigenteDesc } = useAuth();
 
   const [alertas,    setAlertas]    = useState<Alerta[]>([]);
   const [loadAl,     setLoadAl]     = useState(true);
@@ -241,37 +242,18 @@ export default function Dashboard() {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const em7  = new Date(hoje); em7.setDate(hoje.getDate() + 7);
     const em15 = new Date(hoje); em15.setDate(hoje.getDate() + 15);
-    const floor180 = new Date(hoje); floor180.setDate(hoje.getDate() - 180);
     const isoHoje  = hoje.toISOString().split("T")[0];
     const isoEm7   = em7.toISOString().split("T")[0];
     const isoEm15  = em15.toISOString().split("T")[0];
-    const isoFloor = floor180.toISOString().split("T")[0];
 
-    const statusAberto = ["em_aberto", "vencido", "vencendo"];
+    const ptaxPainel = fetch("/api/precos").then(r => r.json()).then(d => (d.usdPtax ?? d.usdBrl ?? null) as number | null).catch(() => null);
     Promise.all([
-      // CP a vencer nos próximos 7 dias + vencidos (piso 180 dias atrás)
-      supabase.from("lancamentos")
-        .select("id, descricao, valor, data_vencimento, status")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "pagar")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto)
-        .gte("data_vencimento", isoFloor)
-        .lte("data_vencimento", isoEm7)
-        .order("data_vencimento"),
-
-      // CR a vencer nos próximos 7 dias + vencidos (piso 180 dias atrás)
-      supabase.from("lancamentos")
-        .select("id, descricao, valor, data_vencimento, status")
-        .in("fazenda_id", fazendaIds)
-        .eq("tipo", "receber")
-        .neq("moeda", "barter")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .in("status", statusAberto)
-        .gte("data_vencimento", isoFloor)
-        .lte("data_vencimento", isoEm7)
-        .order("data_vencimento"),
+      // CP e CR vencidos + a vencer em 7 dias — mesmo critério do grid de CP/CR (saldo em reais, produtor e Empresa,
+      // sem previsão), para o número do painel ser o mesmo que aparece ao clicar em "ver"
+      ptaxPainel.then(ptax => titulosAbertosAte(supabase, { contaId, fazendaIds, tipo: "pagar", ate: isoEm7, ptax }))
+        .then(rows => ({ data: rows.map(r => ({ ...r, valor: r.saldo })) })).catch(() => ({ data: [] as { valor: number; data_vencimento: string }[] })),
+      ptaxPainel.then(ptax => titulosAbertosAte(supabase, { contaId, fazendaIds, tipo: "receber", ate: isoEm7, ptax }))
+        .then(rows => ({ data: rows.map(r => ({ ...r, valor: r.saldo })) })).catch(() => ({ data: [] as { valor: number; data_vencimento: string }[] })),
 
       // Arrendamentos vencendo em 15 dias
       supabase.from("arrendamento_pagamentos")
@@ -601,7 +583,7 @@ export default function Dashboard() {
       ]);
       setConciliPend(((pend ?? []) as ConciliPendencia[]).filter(p => p.conta_id && vivas.has(`${p.conta_id}|${p.fitid}`)));
     })();
-  }, [fazendaId]);
+  }, [fazendaId, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ignorarInconsistencia(id: string) {
     await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", id);

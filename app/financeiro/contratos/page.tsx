@@ -947,7 +947,7 @@ export default function ContratosFinanceiros() {
   }
 
   async function reabrirParcela(p: ParcelaPagamento) {
-    if (!confirm("Reabrir esta parcela? O lançamento de CP voltará para 'Em aberto'.")) return;
+    if (!confirm("Reabrir esta parcela? O lançamento de CP voltará para 'Aberto'.")) return;
     try {
       if (p.lancamento_id) {
         await reabrirLancamento(p.lancamento_id);
@@ -1327,7 +1327,7 @@ export default function ContratosFinanceiros() {
                   <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
-                        {["Contrato / Credor", "Captado", "Pago", "Em Aberto", "% Pago"].map((h, i) => (
+                        {["Contrato / Credor", "Captado", "Pago", "Aberto", "% Pago"].map((h, i) => (
                           <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
@@ -2224,7 +2224,7 @@ export default function ContratosFinanceiros() {
                                       </td>
                                       <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.saldo_devedor)}</td>
                                       <td style={{ padding: "5px 10px", textAlign: "center" }}>
-                                        <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
+                                        <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Aberto"}</span>
                                       </td>
                                       <td style={{ padding: "4px 8px", textAlign: "center" }}>
                                         {p.status === "pago" ? (

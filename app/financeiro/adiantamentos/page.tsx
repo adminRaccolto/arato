@@ -35,7 +35,7 @@ type Tab = "em_aberto" | "parcial" | "aplicado" | "cancelado" | "todos";
 type Moeda = "BRL" | "USD";
 
 const STATUS_LABEL: Record<AdiantamentoFornecedor["status"], string> = {
-  em_aberto: "Em Aberto", parcial: "Parcial", aplicado: "Aplicado", cancelado: "Cancelado",
+  em_aberto: "Aberto", parcial: "Parcial", aplicado: "Aplicado", cancelado: "Cancelado",
 };
 const STATUS_COLOR: Record<AdiantamentoFornecedor["status"], { bg: string; color: string }> = {
   em_aberto: { bg: "#E8E8E8", color: "#0D0D0D" },
@@ -213,7 +213,7 @@ export default function AdiantamentosPage() {
   const nomePessoa = (id?: string) => id ? (pessoas.find(p => p.id === id)?.nome ?? "—") : "—";
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: "em_aberto", label: "Em Aberto" },
+    { key: "em_aberto", label: "Aberto" },
     { key: "parcial",   label: "Parcialmente Aplicados" },
     { key: "aplicado",  label: "Aplicados" },
     { key: "cancelado", label: "Cancelados" },

@@ -109,7 +109,7 @@ type RelLancamento = {
 };
 
 const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
-  { v: "em_aberto", label: "Em Aberto", bg: "#E8E8E8", color: "#0D0D0D" },
+  { v: "em_aberto", label: "Aberto", bg: "#E8E8E8", color: "#0D0D0D" },
   { v: "vencido",   label: "Vencido",   bg: "#FCEBEB", color: "#791F1F" },
   { v: "parcial",   label: "Parcial",   bg: "#FBF3E0", color: "#7A5200" },
   { v: "baixado",   label: "Baixado",   bg: "#DCFCE7", color: "#166534" },
@@ -243,6 +243,16 @@ export default function ContasAReceberPage() {
   // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
   // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
   const [periodoManual, setPeriodoManual] = useState(false);
+  // Filtro vindo do link (painel inicial "ver"): ?filtro=vencido liga o atalho Vencidos; ?vencDe/?vencAte viram o período.
+  // Antes a tela ignorava o link e abria no período padrão — o número do painel nunca batia com o da tela.
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("filtro") === "vencido") setFStatus(new Set(["vencido"]));
+      const de = q.get("vencDe"), ate = q.get("vencAte");
+      if (de || ate) { if (de) setFDataDe(de); if (ate) setFDataAte(ate); setPeriodoManual(true); }
+    } catch { /* sem parâmetros */ }
+  }, []);
 
   // Ordenação — padrão por data de lançamento (não vencimento), mais recente
   // primeiro; clicar no cabeçalho da coluna alterna o campo e a direção, sem

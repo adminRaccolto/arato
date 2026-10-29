@@ -319,7 +319,7 @@ export default function PrevisaoGastosPage() {
               <div style={{ minWidth: 150 }}>
                 <label style={S.label}>Situação</label>
                 <select value={fStatus} onChange={e => setFStatus(e.target.value as typeof fStatus)} style={S.inp}>
-                  <option value="ativas">Em aberto e aguardando gestor</option>
+                  <option value="ativas">Abertas e aguardando gestor</option>
                   <option value="todas">Todas</option>
                   {(Object.keys(STATUS_PREVISAO_LABEL) as StatusPrevisao[]).map(s => <option key={s} value={s}>{STATUS_PREVISAO_LABEL[s]}</option>)}
                 </select>

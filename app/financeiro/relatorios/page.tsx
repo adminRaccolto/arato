@@ -1774,7 +1774,7 @@ function FinanceiroRelatoriosInner() {
                       // ── Barra de filtros do modo Anual ──────────────────────
                       const STATUS_OPTS: { key: string; label: string; cor: string; bg: string; bgA: string; corA: string }[] = [
                         { key: "baixado",   label: "Baixados",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#1A5C38", corA: "#fff" },
-                        { key: "em_aberto", label: "Em Aberto", cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#111111", corA: "#fff" },
+                        { key: "em_aberto", label: "Aberto", cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#111111", corA: "#fff" },
                         { key: "vencido",   label: "Vencidos",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#B91C1C", corA: "#fff" },
                         { key: "vencendo",  label: "A Vencer",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#C9921B", corA: "#fff" },
                       ];
@@ -1956,7 +1956,7 @@ function FinanceiroRelatoriosInner() {
                       printAnualRef.current = { anosPresentes, entradasA, saidasA, totEntA, totSaiA, saldoAnoA, saldoAcA, incluirPrevisoes: anualStatus.size === ALL_STATUS_A.length };
 
                       const descFiltroStatus = ALL_STATUS_A.filter(s => anualStatus.has(s))
-                        .map(s => ({ baixado: "Baixados", em_aberto: "Em Aberto", vencido: "Vencidos", vencendo: "A Vencer" }[s]))
+                        .map(s => ({ baixado: "Baixados", em_aberto: "Aberto", vencido: "Vencidos", vencendo: "A Vencer" }[s]))
                         .join(", ");
 
                       return (
@@ -2032,7 +2032,7 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 const corStatusCPCR: Record<string, { bg: string; color: string; label: string }> = {
-                  em_aberto: { bg: "#E8E8E8", color: "#0D0D0D", label: "Em Aberto" },
+                  em_aberto: { bg: "#E8E8E8", color: "#0D0D0D", label: "Aberto" },
                   vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido" },
                   vencendo:  { bg: "#FBF3E0", color: "#7A5A12", label: "Vencendo" },
                   baixado:   { bg: "#DCF5E8", color: "#14532D", label: "Baixado" },
@@ -2399,7 +2399,7 @@ function FinanceiroRelatoriosInner() {
                           <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
                         </OperationalButton>
                         {statusDDOpen && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 180, boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>
-                          {[{v:"em_aberto",l:"Em Aberto"},{v:"vencido",l:"Vencido"},{v:"vencendo",l:"Vencendo"},{v:"baixado",l:"Baixado / Pago"},{v:"parcial",l:"Parcial"}].map(opt =>
+                          {[{v:"em_aberto",l:"Aberto"},{v:"vencido",l:"Vencido"},{v:"vencendo",l:"Vencendo"},{v:"baixado",l:"Baixado / Pago"},{v:"parcial",l:"Parcial"}].map(opt =>
                             <DDItem key={opt.v} checked={statusCPCR.has(opt.v)} onToggle={() => setStatusCPCR(prev => { const n=new Set(prev); n.has(opt.v)?n.delete(opt.v):n.add(opt.v); return n; })} label={opt.l} />
                           )}
                           <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
@@ -2750,7 +2750,7 @@ function FinanceiroRelatoriosInner() {
                   </div>
                 );
 
-                const STATUS_OPC = [{ v: "em_aberto", l: "Em aberto" }, { v: "vencido", l: "Vencido" }, { v: "vencendo", l: "Vencendo" }, { v: "baixado", l: "Baixado / pago" }, { v: "parcial", l: "Parcial" }];
+                const STATUS_OPC = [{ v: "em_aberto", l: "Aberto" }, { v: "vencido", l: "Vencido" }, { v: "vencendo", l: "Vencendo" }, { v: "baixado", l: "Baixado / pago" }, { v: "parcial", l: "Parcial" }];
                 exportCpcrRef.current = { exportar: exportarXLSX, qtd: lancsCPCR.length };
                 const landing = (
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "28px 24px", textAlign: "center" }}>

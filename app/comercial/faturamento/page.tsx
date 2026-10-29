@@ -1604,7 +1604,7 @@ function FaturamentoInner() {
                       </div>
                       <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"flex-end" }}>
                         <span style={{ fontSize:11, background: c.confirmado ? "#D5F0E4" : "#FAEEDA", color: c.confirmado ? "#16703A" : "#633806", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>
-                          {c.confirmado ? "Confirmado" : "Em aberto"}
+                          {c.confirmado ? "Confirmado" : "Aberto"}
                         </span>
                         {c.venda_a_ordem && (
                           <span style={{ fontSize:10, background:"#E8E8E8", color:"#0D0D0D", padding:"2px 6px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
