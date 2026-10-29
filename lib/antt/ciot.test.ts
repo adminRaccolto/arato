@@ -6,7 +6,7 @@ import type { IncomingMessage } from "node:http";
 import { CiotService, type DeclaracaoCIOT } from "./ciot";
 
 test("transporte CIOT: falhas externas e gravações sem repetição automática", async t => {
-  const svc = new CiotService({ cert: "teste", key: "teste" }, "producao");
+  const svc = new CiotService({ cert: "teste", key: "teste" }, "homologacao");
   for (const corpo of ["<html>Service Unavailable</html>", JSON.stringify({ Sucesso: true, Dados: { CIOT: "560000000001" } })]) {
     await t.test(`HTTP 503 com ${corpo.startsWith("<") ? "HTML" : "JSON"}`, async t => {
       let chamadas = 0;

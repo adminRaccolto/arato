@@ -1,10 +1,7 @@
 // ANTT CIOT — GeradorCIOTService_v3
-// API REST/JSON pefServices da ANTT. AUTENTICAÇÃO: mTLS com o certificado e-CNPJ (ICP-Brasil) do
-// emitente — o MESMO A1 usado na SEFAZ. NÃO existe chave de API (ANTT_API_KEY): a versão anterior
-// desta integração (token via /v1/autenticacoes) estava errada — corrigido em 25/09/2026 com base
-// na coleção pública stoix-dev/antt-webservices-postman e no guia flexdocs (Gera CIOT/Declara).
-// Fluxo ETC sem subcontratação de TAC: POST /pefServices/gerar {CpfCnpj} → CIOT (12 dígitos);
-// POST /pefServices/api/DeclaracaoOperacaoTransporte vincula os dados da viagem ao CIOT.
+// Declaração/consultas PEF: mTLS com o certificado e-CNPJ do emitente (o mesmo A1 da SEFAZ).
+// Reserva em produção: gerador oficial separado, com chave + token (ver gerador.ts).
+// POST /pefServices/api/DeclaracaoOperacaoTransporte vincula os dados da viagem ao número.
 
 export const ANTT_ENDPOINTS = {
   homologacao: "https://appservices-hml.antt.gov.br/pefServices",
@@ -89,6 +86,7 @@ export type DeclaracaoCIOT = {
 
 import https from "node:https";
 import { agoraBrasilia } from "./validacao";
+import { gerarNumeroCiot } from "./gerador";
 
 export type CertificadoPem = { cert: string; key: string };
 
@@ -121,7 +119,7 @@ export function normalizarRespostaAntt(raw: unknown): ApiResponseANTT<CiotGerado
 export class CiotService {
   private host: string;
   private basePath: string;
-  constructor(private pem: CertificadoPem, ambiente: AmbienteCiot = "homologacao") {
+  constructor(private pem: CertificadoPem, private ambiente: AmbienteCiot = "homologacao") {
     const u = new URL(ANTT_ENDPOINTS[ambiente]);
     this.host = u.host;
     this.basePath = u.pathname; // /pefServices
@@ -187,6 +185,7 @@ export class CiotService {
 
   /** Passo 1 — reserva o número do CIOT (12 dígitos) para o CPF/CNPJ do certificado. */
   gerar(cpfCnpj: string) {
+    if (this.ambiente === "producao") return gerarNumeroCiot(cpfCnpj);
     return this.post<{ CIOT: string; CpfCnpj?: string; DataGeracao?: string }>("/gerar", { CpfCnpj: cpfCnpj.replace(/\D/g, "") });
   }
 

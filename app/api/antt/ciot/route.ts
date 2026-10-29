@@ -1,6 +1,7 @@
 /**
  * POST /api/antt/ciot — CIOT pela API pefServices da ANTT, autenticada por mTLS com o certificado
- * A1 (e-CNPJ) do emitente — o mesmo da SEFAZ. Não usa chave de API.
+ * A1 (e-CNPJ) do emitente — o mesmo da SEFAZ. A reserva em produção usa separadamente
+ * o gerador oficial da ANTT com ANTT_GERADOR_CHAVE + token (sem enviar o A1 ao gerador).
  *
  * acao "declarar" (= gerar + declarar): reserva o CIOT (POST /gerar) e vincula os dados da viagem
  *   body: { fazenda_id, cnpjContratante (CNPJ do emitente/ETC), ambiente, dados }
