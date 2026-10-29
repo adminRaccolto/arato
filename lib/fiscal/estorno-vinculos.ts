@@ -32,10 +32,11 @@ export async function desfazerVinculosDaNf(sb: SupabaseClient, nf: { id: string;
   const feito: string[] = [];
   // 1. Retorno de armazém: tira esta NF das remessas que ela devolveu
   const chave = (nf.chave_acesso ?? "").replace(/\D/g, "") || null;
+  // Remessas de TODAS as fazendas do cliente, pela fazenda — nf_remessas_logisticas.conta_id ficava vazio (45 de 46
+  // remessas em 29/10/2026), e a busca por conta_id não achava nada: o estorno nunca tirava o retorno da remessa.
   const { data: fz } = await sb.from("fazendas").select("conta_id").eq("id", nf.fazenda_id).maybeSingle();
-  const { data: rems } = fz?.conta_id
-    ? await sb.from("nf_remessas_logisticas").select("*").eq("conta_id", fz.conta_id)
-    : await sb.from("nf_remessas_logisticas").select("*").eq("fazenda_id", nf.fazenda_id);
+  const { data: fzs } = fz?.conta_id ? await sb.from("fazendas").select("id").eq("conta_id", fz.conta_id) : { data: [{ id: nf.fazenda_id }] };
+  const { data: rems } = await sb.from("nf_remessas_logisticas").select("*").in("fazenda_id", (fzs ?? []).map(f => f.id as string));
   for (const rem of (rems ?? []) as Remessa[]) {
     const lista = rem.retornos ?? [];
     const meus = lista.filter(x => (chave && x.chave === chave) || (!x.chave && !chave && x.numero === nf.numero));

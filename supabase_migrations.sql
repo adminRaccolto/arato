@@ -18722,3 +18722,12 @@ DO $$ DECLARE r RECORD; BEGIN
   FOR r IN SELECT id FROM nf_entradas WHERE devolucao_situacao IS NOT NULL LOOP PERFORM fn_recalc_rel_doc_fiscal_nf(r.id); END LOOP;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 395 — Remessas de armazém: conta_id preenchido
+-- =============================================================================
+-- nf_remessas_logisticas.conta_id ficava vazio (45 de 46 em 29/10/2026). Preenche pela fazenda; as remessas novas já
+-- gravam a conta.
+UPDATE nf_remessas_logisticas r SET conta_id = f.conta_id
+  FROM fazendas f WHERE r.fazenda_id = f.id AND r.conta_id IS NULL AND f.conta_id IS NOT NULL;
+NOTIFY pgrst, 'reload schema';

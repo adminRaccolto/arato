@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-y",
+    data: "29/10/2026",
+    titulo: "Estorno de NF de retorno tira o retorno da remessa (correção)",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Estornar ou excluir a NF de retorno de armazém agora encontra a remessa e tira o retorno dela. A busca era pela conta do cliente, que estava vazia em quase todas as remessas, e por isso o retorno ficava." },
+    ],
+  },
+  {
     versao: "2026.10.29-x",
     data: "29/10/2026",
     titulo: "Retorno de armazém não entra duas vezes na remessa",

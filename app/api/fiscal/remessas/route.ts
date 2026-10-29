@@ -86,8 +86,9 @@ export async function POST(req: NextRequest) {
       }
       const valorTotal = Math.round(b.itens.reduce((s, i) => s + Number(i.valor_total ?? Number(i.quantidade) * Number(i.valor_unitario ?? 0)), 0) * 100) / 100;
 
+      const { data: fzRem } = await db.from("fazendas").select("conta_id").eq("id", b.fazenda_id).maybeSingle();
       const { data: rem, error: eRem } = await db.from("nf_remessas_logisticas").insert({
-        fazenda_id: b.fazenda_id, nf_entrada_id: b.nf_entrada_id || null,
+        fazenda_id: b.fazenda_id, conta_id: fzRem?.conta_id ?? null, nf_entrada_id: b.nf_entrada_id || null,
         nf_remessa_chave: chave, nf_remessa_numero: b.nf.numero.trim(), nf_remessa_protocolo: b.nf.protocolo || null, nf_remessa_data: b.data,
         cfop_remessa: b.cfop.replace(/\D/g, ""), cfop_retorno: b.cfop_retorno.replace(/\D/g, ""),
         destinatario_pessoa_id: b.destinatario.pessoa_id || null, destinatario_nome: b.destinatario.nome, destinatario_uf: b.destinatario.uf || null,
