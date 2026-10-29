@@ -18507,3 +18507,38 @@ BEGIN
    WHERE id = p_fatura AND status <> 'paga';
 END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 386 — 13º salário: controle por funcionário e ano, com as duas parcelas
+-- =============================================================================
+-- Tela Financeiro → 13º Salário: avos, base e bruto de cada funcionário; 1ª parcela (metade, sem descontos) e
+-- 2ª parcela (bruto − INSS − IRRF − 1ª), cada uma lançada como título no Contas a Pagar (lancamento_id).
+CREATE TABLE IF NOT EXISTS decimo_terceiro (
+  id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id                 uuid REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id               uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  funcionario_id           uuid NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  ano                      integer NOT NULL,
+  avos                     integer NOT NULL DEFAULT 0,
+  base                     numeric(14,2) NOT NULL DEFAULT 0,
+  bruto                    numeric(14,2) NOT NULL DEFAULT 0,
+  inss                     numeric(14,2) NOT NULL DEFAULT 0,
+  irrf                     numeric(14,2) NOT NULL DEFAULT 0,
+  parcela1_valor           numeric(14,2),
+  parcela1_vencimento      date,
+  parcela1_lancamento_id   uuid,
+  parcela2_valor           numeric(14,2),
+  parcela2_vencimento      date,
+  parcela2_lancamento_id   uuid,
+  observacao               text,
+  created_at               timestamptz NOT NULL DEFAULT now(),
+  updated_at               timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (funcionario_id, ano)
+);
+CREATE INDEX IF NOT EXISTS idx_decimo_terceiro_conta_ano ON decimo_terceiro(conta_id, ano);
+ALTER TABLE decimo_terceiro ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "decimo_terceiro_tenant" ON decimo_terceiro;
+CREATE POLICY "decimo_terceiro_tenant" ON decimo_terceiro FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+NOTIFY pgrst, 'reload schema';

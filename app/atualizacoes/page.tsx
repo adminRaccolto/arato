@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-d",
+    data: "29/10/2026",
+    titulo: "13º Salário: controle e pagamento das parcelas",
+    modulos: ["Financeiro", "Folha"],
+    itens: [
+      { tipo: "novo", texto: "Nova tela Financeiro → 13º Salário: por ano, cada funcionário ativo com os avos (meses com 15 dias ou mais trabalhados), a base (salário da carteira, ajustável), o 13º bruto, a 1ª parcela (metade, sem descontos) e a 2ª parcela (bruto − INSS − IRRF − 1ª), com o total geral." },
+      { tipo: "novo", texto: "Botões Lançar 1ª parcela (vencimento sugerido 30/11) e Lançar 2ª parcela (20/12): cada funcionário vira um título no Contas a Pagar no nome dele, com a operação 13º Salário FAZ ou ADM. A tela mostra cada parcela como A lançar, Aberto, Parcial ou Pago, e permite estornar o que ainda não foi pago." },
+    ],
+    onde: "Financeiro → 13º Salário",
+  },
+  {
     versao: "2026.10.29-c",
     data: "29/10/2026",
     titulo: "MDF-e pede a tara/capacidade que falta antes de transmitir",
