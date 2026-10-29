@@ -12,6 +12,7 @@ import { baixarLancamento, listarContasProdutorDaConta, listarContasPorEmpresa }
 import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
+import DecimoTerceiro from "../../../components/folha/DecimoTerceiro";
 
 // ─── Tipos ────────────────────────────────────────────────────
 interface Funcionario {
@@ -200,7 +201,7 @@ const ST_COLOR: Record<string,string>  = { rascunho:"#888", fechado:"#C9921B", p
 const ADI_LABEL: Record<string,string> = { pendente:"Pendente", descontado:"Descontado", cancelado:"Cancelado" };
 const ADI_COLOR: Record<string,string> = { pendente:"#C9921B", descontado:"#16A34A", cancelado:"#888" };
 
-type Aba = "processamento" | "adiantamentos" | "gratificacoes";
+type Aba = "processamento" | "adiantamentos" | "gratificacoes" | "decimo";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
@@ -213,6 +214,8 @@ export default function FolhaPagamentoPage() {
   const [repDesc, setRepDesc] = useState<Record<string, { valor: string; competencia: string }>>({});
   const [repErro, setRepErro] = useState("");
   const [aba, setAba]             = useState<Aba>("processamento");
+  // ?aba=decimo (endereço antigo do 13º Salário) abre direto na aba
+  useEffect(() => { try { if (new URLSearchParams(window.location.search).get("aba") === "decimo") setAba("decimo"); } catch { /* sem URL */ } }, []);
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
   const [saving, setSaving]       = useState(false);
@@ -1034,6 +1037,7 @@ export default function FolhaPagamentoPage() {
             ["processamento","📋 Processamento"],
             ["adiantamentos","💵 Adiantamentos"],
             ["gratificacoes","⭐ Gratificações"],
+            ["decimo","🎁 13º Salário"],
           ] as [Aba,string][]).map(([k,l]) => (
             <OperationalButton data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={()=>setAba(k)}
               style={{ padding: "10px 20px", background: "none", border: "none", borderBottom: aba===k ? "2px solid #1A4870" : "2px solid transparent", fontWeight: aba===k ? 700 : 400, color: aba===k ? "#1A4870" : "#666", cursor: "pointer", fontSize: 13 }}>
@@ -1041,6 +1045,9 @@ export default function FolhaPagamentoPage() {
             </OperationalButton>
           ))}
         </div>
+
+        {/* ══════════════════ ABA 13º SALÁRIO ══════════════════ */}
+        {aba === "decimo" && <DecimoTerceiro />}
 
         {/* ══════════════════ ABA PROCESSAMENTO ══════════════════ */}
         {aba === "processamento" && (

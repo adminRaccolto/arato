@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-l",
+    data: "29/10/2026",
+    titulo: "13º Salário dentro da Folha de Pagamento",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "O 13º Salário saiu do menu Financeiro e virou a aba 🎁 13º Salário da Folha de Pagamento, ao lado de Gratificações. Mesmo funcionamento." },
+    ],
+  },
+  {
     versao: "2026.10.29-k",
     data: "29/10/2026",
     titulo: "Folha: horas extras 50% e 100% com DSR",
