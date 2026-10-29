@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 import { cancelarNFeEmitida, corrigirNFeEmitida } from "../../../../lib/nfe/index";
 import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../../lib/nfe/resolver-emitente";
 import { desfazerCarga } from "../../../../lib/contratos/recebimento-carga-server";
-import { desfazerCompensacaoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
+import { atualizarSituacaoDevolucao, desfazerCompensacaoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge, precisa de Node
 export const dynamic = "force-dynamic";
@@ -35,6 +35,8 @@ async function reverterDevolucaoCompra(adm: SupabaseClient, nfDevId: string): Pr
   // 3) itens da devolução saem (libera o saldo devolvido na NF de origem) e a NF de devolução fica cancelada
   await adm.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfDevId);
   await adm.from("nf_entradas").update({ status: "cancelada" }).eq("id", nfDevId);
+  const { data: nfDevRow } = await adm.from("nf_entradas").select("nf_origem_id").eq("id", nfDevId).maybeSingle();
+  if (nfDevRow?.nf_origem_id) await atualizarSituacaoDevolucao(adm, nfDevRow.nf_origem_id as string).catch(() => null);
   avisos.push("custos de Apropriação Direta ligados a abastecimento ou manutenção de máquina que a devolução tinha reduzido NÃO são restaurados automaticamente — confira se houver");
   return avisos.length ? `Devolução desfeita no sistema; atenção: ${avisos.join("; ")}.` : undefined;
 }

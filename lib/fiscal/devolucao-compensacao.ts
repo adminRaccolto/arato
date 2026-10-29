@@ -72,3 +72,26 @@ export async function desfazerCompensacaoDevolucao(sb: SupabaseClient, nfDevId: 
   await sb.from("nf_entradas").update({ compensacoes: null }).eq("id", nfDevId);
   return lista.length;
 }
+
+/**
+ * Marca a NF de compra como devolvida ('total' | 'parcial' | null) pela soma das quantidades devolvidas (itens das
+ * NFs de devolução não canceladas, ligados por origem_item_id). A NF continua "processada" por dentro — estoque,
+ * custos e relatórios seguem contando a compra e a devolução — e a tela de Documentos Fiscais mostra "Devolvida"
+ * (Seção 394). Sem a coluna no banco, não faz nada.
+ */
+export async function atualizarSituacaoDevolucao(sb: SupabaseClient, nfOrigemId: string): Promise<string | null> {
+  const { data: itens } = await sb.from("nf_entrada_itens").select("id, quantidade").eq("nf_entrada_id", nfOrigemId);
+  const ids = (itens ?? []).map(i => i.id as string);
+  const { data: devs } = await sb.from("nf_entradas").select("id").eq("nf_origem_id", nfOrigemId).eq("tipo_entrada", "devolucao_compra").neq("status", "cancelada");
+  const devIds = (devs ?? []).map(d => d.id as string);
+  const { data: devItens } = ids.length && devIds.length
+    ? await sb.from("nf_entrada_itens").select("origem_item_id, quantidade").in("nf_entrada_id", devIds).in("origem_item_id", ids)
+    : { data: [] };
+  const devolvido = new Map<string, number>();
+  for (const d of (devItens ?? []) as { origem_item_id: string; quantidade: number }[]) devolvido.set(d.origem_item_id, (devolvido.get(d.origem_item_id) ?? 0) + Number(d.quantidade || 0));
+  const algum = [...devolvido.values()].some(v => v > 0.0005);
+  const tudo = (itens ?? []).length > 0 && (itens ?? []).every(i => (devolvido.get(i.id as string) ?? 0) >= Number(i.quantidade) - 0.0005);
+  const situacao = !algum ? null : tudo ? "total" : "parcial";
+  await sb.from("nf_entradas").update({ devolucao_situacao: situacao }).eq("id", nfOrigemId);
+  return situacao;
+}

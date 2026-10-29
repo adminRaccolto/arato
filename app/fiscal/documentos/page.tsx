@@ -146,6 +146,8 @@ const TIPO_GRID_LABEL: Record<string, string> = { NF: "NF", NFS: "NFS", CTE: "CT
 const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
   { v: "pendente",   label: "Pendente",   bg: "#E8E8E8", color: "#0D0D0D" },
   { v: "processada", label: "Processada", bg: "#DCFCE7", color: "#166534" },
+  // NF de compra devolvida por inteiro (continua processada por dentro — estoque e custos seguem contando a compra e a devolução)
+  { v: "devolvida",  label: "Devolvida",  bg: "#FBF3E0", color: "#7A4300" },
   { v: "cancelada",  label: "Cancelada",  bg: "#FCEBEB", color: "#791F1F" },
 ];
 const TIPO_ENTRADA_OPCOES: { v: string; label: string }[] =

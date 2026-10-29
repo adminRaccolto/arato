@@ -18648,3 +18648,77 @@ NOTIFY pgrst, 'reload schema';
 -- devolução devolver tudo.
 ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS compensacoes jsonb;
 NOTIFY pgrst, 'reload schema';
+
+
+-- =============================================================================
+-- Seção 394 — NF de compra devolvida: marca "Devolvida" em Documentos Fiscais
+-- =============================================================================
+-- nf_entradas.devolucao_situacao: 'total' | 'parcial' | NULL (pelas quantidades devolvidas nas NFs de devolução). A NF
+-- continua status 'processada' (estoque, custos e relatórios seguem contando compra e devolução); o grid de Documentos
+-- Fiscais (rel_documentos_fiscais.status_normalizado) mostra 'devolvida' quando a devolução é total.
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS devolucao_situacao text;
+
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_nf(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v          nf_entradas%ROWTYPE;
+  v_conta_id uuid;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM nf_entradas WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'nf_entradas';
+    RETURN;
+  END IF;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  -- NF de compra devolvida por inteiro: continua 'processada' em nf_entradas (estoque/custos/relatórios), mas o grid
+  -- de Documentos Fiscais mostra "Devolvida"
+  v_status_norm := CASE
+    WHEN v.status = 'processada' AND v.devolucao_situacao = 'total' THEN 'devolvida'
+    WHEN v.status = 'cancelada' THEN 'cancelada' WHEN v.status = 'processada' THEN 'processada' ELSE 'pendente' END;
+
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at,
+    destinatario_nome, destinatario_cnpj, data_entrada, tipo_entrada, origem_doc,
+    duplicatas_xml, processado_por
+  ) VALUES (
+    v.id, 'nf_entradas', 'NF', v.fazenda_id, v_conta_id, v.numero, v.serie, v.chave_acesso, v.data_emissao,
+    v.emitente_nome, v.emitente_cnpj, v.valor_total, v.status, v_status_norm,
+    v.cfop, v.natureza, v.observacao, v.lancamento_id, v.created_at, now(),
+    v.nome_destinatario, v.cnpj_destino, v.data_entrada, v.tipo_entrada, v.origem,
+    to_jsonb(v.duplicatas_xml), v.processado_por
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now(),
+    destinatario_nome = EXCLUDED.destinatario_nome, destinatario_cnpj = EXCLUDED.destinatario_cnpj,
+    data_entrada = EXCLUDED.data_entrada, tipo_entrada = EXCLUDED.tipo_entrada, origem_doc = EXCLUDED.origem_doc,
+    duplicatas_xml = EXCLUDED.duplicatas_xml, processado_por = EXCLUDED.processado_por;
+END;
+$$;
+
+-- Marca as NFs já devolvidas (soma das quantidades devolvidas × quantidades da NF de compra)
+WITH dev AS (
+  SELECT o.id AS nf_id, SUM(oi.quantidade) AS qtd_orig,
+         (SELECT COALESCE(SUM(di.quantidade), 0) FROM nf_entrada_itens di
+            JOIN nf_entradas d ON d.id = di.nf_entrada_id
+           WHERE d.nf_origem_id = o.id AND d.tipo_entrada = 'devolucao_compra' AND d.status <> 'cancelada'
+             AND di.origem_item_id IN (SELECT id FROM nf_entrada_itens WHERE nf_entrada_id = o.id)) AS qtd_dev
+    FROM nf_entradas o JOIN nf_entrada_itens oi ON oi.nf_entrada_id = o.id
+   WHERE EXISTS (SELECT 1 FROM nf_entradas d WHERE d.nf_origem_id = o.id AND d.tipo_entrada = 'devolucao_compra' AND d.status <> 'cancelada')
+   GROUP BY o.id
+)
+UPDATE nf_entradas n SET devolucao_situacao = CASE WHEN dev.qtd_dev >= dev.qtd_orig - 0.0005 THEN 'total' WHEN dev.qtd_dev > 0 THEN 'parcial' ELSE NULL END
+  FROM dev WHERE n.id = dev.nf_id;
+
+-- Recalcula o grid das NFs marcadas
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN SELECT id FROM nf_entradas WHERE devolucao_situacao IS NOT NULL LOOP PERFORM fn_recalc_rel_doc_fiscal_nf(r.id); END LOOP;
+END $$;
+NOTIFY pgrst, 'reload schema';

@@ -14,7 +14,7 @@ import { ncmPadraoDoProduto } from "./fiscal/ncm-produtos";
 import { cobrancaDaNf } from "./fiscal/cfop-cobranca";
 import { alocarRemessa, statusSaldoVef, type SaldoVef } from "./estoque/entrega-futura";
 import { hojeLocal } from "./data-local";
-import { compensarDevolucao } from "./fiscal/devolucao-compensacao";
+import { atualizarSituacaoDevolucao, compensarDevolucao } from "./fiscal/devolucao-compensacao";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
@@ -3890,6 +3890,8 @@ export async function processarDevolucaoCompra(
     .update({ status: "processada" })
     .eq("id", nfDev.id);
   if (errStatus) throw errStatus;
+  // NF de compra marcada como devolvida (total/parcial) — continua processada por dentro
+  try { await atualizarSituacaoDevolucao(supabase, nf_origem_id); } catch { /* Seção 394 não rodada */ }
 
   return { ...nfDev, status: "processada" } as NfEntrada;
 }

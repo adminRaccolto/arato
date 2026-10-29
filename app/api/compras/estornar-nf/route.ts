@@ -2,7 +2,7 @@ import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { aplicarEstornoCartao } from "../../../../lib/financeiro/cartao";
 import { bloqueioVefComRemessas, desfazerVinculosDaNf } from "../../../../lib/fiscal/estorno-vinculos";
-import { desfazerCompensacaoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
+import { atualizarSituacaoDevolucao, desfazerCompensacaoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -212,8 +212,10 @@ export async function POST(req: NextRequest) {
     // Devolver). Voltar para "pendente" a deixava na lista principal como se fosse uma NF de entrada
     // esperando processamento, o que nunca vai acontecer. Estornar uma devolução remove o registro.
     if (nfRow?.tipo_entrada === "devolucao_compra") {
+      const { data: devRow } = await sb.from("nf_entradas").select("nf_origem_id").eq("id", nf_id).maybeSingle();
       const { error: errDel } = await sb.from("nf_entradas").delete().eq("id", nf_id);
       if (errDel) throw new Error(`Erro ao excluir devolução: ${errDel.message}`);
+      if (devRow?.nf_origem_id) await atualizarSituacaoDevolucao(sb, devRow.nf_origem_id as string).catch(() => null);
       return NextResponse.json({ ok: true });
     }
 
