@@ -1014,8 +1014,39 @@ function MdfePageInner() {
   // MDFeRecepcaoSinc (SVRS, autorizador nacional do MDF-e). O CIOT continua sendo gerado à parte
   // (botão "Gerar CIOT via ANTT" na aba do modal) — se já tiver sido gerado antes, entra no XML;
   // se não, a emissão segue normal (CIOT é opcional no schema).
-  async function autorizar(m: Mdfe) {
+  // Tara/capacidade que faltam no cadastro do cavalo/carretas (o MDF-e exige): preenchidas aqui antes de transmitir.
+  // Achado 29/10/2026: carretas cadastradas sozinhas pelas placas digitadas no CT-e nasciam sem tara nem capacidade.
+  type FaltaVeic = { id: string; placa: string; implemento: boolean; tara: string; cap: string };
+  const [faltaVeic, setFaltaVeic] = useState<{ mdfe: Mdfe; itens: FaltaVeic[] } | null>(null);
+  const [faltaErro, setFaltaErro] = useState("");
+  async function verificarTaras(m: Mdfe): Promise<FaltaVeic[]> {
+    const ids = [m.veiculo_id, ...(m.implemento_ids ?? [])].filter((x): x is string => !!x);
+    if (!ids.length) return [];
+    const { data } = await supabase.from("veiculos").select("id, placa, tara_kg, cap_kg").in("id", ids);
+    return ids.map(id => (data ?? []).find(v => v.id === id)).filter(Boolean).map(v => {
+      const impl = v!.id !== m.veiculo_id;
+      return { id: v!.id as string, placa: v!.placa as string, implemento: impl, tara: v!.tara_kg ? String(v!.tara_kg) : "", cap: v!.cap_kg ? String(v!.cap_kg) : "", _falta: !v!.tara_kg || (impl && !v!.cap_kg) };
+    }).filter(x => x._falta).map(({ _falta, ...x }) => { void _falta; return x; });
+  }
+  async function salvarTarasEAutorizar() {
+    if (!faltaVeic) return;
+    const ruim = faltaVeic.itens.find(i => !(Number(i.tara) > 0) || (i.implemento && !(Number(i.cap) > 0)));
+    if (ruim) { setFaltaErro(`Informe a tara${ruim.implemento ? " e a capacidade" : ""} de ${ruim.placa} (em kg).`); return; }
+    for (const i of faltaVeic.itens) {
+      const { error } = await supabase.from("veiculos").update({ tara_kg: Number(i.tara), ...(i.implemento ? { cap_kg: Number(i.cap) } : {}) }).eq("id", i.id);
+      if (error) { setFaltaErro(`Não foi possível salvar ${i.placa}: ${error.message}`); return; }
+    }
+    const m = faltaVeic.mdfe;
+    setFaltaVeic(null); setFaltaErro("");
+    await autorizar(m, true);
+  }
+
+  async function autorizar(m: Mdfe, tarasConferidas = false) {
     if (!fazendaId) return;
+    if (!tarasConferidas) {
+      const faltam = await verificarTaras(m);
+      if (faltam.length) { setFaltaErro(""); setFaltaVeic({ mdfe: m, itens: faltam }); return; }
+    }
     if (!confirm(`Transmitir MDF-e ${m.numero_mdfe} para a SEFAZ?\nAmbiente configurado em Parâmetros → MDF-e.`)) return;
     setAutorizando(m.id);
     try {
@@ -1694,6 +1725,31 @@ function MdfePageInner() {
       {/* ══════════════════════════════════════════════════════
           MODAL ENCERRAMENTO
       ══════════════════════════════════════════════════════ */}
+
+      {faltaVeic && (
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 520, margin: "0 20px", padding: 22 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>Falta tara/capacidade para o MDF-e {faltaVeic.mdfe.numero_mdfe}</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>A SEFAZ exige a tara do cavalo e a tara e a capacidade de cada carreta. O que você preencher fica salvo no cadastro do veículo e o MDF-e é transmitido em seguida.</div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {faltaVeic.itens.map((i, k) => (
+                <div key={i.id} style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px", gap: 8, alignItems: "end" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, paddingBottom: 8 }}>{i.placa} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)" }}>{i.implemento ? "carreta" : "cavalo"}</span></div>
+                  <div><label style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 3 }}>Tara (kg) *</label>
+                    <input value={i.tara} inputMode="numeric" onChange={e => setFaltaVeic(p => p ? { ...p, itens: p.itens.map((x, j) => j === k ? { ...x, tara: e.target.value.replace(/\D/g, "") } : x) } : p)} style={{ ...inp, width: "100%" }} placeholder="ex.: 7500" /></div>
+                  <div>{i.implemento && <><label style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 3 }}>Capacidade (kg) *</label>
+                    <input value={i.cap} inputMode="numeric" onChange={e => setFaltaVeic(p => p ? { ...p, itens: p.itens.map((x, j) => j === k ? { ...x, cap: e.target.value.replace(/\D/g, "") } : x) } : p)} style={{ ...inp, width: "100%" }} placeholder="ex.: 25000" /></>}</div>
+                </div>
+              ))}
+            </div>
+            {faltaErro && <div style={{ marginTop: 10, padding: 8, background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, fontSize: 12 }}>{faltaErro}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setFaltaVeic(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button type="button" onClick={salvarTarasEAutorizar} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A6B3C", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Salvar e transmitir</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalChave && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>

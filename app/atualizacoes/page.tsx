@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-c",
+    data: "29/10/2026",
+    titulo: "MDF-e pede a tara/capacidade que falta antes de transmitir",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao transmitir o MDF-e, se o cavalo estiver sem tara ou alguma carreta sem tara/capacidade (ex.: carretas cadastradas sozinhas pelas placas digitadas no CT-e), abre uma janela para preencher. Os valores ficam salvos no cadastro do veículo e o MDF-e é transmitido em seguida — sem precisar sair para Transportadoras e Veículos." },
+    ],
+    onde: "Fretes e Transporte → MDF-e → Transmitir",
+  },
+  {
     versao: "2026.10.29-b",
     data: "29/10/2026",
     titulo: "Pendências do painel batem com o Contas a Pagar/Receber; status \"Aberto\"",
