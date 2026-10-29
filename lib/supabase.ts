@@ -519,6 +519,8 @@ export type Contrato = {
   data_contrato?: string;
   data_entrega: string;
   data_pagamento?: string;      // prazo de pagamento → gera CR quando confirmado
+  recebimento_por_carga?: boolean; // CR do contrato abatido a cada NF-e de venda vinculada (cada carga vira CR próprio) — Seção 388
+  prazo_pagamento_dias?: number | null; // recebimento por carga: vencimento do CR da carga = data da NF + estes dias
   lancamento_cr_id?: string;    // FK lancamentos.id do CR gerado automaticamente
   cotacao_usd?: number | null;  // PTAX D-1 no momento do registro (só contratos USD)
   status: "aberto" | "parcial" | "encerrado" | "cancelado";

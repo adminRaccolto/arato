@@ -18568,3 +18568,31 @@ CREATE POLICY "et_baixas_tenant" ON estoque_terceiros_baixas FOR ALL
   USING (fazenda_id IN (SELECT f.id FROM fazendas f WHERE f.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo())
   WITH CHECK (fazenda_id IN (SELECT f.id FROM fazendas f WHERE f.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo());
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 388 — Contrato de venda com recebimento por carga
+-- =============================================================================
+-- Com "recebimento por carga", o CR do contrato (guarda-chuva, valor total na data limite de pagamento) é abatido a
+-- cada NF-e de venda vinculada ao contrato, e cada NF vira um CR próprio (valor da NF, vencendo na data da NF + prazo).
+-- contrato_faturamentos guarda o vínculo NF × contrato e quanto foi abatido, para desfazer no cancelamento da NF.
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS recebimento_por_carga boolean NOT NULL DEFAULT false;
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS prazo_pagamento_dias integer;
+CREATE TABLE IF NOT EXISTS contrato_faturamentos (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id          uuid REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id        uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  contrato_id       uuid NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+  nota_fiscal_id    uuid NOT NULL UNIQUE REFERENCES notas_fiscais(id) ON DELETE CASCADE,
+  quantidade_sc     numeric(18,4),
+  valor_nf          numeric(14,2) NOT NULL DEFAULT 0,
+  valor_abatido     numeric(14,2) NOT NULL DEFAULT 0,
+  cr_lancamento_id  uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_contrato_fat_contrato ON contrato_faturamentos(contrato_id);
+ALTER TABLE contrato_faturamentos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "contrato_fat_tenant" ON contrato_faturamentos;
+CREATE POLICY "contrato_fat_tenant" ON contrato_faturamentos FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+NOTIFY pgrst, 'reload schema';

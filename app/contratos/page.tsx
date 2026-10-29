@@ -27,6 +27,7 @@ import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
 import AnexoDocumentos from "../../components/AnexoDocumentos";
 import { produtoDoContrato } from "../../lib/fiscal/ncm-produtos";
+import FaturamentosCarga from "../../components/contratos/FaturamentosCarga";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -490,6 +491,8 @@ export default function Contratos() {
     quantidade_sc: 0,
     data_entrega: "",
     data_pagamento: undefined as string | undefined,
+    recebimento_por_carga: false,
+    prazo_pagamento_dias: "",
     // logística / fiscal
     saldo_tipo: "peso_saida" as Contrato["saldo_tipo"],
     frete: "destinatario" as Contrato["frete"],
@@ -876,6 +879,8 @@ export default function Contratos() {
       moeda: c.moeda, preco: c.preco, quantidade_sc: c.quantidade_sc,
       data_entrega: c.data_entrega,
       data_pagamento: c.data_pagamento ?? undefined,
+      recebimento_por_carga: c.recebimento_por_carga === true,
+      prazo_pagamento_dias: c.prazo_pagamento_dias != null ? String(c.prazo_pagamento_dias) : "",
       saldo_tipo: c.saldo_tipo ?? "peso_saida",
       frete: c.frete ?? "destinatario",
       valor_frete: c.valor_frete ?? 0,
@@ -1039,6 +1044,11 @@ export default function Contratos() {
         data_contrato: fC.data_contrato,
         data_entrega: fC.data_entrega,
         data_pagamento: fC.data_pagamento || undefined,
+        // Só envia quando ligado (ou para desligar) — contrato comum salva mesmo sem a Seção 388
+        ...(fC.recebimento_por_carga || editContrato?.recebimento_por_carga ? {
+          recebimento_por_carga: fC.recebimento_por_carga,
+          prazo_pagamento_dias: fC.prazo_pagamento_dias.trim() ? parseInt(fC.prazo_pagamento_dias) || 0 : null,
+        } : {}),
         pessoa_id: fC.pessoa_id || undefined,
         produtor_id: fC.produtor_id || undefined,
         ie_id: fC.ie_id || undefined,
@@ -1342,7 +1352,8 @@ export default function Contratos() {
       }));
       // ── CR de entrega (romaneio faturado) ────────────────────
       // Cria CR "em_aberto" pelo valor desta entrega e reduz o CR "previsto" do contrato
-      if (!fRom.aplicarAdiant) {
+      // Contrato com recebimento por carga: o CR da carga nasce da NF-e de venda (Faturamento / Faturamentos por carga), não do romaneio
+      if (!fRom.aplicarAdiant && !contratoSel.recebimento_por_carga) {
         const precoSel  = contratoSel.preco ?? cAtual?.preco ?? 0;
         const moedaSel  = contratoSel.moeda ?? cAtual?.moeda ?? "BRL";
         const scsFat    = sacasFat > 0 ? sacasFat : sacasCalc;
@@ -2482,11 +2493,35 @@ export default function Contratos() {
                       <InputData style={inp} type="date" value={fC.data_entrega} onChange={e => { setFC(p=>({...p,data_entrega:e.target.value})); setErrosContrato([]); }} />
                     </div>
                     <div>
-                      <label data-arato-label="true" style={lbl}>Data de Pagamento</label>
+                      <label data-arato-label="true" style={lbl}>{fC.recebimento_por_carga ? "Data limite de pagamento" : "Data de Pagamento"}</label>
                       <InputData style={inp} type="date" value={fC.data_pagamento ?? ""} onChange={e => setFC(p=>({...p,data_pagamento:e.target.value||undefined}))} />
                       <span style={{ fontSize:10, color:"var(--text-3)", marginTop:2, display:"block" }}>Gera CR ao confirmar</span>
                     </div>
                   </div>
+
+                  {/* Recebimento: único (um CR na data de pagamento) ou por carga (cada NF-e de venda vira CR próprio) */}
+                  <div data-arato-fields="true" style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap", marginBottom:12, padding:"8px 12px", background:"#F4F6FA", border:"0.5px solid #DDE2EE", borderRadius:8 }}>
+                    <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer" }}>
+                      <input type="checkbox" checked={fC.recebimento_por_carga} onChange={e => setFC(p=>({...p,recebimento_por_carga:e.target.checked}))} />
+                      <strong>Recebimento por carga</strong>
+                    </label>
+                    {fC.recebimento_por_carga && (
+                      <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12 }}>
+                        Prazo após a NF
+                        <input style={{ ...inp, width:70 }} inputMode="numeric" value={fC.prazo_pagamento_dias} onChange={e => setFC(p=>({...p,prazo_pagamento_dias:e.target.value.replace(/\D/g,"")}))} placeholder="0" />
+                        dias
+                      </label>
+                    )}
+                    <span style={{ fontSize:11, color:"var(--text-3)", flex:"1 1 260px" }}>
+                      {fC.recebimento_por_carga
+                        ? "O CR do contrato fica com o total na data limite; cada NF-e de venda vinculada abate dele (sacas × preço) e vira um CR próprio, com o valor da NF, vencendo na data da NF + o prazo."
+                        : "Um único CR com o valor total na data de pagamento."}
+                    </span>
+                  </div>
+                  {editContrato?.recebimento_por_carga && editContrato.id && (
+                    <FaturamentosCarga contratoId={editContrato.id} fazendaId={editContrato.fazenda_id ?? null} contaId={contaId ?? null}
+                      cnpjComprador={pessoas.find(p=>p.id===editContrato.pessoa_id)?.cpf_cnpj ?? null} moeda={editContrato.moeda} />
+                  )}
 
                   {/* Linha 3b: Modalidade + Moeda */}
                   <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"160px 110px 1fr", gap:12, marginBottom:12, alignItems:"end" }}>

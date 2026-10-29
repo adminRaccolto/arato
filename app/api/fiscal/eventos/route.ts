@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cancelarNFeEmitida, corrigirNFeEmitida } from "../../../../lib/nfe/index";
 import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../../lib/nfe/resolver-emitente";
+import { desfazerCarga } from "../../../../lib/contratos/recebimento-carga-server";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge, precisa de Node
 export const dynamic = "force-dynamic";
@@ -109,6 +110,13 @@ export async function POST(request: NextRequest) {
         await adm.from("transferencias_maquinas").update({
           status: "emitida", nf_retorno_chave: null, nf_retorno_numero: null, nf_retorno_protocolo: null, nf_retorno_data: null,
         }).eq("nf_retorno_chave", nota.chave_acesso);
+      }
+      // NF-e de venda vinculada a contrato com recebimento por carga: apaga o CR da carga e devolve o valor ao CR do contrato
+      if (resultado.sucesso) {
+        try {
+          const rc = await desfazerCarga(adm, nota_id);
+          if (rc.mensagem) avisoDevolucao = [avisoDevolucao, rc.mensagem].filter(Boolean).join(" ");
+        } catch { /* sem vínculo / Seção 388 não rodada */ }
       }
       return NextResponse.json({ ok: resultado.sucesso, cStat: resultado.cStat, xMotivo: resultado.xMotivo, protocolo: resultado.protocoloEvento, aviso: avisoDevolucao });
     }

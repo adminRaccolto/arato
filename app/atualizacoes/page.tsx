@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-i",
+    data: "29/10/2026",
+    titulo: "Contrato de venda com recebimento por carga",
+    modulos: ["Comercialização", "Contas a Receber", "Faturamento"],
+    itens: [
+      { tipo: "novo", texto: "Contrato de grãos: opção \"Recebimento por carga\" com prazo em dias após a NF. O CR do contrato fica com o total na data limite e cada NF-e de venda vinculada abate dele (sacas × preço do contrato) e vira um CR próprio, com o valor da NF, vencendo na data da NF + o prazo." },
+      { tipo: "novo", texto: "NF-e emitida pelo Faturamento a partir do contrato entra sozinha; NF importada é vinculada no painel \"Faturamentos por carga\" do contrato. Desvincular ou cancelar a NF-e devolve o valor ao CR do contrato." },
+    ],
+  },
+  {
     versao: "2026.10.29-h",
     data: "29/10/2026",
     titulo: "13º: base com ou sem complemento",

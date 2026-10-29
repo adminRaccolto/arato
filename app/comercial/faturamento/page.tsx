@@ -373,6 +373,19 @@ function FaturamentoInner() {
     setModalAberto(true);
   }
 
+  // ── Recebimento por carga: NF-e autorizada de contrato com essa opção abate o CR do contrato e vira CR da carga ──
+  async function vincularCargaContrato(nota: NotaFiscal) {
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    if (!dj.contrato_id || !dj.recebimento_por_carga) return;
+    try {
+      const r = await fetch("/api/contratos/faturar-carga", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "vincular", contrato_id: dj.contrato_id, nota_fiscal_id: nota.id }) });
+      const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; aviso?: string };
+      if (!j.ok) alert(`NF-e autorizada, mas o CR da carga não foi gerado: ${j.error ?? `HTTP ${r.status}`}\n\nVincule a NF pelo contrato (Comercialização → contrato → Faturamentos por carga).`);
+      else if (j.aviso) alert(`CR da carga gerado. Atenção: ${j.aviso}`);
+    } catch (e) { alert(`NF-e autorizada, mas o CR da carga não foi gerado: ${String(e)}`); }
+  }
+
   // ── Selecionar contrato → carrega romaneios e vai ao passo romaneio ─────────
   async function selecionarContrato(contrato: Contrato) {
     setContratoSelecionado(contrato);
@@ -657,6 +670,11 @@ function FaturamentoInner() {
           peso_liquido:    desmascarar(fVenda.peso_liquido),
           especie:         fVenda.especie,
           contrato_numero: fVenda.contrato_numero,
+          // Contrato com recebimento por carga: a NF autorizada abate o CR do contrato e vira CR próprio
+          ...(contratoSelecionado && fVenda.contrato_numero && fVenda.contrato_numero === (contratoSelecionado.numero ?? "") ? {
+            contrato_id: contratoSelecionado.id,
+            recebimento_por_carga: contratoSelecionado.recebimento_por_carga === true || undefined,
+          } : {}),
           romaneio_numero: fVenda.romaneio_numero,
           romaneio_id:     fVenda.romaneio_id || undefined,
           data_saida:      fVenda.data_saida,
@@ -788,6 +806,7 @@ function FaturamentoInner() {
       }
 
       setNotas(p => [nova, ...p]);
+      if (nova.status === "autorizada") await vincularCargaContrato(nova);
 
       // Retorno de Armazém Geral autorizado — marca a Remessa de origem como retornada
       if (!erroSefaz && tipoAvulsa === "retorno" && retornoOrigemId) {
@@ -1413,6 +1432,7 @@ function FaturamentoInner() {
                                   const serieReal = res.serie ?? nota.serie;
                                   await supabase.from("notas_fiscais").update({ status: "autorizada", chave_acesso: res.chave, numero: num, serie: serieReal }).eq("id", nota.id);
                                   setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "autorizada", chave_acesso: res.chave, numero: num, serie: serieReal } : n));
+                                  await vincularCargaContrato(nota);
                                 } else {
                                   const msg = res.erro ?? `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
                                   await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nota.id);
