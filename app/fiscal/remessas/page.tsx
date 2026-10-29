@@ -60,6 +60,27 @@ const valorRemetido = (r: NfRemessaLogistica) => {
 
 type ItemRem = { key: string; insumo_id: string; descricao: string; ncm: string; unidade: string; quantidade: string; valor_unitario: string; unidade_xml?: string };
 type NfOrigem = { id: string; numero: string; emitente_nome: string | null; data_emissao: string | null; valor_total: number | null; produtor_id: string | null; fazenda_id: string };
+// Volume da remessa por unidade: remetido, já voltou e falta voltar. O retorno guarda só o valor; a quantidade que
+// voltou é proporcional ao valor (mesma regra do estoque no registro do retorno: quantidade × valor retornado ÷ remetido).
+type ItemVol = { quantidade?: number; unidade?: string; unidade_nf?: string };
+function fracaoRetornada(r: NfRemessaLogistica) {
+  const rem = valorRemetido(r);
+  if (r.status === "retornada") return 1;
+  return rem > 0 ? Math.min(1, Number(r.valor_retornado ?? 0) / rem) : 0;
+}
+function volumes(r: NfRemessaLogistica) {
+  const its = (Array.isArray(r.itens_json) ? r.itens_json : []) as ItemVol[];
+  const f = fracaoRetornada(r);
+  const por = new Map<string, number>();
+  for (const it of its) { const u = String(it.unidade ?? it.unidade_nf ?? "").toUpperCase() || "UN"; por.set(u, (por.get(u) ?? 0) + Number(it.quantidade ?? 0)); }
+  const fmt = (q: number, u: string) => `${q.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${u}`;
+  const lista = [...por.entries()];
+  return {
+    remetido: lista.map(([u, q]) => fmt(q, u)).join(" + "),
+    voltou: lista.map(([u, q]) => fmt(Math.round(q * f * 1000) / 1000, u)).join(" + "),
+    falta: lista.map(([u, q]) => fmt(Math.round(q * (1 - f) * 1000) / 1000, u)).join(" + "),
+  };
+}
 const novoItem = (): ItemRem => ({ key: crypto.randomUUID(), insumo_id: "", descricao: "", ncm: "", unidade: "", quantidade: "", valor_unitario: "" });
 
 function RemessasConteudo() {
@@ -383,6 +404,9 @@ function RemessasConteudo() {
                 const aberta = expandidas.has(r.id);
                 const itensR = (Array.isArray(r.itens_json) ? r.itens_json : []) as { descricao?: string; descricao_produto?: string; nome?: string; quantidade?: number; unidade?: string; unidade_nf?: string; valor_total?: number }[];
                 const nfo = r.nf_entrada_id ? nfOrigemInfo[r.nf_entrada_id] : null;
+                const vol = volumes(r);
+                const fRet = fracaoRetornada(r);
+                const subVol: React.CSSProperties = { fontSize: 10, color: "var(--text-3)", fontWeight: 400 };
                 return (
                   <Fragment key={r.id}>
                   <tr style={{ background: aberta ? "#F4F6FA" : undefined }}>
@@ -395,9 +419,9 @@ function RemessasConteudo() {
                     <td style={td}>{r.destinatario_nome}</td>
                     <td style={td}>{r.cfop_remessa}</td>
                     <td style={td}>{r.emissao === "externa" ? "Fora do Arato" : r.emissao === "arato" ? "Arato" : "—"}{r.estoque_transferido ? "" : <div style={{ fontSize: 10, color: "var(--text-3)" }}>estoque baixado (antiga)</div>}</td>
-                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(valorRemetido(r))}</td>
-                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(r.status === "retornada" && !r.valor_retornado ? valorRemetido(r) : r.valor_retornado ?? 0)}</td>
-                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{r.status === "retornada" ? fmtBRL(0) : fmtBRL(falta)}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(valorRemetido(r))}{vol.remetido && <div style={subVol}>{vol.remetido}</div>}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(r.status === "retornada" && !r.valor_retornado ? valorRemetido(r) : r.valor_retornado ?? 0)}{vol.voltou && <div style={subVol}>{vol.voltou}</div>}</td>
+                    <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{r.status === "retornada" ? fmtBRL(0) : fmtBRL(falta)}{vol.falta && <div style={subVol}>{vol.falta}</div>}</td>
                     <td style={td}><span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, background: sb.bg, color: sb.cl }}>{sb.label}</span></td>
                     <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                       {r.nf_remessa_chave && <a href={`/api/fiscal/danfe?chave=${r.nf_remessa_chave}&fazenda_id=${r.fazenda_id}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1A4870", fontWeight: 600, marginRight: 10 }}>🖨 DANFE</a>}
@@ -418,14 +442,21 @@ function RemessasConteudo() {
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#0B2D50", textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 6px" }}>Itens remetidos</div>
                             {itensR.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>Sem itens registrados.</div> : (
                               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead><tr>{["Produto", "Remetido", "Já voltou", "Falta voltar", "Valor"].map((h, k) => <th key={h} style={{ padding: "2px 0 4px", paddingRight: k && k < 4 ? 8 : 0, textAlign: k ? "right" : "left", fontSize: 10, color: "var(--text-3)", fontWeight: 600 }}>{h}</th>)}</tr></thead>
                                 <tbody>
-                                  {itensR.map((it, k) => (
+                                  {itensR.map((it, k) => {
+                                    const q = Number(it.quantidade ?? 0), u = it.unidade ?? it.unidade_nf ?? "";
+                                    const fq = (n: number) => `${(Math.round(n * 1000) / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${u}`;
+                                    return (
                                     <tr key={k}>
                                       <td style={{ padding: "3px 0", color: "var(--text-1)" }}>{it.descricao ?? it.descricao_produto ?? it.nome ?? "—"}</td>
-                                      <td style={{ padding: "3px 8px", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{Number(it.quantidade ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {it.unidade ?? it.unidade_nf ?? ""}</td>
+                                      <td style={{ padding: "3px 8px", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fq(q)}</td>
+                                      <td style={{ padding: "3px 8px", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fq(q * fRet)}</td>
+                                      <td style={{ padding: "3px 8px", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fq(q * (1 - fRet))}</td>
                                       <td style={{ padding: "3px 0", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(it.valor_total)}</td>
                                     </tr>
-                                  ))}
+                                    );
+                                  })}
                                 </tbody>
                               </table>
                             )}

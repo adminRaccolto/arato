@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-za",
+    data: "29/10/2026",
+    titulo: "Remessas: volume remetido, já voltou e falta voltar",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "Na tela de Remessas, embaixo dos valores Remetido, Já voltou e Falta voltar aparece o volume (ex.: 7.340 KG); na linha aberta, cada item mostra remetido, já voltou e falta voltar. O volume que voltou é proporcional ao valor retornado." },
+    ],
+  },
+  {
     versao: "2026.10.29-z",
     data: "29/10/2026",
     titulo: "CR do frete (CT-e) e títulos da Empresa com colunas preenchidas",
