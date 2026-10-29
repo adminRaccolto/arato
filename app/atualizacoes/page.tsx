@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-j",
+    data: "29/10/2026",
+    titulo: "Contratos Financeiros: juros capitalizados separados da amortização",
+    modulos: ["Contratos Financeiros", "Contas a Pagar", "Endividamento"],
+    itens: [
+      { tipo: "correcao", texto: "Carência total (capitaliza): o juro de cada ano da carência aparece na coluna Juros como \"capitalizado\" (sem pagamento, somado ao saldo). Na parcela de pagamento, o juro capitalizado deixa de ser amortização e vai para Juros — amortização = só o principal; CP, DRE e Endividamento mostram o custo financeiro real." },
+    ],
+  },
+  {
     versao: "2026.10.29-i",
     data: "29/10/2026",
     titulo: "Contrato de venda com recebimento por carga",

@@ -1716,6 +1716,8 @@ export type ParcelaPagamento = {
   despesas_acessorios: number;
   valor_parcela: number;
   saldo_devedor: number;
+  juros_capitalizado?: number;   // juro do período sem pagamento (carência total): soma ao saldo, não gera CP — Seção 389
+  juros_cap_pago?: number;       // parte de `juros` desta parcela que quita juro capitalizado (amortização = só principal)
   lancamento_id?: string;
   status: "em_aberto" | "pago" | "vencido";
   data_pagamento?: string | null;   // preenchido ao baixar (data efetiva do pagamento)

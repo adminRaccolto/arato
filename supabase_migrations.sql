@@ -18596,3 +18596,13 @@ CREATE POLICY "contrato_fat_tenant" ON contrato_faturamentos FOR ALL
   USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
   WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 389 — Contratos financeiros: juros capitalizados separados da amortização
+-- =============================================================================
+-- Carência total (juros capitalizam): cada período da carência guarda o juro que nasceu nele (juros_capitalizado —
+-- soma ao saldo, não gera CP). Nas parcelas de pagamento, a parte que quita esse juro sai da amortização e entra em
+-- juros (juros_cap_pago), para a amortização ser só o principal e o CP/DRE mostrarem o juro real.
+ALTER TABLE parcelas_pagamento ADD COLUMN IF NOT EXISTS juros_capitalizado numeric(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE parcelas_pagamento ADD COLUMN IF NOT EXISTS juros_cap_pago numeric(14,2) NOT NULL DEFAULT 0;
+NOTIFY pgrst, 'reload schema';

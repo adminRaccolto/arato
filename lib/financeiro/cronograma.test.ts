@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { repartirCronograma } from "./cronograma.ts";
+import { repartirCronograma, separarCapitalizado } from "./cronograma.ts";
 
 const perto = (a: number, b: number, tol = 0.05) => assert.ok(Math.abs(a - b) <= tol, `${a} deveria estar a ${tol} de ${b}`);
 
@@ -36,4 +36,26 @@ test("prestações que só cobrem o principal: sem juros", () => {
 test("pagamento único no vencimento (bullet)", () => {
   const { linhas } = repartirCronograma(500000, [515817]);
   perto(linhas[0].amortizacao, 500000, 0.01); perto(linhas[0].juros, 15817, 0.01);
+});
+
+test("carência com juros capitalizados: juro ano a ano, amortização = principal, juro pago inclui o capitalizado", () => {
+  // SICREDI C-50521072-6: US$ 229.277 a 9,2% a.a., 3 anos capitalizando, pagamento único no 4º ano
+  const { linhas } = repartirCronograma(229277, [0, 0, 0, 326025.09]);
+  assert.deepEqual(linhas.slice(0, 3).map(l => l.juros_capitalizado), [21093.48, 23034.08, 25153.22]);
+  assert.deepEqual(linhas.slice(0, 3).map(l => l.saldo), [250370.48, 273404.56, 298557.78]);
+  assert.equal(linhas[3].amortizacao, 229277);
+  assert.equal(linhas[3].juros_cap_pago, 69280.78);
+  assert.equal(linhas[3].juros, 96748.09);
+  assert.equal(linhas[3].saldo, 0);
+});
+
+test("separarCapitalizado reparte o capitalizado entre várias parcelas, proporcional à amortização", () => {
+  const ps = separarCapitalizado<{ amortizacao: number; juros: number; juros_capitalizado?: number; juros_cap_pago?: number }>([
+    { amortizacao: 0, juros: 0, juros_capitalizado: 10000 },
+    { amortizacao: 55000, juros: 11000 },
+    { amortizacao: 55000, juros: 5500 },
+  ]);
+  assert.deepEqual(ps.map(p => p.amortizacao), [0, 50000, 50000]);
+  assert.deepEqual(ps.map(p => p.juros), [0, 16000, 10500]);
+  assert.deepEqual(ps.map(p => p.juros_cap_pago), [0, 5000, 5000]);
 });

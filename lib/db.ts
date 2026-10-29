@@ -4243,8 +4243,13 @@ export async function listarParcelasPagamento(contrato_id: string): Promise<Parc
 export async function salvarParcelasPagamento(contrato_id: string, fazenda_id: string, parcelas: Omit<ParcelaPagamento, "id" | "created_at" | "lancamento_id" | "contrato_id" | "fazenda_id">[]): Promise<ParcelaPagamento[]> {
   // Remove as existentes e recria (recalculo)
   await falharSeErro(supabase.from("parcelas_pagamento").delete().eq("contrato_id", contrato_id), "excluir parcelas_pagamento");
+  // Colunas de juros capitalizados (Seção 389) só vão quando há capitalização — o resto salva mesmo sem a Seção
+  const temCap = parcelas.some(p => (p.juros_capitalizado ?? 0) > 0 || (p.juros_cap_pago ?? 0) > 0);
   const { data, error } = await supabase.from("parcelas_pagamento").insert(
-    parcelas.map(p => ({ ...p, contrato_id, fazenda_id }))
+    parcelas.map(p => {
+      const { juros_capitalizado, juros_cap_pago, ...resto } = p;
+      return { ...resto, ...(temCap ? { juros_capitalizado: juros_capitalizado ?? 0, juros_cap_pago: juros_cap_pago ?? 0 } : {}), contrato_id, fazenda_id };
+    })
   ).select();
   if (error) throw error;
   return data ?? [];

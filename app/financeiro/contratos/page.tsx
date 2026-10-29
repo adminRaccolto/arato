@@ -1,5 +1,5 @@
 "use client";
-import { repartirCronograma } from "../../../lib/financeiro/cronograma";
+import { repartirCronograma, separarCapitalizado } from "../../../lib/financeiro/cronograma";
 import { registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
@@ -72,8 +72,10 @@ function aplicarCarencia(saldo: number, taxaMensal: number, carencia: number, ca
   let s = saldo;
   for (let i = 1; i <= carencia; i++) {
     if (carenciaTipo === "total") {
-      s = s * (1 + taxaMensal);
-      parcelas.push({ num_parcela: i, data_vencimento: "", amortizacao: 0, juros: 0, despesas_acessorios: 0, valor_parcela: 0, saldo_devedor: s });
+      // Juro do período sem pagamento: capitaliza (soma ao saldo) e fica registrado no ano em que nasceu
+      const juros_capitalizado = s * taxaMensal;
+      s = s + juros_capitalizado;
+      parcelas.push({ num_parcela: i, data_vencimento: "", amortizacao: 0, juros: 0, juros_capitalizado, despesas_acessorios: 0, valor_parcela: 0, saldo_devedor: s });
     } else {
       const juros = s * taxaMensal;
       parcelas.push({ num_parcela: i, data_vencimento: "", amortizacao: 0, juros, despesas_acessorios: 0, valor_parcela: juros, saldo_devedor: s });
@@ -803,6 +805,8 @@ export default function ContratosFinanceiros() {
     if (tipoCalc === "sac_crescente") base = calcularSACRE(valorBase, i_periodo, n, crescPct, car, carTipo);
     else if (tipoCalc === "sac") base = calcularSAC(valorBase, i_periodo, n, car, carTipo);
     else base = calcularPRICE(valorBase, i_periodo, n, car, carTipo);
+    // Juros capitalizados na carência: a parte da amortização que quita esse juro volta a ser juro (amortização = principal)
+    base = separarCapitalizado(base.map(p => ({ ...p, amortizacao: Math.round(p.amortizacao * 100) / 100, juros: Math.round(p.juros * 100) / 100, juros_capitalizado: Math.round((p.juros_capitalizado ?? 0) * 100) / 100 })));
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
     // Calcular só monta o grid (e persiste o cronograma em parcelas_pagamento,
@@ -836,6 +840,8 @@ export default function ContratosFinanceiros() {
         data_vencimento: p.data_vencimento,
         amortizacao: repart[idx].amortizacao,
         juros: repart[idx].juros,
+        juros_capitalizado: repart[idx].juros_capitalizado ?? 0,
+        juros_cap_pago: repart[idx].juros_cap_pago ?? 0,
         despesas_acessorios: 0,
         valor_parcela: p.valor ?? 0,
         saldo_devedor: repart[idx].saldo,
@@ -867,7 +873,8 @@ export default function ContratosFinanceiros() {
         const p = ordenadas[i];
         if (p.status === "pago") continue;   // parcela já paga não é mexida
         const { error } = await supabase.from("parcelas_pagamento")
-          .update({ amortizacao: linhas[i].amortizacao, juros: linhas[i].juros, saldo_devedor: linhas[i].saldo }).eq("id", p.id);
+          .update({ amortizacao: linhas[i].amortizacao, juros: linhas[i].juros, saldo_devedor: linhas[i].saldo,
+            ...((linhas[i].juros_capitalizado || linhas[i].juros_cap_pago || p.juros_capitalizado || p.juros_cap_pago) ? { juros_capitalizado: linhas[i].juros_capitalizado ?? 0, juros_cap_pago: linhas[i].juros_cap_pago ?? 0 } : {}) }).eq("id", p.id);
         if (error) throw error;
       }
       setParcelasPagamento(await listarParcelasPagamento(contratoModal.id));
@@ -1007,7 +1014,9 @@ export default function ContratosFinanceiros() {
       const principalSaldo = parseFloat(String(fC.valor_financiado).replace(",", ".")) || Number(contratoModal.valor_financiado) || atualizadas.reduce((t, x) => t + (x.amortizacao || 0), 0);
       let saldoAc = idxEdit === 0 ? principalSaldo : atualizadas[idxEdit - 1].saldo_devedor;
       for (let i = idxEdit; i < atualizadas.length; i++) {
-        saldoAc = Math.max(0, Math.round((saldoAc - atualizadas[i].amortizacao) * 100) / 100);
+        // Saldo: + juro capitalizado no período − amortização − juro capitalizado quitado na parcela
+        const a = atualizadas[i];
+        saldoAc = Math.max(0, Math.round((saldoAc + (a.juros_capitalizado ?? 0) - a.amortizacao - (a.juros_cap_pago ?? 0)) * 100) / 100);
         atualizadas[i] = { ...atualizadas[i], saldo_devedor: saldoAc };
       }
     }
@@ -2207,7 +2216,11 @@ export default function ContratosFinanceiros() {
                                             onChange={e => editarParcela(p.id, "juros", e.target.value)} disabled={bloqueada}
                                             title={bloqueada ? "Parcela paga: estorne o pagamento para alterar" : undefined}
                                             style={estilo("juros", jurosEditado)} />
-                                        ) : fmtV(res.juros)}
+                                        ) : (<>
+                                          {fmtV(res.juros)}
+                                          {(p.juros_capitalizado ?? 0) > 0 && <div style={{ fontSize: 10, color: "#8B5E14", fontWeight: 600 }} title="Juro do período sem pagamento: incorporado ao saldo devedor e pago como juro na(s) parcela(s) de pagamento">+ {fmtV(p.juros_capitalizado ?? 0)} capitalizado</div>}
+                                          {(p.juros_cap_pago ?? 0) > 0 && <div style={{ fontSize: 10, color: "var(--text-3)" }}>inclui {fmtV(p.juros_cap_pago ?? 0)} capitalizado</div>}
+                                        </>)}
                                       </td>
                                       <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.despesas_acessorios)}</td>
                                       <td style={{ padding: "4px 8px" }}>
@@ -2266,6 +2279,7 @@ export default function ContratosFinanceiros() {
                               {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); const totalJuros = parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0); const totalAmort = parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0); return (<>
                                 <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtV(totalJuros)}</strong></span>
                                 <span>CET estimado: <strong>{fmtNum(totalAmort > 0 ? (totalJuros / totalAmort) * 100 : 0, 2)}% a.p.</strong></span>
+                                {parcelasPagamento.some(p => (p.juros_capitalizado ?? 0) > 0) && <span>Juros capitalizados na carência: <strong style={{ color: "#8B5E14" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + (p.juros_capitalizado ?? 0), 0))}</strong> (já dentro do custo total, pagos como juro)</span>}
                                 <span>Pagas: <strong style={{ color: "#111111" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
                               </>); })()}
                               {temEdits && (

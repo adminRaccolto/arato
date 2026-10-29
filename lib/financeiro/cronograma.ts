@@ -8,7 +8,7 @@
  * Serve para Price, SAC, SACRE ou qualquer sequência de prestações. Se a soma das prestações não passa do principal
  * (sem juros), tudo é amortização.
  */
-export type LinhaCronograma = { juros: number; amortizacao: number; saldo: number };
+export type LinhaCronograma = { juros: number; amortizacao: number; saldo: number; juros_capitalizado?: number; juros_cap_pago?: number };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -40,10 +40,36 @@ export function repartirCronograma(principal: number, valores: number[]): { taxa
     const ultima = i === pg.length - 1;
     let juros = r2(saldo * taxa);
     let amort = r2(v - juros);
-    if (amort < 0) { amort = 0; juros = r2(v); }          // prestação menor que o juro do período (capitalização)
-    if (ultima) { amort = r2(saldo); juros = r2(v - amort); } // a última fecha o saldo (absorve o arredondamento)
-    saldo = Math.max(0, r2(saldo - amort));
-    linhas.push({ juros, amortizacao: amort, saldo });
+    let cap = 0;
+    // prestação menor que o juro do período: o que falta capitaliza (soma ao saldo; não é pago agora)
+    if (amort < 0) { cap = r2(-amort); amort = 0; juros = r2(v); }
+    if (ultima) { amort = r2(saldo); juros = r2(v - amort); cap = 0; } // a última fecha o saldo (absorve o arredondamento)
+    saldo = Math.max(0, r2(saldo + cap - amort));
+    linhas.push({ juros, amortizacao: amort, saldo, juros_capitalizado: cap });
   });
-  return { taxaPeriodo: taxa, linhas };
+  return { taxaPeriodo: taxa, linhas: separarCapitalizado(linhas) };
+}
+
+/**
+ * Juros capitalizados (carência total, 29/10/2026): o juro do período sem pagamento vai para `juros_capitalizado` e
+ * soma ao saldo, mas não é amortização. Quando as parcelas depois pagam esse saldo maior, a parte que quita juro
+ * capitalizado sai da amortização e entra em `juros` (marcada em `juros_cap_pago`), proporcional à amortização de
+ * cada parcela. Assim a soma das amortizações = principal e a soma de `juros` = todo o juro pago — o CP e a DRE
+ * mostram o custo financeiro real. A última parcela absorve o arredondamento.
+ */
+export function separarCapitalizado<T extends { amortizacao: number; juros: number; juros_capitalizado?: number; juros_cap_pago?: number }>(ps: T[]): T[] {
+  const totalCap = r2(ps.reduce((t, p) => t + (Number(p.juros_capitalizado) || 0), 0));
+  if (totalCap <= 0) return ps.map(p => ({ ...p, juros_capitalizado: Number(p.juros_capitalizado) || 0, juros_cap_pago: Number(p.juros_cap_pago) || 0 }));
+  const somaAmort = ps.reduce((t, p) => t + (Number(p.amortizacao) || 0), 0);
+  if (somaAmort <= 0) return ps;
+  const fr = Math.min(1, totalCap / somaAmort);
+  let distribuido = 0;
+  const idxUltima = ps.map((p, i) => (Number(p.amortizacao) > 0 ? i : -1)).filter(i => i >= 0).pop() ?? -1;
+  return ps.map((p, i) => {
+    const a = Number(p.amortizacao) || 0;
+    if (a <= 0) return { ...p, juros_cap_pago: 0 };
+    const cp = i === idxUltima ? r2(totalCap - distribuido) : r2(a * fr);
+    distribuido = r2(distribuido + cp);
+    return { ...p, amortizacao: r2(a - cp), juros: r2((Number(p.juros) || 0) + cp), juros_cap_pago: cp };
+  });
 }
