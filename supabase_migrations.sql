@@ -18627,3 +18627,15 @@ ALTER TABLE nf_entradas DROP CONSTRAINT IF EXISTS nf_entradas_tipo_entrada_check
 ALTER TABLE nf_entradas ADD CONSTRAINT nf_entradas_tipo_entrada_check
   CHECK (tipo_entrada IS NULL OR tipo_entrada IN ('consumo','insumos','combustivel','pecas','custo_direto','imobilizado','vef','remessa','devolucao_compra'));
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 392 — Contrato financeiro liberado direto ao fornecedor (quitando CP)
+-- =============================================================================
+-- parcelas_liberacao.tipo = 'fornecedor': o banco pagou o fornecedor; os CPs da compra foram quitados pelo
+-- financiamento (sem caixa, conta transitória) e a captação nasceu no mesmo valor. Guarda como estavam os CPs e as
+-- máquinas (alienadas ao banco) e as garantias criadas, para desfazer a liberação.
+ALTER TABLE parcelas_liberacao
+  ADD COLUMN IF NOT EXISTS cps_quitados jsonb,
+  ADD COLUMN IF NOT EXISTS garantias_criadas jsonb,
+  ADD COLUMN IF NOT EXISTS maquinas_antes jsonb;
+NOTIFY pgrst, 'reload schema';

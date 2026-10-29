@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-s",
+    data: "29/10/2026",
+    titulo: "Financiamento liberado direto ao fornecedor",
+    modulos: ["Contratos Financeiros", "Contas a Pagar", "Máquinas"],
+    itens: [
+      { tipo: "novo", texto: "Contrato financeiro → Liberação → \"Liberação direta ao fornecedor\": marque os CPs que o banco pagou (total ou parte). Eles ficam quitados sem movimentar o caixa (conta transitória), a captação do contrato é registrada no mesmo valor e as máquinas da compra ficam alienadas ao banco (garantia + status Financiado). O ✕ desfaz tudo." },
+    ],
+  },
+  {
     versao: "2026.10.29-r",
     data: "29/10/2026",
     titulo: "Nova Remessa: valor com o desconto da NF de compra",

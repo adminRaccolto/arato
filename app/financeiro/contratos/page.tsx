@@ -1,5 +1,6 @@
 "use client";
 import { repartirCronograma, separarCapitalizado } from "../../../lib/financeiro/cronograma";
+import LiberacaoFornecedor from "../../../components/financeiro/LiberacaoFornecedor";
 import { registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
@@ -2063,6 +2064,7 @@ export default function ContratosFinanceiros() {
                       </div>
                     );
                   })()}
+                  <LiberacaoFornecedor contrato={contratoModal} contas={contas} onFeito={() => { listarParcelasLiberacao(contratoModal.id).then(setParcelasLiberacao).catch(() => {}); }} />
                   <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
                     <div><label data-arato-label="true" style={lbl}>Data Liberação</label><InputData style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
                     <div><label data-arato-label="true" style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
@@ -2081,8 +2083,20 @@ export default function ContratosFinanceiros() {
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
                             {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.tipo === "despesa_financiada" ? badge("IOF/tarifas financiados", "#FBF3E0", "#7A4300") : p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right" }}><OperationalButton data-arato-button="danger" style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</OperationalButton></td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.tipo === "despesa_financiada" ? badge("IOF/tarifas financiados", "#FBF3E0", "#7A4300") : p.tipo === "fornecedor" ? badge("Direto ao fornecedor (CP quitado)", "#D5E8F5", "#0B2D50") : p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "right" }}><OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
+                              // Direto ao fornecedor: desfaz pelo servidor (CPs voltam a dever, captação e garantias apagadas, máquinas como antes)
+                              if (p.tipo === "fornecedor") {
+                                if (!(await confirmarAcao({ titulo: "Desfazer liberação direta ao fornecedor?", perigo: true, textoConfirmar: "Desfazer",
+                                  mensagem: "Os títulos quitados pelo financiamento voltam a dever, a captação e as garantias criadas são apagadas e as máquinas voltam como estavam." }))) return;
+                                const r = await fetch("/api/financeiro/contratos/liberacao-fornecedor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "desfazer", parcela_id: p.id }) });
+                                const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string };
+                                if (!j.ok) { setErroModal(j.error ?? `Erro HTTP ${r.status}`); return; }
+                                setParcelasLiberacao(x => x.filter(rr => rr.id !== p.id));
+                                return;
+                              }
+                              excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)));
+                            }}>✕</OperationalButton></td>
                           </tr>
                         ))}
                       </tbody>

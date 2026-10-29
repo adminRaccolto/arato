@@ -1700,7 +1700,7 @@ export type ParcelaLiberacao = {
   valor_liberado: number;
   valor_liberado_brl?: number;
   lancamento_id?: string;
-  tipo?: "capital" | "despesa_financiada";   // despesa_financiada = IOF/tarifas embutidos no valor financiado (Seção 349)
+  tipo?: "capital" | "despesa_financiada" | "fornecedor";   // despesa_financiada = IOF/tarifas embutidos (Seção 349); fornecedor = banco pagou direto o fornecedor, quitando CP (Seção 392)
   despesa_lancamento_id?: string;           // CP da despesa financiada
   created_at?: string;
 };
