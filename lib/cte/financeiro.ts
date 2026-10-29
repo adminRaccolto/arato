@@ -45,6 +45,24 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
   const venc = somaDias(emissao, prazo);
   const competencia = emissao.slice(0, 7);
 
+  // Safra pela data de emissão (ano safra do cliente que contém a data) e operações gerenciais por classificação
+  // (globais, do cliente ou da fazenda). Antes o a receber da transportadora nascia sem operação nem safra.
+  const { data: safras } = fz?.conta_id
+    ? await db.from("anos_safra").select("id, data_inicio, data_fim").eq("conta_id", fz.conta_id)
+    : await db.from("anos_safra").select("id, data_inicio, data_fim").in("fazenda_id", fazIds);
+  const anoSafraId = ((safras ?? []).find(a => a.data_inicio && a.data_fim && a.data_inicio <= emissao && emissao <= a.data_fim)?.id as string | undefined) ?? null;
+  const ogPorClassificacao = async (classificacao: string) => {
+    const { data } = await db.from("operacoes_gerenciais").select("id, fazenda_id, conta_id")
+      .or([`and(fazenda_id.is.null,conta_id.is.null)`, ...(fz?.conta_id ? [`conta_id.eq.${fz.conta_id}`] : []), `fazenda_id.in.(${fazIds.join(",")})`].join(","))
+      .eq("classificacao", classificacao).eq("inativo", false);
+    const l = data ?? [];
+    return ((l.find(o => o.fazenda_id === c.fazenda_id) ?? l.find(o => o.conta_id) ?? l[0])?.id as string | undefined) ?? null;
+  };
+  const ogPorNome = async (nome: string) => {
+    const { data } = await db.from("operacoes_gerenciais").select("id, fazenda_id").in("fazenda_id", fazIds).eq("descricao", nome);
+    return (((data ?? []).find(o => o.fazenda_id === c.fazenda_id) ?? (data ?? [])[0])?.id as string | undefined) ?? null;
+  };
+
   const pessoaPorDoc = async (doc: string) => {
     if (!doc) return null;
     const { data } = await db.from("pessoas").select("id").in("fazenda_id", fazIds).or(`cpf_cnpj.eq.${doc},cpf_cnpj.eq.${fmtDoc(doc)}`).limit(1).maybeSingle();
@@ -70,6 +88,7 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
         descricao: `CT-e ${numDoc} — frete ${nomeTom}`.slice(0, 200), categoria: "Prestação de serviço de frete (CT-e)",
         competencia, status: "pendente", data_vencimento: venc, valor,
         pessoa_id: await pessoaPorDoc(docTom), numero_documento: numDoc, origem: "cte",
+        operacao_gerencial_id: await ogPorClassificacao("1.01.02.01.001"), ano_safra_id: anoSafraId,   // PRESTAÇÃO DE SERVIÇO DE FRETE (CT-E)
       });
       log.push(error ? `Receber (empresa) falhou: ${error.message}` : `A receber da transportadora lançado (${venc}).`);
     } else log.push("A receber da transportadora já existia.");
@@ -87,6 +106,7 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
           fazenda_id: empTom.fazenda_id, empresa_id: empTom.id, tipo: "pagar", moeda: "BRL",
           descricao: `CT-e ${numDoc} — frete ${c.emitente_razao_social ?? ""}`.slice(0, 200), categoria: "Fretes",
           competencia, status: "pendente", data_vencimento: venc, valor, pessoa_id: pessoaTransp, numero_documento: numDoc, origem: "cte",
+          operacao_gerencial_id: await ogPorNome(ogFretePorProduto(String(c.produto_descricao ?? ""))), ano_safra_id: anoSafraId,
         });
         log.push(error ? `Pagar (empresa) falhou: ${error.message}` : "A pagar da empresa tomadora lançado.");
       }
@@ -94,13 +114,12 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
       const { data: ja } = await db.from("lancamentos").select("id").eq("tipo", "pagar").eq("chave_xml", c.chave_acesso).in("fazenda_id", fazIds).limit(1);
       if (!ja?.length) {
         const nomeOg = ogFretePorProduto(String(c.produto_descricao ?? ""));
-        const { data: ogs } = await db.from("operacoes_gerenciais").select("id, fazenda_id").in("fazenda_id", fazIds).eq("descricao", nomeOg);
-        const og = (ogs ?? []).find(o => o.fazenda_id === c.fazenda_id) ?? (ogs ?? [])[0];
+        const og = { id: await ogPorNome(nomeOg) };
         const { error } = await db.from("lancamentos").insert({
           fazenda_id: c.fazenda_id, tipo: "pagar", moeda: "BRL", descricao: `CT-e ${numDoc} — ${c.emitente_razao_social ?? "frete"}`.slice(0, 200),
           categoria: "Frete", data_lancamento: emissao, data_vencimento: venc, status: "em_aberto", auto: true, valor,
           pessoa_id: pessoaTransp, produtor_id: prod.id, nfe_numero: numDoc, numero_documento: numDoc, chave_xml: c.chave_acesso,
-          origem_lancamento: "cte", operacao_gerencial_id: og?.id ?? null,
+          origem_lancamento: "cte", operacao_gerencial_id: og?.id ?? null, ano_safra_id: anoSafraId,
         });
         log.push(error ? `Pagar (produtor) falhou: ${error.message}` : `A pagar do produtor lançado (${nomeOg}, ${venc}).`);
       } else log.push("A pagar do produtor já existia.");

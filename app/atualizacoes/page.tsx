@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-z",
+    data: "29/10/2026",
+    titulo: "CR do frete (CT-e) e títulos da Empresa com colunas preenchidas",
+    modulos: ["Contas a Receber", "Contas a Pagar", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O a receber automático da transportadora (CT-e autorizado) agora nasce com a operação PRESTAÇÃO DE SERVIÇO DE FRETE (CT-E) e a safra da data de emissão; o a pagar do tomador também recebe a safra." },
+      { tipo: "correcao", texto: "Títulos da Empresa mostram a data de Lançamento no grid do CP/CR (antes aparecia \"—\" em todos)." },
+    ],
+  },
+  {
     versao: "2026.10.29-y",
     data: "29/10/2026",
     titulo: "Estorno de NF de retorno tira o retorno da remessa (correção)",
