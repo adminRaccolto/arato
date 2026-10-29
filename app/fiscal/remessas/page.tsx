@@ -19,6 +19,7 @@ import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/
 import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
 import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
 import { cstExibicaoPorCfop } from "../../../lib/nfe/cst-por-cfop";
+import { ratearDescontoNf } from "../../../lib/nfe/remessa";
 import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
 
@@ -153,12 +154,19 @@ function RemessasConteudo() {
 
   async function escolherNfOrigem(nf: NfOrigem) {
     setNfOrigem(nf); setNfsOrigem([]);
-    const its = await listarNfEntradaItens(nf.id);
+    const [its, { data: cabNf }] = await Promise.all([
+      listarNfEntradaItens(nf.id),
+      supabase.from("nf_entradas").select("valor_desconto, valor_produtos").eq("id", nf.id).maybeSingle(),
+    ]);
+    // Desconto da NF de compra (só no cabeçalho) rateado pelos itens, proporcional ao valor de cada um: a remessa sai
+    // com o valor líquido da compra (mesma regra da remessa feita pelas Notas de Venda). Antes saía com o valor cheio.
+    const descontos = ratearDescontoNf(Number(cabNf?.valor_desconto ?? 0), Number(cabNf?.valor_produtos ?? 0), its.map(i => Number(i.valor_total ?? 0)));
+    const liquido = (i: (typeof its)[number]) => Number(i.valor_total ?? 0) - (descontos[its.indexOf(i)] ?? 0);
     const doEstoque = its.filter(i => i.insumo_id);
     setItens(doEstoque.length ? doEstoque.map(i => ({
       key: crypto.randomUUID(), insumo_id: i.insumo_id!, descricao: insumoPorId.get(i.insumo_id!)?.nome ?? i.descricao_produto,
       ncm: i.ncm ?? insumoPorId.get(i.insumo_id!)?.ncm ?? "", unidade: insumoPorId.get(i.insumo_id!)?.unidade ?? i.unidade,
-      quantidade: paraCampo(i.quantidade), valor_unitario: i.quantidade ? paraCampo(Math.round((Number(i.valor_total ?? 0) / Number(i.quantidade)) * 10000) / 10000) : "",
+      quantidade: paraCampo(i.quantidade), valor_unitario: i.quantidade ? paraCampo(Math.round((liquido(i) / Number(i.quantidade)) * 1e6) / 1e6) : "",
     })) : [novoItem()]);
     const dep = its.find(i => i.deposito_id)?.deposito_id;
     if (dep) setDepOrigem(dep);

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-r",
+    data: "29/10/2026",
+    titulo: "Nova Remessa: valor com o desconto da NF de compra",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Na Nova Remessa com NF de compra vinculada, o valor unitário dos itens vem com o desconto da NF rateado (valor líquido da compra). Antes vinha o valor cheio." },
+    ],
+  },
+  {
     versao: "2026.10.29-q",
     data: "29/10/2026",
     titulo: "Remessa para industrialização com CST 50",
