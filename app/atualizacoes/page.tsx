@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-g",
+    data: "29/10/2026",
+    titulo: "Folha puxa salário novo do cadastro · busca no catálogo da NF",
+    modulos: ["Folha de Pagamento", "Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Folha fechada: ao abrir, o salário, complemento e benefícios dos funcionários com salário ainda não pago são atualizados pelo cadastro (aviso mostra quem mudou); ⟳ Reprocessar Folha grava o valor novo no Contas a Pagar. Salário já pago continua travado." },
+      { tipo: "melhoria", texto: "Processamento de NF: o seletor do item do catálogo agora tem busca por texto — digite parte do nome para filtrar." },
+    ],
+  },
+  {
     versao: "2026.10.29-f",
     data: "29/10/2026",
     titulo: "Compra para entrega futura: faturamento × remessas",

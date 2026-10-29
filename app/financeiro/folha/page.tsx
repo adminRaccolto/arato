@@ -436,6 +436,27 @@ export default function FolhaPagamentoPage() {
             travado: atual.travado || travado };
         }
         setSituacaoCp(sit);
+        // Folha fechada: salário ainda não pago que mudou no cadastro (salário base, complemento, benefícios) é
+        // atualizado na tela — o ⟳ Reprocessar Folha leva a diferença ao Contas a Pagar. Achado 29/10/2026: o
+        // reprocessamento usava a "foto" da folha e ignorava a mudança feita no cadastro. Salário pago fica como está.
+        if (folha.status === "fechado") {
+          const atualizados: string[] = [];
+          const novos = funcsCarregados.map(f => {
+            if (f.cp_lancamento_id && sit[f.cp_lancamento_id]?.travado) return f;
+            const cad = funcionarios.find(x => x.id === f.funcionario_id);
+            if (!cad) return f;
+            const dif = (a: unknown, b: unknown) => Math.abs((Number(a) || 0) - (Number(b) || 0)) > 0.005;
+            if (!(dif(cad.salario_base ?? f.salario_base, f.salario_base) || dif(cad.complemento_salarial, f.complemento_salarial)
+              || dif(cad.vale_transporte, f.vale_transporte) || dif(cad.vale_refeicao, f.vale_refeicao) || dif(cad.outros_beneficios, f.outros_beneficios))) return f;
+            atualizados.push(f.nome_funcionario);
+            return { ...f, ...recalc({ ...f, ...pctsEncargos(cad), salario_base: cad.salario_base ?? f.salario_base, complemento_salarial: cad.complemento_salarial ?? 0,
+              vale_transporte: cad.vale_transporte ?? 0, vale_refeicao: cad.vale_refeicao ?? 0, outros_beneficios: cad.outros_beneficios ?? 0 }) };
+          });
+          if (atualizados.length) {
+            setFolhaEdit({ ...folha, funcionarios: novos });
+            setMsg(`Salário atualizado pelo cadastro: ${atualizados.join(", ")}. Clique em ⟳ Reprocessar Folha para levar a diferença ao Contas a Pagar.`);
+          }
+        }
       } else { setVencCp({}); setSituacaoCp({}); }
     } else {
       setVencCp({}); setSituacaoCp({});

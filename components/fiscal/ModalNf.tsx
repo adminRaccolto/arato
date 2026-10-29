@@ -3469,8 +3469,8 @@ export default function ModalNf({
                                    (a apropriação de custo é no consumo, não na compra). */
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                    <SelectField value={it.insumo_id} onChange={e => {
-                                        const nid = e.target.value;
+                                    {/* Seletor com busca por texto (digite parte do nome) — catálogo grande ficava difícil de achar */}
+                                    <SelectBusca value={it.insumo_id} placeholder="— catálogo —" onChange={nid => {
                                         const ins = insumos.find(i => i.id === nid);
                                         const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
                                           ? [{ numero: "", quantidade_kg: undefined }]
@@ -3499,10 +3499,8 @@ export default function ModalNf({
                                           }
                                         }
                                         setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "", ...patchConv });
-                                      }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
-                                      <option value="">— catálogo —</option>
-                                      {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                    </SelectField>
+                                      }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}
+                                      options={insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => ({ value: i.id, label: `${i.nome} (${i.unidade})` }))} />
                                     <button data-arato-button="icon"
                                       onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                       title="Cadastrar novo produto"
@@ -3676,11 +3674,9 @@ export default function ModalNf({
                                   princípio ativo/lote de semente que só se aplica lá. */}
                               {it.tipo_apropiacao === "estoque" && (
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                  <SelectField value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })}
-                                    style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1, borderColor: it.insumo_id ? undefined : "#F6C87A" }}>
-                                    <option value="">— catálogo —</option>
-                                    {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                  </SelectField>
+                                  <SelectBusca value={it.insumo_id} placeholder="— catálogo —" onChange={v => setItem(it.key, { insumo_id: v })}
+                                    style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1, borderColor: it.insumo_id ? undefined : "#F6C87A" }}
+                                    options={insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => ({ value: i.id, label: `${i.nome} (${i.unidade})` }))} />
                                   <button data-arato-button="icon"
                                     onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                     title="Cadastrar novo produto"
