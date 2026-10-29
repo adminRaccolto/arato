@@ -4,7 +4,7 @@ import { pfxParaPem } from "../nfe/signer";
 import { resolverConfigMDFe } from "../mdfe/config";
 import type { CertificadoPem } from "./ciot";
 
-export async function carregarCertificadoEmitente(fazendaId: string, cnpjEmitente: string): Promise<{ pem: CertificadoPem; rntrc?: string; pagPix?: string } | { erro: string }> {
+export async function carregarCertificadoEmitente(fazendaId: string, cnpjEmitente: string): Promise<{ pem: CertificadoPem; rntrc?: string; pagPix?: string; ambienteMdfe?: string } | { erro: string }> {
   const resolved = await resolverConfigMDFe(fazendaId, cnpjEmitente);
   if (!resolved) return { erro: "Configuração do emitente não encontrada — configure em Parâmetros → MDF-e/Fiscal." };
   const confg = resolved.mdfeConfig, fc = resolved.fiscalConfig;
@@ -16,7 +16,7 @@ export async function carregarCertificadoEmitente(fazendaId: string, cnpjEmitent
   if (error || !blob) return { erro: `Certificado não encontrado: ${certPath}` };
   try {
     const pem = pfxParaPem(Buffer.from(await blob.arrayBuffer()), certSenha);
-    return { pem: { cert: pem.certChain ?? pem.cert, key: pem.key }, rntrc: confg.rntrc, pagPix: confg.pag_pix };
+    return { pem: { cert: pem.certChain ?? pem.cert, key: pem.key }, rntrc: confg.rntrc, pagPix: confg.pag_pix, ambienteMdfe: confg.ambiente };
   } catch (e) {
     return { erro: `Certificado inválido ou senha incorreta: ${e}` };
   }

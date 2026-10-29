@@ -5,6 +5,7 @@ import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
+import { emitenteCiot } from "../../../lib/antt/contexto";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -570,7 +571,7 @@ function MdfePageInner() {
   // ── Abrir modal ──────────────────────────────────────────
   function resetCiot() {
     setCiotForm({ valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "", ibge_origem: "", ibge_destino: "", distancia_km: "", peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "", implementos: "" });
-    setCiotGerado(null); setCiotErro("");
+    setCiotGerado(null); setCiotReservado(""); setCiotErro("");
   }
 
   function abrirNovo() {
@@ -625,12 +626,10 @@ function MdfePageInner() {
     const vm = form.veiculo_manual;
     const veiculo = veiculos.find(v => v.id === form.veiculo_id)
       ?? (vm && placaLimpa(vm.cavalo.placa).length === 7 ? { id: "", placa: placaLimpa(vm.cavalo.placa), num_eixos: null, rntrc: vm.cavalo.rntrc || null, proprietario_tipo: "terceiro" } as unknown as (typeof veiculos)[number] : undefined);
-    // Contratante = transportadora emitente do CT-e vinculado (quem paga/declara o frete); só
-    // cai na primeira empresa da conta quando não há CT-e. Ambiente vem de Parâmetros → MDF-e
-    // (antes fixo em homologação — CIOT de teste, sem valor legal).
+    // A transportadora selecionada no MDF-e tem prioridade sobre o CT-e e a empresa padrão.
+    // O servidor resolve o ambiente nos parâmetros desse emitente, sem usar a config da primeira empresa.
     const cteSel = ctes.find(c => form.cte_ids.includes(c.id));
-    const contratanteDoc = (cteSel?.emitente_cnpj || empresaCpfCnpj || "").replace(/\D/g, "");
-    const ambienteCiot = mdfeConfig.ambiente === "producao" ? "producao" : "homologacao";
+    const contratanteDoc = emitenteCiot(empresasTransp.find(e => e.id === form.emitente_id)?.cpf_cnpj, cteSel?.emitente_cnpj, empresaCpfCnpj);
     if (!contratanteDoc) { setCiotErro("Contratante (transportadora emitente) não identificado — vincule um CT-e."); return; }
     if (!motorista?.cpf) { setCiotErro("Motorista sem CPF cadastrado."); return; }
     if (!veiculo?.placa) { setCiotErro("Selecione um veículo."); return; }
@@ -649,11 +648,11 @@ function MdfePageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "declarar",
+          origem: "mdfe",
           fazenda_id: fazendaId,
           ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
           veiculoTerceiro: veiculo.proprietario_tipo === "terceiro",
           cnpjContratante: contratanteDoc,
-          ambiente: ambienteCiot,
           dados: {
             // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor usa CNPJ/
             // RNTRC do emitente); contratante = tomador do frete do CT-e; destinatário da carga.
@@ -1438,7 +1437,7 @@ function MdfePageInner() {
               <div data-arato-dialog-body="true" style={divider}>Identificação</div>
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>Emitente do MDF-e (transportadora)</label>
-                <SelectField value={form.emitente_id} onChange={e => setForm(f => ({ ...f, emitente_id: e.target.value }))} style={inp}>
+                <SelectField value={form.emitente_id} onChange={e => { setForm(f => ({ ...f, emitente_id: e.target.value })); setCiotGerado(null); setCiotReservado(""); setCiotErro(""); }} style={inp}>
                   <option value="">{empresasTransp.length ? "— Automático (transportadora do CT-e vinculado) —" : "Nenhuma empresa cadastrada"}</option>
                   {empresasTransp.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome} — {e.cpf_cnpj}</option>)}
                 </SelectField>
@@ -1755,7 +1754,7 @@ function MdfePageInner() {
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", padding: 24 }}>
             <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e por chave</div>
-            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", margin: "4px 0 16px" }}>Para MDF-e que ficou aberto na SEFAZ e bloqueia a placa ("Existe MDF-e não encerrado…") — mesmo emitido em outro sistema. Usa o certificado do emitente que está na chave.</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", margin: "4px 0 16px" }}>Para MDF-e que ficou aberto na SEFAZ e bloqueia a placa (&quot;Existe MDF-e não encerrado…&quot;) — mesmo emitido em outro sistema. Usa o certificado do emitente que está na chave.</div>
             <label data-arato-label="true" style={lbl}>Chave de Acesso (44 dígitos)</label>
             <input value={chaveForm.chave} onChange={e => setChaveForm(f => ({ ...f, chave: e.target.value }))} style={inp} placeholder="Chave do MDF-e não encerrado" />
             <label data-arato-label="true" style={{ ...lbl, marginTop: 10 }}>Protocolo de Autorização (15 dígitos)</label>

@@ -13,6 +13,7 @@ import { criarCiotService, type DeclaracaoCIOT, type AmbienteCiot } from "../../
 import { carregarCertificadoEmitente } from "../../../../lib/antt/certificado";
 import { prepararDeclaracao } from "../../../../lib/antt/validacao";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
+import { ambienteCiotDaOperacao } from "../../../../lib/antt/contexto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ type Body = {
   fazenda_id?: string;
   cnpjContratante?: string;   // emitente (ETC)
   ambiente?: AmbienteCiot;
+  origem?: "mdfe" | "cte";
   dados?: DeclaracaoCIOT;
   ciot?: string;              // 12 dígitos + verificador quando exigido
   semImplemento?: boolean;    // caminhão simples (sem carreta)
@@ -43,7 +45,9 @@ export async function POST(req: NextRequest) {
     const cnpj = b.cnpjContratante.replace(/\D/g, "");
     const cert = await carregarCertificadoEmitente(b.fazenda_id, cnpj);
     if ("erro" in cert) return falha(cert.erro);
-    const svc = criarCiotService(cert.pem, b.ambiente ?? "homologacao");
+    const ambiente = ambienteCiotDaOperacao({ origem: b.origem, ambienteMdfe: cert.ambienteMdfe, ambienteSolicitado: b.ambiente });
+    if (!ambiente) return falha(`Configure Produção ou Homologação em Parâmetros → ${b.origem === "cte" ? "CT-e" : "MDF-e"} para o emitente selecionado.`);
+    const svc = criarCiotService(cert.pem, ambiente);
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
     if (b.acao === "declarar") {
@@ -124,14 +128,14 @@ export async function POST(req: NextRequest) {
       let id = (b.ciotReservado ?? "").replace(/\D/g, "");
       if (id.length !== 12) {
         const desde = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
-        const { data: sobras } = await db.from("ciots").select("id_operacao").eq("cpf_cnpj_contratante", cnpj).eq("placa", dados.Veiculos[0]?.Placa ?? "").eq("status", "reservado").gte("created_at", desde).order("created_at", { ascending: false }).limit(1);
+        const { data: sobras } = await db.from("ciots").select("id_operacao").eq("cpf_cnpj_contratante", cnpj).eq("ambiente", ambiente).eq("placa", dados.Veiculos[0]?.Placa ?? "").eq("status", "reservado").gte("created_at", desde).order("created_at", { ascending: false }).limit(1);
         id = (sobras?.[0]?.id_operacao as string | undefined) ?? "";
       }
       if (id.length !== 12) {
         const g = await svc.gerar(cnpj);
         id = g.Dados?.CIOT ?? "";
         if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: g.HttpStatus ?? 422 });
-        await db.from("ciots").insert({ id_operacao: id, cpf_cnpj_contratante: cnpj, cpf_cnpj_contratado: cnpj, placa: dados.Veiculos[0]?.Placa, valor_frete: parseFloat(dados.ValorFrete), ambiente: b.ambiente ?? "homologacao", status: "reservado" });
+        await db.from("ciots").insert({ id_operacao: id, cpf_cnpj_contratante: cnpj, cpf_cnpj_contratado: cnpj, placa: dados.Veiculos[0]?.Placa, valor_frete: parseFloat(dados.ValorFrete), ambiente, status: "reservado" });
       }
 
       // F) Declara (DataDeclaracao no horário de Brasília, na hora do envio)

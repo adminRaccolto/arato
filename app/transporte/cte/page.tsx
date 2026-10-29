@@ -1192,7 +1192,7 @@ function CtePageInner() {
       const res = await fetch("/api/antt/ciot", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb, ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
+          acao: "declarar", origem: "cte", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb, ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
           veiculoTerceiro: veiculo.proprietario_tipo === "terceiro",
           dados: {
             // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor
@@ -2051,7 +2051,7 @@ function CtePageInner() {
                 {empresasTransp.length === 0 ? (
                   <div style={{ background: "#FBF3E0", border: "0.5px solid #E9C97B", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7B4A00" }}>
                     Nenhuma empresa com finalidade <strong>Transportadora</strong> cadastrada.
-                    Acesse <strong>Cadastros → Empresas → editar empresa → marque "Transportadora"</strong>.
+                    Acesse <strong>Cadastros → Empresas → editar empresa → marque &quot;Transportadora&quot;</strong>.
                   </div>
                 ) : (
                   <div>

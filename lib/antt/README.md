@@ -14,6 +14,12 @@ e vinculada na página de [documentos técnicos](https://www.gov.br/antt/pt-br/a
 - Homologação permanece no endpoint de homologação existente; nunca se usa
   o gerador de produção como fallback para testes.
 - Não repetir reservas automaticamente após falha de transporte.
+- No MDF-e, o emitente selecionado tem prioridade sobre o CT-e e a empresa padrão.
+  A API lê o ambiente salvo em `mdfe_emp_<CNPJ>` ao carregar o certificado, sem
+  confiar no ambiente enviado pelo navegador. Requisições antigas sem `origem`
+  são tratadas como MDF-e; a tela de CT-e envia `origem: "cte"` para manter seus
+  parâmetros próprios. A ausência de configuração gera erro, sem escolher
+  homologação silenciosamente.
 
 A correção de 29/10/2026 foi verificada com autenticação real no gerador e
 consulta de situação no PEF de produção, sem emitir uma operação de teste.
