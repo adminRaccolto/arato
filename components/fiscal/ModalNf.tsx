@@ -577,6 +577,8 @@ export default function ModalNf({
   // Devolução já emitida em outro sistema: só registra (estoque, CR, Monitor de NF-e), sem transmitir à SEFAZ
   const [devExterna, setDevExterna] = useState(false);
   const [devExt, setDevExt] = useState({ numero: "", serie: "", chave: "" });
+  // Devoluções já registradas desta NF (para explicar quando não sobra saldo a devolver)
+  const [devAnteriores, setDevAnteriores] = useState<{ numero: string; data_emissao: string | null; valor_total: number }[]>([]);
   const [devSaving,  setDevSaving]  = useState(false);
   const [devErr,     setDevErr]     = useState("");
 
@@ -1917,6 +1919,9 @@ export default function ModalNf({
       supabase.from("produtores").select("cpf_cnpj").eq("id", nf.produtor_id).maybeSingle()
         .then(r => setDevCpfHint(r.data?.cpf_cnpj ?? undefined));
     }
+    setDevAnteriores([]);
+    supabase.from("nf_entradas").select("numero, data_emissao, valor_total").eq("nf_origem_id", nf.id).eq("tipo_entrada", "devolucao_compra").neq("status", "cancelada")
+      .order("data_emissao").then(({ data }) => setDevAnteriores((data ?? []) as { numero: string; data_emissao: string | null; valor_total: number }[]));
     // Carrega os itens da NF original
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
@@ -4493,7 +4498,13 @@ export default function ModalNf({
               {/* Grid de itens */}
               {devItens.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-3)", fontSize: 13 }}>
-                  Nenhum item de estoque ou de Apropriação Direta com saldo a devolver na NF de origem.
+                  {devAnteriores.length > 0 ? (
+                    <>
+                      <strong style={{ color: "var(--text-1)" }}>Esta NF já foi devolvida — não há saldo a devolver.</strong>
+                      <div style={{ marginTop: 6 }}>{devAnteriores.map(d => `NF ${d.numero}${d.data_emissao ? ` de ${d.data_emissao.slice(0, 10).split("-").reverse().join("/")}` : ""} (${fmtBRL(Number(d.valor_total))})`).join(" · ")}</div>
+                      <div style={{ marginTop: 6, fontSize: 12 }}>Para refazer, estorne a devolução em Documentos Fiscais (ela aparece como NF de devolução ligada a esta).</div>
+                    </>
+                  ) : "Nenhum item de estoque ou de Apropriação Direta com saldo a devolver na NF de origem."}
                 </div>
               ) : (
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
