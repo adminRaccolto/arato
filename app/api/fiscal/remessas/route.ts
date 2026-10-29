@@ -157,6 +157,14 @@ export async function POST(req: NextRequest) {
       if (!b.nf?.numero?.trim()) return NextResponse.json({ ok: false, error: "Informe o número da NF de retorno." }, { status: 400 });
       const { data: rem } = await db.from("nf_remessas_logisticas").select("*").eq("id", b.remessa_id).maybeSingle();
       if (!rem) return NextResponse.json({ ok: false, error: "Remessa não encontrada." }, { status: 404 });
+      // A mesma NF de retorno não entra duas vezes na remessa (achado real 29/10/2026: remessa 1323 com a NF 15723 duas
+      // vezes — "já voltou" em dobro)
+      {
+        const chaveNova = (b.nf.chave ?? "").replace(/\D/g, "");
+        const ja = ((rem.retornos as { numero?: string; chave?: string | null }[] | null) ?? [])
+          .some(x => (chaveNova && x.chave === chaveNova) || (!chaveNova && !x.chave && String(x.numero ?? "") === b.nf.numero.trim()));
+        if (ja) return NextResponse.json({ ok: false, error: `O retorno da NF ${b.nf.numero.trim()} já está registrado nesta remessa.` }, { status: 409 });
+      }
       const itensRem = (Array.isArray(rem.itens_json) ? rem.itens_json : []) as Item[];
       const remetido = itensRem.reduce((s, i) => s + Number(i.valor_total ?? 0), 0) || Number(rem.valor_total ?? 0);
       const saldo = Math.max(0, remetido - Number(rem.valor_retornado ?? 0));

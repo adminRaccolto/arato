@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-x",
+    data: "29/10/2026",
+    titulo: "Retorno de armazém não entra duas vezes na remessa",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Registrar o retorno de uma NF que já está na remessa agora é recusado (antes a mesma NF entrava duas vezes e o \"já voltou\" dobrava)." },
+    ],
+  },
+  {
     versao: "2026.10.29-w",
     data: "29/10/2026",
     titulo: "NF de compra devolvida aparece como Devolvida",
