@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server";
 import { cancelarNFeEmitida, corrigirNFeEmitida } from "../../../../lib/nfe/index";
 import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../../lib/nfe/resolver-emitente";
 import { desfazerCarga } from "../../../../lib/contratos/recebimento-carga-server";
+import { desfazerCompensacaoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge, precisa de Node
 export const dynamic = "force-dynamic";
@@ -23,6 +24,8 @@ async function reverterDevolucaoCompra(adm: SupabaseClient, nfDevId: string): Pr
     await adm.from("insumos").update({ estoque: (Number((ins as { estoque: number | null }).estoque) || 0) + delta }).eq("id", m.insumo_id);
   }
   if (movs?.length) await adm.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nfDevId);
+  // 1b) encontro de contas: os CPs da compra que a devolução tinha abatido voltam como estavam (e o CR volta a aberto)
+  await desfazerCompensacaoDevolucao(adm, nfDevId);
   // 2) título a receber do fornecedor — só some se ainda estiver em aberto
   const { data: crs } = await adm.from("lancamentos").select("id, status, valor").eq("nf_entrada_id", nfDevId);
   for (const cr of (crs ?? []) as { id: string; status: string; valor: number }[]) {

@@ -2,6 +2,7 @@ import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { aplicarEstornoCartao } from "../../../../lib/financeiro/cartao";
 import { bloqueioVefComRemessas, desfazerVinculosDaNf } from "../../../../lib/fiscal/estorno-vinculos";
+import { desfazerCompensacaoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -82,6 +83,13 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
+
+    // 00. Estorno de uma DEVOLUÇÃO: desfaz antes o encontro de contas (os CPs da compra voltam a dever e o título a
+    //     receber da devolução volta a aberto, para não ser visto como "pago" e bloquear o estorno)
+    {
+      const { data: nfTipo } = await sb.from("nf_entradas").select("tipo_entrada").eq("id", nf_id).maybeSingle();
+      if (nfTipo?.tipo_entrada === "devolucao_compra") await desfazerCompensacaoDevolucao(sb, nf_id);
+    }
 
     // 0. Antes de mexer em qualquer coisa: título já pago/conciliado/em borderô (produtor OU Empresa) impede o estorno —
     //    desfazer só o estoque e deixar o título é exatamente o que dobrava o CP ao processar de novo.

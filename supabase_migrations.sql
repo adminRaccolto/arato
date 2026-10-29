@@ -18639,3 +18639,12 @@ ALTER TABLE parcelas_liberacao
   ADD COLUMN IF NOT EXISTS garantias_criadas jsonb,
   ADD COLUMN IF NOT EXISTS maquinas_antes jsonb;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 393 — Devolução de compra: encontro de contas com os CPs da NF original
+-- =============================================================================
+-- A devolução abate os CPs ainda em aberto da NF de compra (sem caixa) e o título a receber dela fica baixado no
+-- valor compensado; compensacoes guarda quais CPs foram abatidos e como estavam, para o cancelamento/estorno da
+-- devolução devolver tudo.
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS compensacoes jsonb;
+NOTIFY pgrst, 'reload schema';

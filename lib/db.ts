@@ -14,6 +14,7 @@ import { ncmPadraoDoProduto } from "./fiscal/ncm-produtos";
 import { cobrancaDaNf } from "./fiscal/cfop-cobranca";
 import { alocarRemessa, statusSaldoVef, type SaldoVef } from "./estoque/entrega-futura";
 import { hojeLocal } from "./data-local";
+import { compensarDevolucao } from "./fiscal/devolucao-compensacao";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
@@ -3861,7 +3862,7 @@ export async function processarDevolucaoCompra(
 
   // 3. Cria CR — fornecedor deve devolver o valor
   const ogDevolucao = await resolverOperacaoGerencialPorClassificacao(fazenda_id, "1.02.01.03.001");
-  const { error: errCR } = await supabase.from("lancamentos").insert({
+  const { data: crDev, error: errCR } = await supabase.from("lancamentos").insert({
     fazenda_id,
     tipo:            "receber",
     moeda:           "BRL",
@@ -3874,8 +3875,14 @@ export async function processarDevolucaoCompra(
     valor:           valorTotal,
     status:          "em_aberto",
     auto:            true,
-  });
+  }).select("id").single();
   if (errCR) throw errCR;
+
+  // 3b. Encontro de contas: o valor devolvido abate os CPs ainda em aberto da NF de compra (sem caixa); só o que
+  //     sobrar continua a receber do fornecedor (lib/fiscal/devolucao-compensacao.ts, Seção 393)
+  try {
+    await compensarDevolucao(supabase, { nfDevId: nfDev.id, nfOrigemId: nf_origem_id, numeroDev: numero, valor: valorTotal, data: data_emissao, crId: crDev?.id ?? null });
+  } catch (e) { console.error("[devolucao] encontro de contas não feito:", e); }
 
   // 4. Só agora, com itens/estoque/CR confirmados, marca a devolução como concluída
   const { error: errStatus } = await supabase

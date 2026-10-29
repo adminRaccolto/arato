@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-v",
+    data: "29/10/2026",
+    titulo: "Devolução de compra: encontro de contas com os títulos a pagar",
+    modulos: ["Documentos Fiscais", "Contas a Pagar"],
+    itens: [
+      { tipo: "correcao", texto: "A devolução de compra agora abate os títulos a pagar ainda em aberto da NF original (sem caixa) e só o que sobrar vira título a receber do fornecedor. Antes ficavam o CP em aberto e o CR do mesmo valor ao mesmo tempo. Cancelar ou estornar a devolução devolve os CPs." },
+    ],
+  },
+  {
     versao: "2026.10.29-u",
     data: "29/10/2026",
     titulo: "Máquinas: devolver NF e processamento mais seguro; manifestação SIEG",
