@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-k",
+    data: "29/10/2026",
+    titulo: "Folha: horas extras 50% e 100% com DSR",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "novo", texto: "Coluna Horas Extras na folha: informe as horas 50% e 100% do mês. O sistema calcula o valor (salário base ÷ 220 h × 1,5 ou × 2) e o DSR sobre as horas extras (domingos e feriados nacionais do mês) e soma no bruto, com INSS, IRRF, FGTS e INSS patronal." },
+    ],
+  },
+  {
     versao: "2026.10.29-j",
     data: "29/10/2026",
     titulo: "Contratos Financeiros: juros capitalizados separados da amortização",

@@ -11,6 +11,7 @@ import { supabase } from "../../../lib/supabase";
 import { baixarLancamento, listarContasProdutorDaConta, listarContasPorEmpresa } from "../../../lib/db";
 import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
+import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
 
 // ─── Tipos ────────────────────────────────────────────────────
 interface Funcionario {
@@ -46,7 +47,12 @@ interface FolhaFunc {
   salario_base: number;           // base pura (carteira) — base dos encargos
   complemento_salarial: number;   // por fora — sem encargos, sem Livro Caixa
   gratificacao: number;           // bônus do mês
-  salario_bruto: number;          // base + gratificacao (encargos só sobre isso)
+  he_50_horas?: number;           // horas extras 50% no mês
+  he_100_horas?: number;          // horas extras 100% (domingos/feriados)
+  he_valor?: number;              // valor das horas extras (50% + 100%) — sobre o salário base ÷ 220 h
+  he_dsr?: number;                // DSR sobre as horas extras
+  _comp?: string;                 // competência da folha (só na tela, para o DSR) — não gravado
+  salario_bruto: number;          // base + gratificacao + horas extras + DSR (encargos só sobre isso)
   inss_trabalhador: number;
   irrf: number;
   adiantamento: number;       // soma dos adiantamentos do mês
@@ -122,6 +128,13 @@ function liquido(f: FolhaFunc) {
   ) * 100) / 100);
 }
 
+// Colunas de horas extras (Seção 390): só vão ao banco quando alguma linha da folha tem hora extra — folha sem HE
+// salva mesmo sem a Seção. Todas as linhas levam as mesmas colunas (insert em lote).
+function camposHE(funcs: FolhaFunc[], f: FolhaFunc) {
+  const tem = funcs.some(x => (x.he_valor ?? 0) > 0 || (x.he_50_horas ?? 0) > 0 || (x.he_100_horas ?? 0) > 0);
+  return tem ? { he_50_horas: f.he_50_horas ?? 0, he_100_horas: f.he_100_horas ?? 0, he_valor: f.he_valor ?? 0, he_dsr: f.he_dsr ?? 0 } : {};
+}
+
 // Percentuais de encargo do cadastro do funcionário. Cadastro sem nenhum percentual salvo usa o padrão antigo (8% / 28%).
 function pctsEncargos(cad: { fgts_pct?: number | null; inss_empregador_pct?: number | null; sat_rat_pct?: number | null; sistema_s_pct?: number | null }) {
   const tem = cad.inss_empregador_pct != null || cad.sat_rat_pct != null || cad.sistema_s_pct != null;
@@ -138,7 +151,12 @@ function pctsEncargos(cad: { fgts_pct?: number | null; inss_empregador_pct?: num
 // de INSS Patronal sobre a folha — não faz sentido gerar/mostrar esse encargo
 // aqui (Funrural é calculado sobre a comercialização, fora da folha).
 function recalc(f: FolhaFunc): FolhaFunc {
-  const bruto = (f.salario_base || 0) + (f.gratificacao || 0);
+  // Horas extras: valor e DSR refeitos pelo salário base e pelos dias da competência; entram no bruto (com encargos)
+  if (f._comp && ((f.he_50_horas ?? 0) > 0 || (f.he_100_horas ?? 0) > 0 || (f.he_valor ?? 0) > 0)) {
+    const he = calcularHorasExtras({ salario_base: f.salario_base || 0, horas_50: f.he_50_horas, horas_100: f.he_100_horas, competencia: f._comp });
+    f = { ...f, he_valor: he.he_valor, he_dsr: he.he_dsr };
+  }
+  const bruto = Math.round(((f.salario_base || 0) + (f.gratificacao || 0) + (f.he_valor || 0) + (f.he_dsr || 0)) * 100) / 100;
   if (f.sem_impostos) return { ...f, salario_bruto: bruto, inss_trabalhador: 0, irrf: 0, fgts: 0, inss_patronal: 0 };
   const inss  = calcINSS(bruto);
   const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -378,9 +396,12 @@ export default function FolhaPagamentoPage() {
       const funcsCarregados = itens.map((i: any) => {
         const base: FolhaFunc = {
           ...i,
-          salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0),
+          salario_base: Math.round(((i.salario_bruto ?? 0) - (i.gratificacao ?? 0) - (i.he_valor ?? 0) - (i.he_dsr ?? 0)) * 100) / 100,
           complemento_salarial: i.complemento_salarial ?? 0,
           gratificacao: i.gratificacao ?? 0,
+          he_50_horas: Number(i.he_50_horas ?? 0), he_100_horas: Number(i.he_100_horas ?? 0),
+          he_valor: Number(i.he_valor ?? 0), he_dsr: Number(i.he_dsr ?? 0),
+          _comp: folha.competencia,
         };
         // Rascunho: a folha salva é uma "foto" de quando foi criada. Se o cadastro mudou depois (salário
         // base, complemento salarial, benefícios), reabrir mostrava valores velhos e o que ia pro CP não
@@ -486,6 +507,7 @@ export default function FolhaPagamentoPage() {
           salario_base: base,
           complemento_salarial: (f as any).complemento_salarial ?? 0,
           gratificacao: grat,
+          he_50_horas: 0, he_100_horas: 0, he_valor: 0, he_dsr: 0, _comp: fComp,
           salario_bruto: base + grat,
           inss_trabalhador: 0,
           irrf: 0,
@@ -643,6 +665,7 @@ export default function FolhaPagamentoPage() {
         salario_bruto: f.salario_bruto,
         complemento_salarial: f.complemento_salarial ?? 0,
         gratificacao: f.gratificacao,
+        ...camposHE(funcs, f),
         inss_trabalhador: f.inss_trabalhador,
         irrf: f.irrf,
         adiantamento: f.adiantamento,
@@ -724,7 +747,7 @@ export default function FolhaPagamentoPage() {
     return funcs.map(f => ({
       funcionario_id: f.funcionario_id ?? null, empresa_id: f.empresa_id ?? null, produtor_id: f.produtor_id ?? null,
       nome_funcionario: f.nome_funcionario, cargo: f.cargo, salario_bruto: f.salario_bruto,
-      complemento_salarial: f.complemento_salarial ?? 0, gratificacao: f.gratificacao,
+      complemento_salarial: f.complemento_salarial ?? 0, gratificacao: f.gratificacao, ...camposHE(funcs, f),
       inss_trabalhador: f.inss_trabalhador, irrf: f.irrf, adiantamento: f.adiantamento,
       outros_descontos: f.outros_descontos, desc_outros_descontos: f.desc_outros_descontos,
       vale_transporte: f.vale_transporte, vale_refeicao: f.vale_refeicao, outros_beneficios: f.outros_beneficios,
@@ -928,6 +951,8 @@ export default function FolhaPagamentoPage() {
         nome_funcionario: i.nome_funcionario, cargo: i.cargo,
         salario_bruto: i.salario_bruto, complemento_salarial: i.complemento_salarial ?? 0,
         gratificacao: i.gratificacao, inss_trabalhador: i.inss_trabalhador, irrf: i.irrf,
+        ...((res.data ?? []).some((x: { he_valor?: number; he_50_horas?: number; he_100_horas?: number }) => Number(x.he_valor ?? 0) > 0 || Number(x.he_50_horas ?? 0) > 0 || Number(x.he_100_horas ?? 0) > 0)
+          ? { he_50_horas: i.he_50_horas ?? 0, he_100_horas: i.he_100_horas ?? 0, he_valor: i.he_valor ?? 0, he_dsr: i.he_dsr ?? 0 } : {}),
         adiantamento: 0, outros_descontos: 0, desc_outros_descontos: "",
         vale_transporte: i.vale_transporte, vale_refeicao: i.vale_refeicao,
         outros_beneficios: i.outros_beneficios, inss_patronal: i.inss_patronal, fgts: i.fgts,
@@ -965,7 +990,7 @@ export default function FolhaPagamentoPage() {
     setFolhaEdit(prev => {
       const funcs = [...prev.funcionarios];
       const f = { ...funcs[idx], [field]: val };
-      funcs[idx] = (field === "salario_base" || field === "gratificacao") ? recalc(f) : f;
+      funcs[idx] = (field === "salario_base" || field === "gratificacao" || field === "he_50_horas" || field === "he_100_horas") ? recalc({ ...f, _comp: f._comp ?? prev.competencia }) : f;
       return { ...prev, funcionarios: funcs };
     });
   }
@@ -1430,7 +1455,7 @@ export default function FolhaPagamentoPage() {
                     <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. / CP"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Horas Extras","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. / CP"].map(h=>(
                             <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -1469,6 +1494,22 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
                                   <input type="number" value={f.gratificacao} disabled={!editavel} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)}
                                     style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.gratificacao > 0 ? "#C9921B" : "#DDE2EE", fontSize:12, ...(!editavel ? { background:"#F1F2F4", color:"#888" } : {}) }} />
+                                </td>
+                                {/* ── Horas extras: horas 50% e 100%; valor (salário ÷ 220 h) + DSR entram no bruto ── */}
+                                <td style={{ ...S.td, padding:"4px 6px", whiteSpace:"nowrap" }}>
+                                  <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                                    <input type="number" min="0" step="0.5" value={f.he_50_horas || ""} placeholder="50%" disabled={!editavel} title="Horas extras 50% no mês"
+                                      onChange={e=>setFuncField(idx,"he_50_horas",Math.max(0, parseFloat(e.target.value)||0))}
+                                      style={{ ...S.inp, width:52, textAlign:"right", fontSize:12, borderColor: (f.he_50_horas ?? 0) > 0 ? "#C9921B" : "#DDE2EE", ...(!editavel ? { background:"#F1F2F4", color:"#888" } : {}) }} />
+                                    <input type="number" min="0" step="0.5" value={f.he_100_horas || ""} placeholder="100%" disabled={!editavel} title="Horas extras 100% (domingos e feriados) no mês"
+                                      onChange={e=>setFuncField(idx,"he_100_horas",Math.max(0, parseFloat(e.target.value)||0))}
+                                      style={{ ...S.inp, width:52, textAlign:"right", fontSize:12, borderColor: (f.he_100_horas ?? 0) > 0 ? "#C9921B" : "#DDE2EE", ...(!editavel ? { background:"#F1F2F4", color:"#888" } : {}) }} />
+                                  </div>
+                                  {((f.he_valor ?? 0) + (f.he_dsr ?? 0)) > 0 && (
+                                    <div style={{ fontSize:10, color:"#555", marginTop:2 }} title="Valor da hora = salário base ÷ 220 h · DSR = horas extras ÷ dias úteis × domingos e feriados">
+                                      {moeda(f.he_valor ?? 0)} + DSR {moeda(f.he_dsr ?? 0)}
+                                    </div>
+                                  )}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.inss_trabalhador)}</td>
@@ -1518,7 +1559,7 @@ export default function FolhaPagamentoPage() {
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={14} style={{ padding:"12px 16px 16px 44px" }}>
+                                  <td colSpan={15} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
                                         <label data-arato-label="true" style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>

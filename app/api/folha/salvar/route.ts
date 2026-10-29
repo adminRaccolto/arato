@@ -529,6 +529,8 @@ export async function POST(req: Request) {
         if (!velha || !pago(t)) continue;
         for (const campo of ["gratificacao", "salario_bruto", "inss_trabalhador", "irrf", "outros_descontos", "desc_outros_descontos", "complemento_salarial", "inss_patronal", "fgts"])
           r[campo] = velha[campo];
+        for (const campo of ["he_50_horas", "he_100_horas", "he_valor", "he_dsr"])
+          if (campo in r || velha[campo] != null) r[campo] = velha[campo] ?? 0;
       }
 
       type Item = { tipo: "atualizar" | "criar" | "cancelar" | "sem_mudanca" | "pendencia_pago_maior" | "desconto"; funcionario_id?: string | null; nome: string; antes: number; depois: number; titulo_id?: string | null; diferenca?: number };

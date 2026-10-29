@@ -18606,3 +18606,14 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE parcelas_pagamento ADD COLUMN IF NOT EXISTS juros_capitalizado numeric(14,2) NOT NULL DEFAULT 0;
 ALTER TABLE parcelas_pagamento ADD COLUMN IF NOT EXISTS juros_cap_pago numeric(14,2) NOT NULL DEFAULT 0;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 390 — Folha de pagamento: horas extras por funcionário
+-- =============================================================================
+-- Horas 50% e 100% da competência; valor (salário base ÷ 220 h × 1,5 / × 2) e DSR sobre as horas extras entram no
+-- salário bruto (com INSS, IRRF, FGTS e INSS patronal).
+ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_50_horas numeric(8,2) DEFAULT 0;
+ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_100_horas numeric(8,2) DEFAULT 0;
+ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_valor numeric(14,2) DEFAULT 0;
+ALTER TABLE folha_funcionarios ADD COLUMN IF NOT EXISTS he_dsr numeric(14,2) DEFAULT 0;
+NOTIFY pgrst, 'reload schema';
