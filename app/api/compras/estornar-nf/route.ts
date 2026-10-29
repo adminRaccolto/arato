@@ -1,6 +1,7 @@
 import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { aplicarEstornoCartao } from "../../../../lib/financeiro/cartao";
+import { bloqueioVefComRemessas, desfazerVinculosDaNf } from "../../../../lib/fiscal/estorno-vinculos";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -112,6 +113,14 @@ export async function POST(req: NextRequest) {
       }
       // Títulos em fatura aberta são apagados com a NF logo abaixo (a fatura é recalculada pelo banco).
     }
+
+    // 0c. Vínculos fora do estoque/CP: retorno registrado na remessa de armazém, baixa do saldo de entrega futura.
+    //     Faturamento de entrega futura com remessas recebidas não pode ser estornado antes delas.
+    const bloqVef = await bloqueioVefComRemessas(sb, nf_id);
+    if (bloqVef) return NextResponse.json({ error: bloqVef }, { status: 409 });
+    const { data: nfVinc } = await sb.from("nf_entradas").select("id, numero, chave_acesso, fazenda_id, status").eq("id", nf_id).maybeSingle();
+    // Só NF processada mexeu em remessa/saldo — cópia pendente (duplicada do SIEG, mesma chave) não desfaz nada
+    if (nfVinc && nfVinc.status === "processada") await desfazerVinculosDaNf(sb, nfVinc as { id: string; numero: string | null; chave_acesso: string | null; fazenda_id: string });
 
     // 1. Reverter movimentações de estoque — por nf_entrada_id (link direto, nunca
     //    fica nulo), não mais só por nf_entrada_item_id.

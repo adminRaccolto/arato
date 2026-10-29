@@ -12,6 +12,7 @@ import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
 import { excluirTitulosDaNf } from "./financeiro/titulos-nf";
 import { ncmPadraoDoProduto } from "./fiscal/ncm-produtos";
 import { cobrancaDaNf } from "./fiscal/cfop-cobranca";
+import { alocarRemessa, statusSaldoVef, type SaldoVef } from "./estoque/entrega-futura";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
@@ -2943,6 +2944,8 @@ export async function processarNfEntrada(
     cartaoId?: string;
     /** CFOP genérico 5949/6949: o usuário confirmou se é compra (true = gera CP; false = sem CP). Sem resposta, gera CP. */
     gerarCp?: boolean;
+    /** Remessa de entrega futura: NFs de simples faturamento (VEF) que esta remessa baixa. Sem escolha, as do fornecedor. */
+    vefNfIds?: string[];
   },
 ): Promise<void> {
   // Normaliza CNPJ do emitente para dígitos puros — o XML entrega sem máscara,
@@ -3200,41 +3203,28 @@ export async function processarNfEntrada(
     // NF de remessa: o fornecedor está entregando o que ficou pendente.
     // Debita estoque_terceiros (busca pelo CNPJ + insumo) e credita insumo_fazenda.
     if (item.tipo_apropiacao === "remessa" && item.insumo_id) {
-      // 1. Localiza o saldo de terceiro aberto/parcial por CNPJ + insumo
-      const { data: registros } = await supabase
-        .from("estoque_terceiros")
-        .select("id, quantidade_saldo, quantidade_original")
-        .eq("fazenda_id", fazenda_id)
-        .eq("insumo_id", item.insumo_id)
-        .in("status", ["aberto", "parcial"])
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .then(async r => {
-          // Filtra por CNPJ (normalizado para raw) se disponível
-          if (cnpjRaw) {
-            const { data: byCnpj } = await supabase
-              .from("estoque_terceiros")
-              .select("id, quantidade_saldo, quantidade_original")
-              .eq("fazenda_id", fazenda_id)
-              .eq("insumo_id", item.insumo_id!)
-              .or(`terceiro_cnpj.eq.${cnpjRaw},terceiro_cnpj.eq.${cnpjFmt}`)
-              .in("status", ["aberto", "parcial"])
-              .order("created_at", { ascending: true })
-              .limit(1);
-            return { data: byCnpj };
-          }
-          return r;
+      // 1–2. Baixa o saldo de terceiro dos faturamentos (VEF): os escolhidos na NF (opts.vefNfIds) ou, sem escolha,
+      // os do mesmo fornecedor (CNPJ) — do mais antigo ao mais novo, passando ao próximo quando um acaba — e registra
+      // cada baixa (Seção 387) para o estorno devolver o saldo e para o saldo a entregar por faturamento.
+      let q = supabase.from("estoque_terceiros").select("id, nf_entrada_id, insumo_id, quantidade_saldo, quantidade_original, created_at")
+        .eq("insumo_id", item.insumo_id).in("status", ["aberto", "parcial"]);
+      if (opts?.vefNfIds?.length) q = q.in("nf_entrada_id", opts.vefNfIds);
+      else {
+        q = q.eq("fazenda_id", fazenda_id);
+        if (cnpjRaw) q = q.or(`terceiro_cnpj.eq.${cnpjRaw},terceiro_cnpj.eq.${cnpjFmt}`);
+      }
+      const { data: saldosVef } = await q.order("created_at", { ascending: true });
+      const { baixas } = alocarRemessa((saldosVef ?? []) as SaldoVef[], [{ item_id: item.id, insumo_id: item.insumo_id, quantidade: Number(item.quantidade) }], opts?.vefNfIds);
+      for (const bx of baixas) {
+        const reg = (saldosVef ?? []).find(x => x.id === bx.estoque_terceiro_id)!;
+        const novoSaldo = Math.max(0, Math.round((Number(reg.quantidade_saldo) - bx.quantidade) * 10000) / 10000);
+        await supabase.from("estoque_terceiros").update({ quantidade_saldo: novoSaldo, status: statusSaldoVef(Number(reg.quantidade_original), novoSaldo) }).eq("id", reg.id);
+        reg.quantidade_saldo = novoSaldo;
+        const { error: eBx } = await supabase.from("estoque_terceiros_baixas").insert({
+          fazenda_id, estoque_terceiro_id: reg.id, vef_nf_entrada_id: bx.vef_nf_entrada_id, remessa_nf_entrada_id: nfId,
+          remessa_item_id: item.id, insumo_id: item.insumo_id, quantidade: bx.quantidade,
         });
-
-      // 2. Debita o saldo de terceiro
-      if (registros && registros.length > 0) {
-        const reg = registros[0];
-        const novoSaldo = Math.max(0, reg.quantidade_saldo - item.quantidade);
-        const novoStatus = novoSaldo <= 0 ? "encerrado" : "parcial";
-        await supabase.from("estoque_terceiros").update({
-          quantidade_saldo: novoSaldo,
-          status:           novoStatus,
-        }).eq("id", reg.id);
+        if (eBx) console.warn("[remessa VEF] baixa não registrada (rode a Seção 387):", eBx.message);
       }
 
       // 3. Credita insumo_fazenda: custo médio 6 meses + saldo

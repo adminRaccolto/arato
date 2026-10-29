@@ -18542,3 +18542,29 @@ CREATE POLICY "decimo_terceiro_tenant" ON decimo_terceiro FOR ALL
   USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
   WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 387 — Entrega futura: qual remessa baixou quanto de qual faturamento
+-- =============================================================================
+-- Cada linha = uma baixa do saldo de terceiro (estoque_terceiros, criado pela NF de simples faturamento / VEF) feita
+-- por um item da NF de remessa. Serve para ver as remessas de cada faturamento (saldo a entregar) e para o estorno
+-- da remessa devolver o saldo ao faturamento certo.
+CREATE TABLE IF NOT EXISTS estoque_terceiros_baixas (
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id             uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  estoque_terceiro_id    uuid NOT NULL REFERENCES estoque_terceiros(id) ON DELETE CASCADE,
+  vef_nf_entrada_id      uuid REFERENCES nf_entradas(id) ON DELETE SET NULL,
+  remessa_nf_entrada_id  uuid NOT NULL REFERENCES nf_entradas(id) ON DELETE CASCADE,
+  remessa_item_id        uuid,
+  insumo_id              uuid,
+  quantidade             numeric(18,4) NOT NULL,
+  created_at             timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_et_baixas_vef ON estoque_terceiros_baixas(vef_nf_entrada_id);
+CREATE INDEX IF NOT EXISTS idx_et_baixas_remessa ON estoque_terceiros_baixas(remessa_nf_entrada_id);
+ALTER TABLE estoque_terceiros_baixas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "et_baixas_tenant" ON estoque_terceiros_baixas;
+CREATE POLICY "et_baixas_tenant" ON estoque_terceiros_baixas FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f WHERE f.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo())
+  WITH CHECK (fazenda_id IN (SELECT f.id FROM fazendas f WHERE f.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo());
+NOTIFY pgrst, 'reload schema';

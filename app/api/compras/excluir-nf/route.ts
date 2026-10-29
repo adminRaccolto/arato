@@ -1,5 +1,6 @@
 import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
+import { bloqueioVefComRemessas, desfazerVinculosDaNf } from "../../../../lib/fiscal/estorno-vinculos";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -68,6 +69,12 @@ export async function POST(req: NextRequest) {
     // 0. Título pago/conciliado/em borderô (produtor ou Empresa) impede a exclusão — checado ANTES de reverter qualquer coisa
     const bloqueioExcl = await titulosBloqueiamEstorno(sb, nf_id);
     if (bloqueioExcl) return NextResponse.json({ error: bloqueioExcl }, { status: 409 });
+    // Vínculos fora do estoque/CP (retorno na remessa de armazém, saldo de entrega futura) — mesmo do estorno
+    const bloqVefExcl = await bloqueioVefComRemessas(sb, nf_id);
+    if (bloqVefExcl) return NextResponse.json({ error: bloqVefExcl }, { status: 409 });
+    const { data: nfVincE } = await sb.from("nf_entradas").select("id, numero, chave_acesso, fazenda_id, status").eq("id", nf_id).maybeSingle();
+    // Só NF processada mexeu em remessa/saldo — cópia pendente (duplicada do SIEG, mesma chave) não desfaz nada
+    if (nfVincE && nfVincE.status === "processada") await desfazerVinculosDaNf(sb, nfVincE as { id: string; numero: string | null; chave_acesso: string | null; fazenda_id: string });
 
     // 1. Buscar itens da NF
     const { data: itens } = await sb

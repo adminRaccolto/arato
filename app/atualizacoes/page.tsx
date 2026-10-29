@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-e",
+    data: "29/10/2026",
+    titulo: "Estorno de NF desfaz o vínculo com a remessa e com a entrega futura",
+    modulos: ["Documentos Fiscais", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Estornar (ou excluir) uma NF de retorno de armazém não tirava o retorno da remessa: continuava em \"Já voltou\" e a remessa podia ficar Retornada. Agora o retorno sai da remessa, o valor é abatido, ela volta a Aguardando retorno se for o caso, e a saída do depósito do armazém é desfeita." },
+      { tipo: "correcao", texto: "Compra para entrega futura: a remessa baixa o saldo dos faturamentos do mais antigo para o mais novo (passando ao próximo quando um acaba) e registra a baixa; estornar a remessa devolve o saldo ao faturamento. Faturamento com remessas recebidas não pode ser estornado antes delas." },
+    ],
+    onde: "Documentos Fiscais → Estornar NF",
+  },
+  {
     versao: "2026.10.29-d",
     data: "29/10/2026",
     titulo: "13º Salário: controle e pagamento das parcelas",
