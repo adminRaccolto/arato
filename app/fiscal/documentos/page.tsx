@@ -1005,7 +1005,7 @@ export default function DocumentosFiscaisPage() {
                     ↗ DANFE
                   </a>
                 )}
-                {d.tipo_doc === "NF" && processada && (nf?.tipo_entrada === "insumos" || nf?.tipo_entrada === "pecas" || nf?.tipo_entrada === "custo_direto") && (
+                {d.tipo_doc === "NF" && processada && (nf?.tipo_entrada === "insumos" || nf?.tipo_entrada === "pecas" || nf?.tipo_entrada === "custo_direto" || nf?.tipo_entrada === "imobilizado") && (
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #E24B4A50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     ↩ Devolver

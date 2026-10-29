@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-u",
+    data: "29/10/2026",
+    titulo: "Máquinas: devolver NF e processamento mais seguro; manifestação SIEG",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "NF de Máquinas e Equipamentos (Imobilizado) processada agora mostra o ↩ Devolver." },
+      { tipo: "correcao", texto: "Processar NF de máquina: o cadastro da máquina acontece antes de mexer nos itens — se falhar ou for cancelado, a NF fica como estava (antes podia ficar sem itens e sem CP)." },
+      { tipo: "correcao", texto: "Manifestação no SIEG: não troca mais o status de NF já processada; a mensagem de recusa mostra o CPF/CNPJ enviado e o que conferir (certificado do destinatário cadastrado no SIEG)." },
+    ],
+  },
+  {
     versao: "2026.10.29-t",
     data: "29/10/2026",
     titulo: "Devolução de compra emitida em outro sistema",

@@ -1537,18 +1537,8 @@ export default function ModalNf({
         }),
       });
 
-      // 1. Limpar itens E movimentos/financeiro vinculados antes de recriar.
-      //    Itens são recriados com novos UUIDs a cada tentativa. Usa a mesma função
-      //    de lib/db.ts que o Estornar usa — reverte o saldo do insumo antes de
-      //    apagar a movimentação (o delete direto daqui não revertia, o que por si
-      //    já deixava o saldo furado a cada reprocessamento) e limpa pelo link
-      //    direto nf_entrada_id, não mais só nf_entrada_item_id (que orfaniza e
-      //    escapa da limpeza se uma tentativa anterior falhou no meio do processo —
-      //    causa raiz real da duplicação de estoque/CP na NF 26967, set/2026).
-      await limparMovimentacoesEFinanceiroDaNf(nfEdit.id);
-      await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
-
-      // 1a. Máquinas e Equipamentos: cadastra a máquina dos itens marcados "nova" (descrição, NF, data e valor de
+      // 0. Máquinas e Equipamentos (ANTES de apagar qualquer coisa — se falhar ou for cancelado, a NF fica como estava;
+      //    achado real 29/10/2026: NF 158602 ficou sem itens e sem CP quando o cadastro da máquina não completou): cadastra a máquina dos itens marcados "nova" (descrição, NF, data e valor de
       //     aquisição) e completa NF/data/valor das já cadastradas que estiverem em branco. A máquina criada fica no
       //     item (maquina_id) — reprocessar a NF não cria de novo.
       if (tipo === "imobilizado") {
@@ -1570,6 +1560,17 @@ export default function ModalNf({
         }
         setItens(prev => prev.map(p => itens.find(x => x.key === p.key) ?? p));
       }
+
+      // 1. Limpar itens E movimentos/financeiro vinculados antes de recriar.
+      //    Itens são recriados com novos UUIDs a cada tentativa. Usa a mesma função
+      //    de lib/db.ts que o Estornar usa — reverte o saldo do insumo antes de
+      //    apagar a movimentação (o delete direto daqui não revertia, o que por si
+      //    já deixava o saldo furado a cada reprocessamento) e limpa pelo link
+      //    direto nf_entrada_id, não mais só nf_entrada_item_id (que orfaniza e
+      //    escapa da limpeza se uma tentativa anterior falhou no meio do processo —
+      //    causa raiz real da duplicação de estoque/CP na NF 26967, set/2026).
+      await limparMovimentacoesEFinanceiroDaNf(nfEdit.id);
+      await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfEdit.id);
 
       // 1b. Recriar todos os itens do estado atual
       for (const it of itens) {
@@ -2497,7 +2498,7 @@ export default function ModalNf({
       if (!nf) { setErr("NF não encontrada."); setCarregandoNf(false); return; }
       await abrirEditar(nf);
       setCarregandoNf(false);
-      if (acaoInicial === "devolver" && nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas" || nf.tipo_entrada === "custo_direto")) {
+      if (acaoInicial === "devolver" && nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas" || nf.tipo_entrada === "custo_direto" || nf.tipo_entrada === "imobilizado")) {
         abrirDevolucao(nf);
       } else if (acaoInicial === "estornar" && nf.status === "processada") {
         estornarNFClick(nf);
@@ -4211,7 +4212,7 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && (
                         <button data-arato-button="secondary" onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
-                      {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas" || nfEdit.tipo_entrada === "custo_direto") && (
+                      {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas" || nfEdit.tipo_entrada === "custo_direto" || nfEdit.tipo_entrada === "imobilizado") && (
                         <button data-arato-button="secondary" onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (

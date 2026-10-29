@@ -68,19 +68,26 @@ export async function POST(req: NextRequest) {
     });
 
     if (!result.ok) {
+      const doc = cnpj_destinatario.replace(/\D/g, "");
+      const dica = doc.length === 11
+        ? " O destinatário é CPF: o SIEG só manifesta com o certificado A1 desse CPF cadastrado na conta SIEG (Cofre → Certificados) — confira lá ou faça a ciência pelo portal da SEFAZ/SIEG."
+        : " Confira se o certificado A1 desse CNPJ está cadastrado e ativo na conta SIEG.";
       return NextResponse.json(
-        { erro: `SIEG recusou a manifestação: ${result.mensagem}`, sieg_status: result.httpStatus },
+        { erro: `SIEG recusou a manifestação (HTTP ${result.httpStatus}, destinatário ${doc}): ${result.mensagem}.${dica}`, sieg_status: result.httpStatus },
         { status: 502 }
       );
     }
 
-    // Atualiza status no banco
+    // Atualiza no banco. O status da NF só muda se ela ainda não foi processada/cancelada — antes a manifestação de
+    // uma NF já processada trocava "processada" por "ciencia"/"confirmada" (a NF deixava de constar como processada).
     const novoStatus = STATUS_LABEL[tipo] ?? "manifestada";
     const db = sb();
+    const { data: atual } = await db.from("nf_entradas").select("status").eq("id", nf_id).eq("fazenda_id", fazenda_id).maybeSingle();
+    const manterStatus = ["processada", "cancelada", "devolvida"].includes(String(atual?.status ?? ""));
     await db
       .from("nf_entradas")
       .update({
-        status:              novoStatus,
+        ...(manterStatus ? {} : { status: novoStatus }),
         manifestacao_tipo:   tipo,
         manifestacao_data:   hojeLocal(),
         manifestacao_msg:    result.mensagem,
