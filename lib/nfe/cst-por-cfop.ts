@@ -11,6 +11,11 @@ export const CFOPS_TRANSFERENCIA = new Set(["5151", "6151", "5152", "6152", "540
 
 export const ehTransferencia = (cfop?: string | null): boolean => CFOPS_TRANSFERENCIA.has(String(cfop ?? "").replace(/\D/g, "").slice(0, 4));
 
+// Remessa para industrialização (por encomenda 5901/6901; por conta e ordem do adquirente 5924/6924) e os retornos
+// do industrializador (5902/6902, 5903/6903, 5925/6925): ICMS SUSPENSO, CST 50 — a mercadoria volta (industrializada
+// ou não) ao remetente. Antes caíam na regra da venda interna (CST 51, diferido), errado para essa operação.
+export const CFOPS_INDUSTRIALIZACAO = new Set(["5901", "6901", "5924", "6924", "5902", "6902", "5903", "6903", "5925", "6925"]);
+
 /** CST de exibição com origem (3 dígitos), como aparece na DANFE (coluna O/CST). */
 export function cstExibicaoPorCfop(cfop?: string | null): string {
   const cod = String(cfop ?? "").replace(/\D/g, "");
@@ -18,6 +23,7 @@ export function cstExibicaoPorCfop(cfop?: string | null): string {
   if (cod.startsWith("7")) return "041";
   if (p4 === "5905" || p4 === "6905" || p4 === "5934" || p4 === "6934") return "041";
   if (p4 === "5556" || p4 === "6556") return "020";
+  if (CFOPS_INDUSTRIALIZACAO.has(p4)) return "050";
   if (p4 === "5501" || p4 === "6501") return "040";
   if (CFOPS_TRANSFERENCIA.has(p4)) return "041";
   if (cod.startsWith("5") || cod.startsWith("1")) return "051";

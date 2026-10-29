@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.29-q",
+    data: "29/10/2026",
+    titulo: "Remessa para industrialização com CST 50",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "CFOP 5901/6901 e 5924/6924 (remessa para industrialização) e os retornos 5902/5903/5925 saem com CST 50 (ICMS suspenso). Antes saíam como venda interna (CST 51)." },
+      { tipo: "novo", texto: "Nova Remessa: campo CST do ICMS (automático pelo CFOP ou 040/041/050/051) e natureza da operação sugerida pelo CFOP. CST 050 também nas Notas de Venda." },
+    ],
+  },
+  {
     versao: "2026.10.29-p",
     data: "29/10/2026",
     titulo: "Remessa e retorno: escolher a IE emitente",

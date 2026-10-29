@@ -3,7 +3,7 @@
  * Gera o XML de NF-e 4.00 não assinado para produtor rural (MT).
  * Todos os valores monetários são formatados com 2 casas; quantidades com 4.
  */
-import { CFOPS_TRANSFERENCIA } from "./cst-por-cfop";
+import { CFOPS_INDUSTRIALIZACAO, CFOPS_TRANSFERENCIA } from "./cst-por-cfop";
 
 export interface EmitenteCfg {
   cpf_cnpj: string;       // apenas dígitos
@@ -297,6 +297,11 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
     return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 
+  if (CFOPS_INDUSTRIALIZACAO.has(prefix)) {
+    // Remessa para industrialização e retornos do industrializador — ICMS suspenso, CST 50
+    return { cst: "50", xml: () => `<ICMS40><orig>0</orig><CST>50</CST></ICMS40>` };
+  }
+
   if (prefix === "5501" || prefix === "6501") {
     // Venda com formação de estoque de exportação — suspenso
     return { cst: "40", xml: () => `<ICMS40><orig>0</orig><CST>40</CST></ICMS40>` };
@@ -340,10 +345,11 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
 }
 
 // CST escolhido à mão na tela de emissão (só os que não têm imposto próprio a destacar): 40 isento,
-// 41 não tributado, 51 diferido 100% (Decreto MT 4.540/2004, mesma montagem da venda interna).
-export const CSTS_ICMS_MANUAIS = ["40", "41", "51"] as const;
+// 41 não tributado, 50 suspensão (ex.: remessa para industrialização/conserto), 51 diferido 100% (Decreto MT 4.540/2004,
+// mesma montagem da venda interna).
+export const CSTS_ICMS_MANUAIS = ["40", "41", "50", "51"] as const;
 function icmsRulePorCst(cst: string): ICMSRule | null {
-  if (cst === "40" || cst === "41") return { cst, xml: () => `<ICMS40><orig>0</orig><CST>${cst}</CST></ICMS40>` };
+  if (cst === "40" || cst === "41" || cst === "50") return { cst, xml: () => `<ICMS40><orig>0</orig><CST>${cst}</CST></ICMS40>` };
   if (cst === "51") return {
     cst: "51",
     xml: (vBC) => {

@@ -18,6 +18,7 @@ import { supabase } from "../../../lib/supabase";
 import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/supabase";
 import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
 import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
+import { cstExibicaoPorCfop } from "../../../lib/nfe/cst-por-cfop";
 import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
 
@@ -33,6 +34,14 @@ const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", 
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const th: React.CSSProperties = { padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "8px 12px", fontSize: 12, borderBottom: "0.5px solid var(--border-row)", verticalAlign: "top" };
+// Natureza da operação sugerida pelo CFOP da remessa
+const NATUREZA_REMESSA: Record<string, string> = {
+  "5905": "Remessa para depósito em armazém geral", "6905": "Remessa para depósito em armazém geral",
+  "5934": "Remessa simbólica para armazém geral", "6934": "Remessa simbólica para armazém geral",
+  "5901": "Remessa para industrialização por encomenda", "6901": "Remessa para industrialização por encomenda",
+  "5924": "Remessa para industrialização por conta e ordem do adquirente", "6924": "Remessa para industrialização por conta e ordem do adquirente",
+  "5915": "Remessa para conserto ou reparo", "6915": "Remessa para conserto ou reparo",
+};
 const ehDepTerceiro = (d: Deposito) => ["terceiro", "armazem_terceiro"].includes(d.tipo);
 
 const STATUS_BADGE: Record<string, { bg: string; cl: string; label: string }> = {
@@ -104,6 +113,7 @@ function RemessasConteudo() {
   const [depOrigem, setDepOrigem] = useState("");
   const [depTerceiro, setDepTerceiro] = useState("");
   const [cfop, setCfop] = useState("5905");
+  const [cstRem, setCstRem] = useState("");   // CST do ICMS escolhido à mão ("" = automático pelo CFOP)
   const [natureza, setNatureza] = useState("Remessa para depósito em armazém geral");
   const [dataRem, setDataRem] = useState(hojeLocal());
   const [obs, setObs] = useState("");
@@ -127,7 +137,7 @@ function RemessasConteudo() {
 
   function abrirNova() {
     setModo("arato"); setNfOrigem(null); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
-    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setNatureza("Remessa para depósito em armazém geral");
+    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setCstRem(""); setNatureza("Remessa para depósito em armazém geral");
     setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
     setErro(""); setModal(true);
   }
@@ -262,7 +272,7 @@ function RemessasConteudo() {
               municipio_ibge: armazem.municipio_ibge || undefined, municipio_nome: armazem.municipio || undefined, uf: armazem.estado || undefined,
               cep: (armazem.cep ?? "").replace(/\D/g, "") || undefined,
             },
-            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario })),
+            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, cst_icms: cstRem || undefined })),
             natureza, inf_cpl: [obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
             frete: tr.frete, transporte, tipo: "1",
           }),
@@ -525,7 +535,13 @@ function RemessasConteudo() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "110px 2fr 2fr", gap: 12 }}>
-                <div><label style={lbl}>CFOP *</label><input value={cfop} onChange={e => setCfop(e.target.value.replace(/\D/g, "").slice(0, 4))} style={inp} /></div>
+                <div><label style={lbl}>CFOP *</label><input value={cfop} onChange={e => {
+                  const c = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setCfop(c);
+                  // Natureza sugerida pelo CFOP (só troca o texto padrão; o que o usuário digitou fica)
+                  const nat = NATUREZA_REMESSA[c];
+                  if (nat && (!natureza || Object.values(NATUREZA_REMESSA).includes(natureza))) setNatureza(nat);
+                }} style={inp} /></div>
                 <div><label style={lbl}>Natureza da operação</label><input value={natureza} onChange={e => setNatureza(e.target.value)} style={inp} /></div>
                 {modo === "arato" ? (
                   <div>
@@ -540,6 +556,16 @@ function RemessasConteudo() {
               {modo === "arato" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
+                  <div>
+                    <label style={lbl}>CST do ICMS</label>
+                    <select value={cstRem} onChange={e => setCstRem(e.target.value)} style={inp}>
+                      <option value="">Automático pelo CFOP — {cstExibicaoPorCfop(cfop)}</option>
+                      <option value="40">040 — Isenta</option>
+                      <option value="41">041 — Não tributada</option>
+                      <option value="50">050 — Suspensão (industrialização, conserto…)</option>
+                      <option value="51">051 — Diferimento</option>
+                    </select>
+                  </div>
                 </div>
               )}
 

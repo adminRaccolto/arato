@@ -934,13 +934,14 @@ function FiscalInner() {
     setNfeItens(p => [...p, calcItem(novoItem)]);
     setNovoItem({ tipo_item: "Produto", item: "", ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040" });
   }
-  // CST do ICMS por item: "Automático" segue a regra do CFOP (lib/nfe/cst-por-cfop); 040/041/051 vão para o XML
+  // CST do ICMS por item: "Automático" segue a regra do CFOP (lib/nfe/cst-por-cfop); 040/041/050/051 vão para o XML
   // como escolhidos. Antes a coluna era cClassTrib, que nunca chegava à NF-e — escolher 051 não mudava nada.
   function opcoesCstIcms() {
     return [
       <option key="" value="">Auto ({cstExibicaoPorCfop(fVenda.cfop)})</option>,
       <option key="040" value="040">040 — Isenta</option>,
       <option key="041" value="041">041 — Não tributada</option>,
+      <option key="050" value="050">050 — Suspensão</option>,
       <option key="051" value="051">051 — Diferimento</option>,
     ];
   }

@@ -2,7 +2,7 @@
 
 // Remessa emitida fora do Arato ligada a uma NF de entrada processada: entra no mesmo controle de remessas logísticas da
 // remessa emitida pelo Arato (botão Emitir NF Remessa da NF de entrada). CFOP de retorno pelo CFOP da remessa.
-export const CFOP_RETORNO: Record<string, string> = { "5905": "5906", "6905": "6906", "5901": "5902", "6901": "6902", "5915": "5916", "6915": "6916", "5934": "5906", "6934": "6906", "5949": "5949", "6949": "6949" };
+export const CFOP_RETORNO: Record<string, string> = { "5905": "5906", "6905": "6906", "5901": "5902", "6901": "6902", "5924": "5925", "6924": "6925", "5915": "5916", "6915": "6916", "5934": "5906", "6934": "6906", "5949": "5949", "6949": "6949" };
 export const ehCfopRemessa = (c: string) => c in CFOP_RETORNO;
 
 // Leitura completa do XML da NF-e (cabeçalho, emitente, destinatário, itens, protocolo). Antes só lia número, série,
