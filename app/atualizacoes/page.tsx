@@ -28,10 +28,10 @@ const RELEASES = [
   {
     versao: "2026.10.30-x",
     data: "30/10/2026",
-    titulo: "Contas a Pagar: atalho Previsões e marca visível",
+    titulo: "Contas a Pagar: previsões destacadas e atalho Previsões",
     modulos: ["Contas a Pagar"],
     itens: [
-      { tipo: "melhoria", texto: "Novo atalho \"Previsões\" no Contas a Pagar: mostra só os títulos de previsão (Previsão de Gastos e folha em rascunho). A marca PREV fica na coluna Origem, ao lado de PF/PJ (coluna sempre visível)." },
+      { tipo: "melhoria", texto: "Novo atalho \"Previsões\" no Contas a Pagar: mostra só os títulos de previsão. A linha de previsão aparece diferente — itálico, cinza, faixa tracejada à esquerda — com qualquer combinação de colunas; ao passar o mouse aparece o tipo (Previsão de Gastos, folha em rascunho ou lançada no CP como prevista), e o Status mostra \"Previsto\"." },
     ],
   },
   {

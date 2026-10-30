@@ -46,7 +46,7 @@ import GridPagination, { useGridPagination } from "../../../components/GridPagin
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useCallback, useRef, Fragment, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment, cloneElement, isValidElement, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
@@ -2029,8 +2029,6 @@ export default function ContasAPagarPage() {
                       <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
                         {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                       </span>
-                      {/* Previsão: marcada na Origem, coluna que fica sempre visível */}
-                      {ehPrevisao(l) && <span title="Previsão — ainda não é dívida real: efetive (Previsão de Gastos) ou feche a folha para pagar" style={{ fontSize: 9, fontWeight: 700, background: "#2A2A2A", color: "#fff", padding: "2px 6px", borderRadius: 6, marginLeft: 4 }}>PREV</span>}
                     </td>
                   ),
                   produtor: (
@@ -2116,19 +2114,28 @@ export default function ContasAPagarPage() {
                   status: (
                     <td style={{ padding: "7px 10px" }} title={textoQuemBaixou(quemBaixou.get(l.id))}>
                       {ehPrevisao(l) && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado"
-                        ? <span style={{ fontSize: 10, fontWeight: 700, background: "#E8E8E8", color: "#2A2A2A", padding: "2px 8px", borderRadius: 8, border: "0.5px dashed #888" }}>Previsão</span>
+                        ? <span style={{ fontSize: 10, fontWeight: 700, background: "#E8E8E8", color: "#2A2A2A", padding: "2px 8px", borderRadius: 8, border: "0.5px dashed #888" }}>Previsto</span>
                         : <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>}
                     </td>
                   ),
                 };
+                // Previsão em aberto: linha com estilo próprio (itálico, cinza, faixa tracejada à esquerda) e o tipo no popup —
+                // visível com qualquer combinação de colunas
+                const prevAberta = ehPrevisao(l) && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado";
                 return (
                   <tr key={l.id}
+                    title={prevAberta ? `Previsão — ${l.origem_lancamento === "previsao" ? "Previsão de Gastos" : l.origem_lancamento === "folha" ? "folha de pagamento em rascunho" : "lançada no Contas a Pagar como prevista"}. Ainda não é dívida real: efetive (⚡ Efetivar) ou feche a folha para pagar.` : undefined}
                     onClick={e => {
                       if ((e.target as HTMLElement).closest("button,input,select,a")) return;
                       setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
                     }}
-                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : ehPrevisao(l) ? "#F6F6F4" : undefined, color: ehPrevisao(l) ? "#555" : undefined, cursor: "pointer" }}>
-                    {colunasVisiveis.map(c => <Fragment key={c.key}>{celulasGrid[c.key]}</Fragment>)}
+                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : prevAberta ? "#F3F3F0" : undefined, color: prevAberta ? "#666" : undefined, fontStyle: prevAberta ? "italic" : undefined, cursor: "pointer" }}>
+                    {colunasVisiveis.map((c, ci) => {
+                      const cel = celulasGrid[c.key];
+                      const marcada = prevAberta && ci === 0 && isValidElement<{ style?: CSSProperties }>(cel)
+                        ? cloneElement(cel, { style: { ...(cel.props.style ?? {}), borderLeft: "3px dashed #8A8A8A" } }) : cel;
+                      return <Fragment key={c.key}>{marcada}</Fragment>;
+                    })}
                   </tr>
                 );
               })}
