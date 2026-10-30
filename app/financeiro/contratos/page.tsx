@@ -1303,7 +1303,7 @@ export default function ContratosFinanceiros() {
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
+        <div style={{ maxWidth: 1880, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
 
           {/* Cabeçalho */}
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
@@ -1482,7 +1482,7 @@ export default function ContratosFinanceiros() {
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
             </div>
           ) : (
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", overflowX: "auto" }}>
               <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
