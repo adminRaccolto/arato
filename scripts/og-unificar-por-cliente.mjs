@@ -17,6 +17,26 @@ const soConta = arg("--conta");
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const hoje = new Date().toISOString().slice(0, 10);
 
+// ── Reverter (--reverter <arquivo de backup gravado pelo --aplicar>) ─────────
+// Recria as cópias apagadas com os mesmos ids e dados, devolve a OG escolhida aos campos de antes, volta cada documento
+// para a OG em que estava e recria as linhas de CFOP apagadas.
+const arqReverter = arg("--reverter");
+if (arqReverter) {
+  const bk = JSON.parse(fs.readFileSync(arqReverter, "utf8"));
+  const ids = bk.ogs.map(o => o.id);
+  const existentes = new Set();
+  for (let i = 0; i < ids.length; i += 200) { const { data } = await sb.from("operacoes_gerenciais").select("id").in("id", ids.slice(i, i + 200)); for (const d of data ?? []) existentes.add(d.id); }
+  const recriar = bk.ogs.filter(o => !existentes.has(o.id)).map(o => ({ ...o, parent_id: null }));
+  for (let i = 0; i < recriar.length; i += 200) { const { error } = await sb.from("operacoes_gerenciais").insert(recriar.slice(i, i + 200)); if (error) throw new Error(`Recriar OGs: ${error.message}`); }
+  for (const o of bk.ogs) { const { error } = await sb.from("operacoes_gerenciais").update({ ...o, id: undefined }).eq("id", o.id); if (error) throw new Error(`OG ${o.id}: ${error.message}`); }
+  if (bk.cfopApagados?.length) await sb.from("operacao_cfop_fiscal").insert(bk.cfopApagados);
+  const lotesR = new Map();
+  for (const x of bk.reapontar) { const k = `${x.t}|${x.c}|${x.de}`; (lotesR.get(k) ?? lotesR.set(k, []).get(k)).push(x.id); }
+  for (const [k, lst] of lotesR) { const [t, c, de] = k.split("|"); for (let i = 0; i < lst.length; i += 200) await sb.from(t).update({ [c]: de }).in("id", lst.slice(i, i + 200)); }
+  console.log(`Revertido: ${recriar.length} OG(s) recriada(s), ${bk.ogs.length} restaurada(s), ${bk.reapontar.length} documento(s) de volta.`);
+  process.exit(0);
+}
+
 async function todos(tabela, sel, filtro = q => q) {
   let out = [], i = 0;
   for (;;) {
@@ -36,12 +56,30 @@ const REFS = [
   ["operacoes_tesouraria", "operacao_gerencial_id"], ["regras_classificacao_nf", "operacao_gerencial_id"],
   ["operacao_cfop_fiscal", "operacao_gerencial_id"], ["nf_importada_itens_sieg", "og_id"],
   ["pessoas", "og_padrao_id"], ["adiantamentos_aplicacoes", "og_anterior"],
+  // Pedido de compra guarda o id da OG em campos de texto (achado na varredura de 30/10/2026)
+  ["pedidos_compra", "operacao"], ["pedidos_compra", "operacao_nf"],
 ];
 const BOOLS_OU = ["permite_notas_fiscais", "permite_cp_cr", "permite_adiantamentos", "permite_tesouraria", "permite_baixas", "permite_custo_produto",
   "permite_contrato_financeiro", "permite_estoque", "permite_pedidos_venda", "permite_manutencao", "permite_energia_eletrica", "permite_combustivel",
   "gerar_financeiro", "gerar_financeiro_gerencial", "informa_complemento"];
 const TEXTOS = ["conta_debito", "conta_credito", "tipo_lcdpr", "codigo_lcdpr", "historico_tesouraria_id", "historico_tesouraria_nome", "escopo_cc", "natureza_receita", "obs_legal"];
 const COMPARAR = ["descricao", "tipo", "inativo", ...BOOLS_OU, ...TEXTOS];
+
+// Integridade: documentos que apontam para OG inexistente (antes e depois têm de bater) e OGs por documento por tabela
+async function verificar(rotulo) {
+  const existe = new Set((await todos("operacoes_gerenciais", "id")).map(o => o.id));
+  const quebrados = {}, total = {};
+  for (const [t, c] of REFS) {
+    const rows = await todos(t, `id, ${c}`, q => q.not(c, "is", null)).catch(() => []);
+    total[`${t}.${c}`] = rows.length;
+    const q = rows.filter(r => !existe.has(r[c])).length;
+    if (q) quebrados[`${t}.${c}`] = q;
+  }
+  console.log(`\nIntegridade (${rotulo}): documentos com OG → ${JSON.stringify(total)}`);
+  console.log(`  apontando para OG inexistente: ${Object.keys(quebrados).length ? JSON.stringify(quebrados) : "nenhum"}`);
+  return { total, quebrados };
+}
+const antesInteg = await verificar("antes");
 
 const fazendas = await todos("fazendas", "id, nome, conta_id");
 const contaDaFazenda = new Map(fazendas.map(f => [f.id, f.conta_id]));
@@ -88,7 +126,9 @@ for (const [k, lista] of grupos) {
   const base = ativas.length ? ativas : lista;
   const campos = { conta_id: conta, fazenda_id: null, inativo: ativas.length === 0 };
   for (const b of BOOLS_OU) campos[b] = base.some(o => o[b] === true) ? true : (esc[b] ?? null);
-  for (const t of TEXTOS) campos[t] = esc[t] ?? base.find(o => o[t] != null && o[t] !== "")?.[t] ?? null;
+  // Texto em branco não é valor: fica o da escolhida se preenchido, senão o primeiro preenchido entre as cópias
+  const preenchido = v => v != null && String(v).trim() !== "";
+  for (const t of TEXTOS) campos[t] = preenchido(esc[t]) ? esc[t] : (base.find(o => preenchido(o[t])) ?? lista.find(o => preenchido(o[t])))?.[t] ?? null;
   atualizarOg.push({ id: esc.id, antes: Object.fromEntries(Object.keys(campos).map(c => [c, esc[c] ?? null]).concat([["parent_id", esc.parent_id]])), campos });
   for (const o of lista) if (o.id !== esc.id) { remap.set(o.id, esc.id); apagar.push(o); }
   // A OG global da mesma classificação, usada pelos documentos deste cliente, também passa para a OG do cliente
@@ -154,8 +194,12 @@ if (!aplicar) { console.log("Simulação — nada foi gravado. Rode com --aplica
 
 // ── Aplicar ──────────────────────────────────────────────────────────────────
 const arqBkp = `backup/og_unificar_backup_${hoje}_${Date.now()}.json`;
-fs.writeFileSync(arqBkp, JSON.stringify({ ogs: ogs.filter(o => contaDe(o) && (!soConta || contaDe(o) === soConta)), reapontar: finais, parents }, null, 1));
-console.log(`Backup: ${arqBkp}`);
+// Linhas de CFOP das cópias (podem ser apagadas se a OG do cliente já tiver o mesmo CFOP)
+const idsCfop = finais.filter(x => x.t === "operacao_cfop_fiscal").map(x => x.id);
+const cfopApagados = [];
+for (let i = 0; i < idsCfop.length; i += 200) { const { data } = await sb.from("operacao_cfop_fiscal").select("*").in("id", idsCfop.slice(i, i + 200)); cfopApagados.push(...(data ?? [])); }
+fs.writeFileSync(arqBkp, JSON.stringify({ ogs: ogs.filter(o => contaDe(o) && (!soConta || contaDe(o) === soConta)), reapontar: finais, parents, cfopApagados }, null, 1));
+console.log(`Backup: ${arqBkp}  (para desfazer: --reverter ${arqBkp})`);
 // 1. OG escolhida vira do cliente
 for (const u of atualizarOg) { const { error } = await sb.from("operacoes_gerenciais").update(u.campos).eq("id", u.id); if (error) throw new Error(`OG ${u.id}: ${error.message}`); }
 // 2. Documentos (agrupados por destino para atualizar em lote)
@@ -179,7 +223,6 @@ console.log(`Documentos reapontados: ${feitos}`);
 for (const p of parents) await sb.from("operacoes_gerenciais").update({ parent_id: p.para }).eq("id", p.id);
 // 4. Cópias saem (filhas antes dos pais)
 const ordemApagar = [...apagar].sort((a, b) => (b.classificacao ?? "").length - (a.classificacao ?? "").length);
-await sb.from("operacoes_gerenciais").update({ parent_id: null }).in("id", ordemApagar.map(o => o.id).slice(0, 0));
 let apagadas = 0, falhas = [];
 for (let i = 0; i < ordemApagar.length; i += 200) {
   const ids = ordemApagar.slice(i, i + 200).map(o => o.id);
@@ -190,4 +233,8 @@ for (let i = 0; i < ordemApagar.length; i += 200) {
 }
 console.log(`Cópias apagadas: ${apagadas}${falhas.length ? ` · não apagadas (ainda referenciadas): ${falhas.length}` : ""}`);
 if (falhas.length) { fs.writeFileSync(`backup/og_unificar_falhas_${hoje}.json`, JSON.stringify(falhas, null, 1)); console.log(falhas.slice(0, 5).join("\n")); }
+const depoisInteg = await verificar("depois");
+const perdeu = Object.keys(antesInteg.total).filter(k => (depoisInteg.total[k] ?? 0) < antesInteg.total[k] && k !== "operacao_cfop_fiscal.operacao_gerencial_id");
+const novosQuebrados = Object.keys(depoisInteg.quebrados).filter(k => (depoisInteg.quebrados[k] ?? 0) > (antesInteg.quebrados[k] ?? 0));
+console.log(perdeu.length || novosQuebrados.length ? `ATENÇÃO — conferir: perdeu OG em ${perdeu.join(", ")} · quebrados novos em ${novosQuebrados.join(", ")}. Para desfazer: --reverter ${arqBkp}` : "Integridade OK: nenhum documento perdeu a operação gerencial.");
 console.log("Feito.");
