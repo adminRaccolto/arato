@@ -1731,11 +1731,19 @@ export default function ComprasPage() {
                             <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
                               try {
                                 const { nfs } = await listarNfEntradasPorPedido(ped.id);
-                                if (nfs.length > 0) {
-                                  alert(`Este pedido possui ${nfs.length} NF(s) de entrada vinculada(s) e não pode ser excluído.`);
+                                // Mostra quais NFs estão ligadas (pedido não fiscal não tem tela de NFs vinculadas). NF ainda não
+                                // processada pode ser desligada do pedido; processada precisa ser estornada antes.
+                                const descNf = (n: typeof nfs[number]) => `NF ${n.numero}${n.serie ? `/${n.serie}` : ""} · ${n.emitente_nome ?? ""} · ${n.status}`;
+                                const processadas = nfs.filter(n => n.status === "processada");
+                                if (processadas.length > 0) {
+                                  alert(`Este pedido tem NF de entrada processada vinculada e não pode ser excluído:\n\n${processadas.map(descNf).join("\n")}\n\nEstorne a NF em Documentos Fiscais antes.`);
                                   return;
                                 }
-                                if (!confirm("Excluir pedido? Esta ação também excluirá o lançamento financeiro vinculado.")) return;
+                                if (nfs.length > 0) {
+                                  if (!confirm(`Este pedido está vinculado a NF não processada (pendente ou cancelada):\n\n${nfs.map(descNf).join("\n")}\n\nDesvincular a NF (ela continua em Documentos Fiscais, sem pedido) e excluir o pedido?`)) return;
+                                  const { error: eDesv } = await supabase.from("nf_entradas").update({ pedido_compra_id: null }).in("id", nfs.map(n => n.id));
+                                  if (eDesv) throw eDesv;
+                                } else if (!confirm("Excluir pedido? Esta ação também excluirá o lançamento financeiro vinculado.")) return;
                                 if (ped.lancamento_id) {
                                   try { await excluirLancamento(ped.lancamento_id); } catch { /* ignora */ }
                                 }

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-s",
+    data: "30/10/2026",
+    titulo: "Pedido de compra com NF não processada pode ser excluído",
+    modulos: ["Pedidos de Compra"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao excluir um pedido de compra, o aviso agora mostra qual NF está vinculada (número, emitente e situação). Se a NF ainda não foi processada (pendente ou cancelada), dá para desvincular e excluir o pedido na hora — a NF continua em Documentos Fiscais, sem pedido. NF processada continua exigindo o estorno antes." },
+    ],
+  },
+  {
     versao: "2026.10.30-r",
     data: "30/10/2026",
     titulo: "Operação gerencial alterada pelo cliente vale em todas as telas",
