@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-z",
+    data: "30/10/2026",
+    titulo: "CP/CR mostram quem fez a baixa",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "melhoria", texto: "Passe o mouse sobre a data de Baixa ou o Status de um título baixado (ou parcial) para ver quem fez a baixa e quando — ex.: \"Baixado por Jaqueline em 30/10/2026 14:32\". Baixas feitas por rotina automática aparecem como \"processo automático\"." },
+    ],
+  },
+  {
     versao: "2026.10.30-y",
     data: "30/10/2026",
     titulo: "Conta bancária nos títulos de empresa pagos pela conciliação",

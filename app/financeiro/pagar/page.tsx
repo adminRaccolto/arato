@@ -4,6 +4,7 @@ import type { VeiculoUnificado } from "../../../lib/db";
 import ModalVincularNf from "../../../components/financeiro/ModalVincularNf";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
+import { textoQuemBaixou, useQuemBaixou } from "../../../lib/financeiro/quem-baixou";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
 import { casaFiltroNumero, casaFiltroTexto } from "../../../lib/financeiro/filtro-colunas";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -480,6 +481,8 @@ export default function ContasAPagarPage() {
   const passaExtras = (l: RelLancamento) => passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? ""));
   const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
   const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaExtras(l));
+  // Quem fez a baixa (popup na Baixa e no Status): busca no histórico só os títulos baixados/parciais da lista
+  const quemBaixou = useQuemBaixou(linhas.filter(l => l.status_normalizado === "baixado" || l.status_normalizado === "parcial").slice(0, 1500).map(l => l.id));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP)
     && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
@@ -2071,7 +2074,7 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px", color: "#888", fontStyle: "italic" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>
                   ),
                   baixa: (
-                    <td style={{ padding: "7px 10px" }}>{fmtData(l.data_baixa)}</td>
+                    <td style={{ padding: "7px 10px" }} title={textoQuemBaixou(quemBaixou.get(l.id))}>{fmtData(l.data_baixa)}</td>
                   ),
                   valor: (
                     <td style={{ padding: "7px 10px", fontWeight: 600, textAlign: "right", color: "#E24B4A" }}>
@@ -2111,7 +2114,7 @@ export default function ContasAPagarPage() {
                     </td>
                   ),
                   status: (
-                    <td style={{ padding: "7px 10px" }}>
+                    <td style={{ padding: "7px 10px" }} title={textoQuemBaixou(quemBaixou.get(l.id))}>
                       {ehPrevisao(l) && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado"
                         ? <span style={{ fontSize: 10, fontWeight: 700, background: "#E8E8E8", color: "#2A2A2A", padding: "2px 8px", borderRadius: 8, border: "0.5px dashed #888" }}>Previsão</span>
                         : <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>}
