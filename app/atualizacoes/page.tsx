@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-n",
+    data: "30/10/2026",
+    titulo: "Documentos Fiscais: filtros Tipo e Destinatário em lista, ordenação pelas colunas",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "O filtro Tipo (NF de Produtos, NF de Serviços, CT-e) virou uma lista com várias escolhas, como Status e Origem. Novo filtro Destinatário, com os destinatários das notas carregadas." },
+      { tipo: "melhoria", texto: "Saiu o campo \"Ordenar\": clique no nome da coluna (Emissão, Número, Emitente, Destinatário, Valor, Status…) para ordenar; outro clique inverte. A seta ▲▼ mostra a coluna usada. Padrão: emissão mais recente primeiro." },
+    ],
+  },
+  {
     versao: "2026.10.30-m",
     data: "30/10/2026",
     titulo: "CP e CR: o filtro de vencimento vale exatamente o que está nos campos",

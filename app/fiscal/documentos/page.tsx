@@ -32,7 +32,6 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 // condições de habilitação iguais à tela antiga — só NFs pendentes entram
 // no "Processar em Lote"; qualquer seleção permite Imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
-import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useRef } from "react";
@@ -160,10 +159,6 @@ const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "�
 
 const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff" };
 const lblMini: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.03em" };
-const chip = (ativo: boolean): React.CSSProperties => ({
-  padding: "5px 11px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer",
-  border: ativo ? "1.5px solid #2A2A2A" : "0.5px solid #DDE2EE", background: ativo ? "#2A2A2A" : "#fff", color: ativo ? "#fff" : "#555",
-});
 
 // ── Dropdown de filtro multi-seleção (checkbox) — Status, Tipo de Entrada, Origem ──
 function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto, onAbrirFechar }: {
@@ -220,7 +215,9 @@ export default function DocumentosFiscaisPage() {
   // e a tela ficava só com as NFs de uma fazenda, enquanto outro usuário via todas.
   const cargaRef = useRef(0);
   // Ordenação da lista: pela data da nota (padrão) ou pela data de cadastro no sistema
-  const [ordenarPor, setOrdenarPor] = useState<"data_doc" | "created_at">("data_doc");
+  // Ordenação: clique no nome da coluna (alterna crescente/decrescente). Padrão: data da nota, mais recente primeiro.
+  const [ordem, setOrdem] = useState<{ col: string; asc: boolean }>({ col: "Emissão", asc: false });
+  const [fDestinatario, setFDestinatario] = useState<Set<string>>(new Set());
 
   const [fTipo,        setFTipo]        = useState<Set<string>>(new Set());
   const [fStatus,      setFStatus]      = useState<Set<string>>(new Set());
@@ -230,7 +227,7 @@ export default function DocumentosFiscaisPage() {
   const [fNumero,  setFNumero]  = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState("");
-  const [dropdownAberto, setDropdownAberto] = useState<"status" | "tipoEntrada" | "origem" | null>(null);
+  const [dropdownAberto, setDropdownAberto] = useState<"tipo" | "status" | "tipoEntrada" | "origem" | "destinatario" | null>(null);
 
   const toggle = (set: Set<string>, setFn: (s: Set<string>) => void, v: string) => {
     const next = new Set(set);
@@ -262,7 +259,7 @@ export default function DocumentosFiscaisPage() {
           const t = fBusca.trim();
           q = q.or(`numero.ilike.%${t}%,participante_nome.ilike.%${t}%,chave.ilike.%${t}%`);
         }
-        q = q.order(ordenarPor, { ascending: false }).order("id", { ascending: true }).range(from, from + PAGE - 1);
+        q = q.order("data_doc", { ascending: false }).order("id", { ascending: true }).range(from, from + PAGE - 1);
         const { data, error } = await q;
         if (error) throw error;
         todas.push(...((data ?? []) as RelDocFiscal[]));
@@ -487,11 +484,29 @@ export default function DocumentosFiscaisPage() {
     if (fStatus.size > 0 && !fStatus.has(d.status_normalizado ?? "")) return false;
     if (fTipoEntrada.size > 0 && !fTipoEntrada.has(d.tipo_entrada ?? "")) return false;
     if (fOrigem.size > 0 && !fOrigem.has(d.origem_doc ?? "")) return false;
+    if (fDestinatario.size > 0 && !fDestinatario.has(d.destinatario_nome ?? "")) return false;
     // Nº do documento (NF, NFS-e ou CT-e): só os dígitos, sem zeros à esquerda ("001215" acha "1215")
     const numBusca = fNumero.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
     if (numBusca && !String(d.numero ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "").includes(numBusca)) return false;
     return true;
   });
+
+  // Valor de cada coluna para ordenar (clique no cabeçalho)
+  const CHAVE_ORDEM: Record<string, (d: RelDocFiscal) => string | number> = {
+    "Tipo": d => d.tipo_doc, "Emissão": d => d.data_doc ?? "", "Número": d => Number(String(d.numero ?? "").replace(/\D/g, "")) || 0,
+    "Série": d => Number(d.serie ?? 0) || 0, "Emitente": d => (d.participante_nome ?? "").toLowerCase(),
+    "Destinatário": d => (d.destinatario_nome ?? "").toLowerCase(), "CFOP": d => d.cfop ?? "", "Entrada": d => d.data_entrada ?? "",
+    "Tipo de Entrada": d => d.tipo_entrada ?? "", "Origem": d => d.origem_doc ?? "", "Operação NF": d => (d.natureza_operacao ?? "").toLowerCase(),
+    "Valor": d => d.valor_total ?? 0, "Status": d => d.status_normalizado ?? "",
+  };
+  const chaveOrdem = CHAVE_ORDEM[ordem.col];
+  if (chaveOrdem) linhas.sort((a, b) => {
+    const va = chaveOrdem(a), vb = chaveOrdem(b);
+    const c = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "pt-BR");
+    return (ordem.asc ? c : -c) || a.id.localeCompare(b.id);
+  });
+  const opcoesDestinatario = [...new Set((resultado ?? []).map(d => d.destinatario_nome ?? "").filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR")).map(n => ({ v: n, label: n }));
 
   const porTipo = TIPO_OPCOES.map(t => ({ ...t, qtd: linhas.filter(l => l.tipo_doc === t.v).length, total: linhas.filter(l => l.tipo_doc === t.v).reduce((s, l) => s + (l.valor_total ?? 0), 0) }));
 
@@ -528,12 +543,15 @@ export default function DocumentosFiscaisPage() {
             <input value={fNumero} onChange={e => setFNumero(e.target.value)} inputMode="numeric" placeholder="NF, NFS-e, CT-e"
               title="Filtra pelo número da NF, NFS-e ou CT-e (sem precisar atualizar)" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
-          <div>
-            <label data-arato-label="true" style={lblMini}>Tipo</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              {TIPO_OPCOES.map(t => <OperationalButton data-arato-button="secondary" key={t.v} onClick={() => toggle(fTipo, setFTipo, t.v)} style={chip(fTipo.has(t.v))}>{t.label}</OperationalButton>)}
-            </div>
-          </div>
+          <FiltroDropdown
+            label="Tipo"
+            opcoes={TIPO_OPCOES}
+            selecionado={fTipo}
+            onToggle={v => toggle(fTipo, setFTipo, v)}
+            onLimpar={() => setFTipo(new Set())}
+            aberto={dropdownAberto === "tipo"}
+            onAbrirFechar={() => setDropdownAberto(p => p === "tipo" ? null : "tipo")}
+          />
           <FiltroDropdown
             label="Status"
             opcoes={STATUS_OPCOES}
@@ -561,6 +579,15 @@ export default function DocumentosFiscaisPage() {
             aberto={dropdownAberto === "origem"}
             onAbrirFechar={() => setDropdownAberto(p => p === "origem" ? null : "origem")}
           />
+          <FiltroDropdown
+            label="Destinatário"
+            opcoes={opcoesDestinatario}
+            selecionado={fDestinatario}
+            onToggle={v => toggle(fDestinatario, setFDestinatario, v)}
+            onLimpar={() => setFDestinatario(new Set())}
+            aberto={dropdownAberto === "destinatario"}
+            onAbrirFechar={() => setDropdownAberto(p => p === "destinatario" ? null : "destinatario")}
+          />
           <div>
             <label data-arato-label="true" style={lblMini}>Data de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
@@ -569,10 +596,6 @@ export default function DocumentosFiscaisPage() {
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <SelectField value={ordenarPor} onChange={e => { setOrdenarPor(e.target.value as "data_doc" | "created_at"); }} style={{ ...inp, cursor: "pointer" }} title="Ordenar por">
-            <option value="data_doc">Ordenar: data da nota</option>
-            <option value="created_at">Ordenar: data de cadastro</option>
-          </SelectField>
           <OperationalButton data-arato-button="primary" onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
@@ -706,9 +729,18 @@ export default function DocumentosFiscaisPage() {
                     style={{ cursor: "pointer" }}
                   />
                 </th>
-                {["Tipo", "Emissão", "Número", "Série", "Emitente", "Destinatário", "CFOP", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor", "Status"].map(h => (
-                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>{h}</th>
-                ))}
+                {/* A 2ª coluna "Tipo" é o tipo de entrada: chave própria para ordenar, mesmo rótulo na tela */}
+                {["Tipo", "Emissão", "Número", "Série", "Emitente", "Destinatário", "CFOP", "Entrada", "Tipo de Entrada", "Origem", "Operação NF", "Parcelamento", "Valor", "Status"].map(h => {
+                  const ordenavel = !!CHAVE_ORDEM[h];
+                  const ativa = ordem.col === h;
+                  return (
+                    <th key={h} title={ordenavel ? "Clique para ordenar" : undefined}
+                      onClick={ordenavel ? () => setOrdem(p => ({ col: h, asc: p.col === h ? !p.asc : h === "Emissão" || h === "Entrada" || h === "Valor" ? false : true })) : undefined}
+                      style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: ativa ? "#0B2D50" : "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA", cursor: ordenavel ? "pointer" : "default", userSelect: "none" }}>
+                      {h === "Tipo de Entrada" ? "Tipo" : h}{ativa ? (ordem.asc ? " ▲" : " ▼") : ""}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
