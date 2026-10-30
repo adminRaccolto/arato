@@ -3743,8 +3743,12 @@ function CadastrosInner() {
                   tipo:           "produto",
                 };
                 if (editIns) {
-                  await atualizarInsumo(editIns.id, payload);
-                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
+                  // Estoque não se altera pelo cadastro (só por Ajuste de Estoque): o valor do formulário pode estar
+                  // desatualizado (achado 30/10/2026: salvar depois de estornar a NF recriou o saldo como "ajuste")
+                  const semEstoque: Partial<typeof payload> = { ...payload };
+                  delete semEstoque.estoque;
+                  await atualizarInsumo(editIns.id, semEstoque);
+                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...semEstoque } : r));
                 } else {
                   const n = await criarInsumo(payload);
                   setInsumos(x => [...x, n].sort((a,b) => a.nome.localeCompare(b.nome)));
@@ -5331,8 +5335,12 @@ function CadastrosInner() {
                   deposito_id: fIns.deposito_id || undefined, tipo: "produto",
                 };
                 if (editIns) {
-                  await atualizarInsumo(editIns.id, payload);
-                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
+                  // Estoque não se altera pelo cadastro (só por Ajuste de Estoque): o valor do formulário pode estar
+                  // desatualizado (achado 30/10/2026: salvar depois de estornar a NF recriou o saldo como "ajuste")
+                  const semEstoque: Partial<typeof payload> = { ...payload };
+                  delete semEstoque.estoque;
+                  await atualizarInsumo(editIns.id, semEstoque);
+                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...semEstoque } : r));
                 } else {
                   const n = await criarInsumo(payload);
                   setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));
@@ -5633,8 +5641,12 @@ function CadastrosInner() {
                   tipo: "produto",
                 };
                 if (editIns) {
-                  await atualizarInsumo(editIns.id, payload);
-                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
+                  // Estoque não se altera pelo cadastro (só por Ajuste de Estoque): o valor do formulário pode estar
+                  // desatualizado (achado 30/10/2026: salvar depois de estornar a NF recriou o saldo como "ajuste")
+                  const semEstoque: Partial<typeof payload> = { ...payload };
+                  delete semEstoque.estoque;
+                  await atualizarInsumo(editIns.id, semEstoque);
+                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...semEstoque } : r));
                 } else {
                   const n = await criarInsumo(payload);
                   setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));

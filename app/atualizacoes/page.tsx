@@ -13,6 +13,7 @@ const RELEASES = [
     modulos: ["Cadastros", "Insumos"],
     itens: [
       { tipo: "correcao", texto: "A unidade de medida do insumo fica travada só quando ele tem movimentação de estoque ou está em NF de entrada processada. NF pendente ou estornada não trava mais — antes, mesmo depois de estornar a NF, a unidade continuava bloqueada." },
+      { tipo: "correcao", texto: "Salvar o cadastro de um insumo não mexe mais no estoque. Antes, o saldo que estava no formulário era regravado como \"Ajuste via cadastro de insumos\" — depois de estornar uma NF, o estoque estornado voltava." },
     ],
   },
   {
