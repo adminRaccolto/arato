@@ -40,8 +40,13 @@ function corresponde(status: string, vencimento: string | null, nomes: unknown[]
 // Título de NF com cadastro vinculado também é achado pelo emitente da nota ("NF 23791 — BATERIAS VENSON"):
 // cadastro repetido com outro nome para o mesmo CNPJ escondia o título na busca.
 const emitenteDaNF = (descricao?: string | null) => descricao?.match(/^NF[S]?(?:-e)?\s+\S+\s+[—-]\s+(.+)$/i)?.[1];
+// Título de pessoal ("Salário — EMERSON LUIS DA SILVA", férias, 13º, rescisão, adiantamento): o funcionário da descrição
+// também é o fornecedor na busca (achado 30/10/2026: salário lançado com o produtor como fornecedor não aparecia
+// buscando pelo funcionário). A busca continua só por nome — "combustível" na descrição não traz o título.
+const funcionarioDaDescricao = (descricao?: string | null) =>
+  descricao?.match(/^(?:sal[aá]rio|f[eé]rias|13[ºo°]?|d[eé]cimo|rescis[aã]o|adiantamento)[^—-]*[—-]\s*(.+)$/i)?.[1];
 const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome
-  ? [t.pessoa_nome, ...[emitenteDaNF(t.descricao)].filter((v): v is string => !!v)]
+  ? [t.pessoa_nome, ...[emitenteDaNF(t.descricao), funcionarioDaDescricao(t.descricao)].filter((v): v is string => !!v)]
   : [t.descricao];
 export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   // 'cartao': comprometido no cartão de crédito — nunca é saldo em aberto do

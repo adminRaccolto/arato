@@ -339,14 +339,15 @@ export default function ContasAPagarPage() {
   // terminar DEPOIS da carga da conta inteira e sobrescrevê-la — títulos de outras fazendas "apareciam e sumiam".
   const cargaSeq = useRef(0);
   const carregar = useCallback(async () => {
-    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-    if (!fids.length && !contaId) return;
+    // CP/CR são do CLIENTE (conta), nunca da fazenda: sem a conta carregada ainda, não busca nada (antes buscava só a
+    // fazenda ativa e títulos das outras fazendas do cliente "apareciam e sumiam")
+    if (!contaId) return;
     const seq = ++cargaSeq.current;
     setCarregando(true);
     setErro("");
     try {
       let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "pagar");
-      q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
+      q = q.eq("conta_id", contaId);
       // Paginação: filtros locais sempre usam o mesmo conjunto completo,
       // inclusive os itens dos borderôs fora do período selecionado.
       q = q.order("id");

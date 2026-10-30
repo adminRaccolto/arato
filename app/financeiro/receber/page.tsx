@@ -297,15 +297,16 @@ export default function ContasAReceberPage() {
 
   const cargaSeq = useRef(0);
   const carregar = useCallback(async () => {
-    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-    if (!fids.length && !contaId) return;
+    // CP/CR são do CLIENTE (conta), nunca da fazenda: sem a conta carregada ainda, não busca nada (antes buscava só a
+    // fazenda ativa e títulos das outras fazendas do cliente "apareciam e sumiam")
+    if (!contaId) return;
     const seq = ++cargaSeq.current;
     setCarregando(true);
     setErro("");
     try {
       // Crédito de estorno no cartão ('receber' com status 'cartao') vive na fatura, não é conta a receber
       let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "receber").neq("status_normalizado", "cartao");
-      q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
+      q = q.eq("conta_id", contaId);
       if (fOrigem.size > 0) q = q.in("origem_tabela", Array.from(fOrigem));
       if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
       // Buscando cliente ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas

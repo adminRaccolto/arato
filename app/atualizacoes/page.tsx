@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-b",
+    data: "30/10/2026",
+    titulo: "CP/CR sempre do cliente inteiro",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "correcao", texto: "CP e CR buscam os títulos só pelo cliente (todas as fazendas), nunca pela fazenda ativa — a busca provisória pela fazenda, ao abrir a tela, era o que fazia títulos de outras fazendas sumirem às vezes." },
+      { tipo: "melhoria", texto: "Busca por fornecedor no CP acha título de pessoal pelo funcionário da descrição (ex.: \"Salário - EMERSON…\" lançado com o produtor como fornecedor)." },
+    ],
+  },
+  {
     versao: "2026.10.30-a",
     data: "30/10/2026",
     titulo: "CP/CR: títulos que apareciam e sumiam",
