@@ -123,7 +123,7 @@ function consolidarPorInsumo(
   return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
-const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)" };
+const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", width: "100%", boxSizing: "border-box", minWidth: 0 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
@@ -631,7 +631,7 @@ export default function PedidosCompraRelatorioTab() {
       {modalAberto && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => setModalAberto(false)}>
-          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 960px)", maxHeight: "92vh", overflowY: "auto", overflowX: "hidden" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>🖨 Relatório de Pedidos de Compra</h2>
               <button data-arato-button="icon" onClick={() => setModalAberto(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
