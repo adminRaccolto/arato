@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { repartirCronograma, separarCapitalizado } from "./cronograma.ts";
+import { intercalarJuros, repartirCronograma, separarCapitalizado } from "./cronograma.ts";
 
 const perto = (a: number, b: number, tol = 0.05) => assert.ok(Math.abs(a - b) <= tol, `${a} deveria estar a ${tol} de ${b}`);
 
@@ -58,4 +58,36 @@ test("separarCapitalizado reparte o capitalizado entre várias parcelas, proporc
   assert.deepEqual(ps.map(p => p.amortizacao), [0, 50000, 50000]);
   assert.deepEqual(ps.map(p => p.juros), [0, 16000, 10500]);
   assert.deepEqual(ps.map(p => p.juros_cap_pago), [0, 5000, 5000]);
+});
+
+test("juros semestrais com amortização anual: parcela só de juros + parcela de juros e capital", () => {
+  // SAC anual, 2 anos, 100.000; base sem datas (juros do período anual serão recalculados por semestre)
+  const base = [
+    { num_parcela: 1, data_vencimento: "", amortizacao: 50000, juros: 0, valor_parcela: 50000, saldo_devedor: 50000 },
+    { num_parcela: 2, data_vencimento: "", amortizacao: 50000, juros: 0, valor_parcela: 50000, saldo_devedor: 0 },
+  ];
+  const r = intercalarJuros(base, { taxaMensal: 0.01, mesesAmort: 12, mesesJuros: 6, dataPrimeiro: "2027-03-15" });
+  assert.equal(r.length, 4);
+  assert.deepEqual(r.map(p => p.data_vencimento), ["2027-03-15", "2027-09-15", "2028-03-15", "2028-09-15"]);
+  assert.deepEqual(r.map(p => p.amortizacao), [0, 50000, 0, 50000]);
+  const iSem = Math.pow(1.01, 6) - 1;
+  assert.ok(Math.abs(r[0].juros - 100000 * iSem) < 0.01);
+  assert.ok(Math.abs(r[1].juros - 100000 * iSem) < 0.01);
+  assert.ok(Math.abs(r[2].juros - 50000 * iSem) < 0.01);
+  assert.equal(r[1].saldo_devedor, 50000);
+  assert.equal(r[0].saldo_devedor, 100000);
+  assert.deepEqual(r.map(p => p.num_parcela), [1, 2, 3, 4]);
+});
+
+test("juros intercalados: carência que capitaliza fica inteira, antes do 1º pagamento", () => {
+  const base = [
+    { num_parcela: 1, data_vencimento: "", amortizacao: 0, juros: 0, juros_capitalizado: 1000, valor_parcela: 0, saldo_devedor: 11000 },
+    { num_parcela: 2, data_vencimento: "", amortizacao: 11000, juros: 0, valor_parcela: 11000, saldo_devedor: 0 },
+  ];
+  const r = intercalarJuros(base, { taxaMensal: 0.01, mesesAmort: 12, mesesJuros: 6, dataPrimeiro: "2027-03-15" });
+  assert.equal(r.length, 3);
+  assert.equal(r[0].juros_capitalizado, 1000);
+  assert.equal(r[0].data_vencimento, "2026-09-15");
+  assert.deepEqual(r.slice(1).map(p => p.data_vencimento), ["2027-03-15", "2027-09-15"]);
+  assert.throws(() => intercalarJuros(base, { taxaMensal: 0.01, mesesAmort: 12, mesesJuros: 5, dataPrimeiro: "2027-03-15" }));
 });

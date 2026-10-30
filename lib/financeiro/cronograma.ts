@@ -73,3 +73,43 @@ export function separarCapitalizado<T extends { amortizacao: number; juros: numb
     return { ...p, amortizacao: r2(a - cp), juros: r2((Number(p.juros) || 0) + cp), juros_cap_pago: cp };
   });
 }
+
+/**
+ * Juros pagos com mais frequência que a amortização (30/10/2026): ex. amortização anual e juros semestrais — uma
+ * parcela só de juros no meio do período e outra de juros + capital no fim. Recebe o cronograma por período de
+ * amortização (sem datas) e intercala as parcelas de juros: em cada período, k = mesesAmort ÷ mesesJuros parcelas;
+ * as k−1 primeiras pagam só o juro do sub-período sobre o saldo, a última paga o juro do sub-período + a amortização.
+ * O juro de cada sub-período é o saldo × taxa composta do sub-período (pago, não capitaliza). Parcelas de carência que
+ * capitalizam (sem pagamento) ficam inteiras. `dataPrimeiro` é a data do 1º PAGAMENTO (a 1ª parcela de juros).
+ */
+type LinhaPeriodo = { num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; valor_parcela: number; saldo_devedor: number; juros_capitalizado?: number; despesas_acessorios?: number };
+const somarMesesIso = (iso: string, meses: number) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setMonth(d.getMonth() + meses);
+  return d.toISOString().slice(0, 10);
+};
+export function intercalarJuros<T extends LinhaPeriodo>(base: T[], o: { taxaMensal: number; mesesAmort: number; mesesJuros: number; dataPrimeiro: string }): T[] {
+  const k = o.mesesAmort / o.mesesJuros;
+  if (!(o.mesesJuros > 0) || !Number.isInteger(k) || k <= 1) throw new Error("A periodicidade dos juros precisa dividir a da amortização (ex.: juros semestrais com amortização anual).");
+  const iSub = Math.pow(1 + o.taxaMensal, o.mesesJuros) - 1;
+  const capitaliza = (p: T) => (Number(p.valor_parcela) || 0) === 0 && (Number(p.juros_capitalizado) || 0) > 0;
+  const nCap = base.findIndex(p => !capitaliza(p)) < 0 ? base.length : base.findIndex(p => !capitaliza(p));
+  const out: T[] = [];
+  base.forEach((p, r) => {
+    // carência que capitaliza: fecha nos aniversários da amortização, antes do 1º período pago
+    if (capitaliza(p)) { out.push({ ...p, data_vencimento: somarMesesIso(o.dataPrimeiro, (k - 1) * o.mesesJuros - (nCap - r) * o.mesesAmort) }); return; }
+    const saldoAntes = (Number(p.saldo_devedor) || 0) + (Number(p.amortizacao) || 0);
+    const dataAmort = somarMesesIso(o.dataPrimeiro, (k - 1) * o.mesesJuros + (r - nCap) * o.mesesAmort);
+    for (let j = 1; j <= k; j++) {
+      const juros = saldoAntes * iSub;
+      const ultima = j === k;
+      const amort = ultima ? Number(p.amortizacao) || 0 : 0;
+      out.push({
+        ...p, juros, amortizacao: amort, valor_parcela: juros + amort,
+        saldo_devedor: ultima ? Number(p.saldo_devedor) || 0 : saldoAntes, juros_capitalizado: 0,
+        data_vencimento: somarMesesIso(dataAmort, -(k - j) * o.mesesJuros),
+      });
+    }
+  });
+  return out.map((p, i) => ({ ...p, num_parcela: i + 1 }));
+}

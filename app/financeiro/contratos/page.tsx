@@ -1,5 +1,5 @@
 "use client";
-import { repartirCronograma, separarCapitalizado } from "../../../lib/financeiro/cronograma";
+import { intercalarJuros, repartirCronograma, separarCapitalizado } from "../../../lib/financeiro/cronograma";
 import LiberacaoFornecedor from "../../../components/financeiro/LiberacaoFornecedor";
 import { registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
@@ -298,7 +298,8 @@ export default function ContratosFinanceiros() {
   const [fLib, setFLib]   = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
   const [fGar, setFGar]   = useState({ tipo_garantia: "alienacao_fiduciaria" as GarantiaContrato["tipo_garantia"], grau: "" as "" | "1_grau" | "2_grau" | "3_grau", tipo_bem: "imovel" as GarantiaContrato["tipo_bem"], matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
   const [centrosForm, setCentrosForm] = useState<{ ciclo_id: string; centro_custo_id: string; percentual: string; valor: string }[]>([{ ciclo_id: "", centro_custo_id: "", percentual: "100", valor: "" }]);
-  const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0" });
+  // jurosMeses: juros pagos com mais frequência que a amortização ("" = junto com a amortização)
+  const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0", jurosMeses: "" });
   const [fAdit, setFAdit] = useState({ ...FA_VAZIO });
   const [cnpjBusca, setCnpjBusca] = useState("");
   const [cnpjBuscaStatus, setCnpjBuscaStatus] = useState<"idle"|"encontrado"|"nao_encontrado">("idle");
@@ -535,7 +536,7 @@ export default function ContratosFinanceiros() {
       crescimento_pct: c.crescimento_pct ? String(c.crescimento_pct) : "",
       rateio_por_vencimento: c.rateio_por_vencimento, fiscal: c.fiscal,
     } : { ...FC_VAZIO });
-    if (c) setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(c) ?? "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
+    if (c) setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(c) ?? "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0", jurosMeses: "" });
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
     setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     setFAdit({ ...FA_VAZIO });
@@ -754,7 +755,7 @@ export default function ContratosFinanceiros() {
       setContratoModal(novo);
       setPdfUrl(novo.pdf_url ?? null);
       setPdfNome(novo.pdf_nome ?? null);
-      setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(novo) ?? "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
+      setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(novo) ?? "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0", jurosMeses: "" });
       // Refinanciamento: liquida os contratos apontados no lançamento
       const errosRefin: string[] = [];
       for (const r of refinPendentes) {
@@ -841,6 +842,11 @@ export default function ContratosFinanceiros() {
     if (tipoCalc === "sac_crescente") base = calcularSACRE(valorBase, i_periodo, n, crescPct, car, carTipo);
     else if (tipoCalc === "sac") base = calcularSAC(valorBase, i_periodo, n, car, carTipo);
     else base = calcularPRICE(valorBase, i_periodo, n, car, carTipo);
+    // Juros pagos com mais frequência que a amortização (ex.: juros semestrais, amortização anual): parcela só de juros
+    // intercalada; as datas já saem prontas (a 1ª parcela, de juros, cai na Data 1º Pagamento)
+    const jurosMeses = Number(fCalc.jurosMeses) || 0;
+    const intercala = jurosMeses > 0 && jurosMeses < period && period % jurosMeses === 0;
+    if (intercala) base = intercalarJuros(base, { taxaMensal: i_mensal, mesesAmort: period, mesesJuros: jurosMeses, dataPrimeiro: fCalc.dataPrimeiro });
     // Juros capitalizados na carência: a parte da amortização que quita esse juro volta a ser juro (amortização = principal)
     base = separarCapitalizado(base.map(p => ({ ...p, amortizacao: Math.round(p.amortizacao * 100) / 100, juros: Math.round(p.juros * 100) / 100, juros_capitalizado: Math.round((p.juros_capitalizado ?? 0) * 100) / 100 })));
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
@@ -851,7 +857,7 @@ export default function ContratosFinanceiros() {
       d0.setMonth(d0.getMonth() - car * period);
       dataInicio = d0.toISOString().slice(0, 10);
     }
-    const comDatas = aplicarDatas(base, dataInicio, period);
+    const comDatas = intercala ? base : aplicarDatas(base, dataInicio, period);
     // Calcular só monta o grid (e persiste o cronograma em parcelas_pagamento,
     // pra ter id de banco e permitir baixa/edição) — NÃO lança mais em CP aqui.
     // O lançamento em CP só acontece quando o usuário confirma explicitamente em
@@ -2274,7 +2280,7 @@ export default function ContratosFinanceiros() {
                   )}
                   <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo ?? "sac"] ?? "SAC Decrescente"}</div>
-                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, alignItems: "end" }}>
                       <div><label data-arato-label="true" style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
                       <div>
                         <label data-arato-label="true" style={lbl}>
@@ -2284,7 +2290,16 @@ export default function ContratosFinanceiros() {
                         <InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} />
                       </div>
                       <div><label data-arato-label="true" style={lbl} title={fC.carencia_tipo === "total" && Number(fC.carencia_meses ?? 0) > 0 ? "Data do primeiro pagamento depois da carência — os períodos de carência (juros capitalizados) ficam antes dela" : undefined}>{fC.carencia_tipo === "total" && Number(fC.carencia_meses ?? 0) > 0 ? "Data 1º Pagto. (após carência)" : "Data 1º Pagto."}</label><InputData style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
-                      <div><label data-arato-label="true" style={lbl}>Periodicidade</label><SelectField style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></SelectField></div>
+                      <div><label data-arato-label="true" style={lbl}>Periodicidade</label><SelectField style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value, jurosMeses: "" }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></SelectField></div>
+                      {(Number(fCalc.periodicidade) || 1) > 1 && (
+                        <div><label data-arato-label="true" style={lbl} title="Quando o banco cobra juros entre as amortizações (ex.: juros semestrais com capital anual)">Juros pagos</label>
+                          <SelectField style={inp} value={fCalc.jurosMeses} onChange={e => setFCalc(p => ({ ...p, jurosMeses: e.target.value }))}>
+                            <option value="">Junto com a amortização</option>
+                            {[[1, "Mensal"], [3, "Trimestral"], [6, "Semestral"]].filter(([m]) => (m as number) < (Number(fCalc.periodicidade) || 1) && (Number(fCalc.periodicidade) || 1) % (m as number) === 0)
+                              .map(([m, rot]) => <option key={m} value={String(m)}>{rot} (só juros entre as amortizações)</option>)}
+                          </SelectField>
+                        </div>
+                      )}
                       <div><label data-arato-label="true" style={lbl}>Acessórios/parc. ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
                     </div>
                     <div data-arato-dialog-actions="true" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8 }}>

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-u",
+    data: "30/10/2026",
+    titulo: "Contratos financeiros: juros pagos entre as amortizações",
+    modulos: ["Contratos Financeiros"],
+    itens: [
+      { tipo: "novidade", texto: "Na aba Pagamento, novo campo \"Juros pagos\" (aparece quando a periodicidade é trimestral, semestral ou anual). Ex.: amortização anual com juros semestrais — o cronograma sai com uma parcela só de juros e, seis meses depois, juros + capital. O juro de cada parcela é calculado sobre o saldo daquele período. A Data 1º Pagamento é a da primeira parcela (a de juros)." },
+    ],
+  },
+  {
     versao: "2026.10.30-t",
     data: "30/10/2026",
     titulo: "Tesouraria com busca e filtros",
