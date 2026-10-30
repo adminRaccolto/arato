@@ -52,6 +52,8 @@ const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#11
 const fmtBRL = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtNum = (v: number | null | undefined, dec = 2) => (v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
+// Valor digitado/vindo do InputMonetario ("2869483.61" ou "2.869.483,61") → número
+const numBR = (v: string) => { const t = String(v ?? "").trim(); const n = t.includes(",") ? Number(t.replace(/\./g, "").replace(",", ".")) : Number(t); return Number.isFinite(n) ? n : 0; };
 
 function aaParaAm(aa: number) { return (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100; }
 function amParaAa(am: number) { return (Math.pow(1 + am / 100, 12) - 1) * 100; }
@@ -256,9 +258,12 @@ export default function ContratosFinanceiros() {
   const [ccOptions, setCcOptions]                 = useState<CentroCusto[]>([]);
   const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
   const [origensRefin, setOrigensRefin]           = useState<ContratoRefinanciamento[]>([]);
-  const [fRefin, setFRefin]                       = useState({ contrato_origem_id: "", saldo_incorporado: "" });
+  const REFIN_VAZIO = { contrato_origem_id: "", valor: "", conta: "", data: "" };
+  const [fRefin, setFRefin]                       = useState(REFIN_VAZIO);
+  // Cédula ainda não salva: contratos que ela liquida ficam aqui e são aplicados ao salvar
+  const [refinPendentes, setRefinPendentes]       = useState<(typeof REFIN_VAZIO)[]>([]);
   // Prévia do refinanciamento: quantos títulos da origem saem do CP (abertos cancelados, parciais encerrados no pago)
-  const [refinPrevia, setRefinPrevia] = useState<{ cancelar: number; encerrar_parcial: number; em_bordero: number } | null>(null);
+  const [refinPrevia, setRefinPrevia] = useState<{ titulos: number; em_bordero: number } | null>(null);
   const apiRefin = async (body: object) => {
     const r = await fetch("/api/financeiro/contratos/refinanciamento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string } & Record<string, unknown>;
@@ -437,10 +442,8 @@ export default function ContratosFinanceiros() {
         setCcOptions(cc);
       }).catch(() => {});
     }
-    if (abaModal === "aditivos") {
-      listarAditivos(id).then(setAditivos).catch(() => {});
-      listarOrigensRefinanciamento(id).then(setOrigensRefin).catch(() => {});
-    }
+    if (abaModal === "aditivos") listarAditivos(id).then(setAditivos).catch(() => {});
+    if (abaModal === "principal") listarOrigensRefinanciamento(id).then(setOrigensRefin).catch(() => {});
     if (abaModal === "movimentacoes") {
       listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
       // Carrega parcelas e reconcilia status com lançamentos já baixados no CP
@@ -538,7 +541,7 @@ export default function ContratosFinanceiros() {
     setFAdit({ ...FA_VAZIO });
     setPdfUrl(c?.pdf_url ?? null); setPdfNome(c?.pdf_nome ?? null);
     if (c?.taxa_tipo === "variavel" && c.indexador) buscarTaxaVariavelRef(c.indexador);
-    setParcelasLiberacao([]); setParcelasPagamento([]); setParcelasEditadas({}); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
+    setParcelasLiberacao([]); setParcelasPagamento([]); setParcelasEditadas({}); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin(REFIN_VAZIO); setRefinPendentes([]); setRefinPrevia(null);
     setCnpjBusca(""); setCnpjBuscaStatus("idle");
     setModalAberto(true);
   };
@@ -752,6 +755,17 @@ export default function ContratosFinanceiros() {
       setPdfUrl(novo.pdf_url ?? null);
       setPdfNome(novo.pdf_nome ?? null);
       setFCalc({ nParcelas: "12", taxaMensal: taxaMensalDe(novo) ?? "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
+      // Refinanciamento: liquida os contratos apontados no lançamento
+      const errosRefin: string[] = [];
+      for (const r of refinPendentes) {
+        try {
+          const j = await apiRefin({ acao: "vincular", contrato_novo_id: novo.id, contrato_origem_id: r.contrato_origem_id, valor_liquidacao: numBR(r.valor), conta_bancaria: r.conta, data: r.data }) as { vinculo: ContratoRefinanciamento };
+          setOrigensRefin(p => [...p, j.vinculo]);
+          setContratos(p => p.map(c => c.id === r.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: novo.id } : c));
+        } catch (e) { errosRefin.push(`${contratos.find(c => c.id === r.contrato_origem_id)?.numero_documento ?? "contrato"}: ${(e as Error).message}`); }
+      }
+      setRefinPendentes([]);
+      if (errosRefin.length) alert(`Cédula salva, mas não deu para liquidar:\n${errosRefin.join("\n")}\n\nRefaça em Principal → Esta cédula liquida os contratos.`);
       setAbaModal("liberacao");
     }
   });
@@ -2037,6 +2051,121 @@ export default function ContratosFinanceiros() {
                     <input style={inp} value={fC.observacao} onChange={e => setFC(p => ({ ...p, observacao: e.target.value }))} />
                   </div>
 
+                  {/* ── Refinanciamento: contratos que esta cédula liquida (N→1) ── */}
+                  {(() => {
+                    const usados = new Set([...origensRefin.map(o => o.contrato_origem_id), ...refinPendentes.map(r => r.contrato_origem_id)]);
+                    const disponiveis = contratos.filter(c => c.id !== contratoModal?.id && !usados.has(c.id) && c.status !== "refinanciado");
+                    const rotulo = (c?: ContratoFinanceiro | null) => c ? [c.credor || "—", c.numero_documento || "s/ nº", c.descricao].join("  |  ") : "—";
+                    const nomeConta = (id?: string | null) => contas.find(c => c.id === id)?.nome ?? "—";
+                    const th = { padding: "6px 10px", textAlign: "left" as const, fontSize: 11, fontWeight: 600, color: "#4B3B9B" };
+                    const td = { padding: "7px 10px", fontSize: 12 };
+                    const podeAdd = !!fRefin.contrato_origem_id && numBR(fRefin.valor) > 0 && !!fRefin.conta && !!fRefin.data && !refinPrevia?.em_bordero;
+                    const adicionar = async () => {
+                      if (!podeAdd) return;
+                      if (!contratoModal) {   // cédula ainda não salva: aplica ao salvar
+                        setRefinPendentes(p => [...p, fRefin]); setFRefin(REFIN_VAZIO); setRefinPrevia(null); return;
+                      }
+                      if (!confirm(`Liquidar este contrato pelo refinanciamento?\n\n${fmtBRL(numBR(fRefin.valor))} são baixados na conta ${nomeConta(fRefin.conta)} em ${fmtData(fRefin.data)}, nos títulos a pagar dele (amortizações e juros vencidos; a diferença paga os juros do período; juros futuros não cobrados saem como desconto). Desvincular desfaz.`)) return;
+                      try {
+                        const j = await apiRefin({ acao: "vincular", contrato_novo_id: contratoModal.id, contrato_origem_id: fRefin.contrato_origem_id, valor_liquidacao: numBR(fRefin.valor), conta_bancaria: fRefin.conta, data: fRefin.data }) as { vinculo: ContratoRefinanciamento };
+                        setOrigensRefin(p => [...p, j.vinculo]);
+                        setContratos(p => p.map(c => c.id === fRefin.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: contratoModal.id } : c));
+                        setFRefin(REFIN_VAZIO); setRefinPrevia(null);
+                      } catch (e) { alert("Erro ao vincular: " + (e as Error).message); }
+                    };
+                    return (
+                      <div style={{ background: "#F5F3FE", border: "0.5px solid #7C6FC340", borderRadius: 10, padding: 16, marginTop: 18 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#4B3B9B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>🔗 Esta cédula liquida os contratos (refinanciamento)</div>
+                        <div style={{ fontSize: 12, color: "#6B5CA5", marginBottom: 12 }}>
+                          O banco deposita esta cédula e, no mesmo dia, debita a liquidação de cada contrato antigo. Informe o valor debitado de cada um (o do extrato): os títulos a pagar dele são baixados nessa conta e ele passa a <strong>Refinanciado</strong>. O que já foi pago não muda.
+                        </div>
+                        {(origensRefin.length > 0 || refinPendentes.length > 0) && (
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
+                            <thead><tr style={{ background: "#EDE9FB" }}>
+                              {["Contrato liquidado", "Valor debitado", "Conta", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {origensRefin.map(o => (
+                                <tr key={o.id} style={{ borderBottom: "0.5px solid #DDD8F5", background: "#fff" }}>
+                                  <td style={{ ...td, fontWeight: 600, color: "#4B3B9B" }}>{rotulo(o.contrato_origem)}</td>
+                                  <td style={td}>{o.saldo_incorporado ? fmtBRL(o.saldo_incorporado) : "—"}</td>
+                                  <td style={{ ...td, color: "#555" }}>Liquidado</td>
+                                  <td style={{ ...td, textAlign: "right" }}>
+                                    <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
+                                      if (!confirm("Desvincular este contrato? As baixas da liquidação são estornadas, os títulos voltam ao Contas a Pagar como estavam e ele volta a Ativo.")) return;
+                                      try {
+                                        const j = await apiRefin({ acao: "desvincular", id: o.id }) as { devolvidos?: number; mantidos?: number };
+                                        if (j.mantidos) alert(`${j.devolvidos ?? 0} título(s) voltaram ao Contas a Pagar. ${j.mantidos} foram alterados ou conciliados depois e ficaram como estão.`);
+                                      } catch (e) { alert("Erro ao desvincular: " + (e as Error).message); return; }
+                                      setOrigensRefin(p => p.filter(x => x.id !== o.id));
+                                      setContratos(p => p.map(c => c.id === o.contrato_origem_id ? { ...c, status: "ativo", refinanciado_por_id: null } : c));
+                                    }}>Desvincular</OperationalButton>
+                                  </td>
+                                </tr>
+                              ))}
+                              {refinPendentes.map((r, i) => (
+                                <tr key={r.contrato_origem_id} style={{ borderBottom: "0.5px solid #DDD8F5", background: "#FAF9FE" }}>
+                                  <td style={{ ...td, fontWeight: 600, color: "#4B3B9B" }}>{rotulo(contratos.find(c => c.id === r.contrato_origem_id))}</td>
+                                  <td style={td}>{fmtBRL(numBR(r.valor))}</td>
+                                  <td style={{ ...td, color: "#555" }}>{nomeConta(r.conta)} · {fmtData(r.data)} <span style={{ color: "#C9921B" }}>(ao salvar)</span></td>
+                                  <td style={{ ...td, textAlign: "right" }}>
+                                    <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setRefinPendentes(p => p.filter((_, k) => k !== i))}>Remover</OperationalButton>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </OperationalGrid>
+                        )}
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 1.2fr 1.4fr 1.1fr auto", gap: 10, alignItems: "end" }}>
+                          <div>
+                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Contrato liquidado</label>
+                            <SelectBusca style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} placeholder="— Instituição | Nº da cédula | Descrição —"
+                              options={[...disponiveis]
+                                .sort((a, b) => (a.credor ?? "").localeCompare(b.credor ?? "", "pt-BR") || (a.numero_documento ?? "").localeCompare(b.numero_documento ?? "", "pt-BR"))
+                                .map(c => ({ value: c.id, label: rotulo(c) }))}
+                              onChange={id => {
+                                const data = fRefin.data || fC.data_contrato || "";
+                                setFRefin({ ...REFIN_VAZIO, contrato_origem_id: id, data, conta: fC.conta_liberacao_id || "" }); setRefinPrevia(null);
+                                if (!id) return;
+                                // Sugestão: saldo devedor da origem (o valor do extrato prevalece) e a conta de pagamento dela
+                                apiRefin({ acao: "saldo", contrato_origem_id: id, data: data || undefined }).then(j => {
+                                  const r = j as { saldo?: number; conta_pagamento_id?: string | null; titulos?: number; em_bordero?: number };
+                                  setFRefin(p => p.contrato_origem_id === id ? { ...p, valor: String(r.saldo ?? 0), conta: r.conta_pagamento_id || p.conta } : p);
+                                  setRefinPrevia({ titulos: r.titulos ?? 0, em_bordero: r.em_bordero ?? 0 });
+                                }).catch(() => {});
+                              }} />
+                          </div>
+                          <div>
+                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Valor debitado (R$)</label>
+                            <InputMonetario style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.valor} onChange={v => setFRefin(p => ({ ...p, valor: String(v) }))} />
+                          </div>
+                          <div>
+                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Conta debitada</label>
+                            <SelectField style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.conta} onChange={e => setFRefin(p => ({ ...p, conta: e.target.value }))}>
+                              <option value="">— Conta —</option>
+                              {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}</option>)}
+                            </SelectField>
+                          </div>
+                          <div>
+                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Data do débito</label>
+                            <InputData style={{ ...inp, borderColor: "#7C6FC360" }} type="date" value={fRefin.data} onChange={e => setFRefin(p => ({ ...p, data: e.target.value }))} />
+                          </div>
+                          <OperationalButton data-arato-button="toggle" disabled={!podeAdd || salvando} onClick={adicionar}
+                            style={{ padding: "8px 16px", background: podeAdd ? "#4B3B9B" : "#ccc", color: "#fff", border: "none", borderRadius: 8, cursor: podeAdd ? "pointer" : "default", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>
+                            {contratoModal ? "+ Liquidar" : "+ Adicionar"}
+                          </OperationalButton>
+                        </div>
+                        {refinPrevia && (
+                          <div style={{ fontSize: 11, color: refinPrevia.em_bordero ? "#B42318" : "#6B5CA5", marginTop: 8 }}>
+                            {refinPrevia.em_bordero
+                              ? `${refinPrevia.em_bordero} título(s) desse contrato estão em borderô não pago — confirme ou estorne o borderô antes.`
+                              : `Valor sugerido = saldo devedor (amortizações a pagar, o que falta das parciais e juros já vencidos). Troque pelo débito do extrato: ${refinPrevia.titulos} título(s) a pagar serão baixados.`}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", marginTop: 22 }}>
                     {erroModal && (
                       <span style={{ fontSize: 12, color: "#E24B4A", maxWidth: 360, lineHeight: 1.4 }}>{erroModal}</span>
@@ -2509,104 +2638,8 @@ export default function ContratosFinanceiros() {
                   repactuacao:     { label: "Repactuação (adia todo o contrato)", bg: "#E3EAF3", cl: "#1A4870" },
                   outros:          { label: "Outros",             bg: "#F3F4F6", cl: "var(--text-2)"    },
                 };
-                // contratos disponíveis para vincular como origem (exclui o atual e já vinculados)
-                const vinculadosIds = new Set(origensRefin.map(o => o.contrato_origem_id));
-                const disponiveis = contratos.filter(c => c.id !== contratoModal.id && !vinculadosIds.has(c.id) && c.status !== "refinanciado");
                 return (
                   <div>
-                    {/* ── Seção Refinanciamento ── */}
-                    <div style={{ background: "#F5F3FE", border: "0.5px solid #7C6FC340", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#4B3B9B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>🔗 Refinanciamento / Consolidação</div>
-                      <div style={{ fontSize: 12, color: "#6B5CA5", marginBottom: 14 }}>
-                        Se esta cédula consolida outros contratos anteriores (refinanciamento 1→1 ou N→1), vincule-os abaixo. Os contratos vinculados passam para status <strong>Refinanciado</strong>, ficam referenciando esta cédula e os títulos deles ainda a pagar saem do Contas a Pagar (a dívida passa a ser esta cédula).
-                      </div>
-
-                      {/* Contratos já vinculados como origem */}
-                      {origensRefin.length > 0 && (
-                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 14 }}>
-                          <thead><tr style={{ background: "#EDE9FB" }}>
-                            {["Contrato de Origem", "Nº Operação", "Credor", "Saldo Incorporado", ""].map((h, i) => (
-                              <th key={i} style={{ padding: "6px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#4B3B9B" }}>{h}</th>
-                            ))}
-                          </tr></thead>
-                          <tbody>
-                            {origensRefin.map((o, i) => {
-                              const co = o.contrato_origem;
-                              return (
-                                <tr key={o.id} style={{ borderBottom: i < origensRefin.length - 1 ? "0.5px solid #DDD8F5" : "none", background: i % 2 === 0 ? "#fff" : "#FAF9FE" }}>
-                                  <td style={{ padding: "7px 10px", fontSize: 12, fontWeight: 600, color: "#4B3B9B" }}>{co?.descricao ?? "—"}</td>
-                                  <td style={{ padding: "7px 10px", fontSize: 11, fontFamily: "monospace", color: "#666" }}>{co?.numero_documento ?? "—"}</td>
-                                  <td style={{ padding: "7px 10px", fontSize: 11, color: "#555" }}>{co?.credor ?? "—"}</td>
-                                  <td style={{ padding: "7px 10px", fontSize: 12 }}>{o.saldo_incorporado ? fmtBRL(o.saldo_incorporado) : <span style={{ color: "#aaa" }}>—</span>}</td>
-                                  <td style={{ padding: "7px 10px" }}>
-                                    <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
-                                      if (!confirm("Desvincular este contrato de origem? Ele volta para status Ativo e os títulos dele encerrados pelo refinanciamento voltam ao Contas a Pagar como estavam.")) return;
-                                      try {
-                                        const j = await apiRefin({ acao: "desvincular", id: o.id }) as { devolvidos?: number; mantidos?: number };
-                                        if (j.mantidos) alert(`${j.devolvidos ?? 0} título(s) voltaram ao Contas a Pagar. ${j.mantidos} foram alterados depois do refinanciamento e ficaram como estão.`);
-                                      } catch (e) { alert("Erro ao desvincular: " + (e as Error).message); return; }
-                                      setOrigensRefin(p => p.filter(x => x.id !== o.id));
-                                      setContratos(p => p.map(c => c.id === o.contrato_origem_id ? { ...c, status: "ativo", refinanciado_por_id: null } : c));
-                                    }}>Desvincular</OperationalButton>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </OperationalGrid>
-                      )}
-
-                      {/* Formulário para adicionar nova origem */}
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 10, alignItems: "end" }}>
-                        <div>
-                          <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Contrato de Origem</label>
-                          <SelectBusca style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} placeholder="— Selecionar contrato a consolidar —"
-                            options={[...disponiveis]
-                              .sort((a, b) => (a.credor ?? "").localeCompare(b.credor ?? "", "pt-BR") || (a.numero_documento ?? "").localeCompare(b.numero_documento ?? "", "pt-BR"))
-                              .map(c => ({ value: c.id, label: [c.credor || "—", c.numero_documento || "s/ nº", c.descricao].join("  |  ") }))}
-                            onChange={id => {
-                            setFRefin({ contrato_origem_id: id, saldo_incorporado: "" }); setRefinPrevia(null);
-                            if (!id) return;
-                            // Saldo devedor da origem já calculado (amortizações a pagar, restante das parciais e juros vencidos)
-                            apiRefin({ acao: "saldo", contrato_origem_id: id }).then(j => {
-                              const r = j as { saldo?: number; cancelar?: number; encerrar_parcial?: number; em_bordero?: number };
-                              setFRefin(p => p.contrato_origem_id === id ? { ...p, saldo_incorporado: String(r.saldo ?? 0) } : p);
-                              setRefinPrevia({ cancelar: r.cancelar ?? 0, encerrar_parcial: r.encerrar_parcial ?? 0, em_bordero: r.em_bordero ?? 0 });
-                            }).catch(() => {});
-                          }} />
-                        </div>
-                        <div>
-                          <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Saldo Incorporado (R$)</label>
-                          <InputMonetario style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.saldo_incorporado} onChange={v => setFRefin(p => ({ ...p, saldo_incorporado: String(v) }))} />
-                        </div>
-                        <OperationalButton data-arato-button="toggle"
-                          disabled={!fRefin.contrato_origem_id || salvando}
-                          style={{ padding: "8px 16px", background: fRefin.contrato_origem_id ? "#4B3B9B" : "#ccc", color: "#fff", border: "none", borderRadius: 8, cursor: fRefin.contrato_origem_id ? "pointer" : "default", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}
-                          onClick={async () => {
-                            if (!fRefin.contrato_origem_id) return;
-                            const nTit = (refinPrevia?.cancelar ?? 0) + (refinPrevia?.encerrar_parcial ?? 0);
-                            if (!confirm(`Vincular como refinanciado por esta cédula?\n\n${nTit ? `${nTit} título(s) do contrato de origem saem do Contas a Pagar (em aberto cancelados; parciais ficam com o que já foi pago). ` : ""}O que já foi pago não muda. Desvincular desfaz tudo.`)) return;
-                            try {
-                              const saldo = fRefin.saldo_incorporado ? parseFloat(fRefin.saldo_incorporado.replace(",", ".")) : undefined;
-                              const j = await apiRefin({ acao: "vincular", contrato_novo_id: contratoModal.id, contrato_origem_id: fRefin.contrato_origem_id, saldo_incorporado: saldo ?? null }) as { vinculo: ContratoRefinanciamento };
-                              setOrigensRefin(p => [...p, j.vinculo]);
-                              setRefinPrevia(null);
-                              setContratos(p => p.map(c => c.id === fRefin.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: contratoModal.id } : c));
-                              setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
-                            } catch (e) { alert("Erro ao vincular: " + (e as Error).message); }
-                          }}>
-                          + Vincular
-                        </OperationalButton>
-                      </div>
-                      {refinPrevia && (
-                        <div style={{ fontSize: 11, color: refinPrevia.em_bordero ? "#B42318" : "#6B5CA5", marginTop: 8 }}>
-                          {refinPrevia.em_bordero
-                            ? `${refinPrevia.em_bordero} título(s) da origem estão em borderô não pago — confirme ou estorne o borderô antes de vincular.`
-                            : `Saldo calculado: amortizações a pagar, o que falta das parcelas parciais e juros já vencidos (juros futuros não entram). Ao vincular, ${refinPrevia.cancelar} título(s) em aberto são cancelados e ${refinPrevia.encerrar_parcial} parcial(is) ficam só com o que já foi pago.`}
-                        </div>
-                      )}
-                    </div>
-
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
                       Registre alterações formais: prorrogações, renegociações de taxa, capitalizações, repactuação (adia todo o contrato por mais um período) e outros termos aditados entre as partes.
                     </div>

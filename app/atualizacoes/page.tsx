@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-k",
+    data: "30/10/2026",
+    titulo: "Refinanciamento: a cédula nova liquida os contratos antigos no lançamento",
+    modulos: ["Contratos Financeiros", "Contas a Pagar", "Conciliação Bancária"],
+    itens: [
+      { tipo: "melhoria", texto: "O quadro de refinanciamento saiu da aba Aditivos e foi para a aba Principal: \"Esta cédula liquida os contratos\". Dá para apontar os contratos (N→1) já no lançamento da cédula; eles são liquidados ao salvar." },
+      { tipo: "melhoria", texto: "Para cada contrato liquidado, informe o valor debitado no extrato, a conta e a data. Os títulos a pagar dele são BAIXADOS nessa conta (não mais cancelados), então cada débito do extrato tem o seu título para conciliar: amortizações e juros vencidos são pagos, a diferença paga os juros do período e os juros futuros que o banco não cobrou saem como desconto. O valor e a conta vêm sugeridos (saldo devedor e conta de pagamento do contrato antigo). Desvincular estorna as baixas que não foram conciliadas." },
+    ],
+  },
+  {
     versao: "2026.10.30-j",
     data: "30/10/2026",
     titulo: "Contratos Financeiros mais fáceis de achar",
