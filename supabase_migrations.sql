@@ -18837,3 +18837,18 @@ DO $$ DECLARE r RECORD; BEGIN
   FOR r IN SELECT id FROM empresa_lancamentos LOOP PERFORM fn_recalc_rel_lancamento_empresa(r.id); END LOOP;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 397 — Folha de PJ guarda o produtor vinculado dos funcionários
+-- =============================================================================
+-- A folha de empresa (PJ) era gravada sem produtor; os títulos de salário já levavam o produtor do funcionário. Preenche
+-- folha_pagamento.produtor_id das folhas de empresa com o produtor mais frequente entre os funcionários da folha.
+UPDATE folha_pagamento fp SET produtor_id = x.produtor_id
+  FROM (
+    SELECT DISTINCT ON (folha_id) folha_id, produtor_id
+      FROM folha_funcionarios WHERE produtor_id IS NOT NULL
+     GROUP BY folha_id, produtor_id
+     ORDER BY folha_id, COUNT(*) DESC
+  ) x
+ WHERE fp.id = x.folha_id AND fp.empresa_id IS NOT NULL AND fp.produtor_id IS NULL;
+NOTIFY pgrst, 'reload schema';

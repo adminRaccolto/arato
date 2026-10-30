@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-e",
+    data: "30/10/2026",
+    titulo: "Folha de PJ mostra o produtor vinculado",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "correcao", texto: "A folha de empresa (PJ) passa a guardar o produtor vinculado dos funcionários e a mostrá-lo junto da empresa — na lista de folhas e na linha de cada funcionário. Antes aparecia só a empresa (os títulos de salário já levavam o produtor)." },
+    ],
+  },
+  {
     versao: "2026.10.30-d",
     data: "30/10/2026",
     titulo: "Operações gerenciais passam a ser do cliente",

@@ -411,8 +411,10 @@ export async function POST(req: Request) {
       const colunaAusente = (e: { message?: string } | null) => !!e?.message?.includes("data_vencimento");
       if (exist?.id) {
         await exigirFolhaAberta(sb, exist.id);
-        let { error } = await sb.from("folha_pagamento").update(dados).eq("id", exist.id);
-        if (error && colunaAusente(error)) ({ error } = await sb.from("folha_pagamento").update(semDataVenc(dados)).eq("id", exist.id));
+        // Folha de PJ: guarda/atualiza o produtor vinculado dos funcionários (a folha continua identificada pela empresa)
+        const dadosUpd: Record<string, unknown> = empresa_id && produtor_id && colunaProdutorDisponivel ? { ...dados, produtor_id } : dados;
+        let { error } = await sb.from("folha_pagamento").update(dadosUpd).eq("id", exist.id);
+        if (error && colunaAusente(error)) ({ error } = await sb.from("folha_pagamento").update(semDataVenc(dadosUpd)).eq("id", exist.id));
         if (error) throw error;
         return NextResponse.json({ ok: true, id: exist.id, criou: false });
       } else {

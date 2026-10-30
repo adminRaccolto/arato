@@ -553,7 +553,9 @@ export default function FolhaPagamentoPage() {
 
       if (folhaEdit.id) {
         // Edição de folha existente — mantém empregador e fazenda originais
-        await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, folhaEdit.produtor_id, folhaEdit.fazenda_id);
+        // Folha de PJ sem produtor gravado (antigas): leva o produtor vinculado dos funcionários
+        const produtorEdit = folhaEdit.empresa_id && !folhaEdit.produtor_id ? (funcs.find(f => f.produtor_id)?.produtor_id ?? null) : folhaEdit.produtor_id;
+        await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, produtorEdit, folhaEdit.fazenda_id);
         setMsg("Folha salva.");
       } else {
         // Nova folha — agrupa por fazenda + empregador (empresa ou produtor
@@ -564,10 +566,14 @@ export default function FolhaPagamentoPage() {
         for (const f of funcs) {
           const fazendaIdGrupo = f.fazenda_id ?? fazendaId!;
           const empresaId  = f.empresa_id ?? null;
-          const produtorId = empresaId ? null : (f.produtor_id ?? null);
-          const key = `${fazendaIdGrupo}|${empresaId ?? ""}|${produtorId ?? ""}`;
-          if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId, fazendaIdGrupo, itens: [] });
-          grupos.get(key)!.itens.push(f);
+          // Folha de PJ continua uma por empresa (o produtor não separa a folha); sem empresa, uma por produtor
+          const produtorChave = empresaId ? null : (f.produtor_id ?? null);
+          const key = `${fazendaIdGrupo}|${empresaId ?? ""}|${produtorChave ?? ""}`;
+          if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId: produtorChave, fazendaIdGrupo, itens: [] });
+          const g = grupos.get(key)!;
+          g.itens.push(f);
+          // Folha de PJ guarda o produtor vinculado dos funcionários (antes ficava vazio — achado 30/10/2026, Muriana)
+          if (empresaId && !g.produtorId && f.produtor_id) g.produtorId = f.produtor_id;
         }
         const meses = monthsInRange(modalCompDe, modalCompAte);
         let total = 0;
@@ -1148,7 +1154,10 @@ export default function FolhaPagamentoPage() {
                         <td style={S.td}><span style={{ fontWeight:700, color:"#0B2D50" }}>{nomeMes(f.competencia)}</span></td>
                         <td style={S.td}>
                           {f.empresa_nome
-                            ? <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
+                            ? <>
+                                <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
+                                {f.produtor_nome && <div style={{ marginTop:3 }}><span style={{ fontSize:11, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"1px 6px" }}>{f.produtor_nome}</span></div>}
+                              </>
                             : f.produtor_nome
                             ? <span style={{ fontSize:12, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"2px 8px" }}>{f.produtor_nome}</span>
                             : <span style={{ fontSize:11, color:"#888" }}>Sem vínculo</span>}
@@ -1526,7 +1535,10 @@ export default function FolhaPagamentoPage() {
                                 </td>
                                 <td style={{ ...S.td, minWidth:110, padding:"4px 8px" }}>
                                   {f.empresa_id
-                                    ? <span style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{empresasMap[f.empresa_id] ?? "Empresa"}</span>
+                                    ? <>
+                                        <span style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{empresasMap[f.empresa_id] ?? "Empresa"}</span>
+                                        {f.produtor_id && <div style={{ marginTop:2 }}><span style={{ fontSize:10, fontWeight:600, color:"#16A34A", background:"#DCFCE7", borderRadius:4, padding:"1px 5px", whiteSpace:"nowrap" }}>{produtoresMap[f.produtor_id] ?? "Produtor"}</span></div>}
+                                      </>
                                     : f.produtor_id
                                       ? <span style={{ fontSize:11, fontWeight:600, color:"#16A34A", background:"#DCFCE7", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{produtoresMap[f.produtor_id] ?? "Produtor"}</span>
                                       : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
