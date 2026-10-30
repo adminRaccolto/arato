@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-r",
+    data: "30/10/2026",
+    titulo: "Operação gerencial alterada pelo cliente vale em todas as telas",
+    modulos: ["Operações Gerenciais", "Documentos Fiscais", "Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "correcao", texto: "Ao alterar uma operação gerencial no cliente (nome ou telas onde aparece), as listas de escolha às vezes mostravam a versão padrão antiga com o mesmo código. Agora a versão do cliente sempre prevalece: se ela não está habilitada para uma tela, a padrão não aparece no lugar. Vale também para a sugestão automática de OG nas NFs." },
+    ],
+  },
+  {
     versao: "2026.10.30-q",
     data: "30/10/2026",
     titulo: "Refinanciamento: contrato liquidado passa a Refinanciado",

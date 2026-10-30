@@ -83,14 +83,20 @@ export async function classificarItemNF(
   const ogParts = ["and(fazenda_id.is.null,conta_id.is.null)"];
   if (contaId) ogParts.push(`conta_id.eq.${contaId}`);
 
-  const { data: ogs } = await supabase
+  // Uma OG por classificação, a do cliente antes do modelo global — e só então o filtro de Notas Fiscais (a cópia do
+  // cliente decide: se ele tirou a OG das NFs, o modelo global não volta no lugar)
+  const { data: ogsTodas } = await supabase
     .from("operacoes_gerenciais")
-    .select("id, codigo, descricao, classificacao")
+    .select("id, codigo, descricao, classificacao, conta_id, inativo, permite_notas_fiscais")
     .or(ogParts.join(","))
-    .eq("inativo", false)
-    .eq("permite_notas_fiscais", true)
     .order("classificacao")
-    .limit(80);
+    .order("id");
+  const porClass = new Map<string, NonNullable<typeof ogsTodas>[number]>();
+  for (const o of ogsTodas ?? []) {
+    const k = o.classificacao ?? o.id, atual = porClass.get(k);
+    if (!atual || (!atual.conta_id && o.conta_id)) porClass.set(k, o);
+  }
+  const ogs = [...porClass.values()].filter(o => !o.inativo && o.permite_notas_fiscais).slice(0, 80);
 
   // ── 3. Montar listas compactas para o prompt ────────────────────────────────
   const listaInsumos = (insumos ?? [])

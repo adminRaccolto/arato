@@ -6129,57 +6129,54 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
     if (conta_id) parts.push(`conta_id.eq.${conta_id}`);
     if (ids.length) parts.push(...ids.map(id => `fazenda_id.eq.${id}`));
 
+    // Busca TODAS as cópias (sem filtrar tipo/tela/inativo no banco): primeiro decide qual cópia vale para o cliente,
+    // depois aplica os filtros nela. Achado 30/10/2026: o cliente editou "2.02.01.05.001" para só Notas Fiscais; filtrando
+    // "Contas a Pagar" antes de escolher a cópia, a do cliente saía e o modelo global antigo (com CP) aparecia no lugar.
     const orFilter = parts.join(",");
     const PAGE = 1000;
     let data: OperacaoGerencial[] = [];
     let from = 0;
     while (true) {
-      let q = supabase.from("operacoes_gerenciais").select("*")
+      const { data: page, error } = await supabase.from("operacoes_gerenciais").select("*")
         .or(orFilter)
-        .eq("inativo", false)
         .order("classificacao")
         .order("id")
         .range(from, from + PAGE - 1);
-      if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
-      if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
-      if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
-      if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
-      if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
-      const { data: page, error } = await q;
       if (error) throw error;
       data = data.concat(page ?? []);
       if (!page || page.length < PAGE) break;
       from += PAGE;
     }
 
-    const comPermissao = data.filter(op =>
-      op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
-      op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
-    );
+    const passa = (op: OperacaoGerencial) => {
+      if ((op as { inativo?: boolean }).inativo) return false;
+      if (filtro?.tipo && op.tipo !== filtro.tipo) return false;
+      if (filtro?.permite === "notas_fiscais" && !op.permite_notas_fiscais) return false;
+      if (filtro?.permite === "cp_cr" && !op.permite_cp_cr) return false;
+      if (filtro?.permite === "tesouraria" && !op.permite_tesouraria) return false;
+      if (filtro?.permite === "estoque" && !op.permite_estoque) return false;
+      return !!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria || op.permite_adiantamentos || op.permite_baixas || op.permite_estoque);
+    };
 
     // semDedup=true: retorna todas as OGs sem deduplicar — usado para lookup de ids em lançamentos
-    if (filtro?.semDedup) return comPermissao;
+    if (filtro?.semDedup) return data.filter(passa);
 
-    // Deduplica por classificação: mesma operação pode existir em múltiplas fazendas da conta
-    // (resultado de seed de templates). Prefere mais específica: fazenda > conta > global.
-    const scored = comPermissao.map(op => ({
-      op,
-      // OG do cliente > cópia legada de fazenda > modelo global
-      score: op.conta_id ? 2 : op.fazenda_id ? 1 : 0,
-    }));
-    // Desempate pelo id: a mesma cópia vence sempre (antes a escolha entre as cópias das fazendas variava a cada carga)
-    scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? "") || a.op.id.localeCompare(b.op.id));
+    // Uma OG por classificação: a do cliente > cópia legada de fazenda > modelo global. Desempate pelo id (a mesma cópia
+    // vence sempre). A escolhida decide se a OG aparece: se a do cliente não serve para esta tela, o modelo global
+    // não entra no lugar dela.
+    const score = (op: OperacaoGerencial) => op.conta_id ? 2 : op.fazenda_id ? 1 : 0;
+    const ordenadas = [...data].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "") || score(b) - score(a) || a.id.localeCompare(b.id));
     // Cada OG da lista leva os ids de todas as suas cópias: título gravado com a cópia de outra fazenda (ou a global)
     // continua achando a OG na lista (achado 30/10/2026: "SALÁRIOS - FAZ/ADM" ficavam "indisponíveis" às vezes)
     const equivalentes = new Map<string, string[]>();
-    for (const op of comPermissao) { const k = op.classificacao ?? op.id; equivalentes.set(k, [...(equivalentes.get(k) ?? []), op.id]); }
+    for (const op of data) { const k = op.classificacao ?? op.id; equivalentes.set(k, [...(equivalentes.get(k) ?? []), op.id]); }
     const seen = new Set<string>();
-    return scored.map(s => s.op).filter(op => {
+    return ordenadas.filter(op => {
       const key = op.classificacao ?? op.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).map(op => ({ ...op, ids_equivalentes: equivalentes.get(op.classificacao ?? op.id) ?? [op.id] }));
+    }).filter(passa).map(op => ({ ...op, ids_equivalentes: equivalentes.get(op.classificacao ?? op.id) ?? [op.id] }));
   });
 }
 
