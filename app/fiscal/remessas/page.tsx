@@ -110,6 +110,17 @@ function RemessasConteudo() {
     }
   }
 
+  // Excluir remessa sem retorno (emitida fora ou pelo Arato): o estoque volta para o depósito de origem
+  async function excluirRemessa(r: NfRemessaLogistica) {
+    if (!(await confirmarAcao({ titulo: `Excluir a remessa NF ${r.nf_remessa_numero ?? ""}?`, perigo: true, textoConfirmar: "Excluir remessa",
+      mensagem: `A transferência de estoque é desfeita (os itens voltam ao depósito de origem)${r.emissao === "externa" ? " e a NF sai do Monitor de NF-e" : ""}. NF-e emitida pelo Arato e autorizada precisa ser cancelada antes no Monitor de NF-e.` }))) return;
+    const resp = await fetch("/api/fiscal/remessas", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "excluir", fazenda_id: r.fazenda_id, remessa_id: r.id }) });
+    const j = await resp.json().catch(() => ({})) as { ok?: boolean; error?: string };
+    if (!j.ok) { alert(j.error ?? `Erro HTTP ${resp.status}`); return; }
+    await carregar();
+  }
+
   async function carregar() {
     if (!contaId || !ids.length) return;
     setLoading(true);
@@ -426,6 +437,10 @@ function RemessasConteudo() {
                     <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                       {r.nf_remessa_chave && <a href={`/api/fiscal/danfe?chave=${r.nf_remessa_chave}&fazenda_id=${r.fazenda_id}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1A4870", fontWeight: 600, marginRight: 10 }}>🖨 DANFE</a>}
                       {r.status === "emitida" && <Link href="/fiscal/retornos" style={{ fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Retorno →</Link>}
+                      {r.status === "emitida" && !Number(r.valor_retornado ?? 0) && !(r.retornos ?? []).length && (
+                        <button type="button" onClick={e => { e.stopPropagation(); excluirRemessa(r); }}
+                          style={{ marginLeft: 10, fontSize: 11, color: "#791F1F", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Excluir</button>
+                      )}
                     </td>
                   </tr>
                   {aberta && (

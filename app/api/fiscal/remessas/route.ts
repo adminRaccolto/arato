@@ -5,6 +5,7 @@
  * para o depósito do armazém (par saída + entrada pelo custo médio); o retorno faz o caminho inverso. Diretriz do dono
  * 27/10/2026 (Seção 378). Nunca gera CP/CR.
  *
+ * acao "excluir": remessa sem retorno — desfaz o estoque, tira do Monitor a NF emitida fora e apaga (NF-e do Arato autorizada: cancelar antes).
  * acao "registrar": grava a remessa (emitida pelo Arato ou fora), transfere o estoque e registra a NF no Monitor.
  * acao "retorno_estoque": tira do depósito do armazém o que voltou — usada depois de processar a NF de retorno recebida
  *   (a entrada no depósito próprio vem da própria NF).
@@ -137,6 +138,39 @@ export async function POST(req: NextRequest) {
         }
       }
       return NextResponse.json({ ok: true, remessa_id: rem.id });
+    }
+
+    // Excluir remessa (emitida fora ou pelo Arato) sem retorno: desfaz a transferência de estoque, tira do Monitor a NF
+    // registrada como emitida fora e apaga a remessa. NF-e emitida pelo Arato e autorizada precisa ser cancelada na SEFAZ
+    // antes (o registro dela no Monitor fica, como histórico fiscal).
+    if (body.acao === "excluir") {
+      const b = body as unknown as { fazenda_id: string; remessa_id: string };
+      const { data: rem } = await db.from("nf_remessas_logisticas").select("*").eq("id", b.remessa_id).maybeSingle();
+      if (!rem) return NextResponse.json({ ok: false, error: "Remessa não encontrada." }, { status: 404 });
+      const negadoRem = await exigirAcessoFazenda(req, rem.fazenda_id);
+      if (negadoRem) return negadoRem;
+      const temRetorno = Number(rem.valor_retornado ?? 0) > 0 || ((rem.retornos as unknown[] | null) ?? []).length > 0 || !!rem.nf_retorno_numero || rem.status === "retornada";
+      if (temRetorno) return NextResponse.json({ ok: false, error: "Esta remessa já tem retorno registrado. Desfaça o retorno em Retornos antes de excluir." }, { status: 409 });
+      const { data: notasMon } = await db.from("notas_fiscais").select("id, status, dados_nf_json")
+        .or(`dados_nf_json->>remessa_id.eq.${rem.id}${rem.nf_remessa_chave ? `,chave_acesso.eq.${rem.nf_remessa_chave}` : ""}`);
+      const emitidaArato = (rem.emissao ?? "arato") === "arato";
+      const autorizada = (notasMon ?? []).find(n => n.status === "autorizada" && !(n.dados_nf_json as Record<string, unknown> | null)?.origem_externa);
+      if (emitidaArato && autorizada) {
+        return NextResponse.json({ ok: false, error: `A NF-e ${rem.nf_remessa_numero ?? ""} foi emitida pelo Arato e está autorizada na SEFAZ. Cancele a NF-e no Monitor de NF-e (até 24h da autorização) e depois exclua a remessa.` }, { status: 409 });
+      }
+      // Estoque: apaga as duas pernas da transferência (saída do depósito próprio e entrada no do armazém)
+      if (rem.estoque_transferido) {
+        const motivo = `Remessa NF ${String(rem.nf_remessa_numero ?? "").trim()} → ${rem.destinatario_nome ?? ""}`.slice(0, 200);
+        const deps = [rem.deposito_origem_id, rem.deposito_terceiro_id].filter(Boolean) as string[];
+        const { error: eDel } = await db.from("movimentacoes_estoque").delete()
+          .eq("motivo", motivo).in("deposito_id", deps).eq("data", rem.nf_remessa_data).eq("auto", true).like("observacao", "Remessa para armazém%");
+        if (eDel) return NextResponse.json({ ok: false, error: `Estoque da remessa não desfeito: ${eDel.message}` }, { status: 500 });
+      }
+      const externas = (notasMon ?? []).filter(n => (n.dados_nf_json as Record<string, unknown> | null)?.origem_externa || !emitidaArato).map(n => n.id);
+      if (externas.length) await db.from("notas_fiscais").delete().in("id", externas);
+      const { error: eRem } = await db.from("nf_remessas_logisticas").delete().eq("id", rem.id);
+      if (eRem) return NextResponse.json({ ok: false, error: eRem.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
     }
 
     if (body.acao === "retorno_estoque") {

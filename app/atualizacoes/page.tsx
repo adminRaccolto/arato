@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-o",
+    data: "30/10/2026",
+    titulo: "Remessas: botão Excluir de volta",
+    modulos: ["Remessas"],
+    itens: [
+      { tipo: "correcao", texto: "A tela Remessas não tinha como excluir uma remessa (o botão ficava na antiga Nota Própria). Agora remessa ainda sem retorno tem o botão Excluir: a transferência de estoque é desfeita (os itens voltam ao depósito de origem) e, se foi emitida fora do Arato, a NF sai do Monitor de NF-e. NF-e emitida pelo Arato e autorizada precisa ser cancelada antes no Monitor de NF-e. Remessa com retorno: desfaça o retorno antes." },
+    ],
+  },
+  {
     versao: "2026.10.30-n",
     data: "30/10/2026",
     titulo: "Documentos Fiscais: filtros Tipo e Destinatário em lista, ordenação pelas colunas",
