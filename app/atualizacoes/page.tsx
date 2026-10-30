@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-q",
+    data: "30/10/2026",
+    titulo: "Refinanciamento: contrato liquidado passa a Refinanciado",
+    modulos: ["Contratos Financeiros"],
+    itens: [
+      { tipo: "correcao", texto: "Ao liquidar um contrato por refinanciamento, as parcelas eram baixadas, mas o contrato continuava Ativo: o banco não aceitava o status Refinanciado. Corrigido (Seção 399), inclusive para os contratos já liquidados. Se o status não puder ser gravado, o sistema agora avisa e não baixa nada." },
+    ],
+  },
+  {
     versao: "2026.10.30-p",
     data: "30/10/2026",
     titulo: "Documentos Fiscais: busca com seletor de campo e filtro de destinatário digitável",

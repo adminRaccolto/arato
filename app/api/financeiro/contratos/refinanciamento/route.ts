@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
         devolvidos++;
       }
       await sb.from("contratos_refinanciamento").delete().eq("id", v.id);
-      await sb.from("contratos_financeiros").update({ status: "ativo", refinanciado_por_id: null }).eq("id", v.contrato_origem_id);
+      const { error: eAtivo } = await sb.from("contratos_financeiros").update({ status: "ativo", refinanciado_por_id: null }).eq("id", v.contrato_origem_id);
+      if (eAtivo) throw eAtivo;
       return NextResponse.json({ ok: true, devolvidos, mantidos });
     }
 
@@ -99,6 +100,12 @@ export async function POST(req: NextRequest) {
       .select("*, contrato_origem:contratos_financeiros!contrato_origem_id(*)").single();
     if (eIns) return NextResponse.json({ ok: false, error: eIns.code === "42703" || eIns.code === "PGRST204" ? SECAO : eIns.message }, { status: 400 });
 
+    // A origem vira Refinanciado antes de baixar os títulos: se o banco recusar (Seção 399 não rodada), nada é baixado
+    const { error: eStatus } = await sb.from("contratos_financeiros").update({ status: "refinanciado", refinanciado_por_id: novo.id }).eq("id", b.contrato_origem_id!);
+    if (eStatus) {
+      await sb.from("contratos_refinanciamento").delete().eq("id", vinculo.id);
+      return NextResponse.json({ ok: false, error: eStatus.code === "23514" ? "Aplique a Seção 399 do supabase_migrations.sql (status Refinanciado em contratos financeiros)." : eStatus.message }, { status: 400 });
+    }
     for (const [i, it] of plano.itens.entries()) {
       const { error } = await sb.from("lancamentos").update({
         status: "baixado", valor_pago: antes[i].pago_depois, data_baixa: data,
@@ -111,7 +118,6 @@ export async function POST(req: NextRequest) {
       if (error) throw error;
       await sb.from("parcelas_pagamento").update({ status: "pago", data_pagamento: data }).eq("lancamento_id", it.titulo.id);
     }
-    await sb.from("contratos_financeiros").update({ status: "refinanciado", refinanciado_por_id: novo.id }).eq("id", b.contrato_origem_id!);
     return NextResponse.json({ ok: true, vinculo, baixados: plano.itens.length, total: plano.total });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });

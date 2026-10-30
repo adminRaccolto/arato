@@ -18861,3 +18861,21 @@ NOTIFY pgrst, 'reload schema';
 -- guardado no vínculo para o Desvincular devolver tudo como estava.
 ALTER TABLE contratos_refinanciamento ADD COLUMN IF NOT EXISTS titulos_encerrados jsonb NOT NULL DEFAULT '[]'::jsonb;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 399 — Contratos financeiros aceitam o status "Refinanciado"
+-- =============================================================================
+-- O CHECK de contratos_financeiros.status só aceitava ativo/quitado/cancelado: o refinanciamento baixava os títulos da
+-- origem, mas o contrato continuava Ativo. Amplia o CHECK e corrige os contratos já liquidados por refinanciamento.
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN SELECT conname FROM pg_constraint
+            WHERE conrelid = 'contratos_financeiros'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) ILIKE '%status%'
+  LOOP EXECUTE format('ALTER TABLE contratos_financeiros DROP CONSTRAINT %I', r.conname); END LOOP;
+END $$;
+ALTER TABLE contratos_financeiros
+  ADD CONSTRAINT contratos_financeiros_status_check CHECK (status IN ('ativo','quitado','cancelado','em_atraso','refinanciado'));
+
+UPDATE contratos_financeiros cf SET status = 'refinanciado', refinanciado_por_id = r.contrato_novo_id
+  FROM contratos_refinanciamento r
+ WHERE cf.id = r.contrato_origem_id AND cf.status <> 'refinanciado';
+NOTIFY pgrst, 'reload schema';
