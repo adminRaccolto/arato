@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-c",
+    data: "30/10/2026",
+    titulo: "Operações gerenciais que ficavam indisponíveis",
+    modulos: ["Contas a Pagar", "Contas a Receber", "Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "A mesma operação gerencial existe em cópias por fazenda e uma global (ex.: SALÁRIOS - FAZ / ADM); a lista mostrava só uma cópia, escolhida de forma variável, e o título gravado com outra cópia aparecia sem operação. Agora a escolha é fixa e o título acha a operação por qualquer cópia (CP, CR e NF)." },
+    ],
+  },
+  {
     versao: "2026.10.30-b",
     data: "30/10/2026",
     titulo: "CP/CR sempre do cliente inteiro",

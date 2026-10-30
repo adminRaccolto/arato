@@ -6186,15 +6186,26 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
       op,
       score: op.fazenda_id ? 2 : op.conta_id ? 1 : 0,
     }));
-    scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? ""));
+    // Desempate pelo id: a mesma cópia vence sempre (antes a escolha entre as cópias das fazendas variava a cada carga)
+    scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? "") || a.op.id.localeCompare(b.op.id));
+    // Cada OG da lista leva os ids de todas as suas cópias: título gravado com a cópia de outra fazenda (ou a global)
+    // continua achando a OG na lista (achado 30/10/2026: "SALÁRIOS - FAZ/ADM" ficavam "indisponíveis" às vezes)
+    const equivalentes = new Map<string, string[]>();
+    for (const op of comPermissao) { const k = op.classificacao ?? op.id; equivalentes.set(k, [...(equivalentes.get(k) ?? []), op.id]); }
     const seen = new Set<string>();
     return scored.map(s => s.op).filter(op => {
       const key = op.classificacao ?? op.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    });
+    }).map(op => ({ ...op, ids_equivalentes: equivalentes.get(op.classificacao ?? op.id) ?? [op.id] }));
   });
+}
+
+/** OG da lista deduplicada que corresponde ao id gravado no título (qualquer cópia da mesma classificação). */
+export function ogDaLista<T extends { id: string; ids_equivalentes?: string[] }>(ops: T[], id: string | null | undefined): T | undefined {
+  if (!id) return undefined;
+  return ops.find(o => o.id === id) ?? ops.find(o => o.ids_equivalentes?.includes(id));
 }
 
 // ── CFOP Fiscal ──────────────────────────────────────────────────────────────

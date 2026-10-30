@@ -2253,6 +2253,7 @@ export type RateioGlobalCiclo = {
 // ── Operações Gerenciais / Plano de Contas ───────────────────
 // Cadastro de Operações Gerenciais
 export type OperacaoGerencial = {
+  ids_equivalentes?: string[];   // listas deduplicadas: ids de todas as cópias (fazendas/global) desta classificação
   id: string;
   fazenda_id: string | null;
   conta_id?: string | null;     // NULL = padrão Raccotlo; NOT NULL = adição do cliente

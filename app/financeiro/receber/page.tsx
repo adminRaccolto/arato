@@ -53,7 +53,7 @@ import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
-  listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
+  listarOperacoesGerenciaisAtivasDaConta, ogDaLista, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
   excluirLancamento, excluirEmpresaLancamento,
 } from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
@@ -694,6 +694,14 @@ export default function ContasAReceberPage() {
   const [parcelasNovo, setParcelasNovo] = useState<ParcelaGrid[]>([]);
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
+  // Título gravado com a cópia da OG de outra fazenda (ou a global): o campo passa a apontar para a cópia que está na
+  // lista — senão a OG aparecia vazia/"indisponível" conforme a cópia escolhida na carga
+  useEffect(() => {
+    const atual = novoForm.operacao_gerencial_id;
+    if (!atual || opGerenciais.some(o => o.id === atual)) return;
+    const eq = ogDaLista(opGerenciais, atual);
+    if (eq) setNovoForm(p => (p.operacao_gerencial_id === atual ? { ...p, operacao_gerencial_id: eq.id } : p));
+  }, [opGerenciais, novoForm.operacao_gerencial_id]);
   const [contasNovo, setContasNovo] = useState<ContaBancaria[]>([]);
   // Lançamento de empresa: safra/ciclo/centro de custo (mesmos vínculos do produtor)
   const [empSafras, setEmpSafras] = useState<AnoSafra[]>([]);

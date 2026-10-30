@@ -40,7 +40,7 @@ import {
   aplicarRegraClassificacao,
   listarOperacoesGerenciaisAtivasDaConta,
   verificarExclusaoNf,
-  listarMaquinas, criarMaquina,
+  listarMaquinas, criarMaquina, ogDaLista,
   listarBombas,
   listarAnosSafra,
   listarCiclos,
@@ -508,6 +508,13 @@ export default function ModalNf({
     valor_desconto:"",
     valor_icms_deson: "",
   });
+  // NF gravada com a cópia da OG de outra fazenda (ou a global): aponta para a cópia que está na lista
+  useEffect(() => {
+    const atual = cab.operacao_gerencial_id;
+    if (!atual || reclassOps.some(o => o.id === atual)) return;
+    const eq = ogDaLista(reclassOps, atual);
+    if (eq) setCab(p => (p.operacao_gerencial_id === atual ? { ...p, operacao_gerencial_id: eq.id } : p));
+  }, [reclassOps, cab.operacao_gerencial_id]);
   useEffect(() => {
     if (!fazendaId || !nfEdit?.id || nfEdit.status === "processada") { setPrevAbertasNf([]); return; }
     setPrevNfSel("");
