@@ -163,7 +163,10 @@ function labelBem(a: Apolice, maquinas: Maquina[], produtores: Produtor[], funci
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function SegurosPage() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
+  // Add-on ia_apolice: leitura da apólice em PDF
+  const [iaCarregando, setIaCarregando] = useState(false);
+  const [iaMensagem, setIaMensagem] = useState("");
   const [aba, setAba] = useState<"apolices" | "vencimentos" | "sinistros">("apolices");
 
   // Dados
@@ -296,11 +299,83 @@ export default function SegurosPage() {
     setPremioQtd("2"); setPremioFreq("1"); setModalApolice(true);
   }
 
-  // Busca UUID da OG para o ramo da apólice na fazenda correta
+  // ── IA: lê a apólice em PDF e abre o formulário preenchido (o usuário confere e salva) ──
+  async function extrairPdfApolice(file: File) {
+    setIaCarregando(true); setIaMensagem("Lendo a apólice com IA…");
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const res = await fetch("/api/ai/extrair-apolice", { method: "POST", body: fd });
+      const d = await res.json() as {
+        error?: string; numero_apolice?: string | null; seguradora_nome?: string | null; corretora_nome?: string | null; corretor_contato?: string | null;
+        segurado_nome?: string | null; segurado_cpf_cnpj?: string | null; ramo?: string | null; objeto_segurado?: string | null;
+        bem_tipo?: string | null; bem_marca_modelo?: string | null; bem_ano?: string | null; bem_chassi?: string | null; bem_placa?: string | null; bem_serie?: string | null; bem_local?: string | null;
+        importancia_segurada?: number | null; premio_total?: number | null; premio_liquido?: number | null; iof?: number | null; franquia?: string | null;
+        data_inicio_vigencia?: string | null; data_fim_vigencia?: string | null; forma_pagamento?: string | null;
+        parcelas?: { data_vencimento: string; valor: number }[] | null; area_ha?: number | null; cultura?: string | null;
+        coberturas?: { descricao: string; capital: number }[] | null; confianca?: string;
+      };
+      if (!res.ok || d.error) { setIaMensagem(`Erro: ${d.error ?? "falha ao ler o PDF."}`); return; }
+      const so = (v?: string | null) => (v ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+      const txt = (v?: string | null) => (v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const ramo: RamoSeguro = (["rural", "vida", "patrimonial", "automovel", "responsabilidade_civil", "maquinas", "outro"] as const).includes(d.ramo as RamoSeguro) ? d.ramo as RamoSeguro : "outro";
+      // Vincula o bem ao cadastro: máquina/veículo por chassi, placa ou nº de série; fazenda pelo local; pessoa pelo CPF
+      let bem_tipo: BemTipo | undefined; let bem_id: string | undefined;
+      if (d.bem_tipo === "maquina" || d.bem_tipo === "veiculo" || ramo === "maquinas" || ramo === "automovel") {
+        const m = maquinas.find(x => (so(d.bem_chassi) && so(x.chassi) === so(d.bem_chassi)) || (so(d.bem_placa) && so(x.placa) === so(d.bem_placa))
+          || (so(d.bem_serie) && (so(x.chassi) === so(d.bem_serie) || so(x.nome).includes(so(d.bem_serie)))));
+        if (m) { bem_tipo = "maquina"; bem_id = m.id; }
+      }
+      if (!bem_id && (d.bem_tipo === "fazenda" || ramo === "rural") && d.bem_local) {
+        const f = fazendas.find(x => txt(d.bem_local).includes(txt(x.nome)) || txt(x.nome).includes(txt(d.bem_local)));
+        if (f) { bem_tipo = "fazenda"; bem_id = f.id; }
+      }
+      if (!bem_id && (d.bem_tipo === "pessoa" || ramo === "vida") && d.segurado_cpf_cnpj) {
+        const p = produtores.find(x => so(x.cpf_cnpj) && so(x.cpf_cnpj) === so(d.segurado_cpf_cnpj));
+        if (p) { bem_tipo = "produtor"; bem_id = p.id; }
+      }
+      const premio = d.premio_total ?? ((d.premio_liquido ?? 0) + (d.iof ?? 0));
+      const parcelas = (d.parcelas ?? []).filter(p => p.data_vencimento && Number(p.valor) > 0).map(p => ({ data: p.data_vencimento, valor: Number(p.valor) }));
+      const inicio = d.data_inicio_vigencia || hoje();
+      const parcelado = parcelas.length > 1 || (parcelas.length === 1 && parcelas[0].data !== inicio);
+      const bemDesc = [d.bem_marca_modelo, d.bem_ano, d.bem_chassi ? `Chassi ${d.bem_chassi}` : "", d.bem_placa ? `Placa ${d.bem_placa}` : ""].filter(Boolean).join(" — ");
+      const obs = [
+        d.segurado_nome ? `Segurado: ${d.segurado_nome}${d.segurado_cpf_cnpj ? ` (${d.segurado_cpf_cnpj})` : ""}` : "",
+        d.franquia ? `Franquia: ${d.franquia}` : "",
+        ramo !== "vida" && d.coberturas?.length ? `Coberturas: ${d.coberturas.map(c => `${c.descricao} ${fmtBRL(Number(c.capital) || 0)}`).join("; ")}` : "",
+        d.premio_liquido != null && d.iof != null ? `Prêmio líquido ${fmtBRL(d.premio_liquido)} + IOF ${fmtBRL(d.iof)}` : "",
+        "Lida por IA — confira antes de salvar.",
+      ].filter(Boolean).join("\n");
+      setApoliceEdit(null); setQtdParcelasExistentes(0); setParcelasAlteradas(true);
+      setAForm({
+        ...FORM_VAZIO(),
+        numero_apolice: d.numero_apolice ?? "", seguradora: d.seguradora_nome ?? "", ramo,
+        objeto_segurado: d.objeto_segurado || bemDesc, importancia_segurada: Number(d.importancia_segurada) || 0, premio_anual: Number(premio) || 0,
+        forma_pagamento_premio: parcelado ? "parcelado" : "avista", data_inicio_vigencia: inicio, data_fim_vigencia: d.data_fim_vigencia ?? "",
+        status: d.data_fim_vigencia && d.data_fim_vigencia < hoje() ? "vencida" : "vigente",
+        corretora: d.corretora_nome ?? "", corretor_contato: d.corretor_contato ?? "", observacao: obs,
+        bem_tipo, bem_id, area_ha: d.area_ha ?? undefined, cultura: d.cultura ?? "",
+        coberturas_vida: ramo === "vida" ? (d.coberturas ?? []).map(c => ({ tipo: c.descricao, capital: Number(c.capital) || 0 })) : [],
+      });
+      setPremioCondicao(parcelado ? "parcelado" : "avista");
+      setParcelasSeguro(parcelado ? parcelas : []);
+      setPremioQtd(String(Math.max(1, parcelas.length)));
+      setAErr(""); setTabModal("dados"); setModalApolice(true);
+      const faltam = [!d.numero_apolice && "nº da apólice", !d.seguradora_nome && "seguradora", !d.data_fim_vigencia && "fim da vigência", !premio && "prêmio"].filter(Boolean);
+      setIaMensagem(`✅ Apólice lida (confiança ${d.confianca ?? "—"})${bem_id ? " · bem vinculado ao cadastro" : ""}${parcelado ? ` · ${parcelas.length} parcela(s) do prêmio` : ""}${faltam.length ? ` · confira: ${faltam.join(", ")}` : ""}`);
+    } catch (e) {
+      setIaMensagem(`Erro: ${e instanceof Error ? e.message : "falha ao ler o PDF."}`);
+    } finally {
+      setIaCarregando(false);
+    }
+  }
+
+  // OG do ramo é do cliente (conta): a cópia dele, senão a legada da fazenda, senão o modelo global
   async function buscarOgSeguro(fazendaIdArg: string, ramo: RamoSeguro): Promise<string | null> {
     const classificacao = RAMO_META[ramo].og;
-    const { data } = await supabase.from("operacoes_gerenciais").select("id").eq("fazenda_id", fazendaIdArg).eq("classificacao", classificacao).maybeSingle();
-    return data?.id ?? null;
+    const filtro = [contaId ? `conta_id.eq.${contaId}` : "", `fazenda_id.eq.${fazendaIdArg}`, "and(conta_id.is.null,fazenda_id.is.null)"].filter(Boolean).join(",");
+    const { data } = await supabase.from("operacoes_gerenciais").select("id, conta_id, fazenda_id").eq("classificacao", classificacao).or(filtro);
+    const melhor = (data ?? []).sort((x, y) => (y.conta_id ? 2 : y.fazenda_id ? 1 : 0) - (x.conta_id ? 2 : x.fazenda_id ? 1 : 0) || x.id.localeCompare(y.id))[0];
+    return melhor?.id ?? null;
   }
 
   async function salvarApolice() {
@@ -488,6 +563,24 @@ export default function SegurosPage() {
         <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Seguros</h1>
         </div>
+
+        {/* Banner IA Apólice (add-on ia_apolice) */}
+        {contaModulosOverrides["ia_apolice"] === true && (
+          <div data-arato-panel="true" style={{ background: "linear-gradient(135deg,#E8F0FE,#F0F4FF)", border: "0.5px solid #B8CCF8", borderRadius: 12, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 2 }}>🤖 Lançar Apólice com IA</div>
+              <div style={{ fontSize: 12, color: "#0B2D50" }}>Envie a apólice em PDF — o Arato preenche seguradora, vigência, prêmio, parcelas e o bem segurado. Você confere e salva.</div>
+              {iaMensagem && (
+                <div style={{ marginTop: 6, fontSize: 12, color: iaMensagem.startsWith("✅") ? "#1A6B3C" : iaMensagem.startsWith("Erro") ? "#791F1F" : "#7B4A00", fontWeight: iaMensagem.startsWith("✅") ? 600 : 400 }}>{iaMensagem}</div>
+              )}
+            </div>
+            <label data-arato-label="true" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: iaCarregando ? "#888" : "#1A4870", color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: iaCarregando ? "not-allowed" : "pointer" }}>
+              {iaCarregando ? "Lendo…" : "📄 Enviar apólice (PDF)"}
+              <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaCarregando}
+                onChange={e => { const f = e.target.files?.[0]; if (f) extrairPdfApolice(f); e.target.value = ""; }} />
+            </label>
+          </div>
+        )}
 
         {/* KPIs */}
         <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>

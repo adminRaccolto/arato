@@ -53,6 +53,7 @@ const MODULOS_LABEL: Record<string, string> = {
   ia_contrato_venda:     "🤖 IA — Extração de Contrato de Venda (Add-on)",
   ia_pedido_compra:      "🤖 IA — Lançamento de Pedido de Compra (Add-on)",
   ia_consorcio:          "🤖 IA — Importar Extrato de Consórcio (Add-on)",
+  ia_apolice:            "🤖 IA — Lançar Apólice de Seguro (Add-on)",
   protecao_margem:       "📊 Proteção de Margem & Hedge (Add-on)",
 };
 
@@ -79,7 +80,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Add-ons Opcionais",
-    modulos: ["empresas", "algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "protecao_margem"],
+    modulos: ["empresas", "algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "ia_apolice", "protecao_margem"],
   },
 ];
 

@@ -75,9 +75,13 @@ async function gerarParcelasEDespesas(
   const ramoLabel = ramoLabelIn ?? RAMO_LABEL[ramo] ?? ramo;
 
   const og = RAMO_OG[ramo] ?? "2.03.03.001";
-  const { data: ogRow } = await sb.from("operacoes_gerenciais")
-    .select("id").eq("fazenda_id", fazendaId).eq("classificacao", og).maybeSingle();
-  const ogId = ogRow?.id ?? null;
+  // OG é do cliente (conta): a cópia dele, senão o modelo global — antes buscava pela fazenda e, com as OGs
+  // unificadas por cliente (30/10/2026), o prêmio ficava sem operação gerencial
+  const { data: fzOg } = await sb.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const { data: ogRows } = await sb.from("operacoes_gerenciais").select("id, conta_id, fazenda_id").eq("classificacao", og)
+    .or(fzOg?.conta_id ? `conta_id.eq.${fzOg.conta_id},fazenda_id.eq.${fazendaId},and(conta_id.is.null,fazenda_id.is.null)` : `fazenda_id.eq.${fazendaId},and(conta_id.is.null,fazenda_id.is.null)`);
+  const ogEscolhida = (ogRows ?? []).sort((x, y) => (y.conta_id ? 2 : y.fazenda_id ? 1 : 0) - (x.conta_id ? 2 : x.fazenda_id ? 1 : 0) || x.id.localeCompare(y.id))[0];
+  const ogId = ogEscolhida?.id ?? null;
 
   const parcelas = parcelasExplicitas && parcelasExplicitas.length > 0
     ? parcelasExplicitas

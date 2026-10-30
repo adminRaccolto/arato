@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-v",
+    data: "30/10/2026",
+    titulo: "IA lê apólices de seguro",
+    modulos: ["Seguros"],
+    itens: [
+      { tipo: "novidade", texto: "Novo add-on \"IA — Lançar Apólice de Seguro\": em Financeiro → Seguros, envie a apólice em PDF e o Arato preenche nº da apólice, seguradora, corretora, ramo, bem segurado, importância segurada, prêmio, vigência e as parcelas do prêmio. A máquina ou veículo é ligada ao cadastro pelo chassi, placa ou nº de série; a fazenda pelo local do risco. Franquia e coberturas vão para a observação. O formulário abre para você conferir e salvar — as parcelas viram CP como no lançamento manual." },
+      { tipo: "correcao", texto: "O CP do prêmio de seguro voltou a sair com a operação gerencial do ramo (com as operações gerenciais agora por cliente, a busca pela fazenda não achava)." },
+    ],
+  },
+  {
     versao: "2026.10.30-u",
     data: "30/10/2026",
     titulo: "Contratos financeiros: juros pagos entre as amortizações",
