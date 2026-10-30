@@ -12,7 +12,7 @@ const RELEASES = [
     titulo: "Contas a Pagar: atalho Previsões e marca visível",
     modulos: ["Contas a Pagar"],
     itens: [
-      { tipo: "melhoria", texto: "Novo atalho \"Previsões\" no Contas a Pagar: mostra só os títulos de previsão (Previsão de Gastos e folha em rascunho). A marca PREVISÃO aparece também na coluna Fornecedor quando a coluna Descrição está oculta." },
+      { tipo: "melhoria", texto: "Novo atalho \"Previsões\" no Contas a Pagar: mostra só os títulos de previsão (Previsão de Gastos e folha em rascunho). A marca PREV fica na coluna Origem, ao lado de PF/PJ (coluna sempre visível)." },
     ],
   },
   {

@@ -2026,6 +2026,8 @@ export default function ContasAPagarPage() {
                       <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
                         {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                       </span>
+                      {/* Previsão: marcada na Origem, coluna que fica sempre visível */}
+                      {ehPrevisao(l) && <span title="Previsão — ainda não é dívida real: efetive (Previsão de Gastos) ou feche a folha para pagar" style={{ fontSize: 9, fontWeight: 700, background: "#2A2A2A", color: "#fff", padding: "2px 6px", borderRadius: 6, marginLeft: 4 }}>PREV</span>}
                     </td>
                   ),
                   produtor: (
@@ -2036,14 +2038,11 @@ export default function ContasAPagarPage() {
                   ),
                   pessoa: (
                     <td style={{ padding: "7px 10px" }}>
-                      {/* Marca de previsão também aqui quando a coluna Descrição está oculta (achado 30/10/2026) */}
-                      {ehPrevisao(l) && visCols.descricao === false && <span title="Ainda não é dívida real: efetive (Previsão de Gastos) ou feche a folha para pagar" style={{ fontSize: 9, fontWeight: 700, background: "#2A2A2A", color: "#fff", padding: "1px 6px", borderRadius: 6, marginRight: 6 }}>PREVISÃO</span>}
                       {l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}
                     </td>
                   ),
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>
-                      {ehPrevisao(l) && <span title="Ainda não é dívida real: efetive (Previsão de Gastos) ou feche a folha para pagar" style={{ fontSize: 9, fontWeight: 700, background: "#2A2A2A", color: "#fff", padding: "1px 6px", borderRadius: 6, marginRight: 6 }}>PREVISÃO</span>}
                       {l.descricao ?? "—"}
                     </td>
                   ),
