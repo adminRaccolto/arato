@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-a",
+    data: "30/10/2026",
+    titulo: "CP/CR: títulos que apareciam e sumiam",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "correcao", texto: "Ao abrir o CP/CR, a primeira carga (só a fazenda ativa) podia terminar depois da carga do cliente inteiro e sobrescrevê-la — títulos das outras fazendas sumiam até recarregar. Agora só a carga mais nova vale." },
+      { tipo: "correcao", texto: "Contas a Receber trazia no máximo 1.000 títulos, sem ordem fixa: acima disso, quais apareciam variava a cada carga. Agora traz todos." },
+    ],
+  },
+  {
     versao: "2026.10.29-za",
     data: "29/10/2026",
     titulo: "Remessas: volume remetido, já voltou e falta voltar",

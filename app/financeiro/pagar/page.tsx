@@ -45,7 +45,7 @@ import GridPagination, { useGridPagination } from "../../../components/GridPagin
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useCallback, Fragment, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
@@ -335,9 +335,13 @@ export default function ContasAPagarPage() {
   // descrição e, como antes, ignora o período de vencimento.
   const fBusca = filtrosCol.pessoa ?? "";
 
+  // Só a carga mais nova vale: ao abrir, a 1ª carga (só a fazenda ativa, antes de a conta do usuário chegar) podia
+  // terminar DEPOIS da carga da conta inteira e sobrescrevê-la — títulos de outras fazendas "apareciam e sumiam".
+  const cargaSeq = useRef(0);
   const carregar = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length && !contaId) return;
+    const seq = ++cargaSeq.current;
     setCarregando(true);
     setErro("");
     try {
@@ -354,6 +358,7 @@ export default function ContasAPagarPage() {
         if (!data || data.length < 1000) break;
       }
       const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros), carregarCotacoesUSD(supabase, registros)]);
+      if (seq !== cargaSeq.current) return;
       setCotacoes(cots);
       setResultado(comNumeros);
     } catch (e: unknown) {

@@ -295,9 +295,11 @@ export default function ContasAReceberPage() {
   // filtros de texto ficam nos cabeçalhos). Continua achando pelo nome e pela descrição e, como antes, ignora o período.
   const fBusca = filtrosCol.pessoa ?? "";
 
+  const cargaSeq = useRef(0);
   const carregar = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length && !contaId) return;
+    const seq = ++cargaSeq.current;
     setCarregando(true);
     setErro("");
     try {
@@ -322,12 +324,21 @@ export default function ContasAReceberPage() {
         const t = fBusca.trim();
         q = q.or(`pessoa_nome.ilike.%${t}%,and(pessoa_nome.is.null,descricao.ilike.%${t}%)`);
       }
-      q = q.order("data_lancamento", { ascending: false }).limit(1000);
-
-      const { data, error } = await q;
-      if (error) throw error;
-      const regs = (data ?? []) as RelLancamento[];
-      setCotacoes(await carregarCotacoesUSD(supabase, regs));
+      // Todas as páginas, com ordem fixa (data + id): antes era limit(1000) por data de lançamento — acima de 1.000
+      // títulos, quais entravam variava a cada carga (título "aparecia e sumia")
+      q = q.order("data_lancamento", { ascending: false }).order("id");
+      const regs: RelLancamento[] = [];
+      for (let inicio = 0; ; inicio += 1000) {
+        const { data, error } = await q.range(inicio, inicio + 999);
+        if (error) throw error;
+        regs.push(...((data ?? []) as RelLancamento[]));
+        if (!data || data.length < 1000) break;
+      }
+      // Carga mais nova já começou (ex.: chegou a conta do usuário depois da 1ª carga só da fazenda): esta é descartada
+      if (seq !== cargaSeq.current) return;
+      const cots = await carregarCotacoesUSD(supabase, regs);
+      if (seq !== cargaSeq.current) return;
+      setCotacoes(cots);
       setResultado(regs);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
