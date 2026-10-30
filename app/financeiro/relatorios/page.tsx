@@ -2180,7 +2180,8 @@ function FinanceiroRelatoriosInner() {
                     case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? empresas.find(e => e.id === (l as unknown as { empresa_id?: string | null }).empresa_id)?.nome ?? "";
                     case "observacao":     return l.observacao ?? "";
                     case "categoria":      return l.categoria ?? "";
-                    case "saldo":          return sinal * Math.max(0, brl - (l.valor_pago ?? 0));
+                    // baixado não tem saldo (baixa com desconto por antecipação paga menos e quita do mesmo jeito)
+                    case "saldo":          return l.status === "baixado" ? 0 : sinal * Math.max(0, brl - (l.valor_pago ?? 0));
                     case "dias":           return l.data_vencimento ? Math.round((new Date(`${l.data_vencimento}T12:00:00`).getTime() - new Date(`${hoje}T12:00:00`).getTime()) / 86400000) : "";
                     case "venc_orig":      return l.data_prorrogacao ? new Date(l.data_prorrogacao+"T12:00").toLocaleDateString("pt-BR") : "";
                     case "conta_bancaria": return l.conta_bancaria ? (contas.find(c => c.id === l.conta_bancaria)?.nome ?? "") : "";
@@ -2195,7 +2196,7 @@ function FinanceiroRelatoriosInner() {
                 const montarLinhas = (grupos: string[]): { itens: ItemRel[]; geral: TotaisRel } => {
                   const somar = (itens: Lancamento[]): TotaisRel => itens.reduce((a, l) => {
                     const brl = paraBRLRel(l, cotacaoUSD); const sg = l.tipo === "pagar" ? -1 : 1; const pago = l.valor_pago ?? 0;
-                    a.valor += sg * brl; a.pago += sg * pago; a.saldo += sg * Math.max(0, brl - pago); a.n++; return a;
+                    a.valor += sg * brl; a.pago += sg * pago; a.saldo += l.status === "baixado" ? 0 : sg * Math.max(0, brl - pago); a.n++; return a;
                   }, { valor: 0, pago: 0, saldo: 0, n: 0 });
                   const colDoGrupo: Record<string, string> = { produtor: "produtor", og: "op_gerencial", categoria: "categoria", tipo: "tipo", status: "status", fornecedor: "fornecedor", conta: "conta_bancaria" };
                   const rotuloDe = (key: string, l: Lancamento): string => key === "mes"

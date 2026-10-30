@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-h",
+    data: "30/10/2026",
+    titulo: "Folha de PJ mostra a empresa; baixa com desconto não deixa saldo",
+    modulos: ["Folha de Pagamento", "Contas a Pagar", "Contas a Receber", "Relatórios"],
+    itens: [
+      { tipo: "correcao", texto: "Folha de Pagamento: folhas de empresa (PJ) mostravam só \"Empresa\" no lugar do nome e o campo Empregador vazio. Agora aparece o nome da empresa (na lista, no cabeçalho, nas linhas e no XLSX), com o produtor vinculado logo abaixo." },
+      { tipo: "correcao", texto: "Contas a Pagar e a Receber: título baixado com desconto (por exemplo, antecipação) mostrava a diferença na coluna Saldo e somava no total em aberto. Título baixado não tem saldo: a coluna mostra zero, também no relatório de CP/CR." },
+    ],
+  },
+  {
     versao: "2026.10.30-g",
     data: "30/10/2026",
     titulo: "Operação gerencial só para NF, sem Contas a Pagar",

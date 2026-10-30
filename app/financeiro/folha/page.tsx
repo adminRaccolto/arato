@@ -322,10 +322,11 @@ export default function FolhaPagamentoPage() {
           .order("nome"),
         apiPost({ operacao: "listar_folhas", fazenda_ids: fids }),
         apiPost({ operacao: "listar_adi_prem", fazenda_ids: fids }),
-        supabase.from("empresas")
-          .select("id,nome_fantasia,razao_social")
-          .in("fazenda_id", fids)
-          .order("nome_fantasia"),
+        // Empresa é do cliente (conta). "nome_fantasia" não existe na tabela: pedir essa coluna fazia a consulta
+        // falhar e toda folha de PJ mostrava só "Empresa" no lugar do nome.
+        contaId
+          ? supabase.from("empresas").select("id,nome,razao_social").or(fids.length ? `conta_id.eq.${contaId},fazenda_id.in.(${fids.join(",")})` : `conta_id.eq.${contaId}`).order("nome")
+          : Promise.resolve({ data: [] }),
         contaId
           ? supabase.from("produtores").select("id,nome").eq("conta_id", contaId).order("nome")
           : Promise.resolve({ data: [] }),
@@ -337,7 +338,7 @@ export default function FolhaPagamentoPage() {
 
       // Mapa empresa_id → nome
       const eMap: Record<string, string> = {};
-      (emps ?? []).forEach((e: any) => { eMap[e.id] = e.nome_fantasia || e.razao_social || e.id; });
+      (emps ?? []).forEach((e: any) => { eMap[e.id] = e.nome || e.razao_social || e.id; });
       setEmpresasMap(eMap);
       // Mapa produtor_id → nome
       const pMap: Record<string, string> = {};

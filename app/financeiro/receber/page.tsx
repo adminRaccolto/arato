@@ -287,8 +287,10 @@ export default function ContasAReceberPage() {
   const cotDe = (l: { id: string }) => cotacaoEfetiva(cotacoes.get(l.id), ptax);
   const emReais = (l: { id: string; moeda: string | null }, v: number | null | undefined) => valorEmReais(v, l.moeda, cotDe(l));
   // valor_pago é sempre em reais (também nos títulos em dólar, como na tela anterior); o saldo é calculado em reais.
-  const saldoBRL = (l: { id: string; moeda: string | null; valor: number | null; valor_pago: number | null }) =>
-    Math.max(0, (ehUSD(l.moeda) ? (emReais(l, l.valor) ?? l.valor ?? 0) : (l.valor ?? 0)) - (l.valor_pago ?? 0));
+  // Título baixado não tem saldo: a baixa com desconto (antecipação) paga menos que o valor e quita do mesmo jeito
+  const saldoBRL = (l: { id: string; moeda: string | null; valor: number | null; valor_pago: number | null; status_normalizado?: string | null }) =>
+    l.status_normalizado === "baixado" ? 0
+      : Math.max(0, (ehUSD(l.moeda) ? (emReais(l, l.valor) ?? l.valor ?? 0) : (l.valor ?? 0)) - (l.valor_pago ?? 0));
   // Filtros por coluna (linha sob o cabeçalho do grid)
   const [filtrosCol, setFiltrosCol] = useState<Record<string, string>>({});
   // Buscar por cliente: é o filtro do cabeçalho da coluna Cliente (28/10/2026 — o campo Buscar da barra saiu; todos os
