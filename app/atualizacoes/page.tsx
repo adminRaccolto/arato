@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-j",
+    data: "30/10/2026",
+    titulo: "Contratos Financeiros mais fáceis de achar",
+    modulos: ["Contratos Financeiros"],
+    itens: [
+      { tipo: "melhoria", texto: "A lista de contratos financeiros agora começa com três colunas separadas: Instituição Financeira (com o produtor abaixo), Nº da Cédula e Descrição. O seletor de contrato de origem no refinanciamento mostra \"Instituição | Nº da cédula | Descrição\", em ordem de instituição, e aceita busca digitando qualquer parte." },
+    ],
+  },
+  {
     versao: "2026.10.30-i",
     data: "30/10/2026",
     titulo: "Contratos Financeiros: sem seletor de fazenda e refinanciamento automático",

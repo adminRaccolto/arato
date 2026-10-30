@@ -5,6 +5,7 @@ import { registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../l
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
+import SelectBusca from "../../../components/SelectBusca";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -1471,8 +1472,8 @@ export default function ContratosFinanceiros() {
               <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Descrição / Credor", "Nº Operação", "Tipo", "Moeda", "Cálculo", "Taxa a.a.", "Prazo", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "10px 14px", textAlign: i < 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                    {["Instituição Financeira", "Nº da Cédula", "Descrição", "Tipo", "Moeda", "Cálculo", "Taxa a.a.", "Prazo", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i < 3 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1484,12 +1485,15 @@ export default function ContratosFinanceiros() {
                       <tr key={c.id} style={{ borderBottom: idx < contratosFiltrados.length - 1 ? "0.5px solid var(--bg-tag)" : "none", cursor: "pointer" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "#FAFBFD")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                        <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
-                          {c.produtor_id && (() => { const p = produtores.find(x => x.id === c.produtor_id); return p ? <div style={{ fontSize: 11, color: "#111111", fontWeight: 500, marginTop: 2 }}>{p.nome}</div> : null; })()}
+                        <td style={{ padding: "10px 14px", minWidth: 160, maxWidth: 220 }}>
+                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.credor || "—"}</div>
+                          {c.produtor_id && (() => { const p = produtores.find(x => x.id === c.produtor_id); return p ? <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{p.nome}</div> : null; })()}
                         </td>
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#111111", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, fontWeight: 600, color: "#111111", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
+                        <td style={{ padding: "10px 14px", maxWidth: 340 }}>
+                          <div style={{ color: "var(--text-1)" }}>{c.descricao}</div>
+                          {c.linha_credito && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.linha_credito}</div>}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           {c.moeda === "USD"
@@ -2556,8 +2560,11 @@ export default function ContratosFinanceiros() {
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 10, alignItems: "end" }}>
                         <div>
                           <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Contrato de Origem</label>
-                          <SelectField style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} onChange={e => {
-                            const id = e.target.value;
+                          <SelectBusca style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} placeholder="— Selecionar contrato a consolidar —"
+                            options={[...disponiveis]
+                              .sort((a, b) => (a.credor ?? "").localeCompare(b.credor ?? "", "pt-BR") || (a.numero_documento ?? "").localeCompare(b.numero_documento ?? "", "pt-BR"))
+                              .map(c => ({ value: c.id, label: [c.credor || "—", c.numero_documento || "s/ nº", c.descricao].join("  |  ") }))}
+                            onChange={id => {
                             setFRefin({ contrato_origem_id: id, saldo_incorporado: "" }); setRefinPrevia(null);
                             if (!id) return;
                             // Saldo devedor da origem já calculado (amortizações a pagar, restante das parciais e juros vencidos)
@@ -2566,12 +2573,7 @@ export default function ContratosFinanceiros() {
                               setFRefin(p => p.contrato_origem_id === id ? { ...p, saldo_incorporado: String(r.saldo ?? 0) } : p);
                               setRefinPrevia({ cancelar: r.cancelar ?? 0, encerrar_parcial: r.encerrar_parcial ?? 0, em_bordero: r.em_bordero ?? 0 });
                             }).catch(() => {});
-                          }}>
-                            <option value="">— Selecionar contrato a consolidar —</option>
-                            {disponiveis.map(c => (
-                              <option key={c.id} value={c.id}>{c.descricao}{c.numero_documento ? ` — ${c.numero_documento}` : ""} · {c.credor}</option>
-                            ))}
-                          </SelectField>
+                          }} />
                         </div>
                         <div>
                           <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Saldo Incorporado (R$)</label>
