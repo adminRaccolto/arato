@@ -6082,14 +6082,20 @@ export async function listarOperacoesGerenciais(fazenda_id: string | string[]): 
       if (!page || page.length < PAGE) break;
       from += PAGE;
     }
-    // Deduplicar por classificação: global tem prioridade, depois tenant, depois legado
+    // Deduplicar por classificação: a OG do CLIENTE tem prioridade, depois cópia legada de fazenda, depois o modelo
+    // global — editar a OG nas telas de configuração não pode alterar o modelo do sistema (vale para todos os clientes).
+    // Cada OG leva os ids de todas as cópias (documento gravado com outra cópia continua achando a OG).
+    const score = (op: OperacaoGerencial) => op.conta_id ? 2 : op.fazenda_id ? 1 : 0;
+    const ordenadas = [...data].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "") || score(b) - score(a) || a.id.localeCompare(b.id));
+    const equivalentes = new Map<string, string[]>();
+    for (const op of data) { const k = op.classificacao ?? op.id; equivalentes.set(k, [...(equivalentes.get(k) ?? []), op.id]); }
     const seen = new Set<string>();
-    return data.filter(op => {
+    return ordenadas.filter(op => {
       const key = op.classificacao ?? op.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    });
+    }).map(op => ({ ...op, ids_equivalentes: equivalentes.get(op.classificacao ?? op.id) ?? [op.id] }));
   });
 }
 
@@ -6184,7 +6190,8 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
     // (resultado de seed de templates). Prefere mais específica: fazenda > conta > global.
     const scored = comPermissao.map(op => ({
       op,
-      score: op.fazenda_id ? 2 : op.conta_id ? 1 : 0,
+      // OG do cliente > cópia legada de fazenda > modelo global
+      score: op.conta_id ? 2 : op.fazenda_id ? 1 : 0,
     }));
     // Desempate pelo id: a mesma cópia vence sempre (antes a escolha entre as cópias das fazendas variava a cada carga)
     scored.sort((a, b) => b.score - a.score || (a.op.classificacao ?? "").localeCompare(b.op.classificacao ?? "") || a.op.id.localeCompare(b.op.id));
@@ -6265,7 +6272,13 @@ export async function criarOperacaoGerencialCustom(
 }
 
 export async function criarOperacaoGerencial(o: Omit<OperacaoGerencial, "id" | "created_at">): Promise<OperacaoGerencial> {
-  const { data, error } = await supabase.from("operacoes_gerenciais").insert(o).select().single();
+  // OG é do cliente: veio com a fazenda (telas antigas) → grava no cliente da fazenda, sem fazenda
+  const reg = { ...o } as Record<string, unknown>;
+  if (reg.fazenda_id && !reg.conta_id) {
+    const conta = await resolverContaIdDaFazenda(reg.fazenda_id as string);
+    if (conta) { reg.conta_id = conta; reg.fazenda_id = null; }
+  }
+  const { data, error } = await supabase.from("operacoes_gerenciais").insert(reg).select().single();
   if (error) throw error;
   invalidateCache("operacoesGerenciais");
   return data;

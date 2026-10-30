@@ -4367,7 +4367,7 @@ function CadastrosInner() {
                     style={{ padding: "8px 16px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5A10", fontWeight: 600, cursor: seedingOpGer ? "not-allowed" : "pointer", fontSize: 13, opacity: seedingOpGer ? 0.6 : 1 }}
                     disabled={seedingOpGer}
                     onClick={async () => {
-                      if (!confirm("Isso vai substituir TODAS as operações existentes pelo plano padrão. Continuar?")) return;
+                      if (!confirm("Completar as operações gerenciais do cliente com o plano padrão? Só entram as classificações que ainda não existem — nada é apagado nem alterado.")) return;
                       setSeedingOpGer(true);
                       try {
                         const { inseridos } = await seedOperacoesGerenciais((fazIdEff)!);

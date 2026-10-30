@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-d",
+    data: "30/10/2026",
+    titulo: "Operações gerenciais passam a ser do cliente",
+    modulos: ["Configurações", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "\"Carregar plano padrão\" não apaga mais as operações nem cria uma cópia por fazenda: completa as operações do cliente com as classificações que faltam. Operação nova é sempre do cliente." },
+      { tipo: "correcao", texto: "Nas listas, a operação do cliente tem prioridade sobre o modelo do sistema (editar uma operação não altera o modelo de todos os clientes)." },
+    ],
+  },
+  {
     versao: "2026.10.30-c",
     data: "30/10/2026",
     titulo: "Operações gerenciais que ficavam indisponíveis",

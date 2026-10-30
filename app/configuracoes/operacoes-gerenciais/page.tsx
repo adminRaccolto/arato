@@ -291,7 +291,7 @@ function OperacoesGerenciaisContent() {
 
   async function importarPadrao() {
     if (!fazendaId) return;
-    if (!confirm("Isso vai SUBSTITUIR todas as operações pelo plano padrão do sistema. Continuar?")) return;
+    if (!confirm("Completar as operações gerenciais do cliente com o plano padrão? Só entram as classificações que ainda não existem — nada é apagado nem alterado.")) return;
     setSeeding(true);
     try {
       await seedOperacoesGerenciais(fazendaId);

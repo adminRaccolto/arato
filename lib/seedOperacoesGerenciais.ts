@@ -1941,19 +1941,25 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   }),
 ];
 
-// ── Seeder para fazenda específica ───────────────────────────────────────────
+// ── Plano padrão do CLIENTE ──────────────────────────────────────────────────
+// Operação gerencial é do cliente (conta_id), não da fazenda. Até 30/10/2026 este seeder APAGAVA as OGs da fazenda e
+// recriava a lista inteira com ids novos, uma vez por fazenda — 25 cópias de cada OG num mesmo cliente, documentos
+// apontando para cópias diferentes, OG "indisponível" nas telas. Agora completa as OGs do cliente da fazenda com as
+// classificações do padrão que ainda faltam; nunca apaga e nunca troca id.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function seedOperacoesGerenciais(fazenda_id: string, client?: any): Promise<{ inseridos: number }> {
   const db = client ?? supabase;
 
-  const { error: delErr } = await db
-    .from("operacoes_gerenciais")
-    .delete()
-    .eq("fazenda_id", fazenda_id);
-  if (delErr) throw new Error(`Erro ao limpar: ${delErr.message}${delErr.details ? " — " + delErr.details : ""}`);
+  const { data: faz, error: fErr } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  if (fErr) throw new Error(`Erro ao ler a fazenda: ${fErr.message}`);
+  const conta_id = (faz?.conta_id as string | null | undefined) ?? null;
+  if (!conta_id) throw new Error("A fazenda não está ligada a um cliente — vincule a fazenda ao cliente antes de carregar o plano padrão.");
+  const { data: existentes, error: eErr } = await db.from("operacoes_gerenciais").select("classificacao").eq("conta_id", conta_id);
+  if (eErr) throw new Error(`Erro ao ler as operações do cliente: ${eErr.message}`);
+  const ja = new Set((existentes ?? []).map((o: { classificacao: string | null }) => o.classificacao));
 
-  const rows = OPERACOES_GERENCIAIS_PADRAO.map((op: SeedOp) => ({ ...op, fazenda_id }));
+  const rows = OPERACOES_GERENCIAIS_PADRAO.filter((op: SeedOp) => !ja.has(op.classificacao)).map((op: SeedOp) => ({ ...op, conta_id, fazenda_id: null }));
 
   for (let i = 0; i < rows.length; i += 30) {
     const lote = rows.slice(i, i + 30);
