@@ -161,8 +161,10 @@ const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid #DD
 const lblMini: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.03em" };
 
 // ── Dropdown de filtro multi-seleção (checkbox) — Status, Tipo de Entrada, Origem ──
-function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto, onAbrirFechar }: {
+function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto, onAbrirFechar, comBusca }: {
   label: string;
+  /** Campo de texto no topo da lista para achar a opção digitando parte do nome */
+  comBusca?: boolean;
   opcoes: { v: string; label: string }[];
   selecionado: Set<string>;
   onToggle: (v: string) => void;
@@ -170,6 +172,9 @@ function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto
   aberto: boolean;
   onAbrirFechar: () => void;
 }) {
+  const [q, setQ] = useState("");
+  const norm = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const visiveis = comBusca && q.trim() ? opcoes.filter(o => norm(o.label).includes(norm(q.trim()))) : opcoes;
   return (
     <div style={{ position: "relative" }}>
       <label data-arato-label="true" style={lblMini}>{label}</label>
@@ -180,8 +185,13 @@ function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto
       {aberto && (
         <>
           <div onClick={onAbrirFechar} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-          <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.14)", zIndex: 41, minWidth: 210, padding: 6, maxHeight: 260, overflowY: "auto" }}>
-            {opcoes.map(o => (
+          <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.14)", zIndex: 41, minWidth: comBusca ? 280 : 210, padding: 6, maxHeight: 320, overflowY: "auto" }}>
+            {comBusca && (
+              <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Digite para filtrar…"
+                style={{ ...inp, width: "100%", boxSizing: "border-box", marginBottom: 4, fontSize: 12 }} />
+            )}
+            {comBusca && visiveis.length === 0 && <div style={{ padding: "6px 8px", fontSize: 12, color: "#888" }}>Nenhum encontrado</div>}
+            {visiveis.map(o => (
               <label data-arato-label="true" key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6 }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#F4F6FA")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
@@ -224,7 +234,8 @@ export default function DocumentosFiscaisPage() {
   const [fTipoEntrada, setFTipoEntrada] = useState<Set<string>>(new Set());
   const [fOrigem,      setFOrigem]      = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
-  const [fNumero,  setFNumero]  = useState("");
+  // Em que campo a busca procura (um campo só, com seletor)
+  const [fBuscaEm, setFBuscaEm] = useState<"tudo" | "numero" | "emitente" | "destinatario" | "chave">("tudo");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState("");
   const [dropdownAberto, setDropdownAberto] = useState<"tipo" | "status" | "tipoEntrada" | "origem" | "destinatario" | null>(null);
@@ -255,10 +266,6 @@ export default function DocumentosFiscaisPage() {
         if (fOrigem.size > 0) q = q.in("origem_doc", Array.from(fOrigem));
         if (fDataDe) q = q.gte("data_doc", fDataDe);
         if (fDataAte) q = q.lte("data_doc", fDataAte);
-        if (fBusca.trim()) {
-          const t = fBusca.trim();
-          q = q.or(`numero.ilike.%${t}%,participante_nome.ilike.%${t}%,chave.ilike.%${t}%`);
-        }
         q = q.order("data_doc", { ascending: false }).order("id", { ascending: true }).range(from, from + PAGE - 1);
         const { data, error } = await q;
         if (error) throw error;
@@ -479,15 +486,28 @@ export default function DocumentosFiscaisPage() {
     executarManifestacao(d, nf, tipo);
   }
 
+  // Busca na tela (sem precisar atualizar), no campo escolhido. Número: só os dígitos, sem zeros à esquerda
+  // ("001215" acha "1215"); nomes sem acento/maiúscula; CNPJ/chave pelos dígitos.
+  const semZeros = (v: unknown) => String(v ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  const normTxt = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const casaBusca = (d: RelDocFiscal) => {
+    const t = fBusca.trim(), tn = normTxt(t), td = t.replace(/\D/g, "");
+    const num = () => !!semZeros(t) && semZeros(d.numero).includes(semZeros(t));
+    const nome = (n: unknown, doc: unknown) => normTxt(n).includes(tn) || (td.length >= 3 && String(doc ?? "").replace(/\D/g, "").includes(td));
+    const chave = () => td.length >= 3 && String(d.chave ?? "").includes(td);
+    if (fBuscaEm === "numero") return num();
+    if (fBuscaEm === "emitente") return nome(d.participante_nome, d.participante_cnpj);
+    if (fBuscaEm === "destinatario") return nome(d.destinatario_nome, d.destinatario_cnpj);
+    if (fBuscaEm === "chave") return chave();
+    return num() || nome(d.participante_nome, d.participante_cnpj) || nome(d.destinatario_nome, d.destinatario_cnpj) || chave();
+  };
   const linhas = (resultado ?? []).filter(d => {
     if (fTipo.size > 0 && !fTipo.has(d.tipo_doc)) return false;
     if (fStatus.size > 0 && !fStatus.has(d.status_normalizado ?? "")) return false;
     if (fTipoEntrada.size > 0 && !fTipoEntrada.has(d.tipo_entrada ?? "")) return false;
     if (fOrigem.size > 0 && !fOrigem.has(d.origem_doc ?? "")) return false;
     if (fDestinatario.size > 0 && !fDestinatario.has(d.destinatario_nome ?? "")) return false;
-    // Nº do documento (NF, NFS-e ou CT-e): só os dígitos, sem zeros à esquerda ("001215" acha "1215")
-    const numBusca = fNumero.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-    if (numBusca && !String(d.numero ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "").includes(numBusca)) return false;
+    if (fBusca.trim() && !casaBusca(d)) return false;
     return true;
   });
 
@@ -534,14 +554,21 @@ export default function DocumentosFiscaisPage() {
 
         {/* ── Barra de filtros sempre visível ── */}
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 180px", minWidth: 160 }}>
-            <label data-arato-label="true" style={lblMini}>Buscar (número, participante, chave)</label>
-            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-          </div>
-          <div style={{ width: 130 }}>
-            <label data-arato-label="true" style={lblMini}>Nº documento</label>
-            <input value={fNumero} onChange={e => setFNumero(e.target.value)} inputMode="numeric" placeholder="NF, NFS-e, CT-e"
-              title="Filtra pelo número da NF, NFS-e ou CT-e (sem precisar atualizar)" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+          <div style={{ flex: "1 1 260px", minWidth: 240 }}>
+            <label data-arato-label="true" style={lblMini}>Buscar</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <select value={fBuscaEm} onChange={e => setFBuscaEm(e.target.value as typeof fBuscaEm)} title="Em que campo buscar"
+                style={{ ...inp, cursor: "pointer", flex: "0 0 auto" }}>
+                <option value="tudo">Tudo</option>
+                <option value="numero">Nº da NF</option>
+                <option value="emitente">Emitente</option>
+                <option value="destinatario">Destinatário</option>
+                <option value="chave">Chave</option>
+              </select>
+              <input value={fBusca} onChange={e => setFBusca(e.target.value)} inputMode={fBuscaEm === "numero" || fBuscaEm === "chave" ? "numeric" : undefined}
+                placeholder={{ tudo: "número, nome, CNPJ ou chave", numero: "nº da NF, NFS-e ou CT-e", emitente: "nome ou CNPJ do emitente", destinatario: "nome ou CNPJ do destinatário", chave: "chave de acesso" }[fBuscaEm]}
+                style={{ ...inp, flex: 1, minWidth: 0, boxSizing: "border-box" }} />
+            </div>
           </div>
           <FiltroDropdown
             label="Tipo"
@@ -581,6 +608,7 @@ export default function DocumentosFiscaisPage() {
           />
           <FiltroDropdown
             label="Destinatário"
+            comBusca
             opcoes={opcoesDestinatario}
             selecionado={fDestinatario}
             onToggle={v => toggle(fDestinatario, setFDestinatario, v)}

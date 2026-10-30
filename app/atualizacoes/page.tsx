@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-p",
+    data: "30/10/2026",
+    titulo: "Documentos Fiscais: busca com seletor de campo e filtro de destinatário digitável",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "O campo Buscar ganhou um seletor de onde procurar: Tudo, Nº da NF, Emitente, Destinatário ou Chave. Filtra enquanto digita, sem precisar atualizar. O campo separado Nº documento saiu (agora é Buscar → Nº da NF)." },
+      { tipo: "melhoria", texto: "O filtro Destinatário tem uma caixa de texto no topo da lista: digite poucas letras para achar o destinatário." },
+    ],
+  },
+  {
     versao: "2026.10.30-o",
     data: "30/10/2026",
     titulo: "Remessas: botão Excluir de volta",
