@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-w",
+    data: "30/10/2026",
+    titulo: "Unidade do insumo destrava depois do estorno da NF",
+    modulos: ["Cadastros", "Insumos"],
+    itens: [
+      { tipo: "correcao", texto: "A unidade de medida do insumo fica travada só quando ele tem movimentação de estoque ou está em NF de entrada processada. NF pendente ou estornada não trava mais — antes, mesmo depois de estornar a NF, a unidade continuava bloqueada." },
+    ],
+  },
+  {
     versao: "2026.10.30-v",
     data: "30/10/2026",
     titulo: "IA lê apólices de seguro",

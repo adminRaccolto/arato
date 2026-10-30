@@ -568,10 +568,13 @@ export async function marcarDuplicadoRevisado(
 }
 
 // Insumo com movimentação de estoque ou item de NF não pode trocar a unidade de medida.
+/** Unidade do insumo travada: tem movimentação de estoque ou está em NF de entrada PROCESSADA. NF pendente (ainda não
+ *  processada, ou estornada) não trava — achado 30/10/2026: depois de estornar a NF, o item continuava ligado ao insumo
+ *  e a unidade seguia bloqueada. */
 export async function insumoTemMovimento(id: string): Promise<boolean> {
   const [mov, nfi] = await Promise.all([
     supabase.from("movimentacoes_estoque").select("id", { count: "exact", head: true }).eq("insumo_id", id),
-    supabase.from("nf_entrada_itens").select("id", { count: "exact", head: true }).eq("insumo_id", id),
+    supabase.from("nf_entrada_itens").select("id, nf_entradas!inner(status)", { count: "exact", head: true }).eq("insumo_id", id).eq("nf_entradas.status", "processada"),
   ]);
   return (mov.count ?? 0) > 0 || (nfi.count ?? 0) > 0;
 }
