@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-f",
+    data: "30/10/2026",
+    titulo: "CP/CR se atualizam ao voltar para a tela",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao voltar para a aba do Contas a Pagar ou a Receber, a lista recarrega sozinha se tiver mais de 1 minuto — baixas e estornos feitos por outra pessoa aparecem sem precisar clicar em Atualizar. Títulos marcados continuam marcados." },
+    ],
+  },
+  {
     versao: "2026.10.30-e",
     data: "30/10/2026",
     titulo: "Folha de PJ mostra o produtor vinculado",

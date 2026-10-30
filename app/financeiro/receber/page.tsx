@@ -296,6 +296,7 @@ export default function ContasAReceberPage() {
   const fBusca = filtrosCol.pessoa ?? "";
 
   const cargaSeq = useRef(0);
+  const ultimaCarga = useRef(0);
   const carregar = useCallback(async () => {
     // CP/CR são do CLIENTE (conta), nunca da fazenda: sem a conta carregada ainda, não busca nada (antes buscava só a
     // fazenda ativa e títulos das outras fazendas do cliente "apareciam e sumiam")
@@ -339,6 +340,7 @@ export default function ContasAReceberPage() {
       if (seq !== cargaSeq.current) return;
       const cots = await carregarCotacoesUSD(supabase, regs);
       if (seq !== cargaSeq.current) return;
+      ultimaCarga.current = Date.now();
       setCotacoes(cots);
       setResultado(regs);
     } catch (e: unknown) {
@@ -359,6 +361,14 @@ export default function ContasAReceberPage() {
   // está carregado; só período/busca disparam nova consulta (botão Atualizar).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [contaId ? null : fazendaId, contaId ? null : fazendaIds?.join(","), contaId]);
+  // Outra pessoa pode baixar/reabrir títulos enquanto esta tela está aberta: ao voltar para a aba, recarrega se a lista
+  // tiver mais de 1 minuto (antes cada usuário via a situação do momento em que abriu a tela — achado 30/10/2026)
+  useEffect(() => {
+    const aoVoltar = () => { if (document.visibilityState === "visible" && Date.now() - ultimaCarga.current > 60_000) carregar(); };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    return () => { document.removeEventListener("visibilitychange", aoVoltar); window.removeEventListener("focus", aoVoltar); };
+  }, [carregar]);
   // Filtro de Nº NF consulta o banco sem o período (para trazer todas as parcelas da nota); espera parar de digitar
   const nfFiltroCR = (filtrosCol.nf ?? "").trim();
   const nfFiltroInicial = useRef(true);

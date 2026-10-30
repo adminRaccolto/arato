@@ -338,6 +338,7 @@ export default function ContasAPagarPage() {
   // Só a carga mais nova vale: ao abrir, a 1ª carga (só a fazenda ativa, antes de a conta do usuário chegar) podia
   // terminar DEPOIS da carga da conta inteira e sobrescrevê-la — títulos de outras fazendas "apareciam e sumiam".
   const cargaSeq = useRef(0);
+  const ultimaCarga = useRef(0);
   const carregar = useCallback(async () => {
     // CP/CR são do CLIENTE (conta), nunca da fazenda: sem a conta carregada ainda, não busca nada (antes buscava só a
     // fazenda ativa e títulos das outras fazendas do cliente "apareciam e sumiam")
@@ -360,6 +361,7 @@ export default function ContasAPagarPage() {
       }
       const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros), carregarCotacoesUSD(supabase, registros)]);
       if (seq !== cargaSeq.current) return;
+      ultimaCarga.current = Date.now();
       setCotacoes(cots);
       setResultado(comNumeros);
     } catch (e: unknown) {
@@ -370,6 +372,14 @@ export default function ContasAPagarPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contaId ? null : fazendaId, contaId ? null : fazendaIds?.join(","), contaId]);
   useEffect(() => { carregar(); }, [carregar]);
+  // Outra pessoa pode baixar/reabrir títulos enquanto esta tela está aberta: ao voltar para a aba, recarrega se a lista
+  // tiver mais de 1 minuto (antes cada usuário via a situação do momento em que abriu a tela — achado 30/10/2026)
+  useEffect(() => {
+    const aoVoltar = () => { if (document.visibilityState === "visible" && Date.now() - ultimaCarga.current > 60_000) carregar(); };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    return () => { document.removeEventListener("visibilitychange", aoVoltar); window.removeEventListener("focus", aoVoltar); };
+  }, [carregar]);
 
   // ── Borderôs — pendentes (ainda não confirmados) e pagos (título já
   // quitado) ───────────────────────────────────────────────────────
