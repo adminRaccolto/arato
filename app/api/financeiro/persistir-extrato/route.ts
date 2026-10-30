@@ -106,14 +106,15 @@ export async function POST(req: NextRequest) {
         body.baixar.map(async item => {
           // Título de EMPRESA (empresa_lancamentos): baixa na própria tabela. Status da empresa: pendente/parcial/pago
         // (parcial existe desde a Seção 301; antes virava "pendente" com valor_pago, e o título pago a menor ficava sem
-        // Parcial e sem Estornar baixa na tela). Conta bancária (uuid) não é gravada aqui.
+        // Parcial e sem Estornar baixa na tela). A conta vai junto (uuid, como no produtor) e, se não vier, o passo 3a
+        // grava a conta do extrato — achado 30/10/2026: 281 títulos de empresa conciliados ficaram sem conta.
         if (idsEmpresa.has(item.id)) {
           const { data: curE } = await sb.from("empresa_lancamentos").select("valor,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto").eq("id", item.id).maybeSingle();
           if (curE && excedeLimiteBaixa(curE, item.valor_pago)) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${mensagemExcesso(curE, item.valor_pago)}`; }
           const r = await sb.from("empresa_lancamentos").update(
             (item.status ?? "baixado") === "baixado"
-              ? { status: "pago", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
-              : { status: "parcial", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
+              ? { status: "pago", data_pagamento: item.data_baixa, valor_pago: item.valor_pago, ...(item.conta_bancaria ? { conta_bancaria: item.conta_bancaria } : {}) }
+              : { status: "parcial", data_pagamento: item.data_baixa, valor_pago: item.valor_pago, ...(item.conta_bancaria ? { conta_bancaria: item.conta_bancaria } : {}) }
           ).eq("id", item.id);
           if (r.error) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${r.error.message}`; }
           return null;
@@ -192,6 +193,10 @@ export async function POST(req: NextRequest) {
         const r = await sb.from("lancamentos").update({ conta_bancaria: contaExtrato })
           .in("id", idsConciliar).is("conta_bancaria", null).in("status", ["baixado", "parcial"]);
         if (r.error) falhas.push(`conta do extrato: ${r.error.message}`);
+        // Títulos de empresa (PJ) também: antes só os do produtor recebiam a conta do extrato
+        const rE = await sb.from("empresa_lancamentos").update({ conta_bancaria: contaExtrato })
+          .in("id", idsConciliar).is("conta_bancaria", null).in("status", ["pago", "parcial"]);
+        if (rE.error) falhas.push(`conta do extrato (empresa): ${rE.error.message}`);
       }
     }
 

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-y",
+    data: "30/10/2026",
+    titulo: "Conta bancária nos títulos de empresa pagos pela conciliação",
+    modulos: ["Contas a Pagar", "Contas a Receber", "Conciliação Bancária"],
+    itens: [
+      { tipo: "correcao", texto: "Títulos de empresa (PJ) baixados pela Conciliação Bancária ficavam sem a conta bancária — só os do produtor recebiam a conta do extrato. Corrigido, e os 281 títulos já conciliados receberam a conta da transação do extrato." },
+      { tipo: "correcao", texto: "A coluna Conta do CP/CR mostrava \"—\" em quase todo título de empresa, mesmo com a conta gravada: o nome da conta não ia para o grid. Corrigido (Seção 400)." },
+    ],
+  },
+  {
     versao: "2026.10.30-x",
     data: "30/10/2026",
     titulo: "Contas a Pagar: atalho Previsões e marca visível",
