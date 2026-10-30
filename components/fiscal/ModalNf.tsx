@@ -617,7 +617,16 @@ export default function ModalNf({
     try { setCentros(await listarCentrosCustoGeralDaConta(fazendaId)); } catch {}
     try { setMaquinas(await listarMaquinas(fazendaId)); } catch {}
     try { setRegrasClass(await listarRegrasClassificacao(fazendaId)); } catch {}
-    try { setReclassOps(await listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId)); } catch {}
+    // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (antes só CP/CR: OG só de NF nem aparecia)
+    try {
+      const [ogNf, ogCp] = await Promise.all([
+        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "notas_fiscais" }, fazendaId).catch(() => [] as OperacaoGerencial[]),
+        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).catch(() => [] as OperacaoGerencial[]),
+      ]);
+      const porClass = new Map<string, OperacaoGerencial>();
+      for (const o of [...ogCp, ...ogNf]) if (!porClass.has(o.classificacao ?? o.id)) porClass.set(o.classificacao ?? o.id, o);
+      setReclassOps([...porClass.values()].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "")));
+    } catch {}
     try { setAnosSafra(await listarAnosSafra(fazendaId)); } catch {}
     try {
       const { data } = await supabase
@@ -1700,7 +1709,13 @@ export default function ModalNf({
       // Pelo CFOP: remessa de entrega futura / comodato / conserto… não geram CP; 5949 genérico: o usuário decide
       const cobranca = cobrancaDaNf(cab.cfop || nfEdit.cfop, itensDB.map(i => (i as { cfop?: string | null }).cfop));
       let gerarCp: boolean | undefined;
-      if (cobranca === "entrega_futura" || cobranca === "sem_cobranca") {
+      // OG habilitada para Notas Fiscais mas NÃO para Contas a Pagar/Receber: a NF entra (estoque/custo) sem gerar CP
+      const ogDaNf = ogDaLista(reclassOps, cab.operacao_gerencial_id || nfEdit.operacao_gerencial_id);
+      if (ogDaNf && ogDaNf.permite_cp_cr === false) {
+        if (!(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
+          mensagem: `A operação gerencial "${ogDaNf.classificacao} — ${ogDaNf.descricao}" não está habilitada para Contas a Pagar/Receber. A NF ${nfEdit.numero} é processada normalmente (estoque e custos), mas NÃO nasce título no Contas a Pagar.` }))) { setSaving(false); return; }
+        gerarCp = false;
+      } else if (cobranca === "entrega_futura" || cobranca === "sem_cobranca") {
         if (!(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
           mensagem: `A NF ${nfEdit.numero} (CFOP ${cab.cfop || nfEdit.cfop}) é ${motivoSemCp(cobranca)}. Os itens são processados normalmente, mas NÃO nasce título no Contas a Pagar.` }))) { setSaving(false); return; }
       } else if ([cab.cfop || nfEdit.cfop, ...itensDB.map(i => (i as { cfop?: string | null }).cfop)].some(c => CFOPS_SIMPLES_FATURAMENTO.has(String(c ?? "").replace(/\D/g, "")))) {

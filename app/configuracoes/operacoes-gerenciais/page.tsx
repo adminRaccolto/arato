@@ -709,6 +709,11 @@ function OperacoesGerenciaisContent() {
                         {label}
                       </label>
                     ))}
+                    {form.permite_notas_fiscais && !form.permite_cp_cr && (
+                      <div style={{ marginTop: 8, padding: "8px 10px", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 11, color: "#555555" }}>
+                        NF processada com esta OG entra no estoque e nos custos, mas <strong>não gera Contas a Pagar/Receber</strong>.
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Específicos</div>

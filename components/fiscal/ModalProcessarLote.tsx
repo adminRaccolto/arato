@@ -26,6 +26,7 @@ import {
   listarAnosSafra,
   listarCiclos,
   listarPessoasDaConta,
+  ogDaLista,
 } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
 import type { NfEntrada, NfEntradaItem, Deposito, CentroCusto, OperacaoGerencial, AnoSafra, Ciclo, Pessoa } from "../../lib/supabase";
@@ -172,7 +173,15 @@ export default function ModalProcessarLote({
       const [ccData, depData, opsData, anosData] = await Promise.all([
         listarCentrosCustoGeralDaConta(batchFazendaId).catch(() => [] as CentroCusto[]),
         listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
-        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, batchFazendaId).catch(() => [] as OperacaoGerencial[]),
+        // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (as só de NF entram sem CP)
+        Promise.all([
+          listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "notas_fiscais" }, batchFazendaId).catch(() => [] as OperacaoGerencial[]),
+          listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, batchFazendaId).catch(() => [] as OperacaoGerencial[]),
+        ]).then(([nf, cp]) => {
+          const m = new Map<string, OperacaoGerencial>();
+          for (const o of [...nf, ...cp]) if (!m.has(o.classificacao)) m.set(o.classificacao, o);
+          return [...m.values()].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: true }));
+        }),
         listarAnosSafra(batchFazendaId).catch(() => [] as AnoSafra[]),
         // A função recebe a FAZENDA (resolve a conta por ela); passar o contaId deixava a lista vazia e o pedido sem fornecedor
         listarPessoasDaConta(batchFazendaId).then(setPessoas).catch(() => setPessoas([])),
@@ -244,6 +253,8 @@ export default function ModalProcessarLote({
         const ccId  = settings.centro_custo_id || nfTyped.centro_custo_id;
         const ogId  = settings.operacao_gerencial_id || nfTyped.operacao_gerencial_id;
         const cicId = settings.ciclo_id || nfTyped.ciclo_id;
+        // OG habilitada para Notas Fiscais mas NÃO para Contas a Pagar/Receber: a NF entra (estoque/custo) sem gerar CP
+        const semCpPelaOg = ogDaLista(ops, ogId)?.permite_cp_cr === false;
 
         // 1. Persistir campos de cabeçalho na NF
         const upd: Partial<NfEntrada> = {};
@@ -338,6 +349,7 @@ export default function ModalProcessarLote({
             pedidoCompraId:        settings.pedido_compra_id || nfTyped.pedido_compra_id || undefined,
             produtorId:            nfTyped.produtor_id || undefined,
             parcelas,
+            ...(semCpPelaOg ? { gerarCp: false } : {}),
           },
         );
         processadas++;

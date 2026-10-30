@@ -2943,7 +2943,8 @@ export async function processarNfEntrada(
     parcelas?: { data: string; valor: number }[];
     /** Forma de pagamento Cartão de Crédito: os títulos nascem no cartão (status 'cartao', na fatura do mês). */
     cartaoId?: string;
-    /** CFOP genérico 5949/6949: o usuário confirmou se é compra (true = gera CP; false = sem CP). Sem resposta, gera CP. */
+    /** false = sem CP: CFOP genérico 5949/6949 que o usuário disse não ser compra, ou OG habilitada só para Notas Fiscais
+     *  (sem Contas a Pagar/Receber). Sem resposta, gera CP. */
     gerarCp?: boolean;
     /** Remessa de entrega futura: NFs de simples faturamento (VEF) que esta remessa baixa. Sem escolha, as do fornecedor. */
     vefNfIds?: string[];
@@ -3354,7 +3355,7 @@ export async function processarNfEntrada(
   // armazenagem e vasilhame: sem cobrança, sem CP (lib/fiscal/cfop-cobranca). 5949 genérico: o que o usuário confirmou.
   const cobranca = cobrancaDaNf(cfopNf, itens.map(i => (i as { cfop?: string | null }).cfop));
   const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(cfopNf) || CFOPS_RETORNO_ARMAZENAGEM.has(cfopNf)
-    || cobranca === "entrega_futura" || cobranca === "sem_cobranca" || (cobranca === "confirmar" && opts?.gerarCp === false);
+    || cobranca === "entrega_futura" || cobranca === "sem_cobranca" || opts?.gerarCp === false;
 
   // Trava de duplicidade: se a NF JÁ tem título ativo do produtor, processar de novo nunca cria outro.
   // Achado 14/10/2026: reprocessamentos da mesma NF geraram um segundo CP em aberto ao lado do já baixado

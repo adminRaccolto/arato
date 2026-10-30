@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-g",
+    data: "30/10/2026",
+    titulo: "Operação gerencial só para NF, sem Contas a Pagar",
+    modulos: ["Documentos Fiscais", "Operações Gerenciais"],
+    itens: [
+      { tipo: "novidade", texto: "Operação gerencial marcada só em \"Notas Fiscais de Entrada\" (sem \"Contas a Pagar / Receber\") agora aparece no processamento de NF, individual e em lote. A NF processada com ela entra no estoque e nos custos, mas não gera título no Contas a Pagar — o sistema confirma antes de processar." },
+    ],
+  },
+  {
     versao: "2026.10.30-f",
     data: "30/10/2026",
     titulo: "CP/CR se atualizam ao voltar para a tela",
