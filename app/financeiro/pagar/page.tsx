@@ -472,6 +472,7 @@ export default function ContasAPagarPage() {
     const h = hojeISO(); const lim = new Date(`${h}T12:00:00`); lim.setDate(lim.getDate() + 7);
     if (fAtalho === "vencendo") return aberto && !!l.data_vencimento && l.data_vencimento >= h && l.data_vencimento <= lim.toISOString().slice(0, 10);
     if (fAtalho === "barter") return l.moeda === "barter";
+    if (fAtalho === "previsoes") return ehPrevisao(l);
     return l.origem_lancamento === fAtalho;
   };
   // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
@@ -1850,7 +1851,7 @@ export default function ContasAPagarPage() {
         {/* Atalhos de status (restaurados da tela anterior): um clique aplica o filtro mais usado */}
         <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {([
-            ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
+            ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"], ["previsoes", "Previsões"],
             ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
           ] as const).map(([k, rot]) => {
             const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
@@ -2034,7 +2035,11 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
                   ),
                   pessoa: (
-                    <td style={{ padding: "7px 10px" }}>{l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>
+                      {/* Marca de previsão também aqui quando a coluna Descrição está oculta (achado 30/10/2026) */}
+                      {ehPrevisao(l) && visCols.descricao === false && <span title="Ainda não é dívida real: efetive (Previsão de Gastos) ou feche a folha para pagar" style={{ fontSize: 9, fontWeight: 700, background: "#2A2A2A", color: "#fff", padding: "1px 6px", borderRadius: 6, marginRight: 6 }}>PREVISÃO</span>}
+                      {l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}
+                    </td>
                   ),
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>

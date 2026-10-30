@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-x",
+    data: "30/10/2026",
+    titulo: "Contas a Pagar: atalho Previsões e marca visível",
+    modulos: ["Contas a Pagar"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo atalho \"Previsões\" no Contas a Pagar: mostra só os títulos de previsão (Previsão de Gastos e folha em rascunho). A marca PREVISÃO aparece também na coluna Fornecedor quando a coluna Descrição está oculta." },
+    ],
+  },
+  {
     versao: "2026.10.30-w",
     data: "30/10/2026",
     titulo: "Unidade do insumo destrava depois do estorno da NF",
