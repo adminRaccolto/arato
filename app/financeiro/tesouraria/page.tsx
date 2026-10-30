@@ -137,7 +137,18 @@ export default function TesourariaPage() {
     if (!fazAtiva) return;
 
     const [{ data: lb }, { data: cb }, { data: ob }, { data: gsb }] = await Promise.all([
-      supabase.from("lancamentos").select("*").in("fazenda_id", fazendaIds).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
+      // Todas as páginas (o Supabase devolve no máximo 1.000 linhas por consulta)
+      (async () => {
+        const todos: LancTesoura[] = [];
+        for (let i = 0; ; i += 1000) {
+          const { data, error } = await supabase.from("lancamentos").select("*").in("fazenda_id", fazendaIds).eq("origem_lancamento", "tesouraria")
+            .order("data_lancamento", { ascending: false }).order("id").range(i, i + 999);
+          if (error) return { data: todos };
+          todos.push(...((data ?? []) as LancTesoura[]));
+          if (!data || data.length < 1000) break;
+        }
+        return { data: todos };
+      })(),
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, tipo_conta").in("fazenda_id", fazendaIds),
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
@@ -151,10 +162,39 @@ export default function TesourariaPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // ── KPIs ──────────────────────────────────────────────────
-  const totalEntradas = lancamentos.filter(l => l.tipo === "receber").reduce((s, l) => s + l.valor, 0);
-  const totalSaidas   = lancamentos.filter(l => l.tipo === "pagar").reduce((s, l) => s + l.valor, 0);
-  const emAberto      = lancamentos.filter(l => l.status === "em_aberto").length;
+  // ── Filtros do grid ───────────────────────────────────────
+  const [fBusca, setFBusca]   = useState("");
+  const [fOper, setFOper]     = useState("");
+  const [fTipo, setFTipo]     = useState<"" | "receber" | "pagar">("");
+  const [fStatus, setFStatus] = useState<"" | "aberto" | "baixado">("");
+  const [fConta, setFConta]   = useState("");
+  const [fDe, setFDe]         = useState("");
+  const [fAte, setFAte]       = useState("");
+  const nomeConta = (v?: string) => { if (!v) return "—"; const c = contas.find(x => x.id === v || contaLabelTesoura(x) === v); return c ? contaLabelTesoura(c) : v; };
+  const normT = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const operacoesNoGrid = [...new Set(lancamentos.map(l => l.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const contasNoGrid = [...new Set(lancamentos.map(l => l.conta_bancaria).filter((v): v is string => !!v))].sort((a, b) => nomeConta(a).localeCompare(nomeConta(b), "pt-BR"));
+  const filtrados = lancamentos.filter(l => {
+    if (fOper && l.categoria !== fOper) return false;
+    if (fTipo && l.tipo !== fTipo) return false;
+    if (fStatus === "baixado" && l.status !== "baixado") return false;
+    if (fStatus === "aberto" && l.status === "baixado") return false;
+    if (fConta && l.conta_bancaria !== fConta) return false;
+    if (fDe && (l.data_lancamento ?? "") < fDe) return false;
+    if (fAte && (l.data_lancamento ?? "") > fAte) return false;
+    if (fBusca.trim()) {
+      const q = normT(fBusca.trim());
+      const valorTxt = l.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+      if (![l.descricao, l.categoria, nomeConta(l.conta_bancaria), l.observacao, valorTxt].some(c => normT(c).includes(q))) return false;
+    }
+    return true;
+  });
+  const temFiltro = !!(fBusca || fOper || fTipo || fStatus || fConta || fDe || fAte);
+
+  // ── KPIs (seguem os filtros) ──────────────────────────────
+  const totalEntradas = filtrados.filter(l => l.tipo === "receber").reduce((s, l) => s + l.valor, 0);
+  const totalSaidas   = filtrados.filter(l => l.tipo === "pagar").reduce((s, l) => s + l.valor, 0);
+  const emAberto      = filtrados.filter(l => l.status === "em_aberto").length;
 
   // ── Salvar Lançamento ─────────────────────────────────────
   async function salvarLancTesoura() {
@@ -252,7 +292,7 @@ export default function TesourariaPage() {
     <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
+      <main style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
@@ -283,8 +323,64 @@ export default function TesourariaPage() {
           ))}
         </div>
 
+        {/* Filtros do grid */}
+        {lancamentos.length > 0 && (
+          <div data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+            <div style={{ flex: "1 1 240px", minWidth: 200 }}>
+              <label data-arato-label="true" style={lbl}>Buscar</label>
+              <input style={inp} value={fBusca} onChange={e => setFBusca(e.target.value)} placeholder="descrição, operação, conta, observação ou valor" />
+            </div>
+            <div style={{ width: 200 }}>
+              <label data-arato-label="true" style={lbl}>Operação</label>
+              <SelectField style={inp} value={fOper} onChange={e => setFOper(e.target.value)}>
+                <option value="">Todas</option>
+                {operacoesNoGrid.map(o => <option key={o} value={o}>{o}</option>)}
+              </SelectField>
+            </div>
+            <div style={{ width: 130 }}>
+              <label data-arato-label="true" style={lbl}>Tipo</label>
+              <SelectField style={inp} value={fTipo} onChange={e => setFTipo(e.target.value as typeof fTipo)}>
+                <option value="">Todos</option>
+                <option value="receber">Entradas</option>
+                <option value="pagar">Saídas</option>
+              </SelectField>
+            </div>
+            <div style={{ width: 130 }}>
+              <label data-arato-label="true" style={lbl}>Status</label>
+              <SelectField style={inp} value={fStatus} onChange={e => setFStatus(e.target.value as typeof fStatus)}>
+                <option value="">Todos</option>
+                <option value="aberto">Aberto</option>
+                <option value="baixado">Baixado</option>
+              </SelectField>
+            </div>
+            <div style={{ width: 200 }}>
+              <label data-arato-label="true" style={lbl}>Conta</label>
+              <SelectField style={inp} value={fConta} onChange={e => setFConta(e.target.value)}>
+                <option value="">Todas</option>
+                {contasNoGrid.map(c => <option key={c} value={c}>{nomeConta(c)}</option>)}
+              </SelectField>
+            </div>
+            <div style={{ width: 170 }}>
+              <label data-arato-label="true" style={lbl}>Data de</label>
+              <InputData type="date" style={inp} value={fDe} onChange={e => setFDe(e.target.value)} />
+            </div>
+            <div style={{ width: 170 }}>
+              <label data-arato-label="true" style={lbl}>até</label>
+              <InputData type="date" style={inp} value={fAte} onChange={e => setFAte(e.target.value)} />
+            </div>
+            {temFiltro && (
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setFBusca(""); setFOper(""); setFTipo(""); setFStatus(""); setFConta(""); setFDe(""); setFAte(""); }}>Limpar</OperationalButton>
+            )}
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto", alignSelf: "center" }}>{filtrados.length} de {lancamentos.length} lançamento(s)</div>
+          </div>
+        )}
+
         {/* Lista de lançamentos */}
-        {lancamentos.length === 0 ? (
+        {lancamentos.length > 0 && filtrados.length === 0 ? (
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 36, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            Nenhum lançamento com esses filtros.
+          </div>
+        ) : lancamentos.length === 0 ? (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             Nenhum lançamento de tesouraria registrado.<br />
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Use o botão "+ Novo Lançamento" para registrar.</span>
@@ -300,14 +396,14 @@ export default function TesourariaPage() {
                 </tr>
               </thead>
               <tbody>
-                {lancamentos.map((l, li) => (
-                  <tr key={l.id} style={{ borderBottom: li < lancamentos.length - 1 ? "0.5px solid var(--border-row)" : "none", borderLeft: `3px solid ${l.tipo === "receber" ? "#16A34A" : "#E24B4A"}` }}>
+                {filtrados.map((l, li) => (
+                  <tr key={l.id} style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid var(--border-row)" : "none", borderLeft: `3px solid ${l.tipo === "receber" ? "#16A34A" : "#E24B4A"}` }}>
                     <td style={{ padding: "9px 12px", fontSize: 12, color: "#444", whiteSpace: "nowrap" }}>{fmtData(l.data_lancamento)}</td>
                     <td style={{ padding: "9px 12px" }}>
                       <span style={{ fontSize: 10, background: "#EEE6F8", color: "#4A1A7A", padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{l.categoria}</span>
                     </td>
                     <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)" }}>{l.descricao}</td>
-                    <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)" }}>{l.conta_bancaria ?? "—"}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)" }}>{nomeConta(l.conta_bancaria)}</td>
                     <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#16A34A" }}>
                       {l.tipo === "receber" ? fmtBRL(l.valor) : ""}
                     </td>

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-t",
+    data: "30/10/2026",
+    titulo: "Tesouraria com busca e filtros",
+    modulos: ["Tesouraria"],
+    itens: [
+      { tipo: "melhoria", texto: "A lista de Lançamentos de Tesouraria ganhou busca (descrição, operação, conta, observação ou valor) e filtros de Operação, Tipo (entradas/saídas), Status, Conta e período. Os totais do topo seguem os filtros, a coluna Conta mostra o nome da conta e a lista carrega todos os lançamentos (antes parava em 1.000)." },
+    ],
+  },
+  {
     versao: "2026.10.30-s",
     data: "30/10/2026",
     titulo: "Pedido de compra com NF não processada pode ser excluído",
