@@ -3305,8 +3305,8 @@ function ConciliacaoInner() {
                     </OperationalButton>
                   ))}
                   <OperationalButton data-arato-button="secondary" onClick={recarregarLancamentos} title="Atualizar lançamentos" disabled={lancRefresh}
-                    style={{ marginLeft: "auto", background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: lancRefresh ? "default" : "pointer", fontSize: 13, color: "var(--text-2)", padding: "2px 8px", opacity: lancRefresh ? 0.5 : 1 }}>
-                    {lancRefresh ? "…" : "↻"}
+                    style={{ marginLeft: "auto", background: "var(--bg-card)", border: "0.5px solid #1A4870", borderRadius: 8, cursor: lancRefresh ? "default" : "pointer", fontSize: 12, fontWeight: 600, color: "#1A4870", padding: "5px 12px", opacity: lancRefresh ? 0.5 : 1, whiteSpace: "nowrap" }}>
+                    {lancRefresh ? "Atualizando…" : "↻ Atualizar"}
                   </OperationalButton>
                 </div>
 
