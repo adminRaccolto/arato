@@ -228,17 +228,20 @@ export default function SegurosPage() {
   const [premioSaving,  setPremioSaving]  = useState(false);
 
   // ── Carregar dados ─────────────────────────────────────────────────────────
+  // Apólices são do CLIENTE (conta), nunca da fazenda: sem a conta carregada, não busca (antes buscava pelas fazendas da
+  // sessão e a apólice salva noutra fazenda do cliente não aparecia). Prêmios e sinistros só os das apólices do cliente.
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
-    const [{ data: ap }, { data: pr }, { data: si }] = await Promise.all([
-      supabase.from("apolices_seguro").select("*").in("fazenda_id", fazendaIds).order("data_fim_vigencia"),
-      supabase.from("pagamentos_premio_seguro").select("*").order("data_vencimento"),
-      supabase.from("sinistros_seguro").select("*").order("data_ocorrencia", { ascending: false }),
-    ]);
+    if (!contaId) return;
+    const { data: ap } = await supabase.from("apolices_seguro").select("*").eq("conta_id", contaId).order("data_fim_vigencia");
+    const ids = (ap ?? []).map(a => a.id as string);
+    const [{ data: pr }, { data: si }] = ids.length ? await Promise.all([
+      supabase.from("pagamentos_premio_seguro").select("*").in("apolice_id", ids).order("data_vencimento"),
+      supabase.from("sinistros_seguro").select("*").in("apolice_id", ids).order("data_ocorrencia", { ascending: false }),
+    ]) : [{ data: [] }, { data: [] }];
     setApolices(ap ?? []);
     setPremios(pr ?? []);
     setSinistros(si ?? []);
-  }, [fazendaId, JSON.stringify(fazendaIds)]);
+  }, [contaId]);
 
   const carregarCatalogos = useCallback(async () => {
     if (!fazendaId || !contaId) return;

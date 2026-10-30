@@ -14,6 +14,7 @@ const RELEASES = [
     itens: [
       { tipo: "novidade", texto: "Novo add-on \"IA — Lançar Apólice de Seguro\": em Financeiro → Seguros, envie a apólice em PDF e o Arato preenche nº da apólice, seguradora, corretora, ramo, bem segurado, importância segurada, prêmio, vigência e as parcelas do prêmio. A máquina ou veículo é ligada ao cadastro pelo chassi, placa ou nº de série; a fazenda pelo local do risco. Franquia e coberturas vão para a observação. O formulário abre para você conferir e salvar — as parcelas viram CP como no lançamento manual." },
       { tipo: "correcao", texto: "O CP do prêmio de seguro voltou a sair com a operação gerencial do ramo (com as operações gerenciais agora por cliente, a busca pela fazenda não achava)." },
+      { tipo: "correcao", texto: "Seguros: a lista de apólices agora é do cliente — apólice salva em outra fazenda do mesmo cliente não sumia mais da tela. Prêmios e sinistros carregam só os das apólices do cliente." },
     ],
   },
   {
