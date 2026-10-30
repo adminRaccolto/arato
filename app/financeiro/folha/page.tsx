@@ -1,4 +1,5 @@
 "use client";
+import { planilhaFormatada } from "../../../lib/relatorios/xlsx-estilo";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -1001,10 +1002,22 @@ export default function FolhaPagamentoPage() {
 
   // Exportar a folha aberta para XLSX: todos os proventos, descontos (INSS, IRRF, adiantamentos, outros descontos com o
   // motivo), benefícios, líquido e encargos do empregador, uma linha por funcionário + total
+
+  // Situação do salário no Contas a Pagar (tela e XLSX)
+  function situacaoPgto(f: FolhaFunc): { txt: string; cor: string; bg: string } | null {
+    const sc = f.cp_lancamento_id ? situacaoCp[f.cp_lancamento_id] : undefined;
+    if (!sc) return null;
+    const aberto = Math.max(0, Math.round((sc.valor - sc.pago) * 100) / 100);
+    return sc.previsao ? { txt: "Previsão", cor: "#555", bg: "#EEF0F4" }
+      : aberto <= 0.005 ? { txt: `Pago${sc.ultimaBaixa ? ` ${dataFmt(sc.ultimaBaixa)}` : ""}`, cor: "#166534", bg: "#DCFCE7" }
+      : sc.pago > 0 ? { txt: `Parcial · falta ${moeda(aberto)}`, cor: "#7A5200", bg: "#FBF3E0" }
+      : { txt: "Aberto no CP", cor: "#B91C1C", bg: "#FEF2F2" };
+  }
   async function exportarFolhaXlsx() {
     const funcs = folhaEdit.funcionarios ?? [];
     if (!funcs.length) return;
-    const XLSX = await import("xlsx");
+    // xlsx-js-style: mesma API do xlsx, mas grava estilo (cabeçalho formatado, R$ e milhar nos números)
+    const XLSX = await import("xlsx-js-style");
     const empregador = (f: FolhaFunc) => f.empresa_id ? (empresasMap[f.empresa_id] ?? "Empresa") : f.produtor_id ? (produtoresMap[f.produtor_id] ?? "Produtor") : "Sem vínculo";
     const linha = (f: FolhaFunc) => ({
       "Empregador": empregador(f), "Funcionário": f.nome_funcionario, "Cargo": f.cargo ?? "",
@@ -1015,12 +1028,14 @@ export default function FolhaPagamentoPage() {
       "Total Descontos": Math.round((f.inss_trabalhador + f.irrf + f.adiantamento + f.outros_descontos) * 100) / 100,
       "Complemento": f.complemento_salarial ?? 0, "Vale Transporte": f.vale_transporte, "Vale Refeição": f.vale_refeicao, "Outros Benefícios": f.outros_beneficios,
       "Salário Líquido": liquido(f), "INSS Patronal": f.inss_patronal, "FGTS": f.fgts,
+      "Pagamento (venc.)": dataFmt((f.cp_lancamento_id && vencCp[f.cp_lancamento_id]) || (folhaEdit.competencia ? (dataPgto || vencimentoSalario(folhaEdit.competencia)) : undefined)),
+      "Situação no CP": situacaoPgto(f)?.txt ?? (folhaEdit.status === "rascunho" ? "Rascunho (CP ainda não gerado)" : "Sem título no CP"),
     });
     const linhas = funcs.map(linha);
     const numericas = Object.keys(linhas[0]).filter(k => typeof (linhas[0] as Record<string, unknown>)[k] === "number");
     const total: Record<string, string | number> = { "Empregador": "TOTAL", "Funcionário": `${funcs.length} funcionário(s)` };
     for (const k of numericas) total[k] = Math.round(linhas.reduce((t, l) => t + Number((l as Record<string, unknown>)[k] ?? 0), 0) * 100) / 100;
-    const ws = XLSX.utils.json_to_sheet([...linhas, total]);
+    const ws = planilhaFormatada(XLSX, [...linhas, total], { horas: ["HE 50% (h)", "HE 100% (h)"], totalNaUltima: true });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Folha");
     const tipo = `FOLHA ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` ${empresasMap[folhaEdit.empresa_id] ?? ""}` : folhaEdit.produtor_id ? ` ${produtoresMap[folhaEdit.produtor_id] ?? ""}` : ""}`;
@@ -1603,14 +1618,9 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, padding:"4px 8px", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", color:"var(--text-2)" }}>
                                   {dataFmt((f.cp_lancamento_id && vencCp[f.cp_lancamento_id]) || (folhaEdit.competencia ? (dataPgto || vencimentoSalario(folhaEdit.competencia)) : undefined))}
                                   {(() => {
-                                    const sc = f.cp_lancamento_id ? situacaoCp[f.cp_lancamento_id] : undefined;
-                                    if (!sc) return null;
-                                    const aberto = Math.max(0, Math.round((sc.valor - sc.pago) * 100) / 100);
-                                    const [txt, cor, bg] = sc.previsao ? ["Previsão", "#555", "#EEF0F4"]
-                                      : aberto <= 0.005 ? [`Pago${sc.ultimaBaixa ? ` ${dataFmt(sc.ultimaBaixa)}` : ""}`, "#166534", "#DCFCE7"]
-                                      : sc.pago > 0 ? [`Parcial · falta ${moeda(aberto)}`, "#7A5200", "#FBF3E0"]
-                                      : ["Aberto no CP", "#B91C1C", "#FEF2F2"];
-                                    return <div style={{ marginTop: 2 }}><span style={{ fontSize: 10, fontWeight: 700, color: cor, background: bg, padding: "1px 6px", borderRadius: 6 }}>{txt}</span></div>;
+                                    const sp = situacaoPgto(f);
+                                    if (!sp) return null;
+                                    return <div style={{ marginTop: 2 }}><span style={{ fontSize: 10, fontWeight: 700, color: sp.cor, background: sp.bg, padding: "1px 6px", borderRadius: 6 }}>{sp.txt}</span></div>;
                                   })()}
                                 </td>
                               </tr>

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-l",
+    data: "30/10/2026",
+    titulo: "Folha de Pagamento: XLSX formatado e com a situação do pagamento",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "O XLSX da folha sai formatado: cabeçalho em negrito com fundo azul e filtro, valores em R$ com separador de milhar (negativos em vermelho), horas extras com duas casas, linhas alternadas e o TOTAL destacado. Ganhou as colunas Pagamento (venc.) e Situação no CP (Pago com a data, Parcial com o que falta, Aberto no CP, Previsão ou Rascunho)." },
+    ],
+  },
+  {
     versao: "2026.10.30-k",
     data: "30/10/2026",
     titulo: "Refinanciamento: a cédula nova liquida os contratos antigos no lançamento",
