@@ -18852,3 +18852,12 @@ UPDATE folha_pagamento fp SET produtor_id = x.produtor_id
   ) x
  WHERE fp.id = x.folha_id AND fp.empresa_id IS NOT NULL AND fp.produtor_id IS NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 398 — Refinanciamento de contratos financeiros encerra os títulos da origem
+-- =============================================================================
+-- Ao vincular um contrato de origem a uma cédula nova (refinanciamento 1→1 ou N→1), os títulos a pagar da origem saem
+-- do Contas a Pagar (abertos cancelados; parciais baixados no que já foi pago). O estado anterior de cada título fica
+-- guardado no vínculo para o Desvincular devolver tudo como estava.
+ALTER TABLE contratos_refinanciamento ADD COLUMN IF NOT EXISTS titulos_encerrados jsonb NOT NULL DEFAULT '[]'::jsonb;
+NOTIFY pgrst, 'reload schema';

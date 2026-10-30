@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-i",
+    data: "30/10/2026",
+    titulo: "Contratos Financeiros: sem seletor de fazenda e refinanciamento automático",
+    modulos: ["Contratos Financeiros", "Endividamento", "BI", "Contas a Pagar"],
+    itens: [
+      { tipo: "melhoria", texto: "O contrato financeiro é do cliente e do produtor que tomou o crédito: saiu o seletor \"Este contrato pertence a — Fazenda\". Liberação, cronograma, garantias e aditivos usam sempre a mesma fazenda interna do contrato (a do produtor), e não mais a fazenda ativa no topo. A lista de contratos filtra por produtor." },
+      { tipo: "novidade", texto: "Refinanciamento / consolidação (1→1 ou N→1): ao escolher o contrato de origem, o Saldo Incorporado já vem calculado (amortizações a pagar, o que falta das parcelas parciais e juros já vencidos). Ao vincular, os títulos dele ainda a pagar saem do Contas a Pagar — em aberto são cancelados e os parciais ficam só com o que já foi pago —, sem dívida em dobro. Desvincular devolve tudo como estava." },
+      { tipo: "correcao", texto: "Endividamento e BI não somam mais o saldo de contrato refinanciado junto com o da cédula nova." },
+    ],
+  },
+  {
     versao: "2026.10.30-h",
     data: "30/10/2026",
     titulo: "Folha de PJ mostra a empresa; baixa com desconto não deixa saldo",

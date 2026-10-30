@@ -181,7 +181,7 @@ export default function RelatorioEndividamento() {
     setErro(null);
     try {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
-      const [ctsRaw, { data: prods }, ptaxResult, { data: cctRaw }] = await Promise.all([
+      const [ctsTodos, { data: prods }, ptaxResult, { data: cctRaw }] = await Promise.all([
         listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds),
         supabase.from("produtores").select("id,nome_razao_social:nome,cpf_cnpj").in("fazenda_id", fazendaIds).order("nome"),
         fetch("/api/precos").then(r => r.json()).then(d => d.usdPtax ?? d.usdBrl ?? null).catch(() => null),
@@ -193,6 +193,8 @@ export default function RelatorioEndividamento() {
           .order("data_vencimento"),
       ]);
 
+      // Contrato refinanciado: a dívida dele passou para a cédula nova — contar os dois seria dívida em dobro
+      const ctsRaw = ctsTodos.filter(c => c.status !== "refinanciado");
       const ptax = typeof ptaxResult === "number" && ptaxResult > 1 ? ptaxResult : null;
       if (ptax) setPtaxEndiv(ptax);
 

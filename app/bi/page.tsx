@@ -586,7 +586,9 @@ export default function BI() {
             .in("contrato_id", ids)
         : { data: [] as CFParcela[] };
       setCfContratos(cs as unknown as CFContrato[]);
-      setCfParcelas((ps ?? []) as CFParcela[]);
+      // Contrato refinanciado: o que ainda não foi pago virou dívida da cédula nova — fica só o histórico pago
+      const refinanciados = new Set(cs.filter(c => c.status === "refinanciado").map(c => c.id));
+      setCfParcelas(((ps ?? []) as CFParcela[]).filter(p => !refinanciados.has(p.contrato_id) || p.status === "pago"));
     } catch { /* ignora */ } finally { setCfLoading(false); }
   }, [fazendaId, contaId, (fazendaIds ?? []).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 

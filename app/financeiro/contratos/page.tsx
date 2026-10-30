@@ -19,7 +19,7 @@ import {
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
   listarAditivos, criarAditivo, excluirAditivo,
-  listarOrigensRefinanciamento, vincularOrigemRefinanciamento, desvincularOrigemRefinanciamento,
+  listarOrigensRefinanciamento,
   listarMatriculas,
   listarMaquinas,
   listarContas,
@@ -209,12 +209,16 @@ function somarMeses(iso: string, meses: number): string {
 
 export default function ContratosFinanceiros() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, anoSafraVigenteId, userRole } = useAuth();
-  const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
-  const [fazendaFiltro, setFazendaFiltro] = useState("");
+  const [fazendas, setFazendas]         = useState<{ id: string; nome: string; produtor_id?: string | null }[]>([]);
+  const [produtorFiltro, setProdutorFiltro] = useState("");
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
   const [contas, setContas]       = useState<ContaBancaria[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
   const [produtores, setProdutores] = useState<Produtor[]>([]);
+  // Contrato financeiro é do cliente e do produtor tomador — não de uma fazenda. A fazenda é só interna (o banco exige):
+  // a do produtor, para os títulos herdarem PF/PJ (LCDPR/SPED); sem fazenda do produtor, a que o contrato já tem ou a ativa.
+  const fazendaInterna = (produtorId?: string | null, atual?: string | null) =>
+    atual || fazendas.find(f => !!produtorId && f.produtor_id === produtorId)?.id || fazendaId || "";
   const [salvando, setSalvando]   = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [ptax, setPtax]           = useState<number | null>(null);
@@ -252,6 +256,14 @@ export default function ContratosFinanceiros() {
   const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
   const [origensRefin, setOrigensRefin]           = useState<ContratoRefinanciamento[]>([]);
   const [fRefin, setFRefin]                       = useState({ contrato_origem_id: "", saldo_incorporado: "" });
+  // Prévia do refinanciamento: quantos títulos da origem saem do CP (abertos cancelados, parciais encerrados no pago)
+  const [refinPrevia, setRefinPrevia] = useState<{ cancelar: number; encerrar_parcial: number; em_bordero: number } | null>(null);
+  const apiRefin = async (body: object) => {
+    const r = await fetch("/api/financeiro/contratos/refinanciamento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string } & Record<string, unknown>;
+    if (!j.ok) throw new Error(j.error ?? `Erro HTTP ${r.status}`);
+    return j;
+  };
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
   const [maquinas, setMaquinas]                   = useState<Maquina[]>([]);
   const [imoveisUrbanos, setImoveisUrbanos]       = useState<ImovelUrbano[]>([]);
@@ -296,7 +308,7 @@ export default function ContratosFinanceiros() {
         console.error("[CF] Erro ao carregar contratos financeiros:", err);
         setErroCarregamento(String(err?.message ?? err ?? "Erro desconhecido ao carregar contratos"));
       });
-    listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
+    listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string; produtor_id?: string | null }[])).catch(() => {});
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
     listarPessoasDaConta(fazendaId).then(all => setPessoas(all)).catch(() => {});
     supabase.from("produtores").select("*").eq("conta_id", contaId).order("nome").then(({ data }) => setProdutores(data ?? []));
@@ -365,7 +377,7 @@ export default function ContratosFinanceiros() {
     if (!nome && doc.length === 14) {
       try { const r = await fetch(`/api/cadastros/consultar-cnpj?cnpj=${doc}`); const j = await r.json(); nome = String(j?.razao_social ?? j?.nome ?? "").trim(); } catch { /* sem nome da Receita */ }
     }
-    const faz = fC.fazenda_id || fazendaId;
+    const faz = fazendaInterna(fC.produtor_id, fC.fazenda_id);
     if (!nome || !faz) return null;
     const fmt = doc.length === 14 ? doc.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : doc.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
     try {
@@ -649,7 +661,7 @@ export default function ContratosFinanceiros() {
     fd.append("file", file);
     fd.append("entidade_tipo", "contrato_financeiro");
     fd.append("entidade_id", contratoId);
-    fd.append("fazenda_id", fazendaId ?? "");
+    fd.append("fazenda_id", contratoModal?.fazenda_id || fazendaId || "");
     const resp = await fetch("/api/storage/upload", { method: "POST", body: fd });
     const rj = await resp.json() as { path?: string; erro?: string };
     if (!resp.ok || !rj.path) {
@@ -683,7 +695,7 @@ export default function ContratosFinanceiros() {
     setErroModal(null);
     const vf = parseFloat(fC.valor_financiado.replace(",", ".")) || 0;
     const vc = fC.valor_cotacao ? parseFloat(fC.valor_cotacao.replace(",", ".")) : undefined;
-    const fidCf = fC.fazenda_id || fazendaId!;
+    const fidCf = fazendaInterna(fC.produtor_id, contratoModal?.fazenda_id);
     const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
       fazenda_id: fidCf, descricao: fC.descricao.trim(),
       pessoa_id: fC.pessoa_id || undefined, credor: credorNome,
@@ -758,7 +770,7 @@ export default function ContratosFinanceiros() {
       const d = new Date(fLib.data_liberacao + "T12:00:00");
       d.setMonth(d.getMonth() + (i - 1));
       const nova = await criarParcelaLiberacao({
-        contrato_id: contratoModal.id, fazenda_id: fazendaId!,
+        contrato_id: contratoModal.id, fazenda_id: contratoModal.fazenda_id || fazendaId!,
         num_parcela: (parcelasLiberacao.length + i),
         data_liberacao: d.toISOString().slice(0, 10),
         valor_liberado: vl,
@@ -782,9 +794,14 @@ export default function ContratosFinanceiros() {
     if (tar > 0) { const nova = await criarParcelaDespesaFinanciada(contratoModal, contratoModal.fazenda_id ?? fazendaId!, ++n, data, tar, "tarifas"); setParcelasLiberacao(p => [...p, nova]); }
   };
 
+  // Contrato refinanciado: os títulos a pagar dele foram encerrados pela cédula nova. Refazer o cronograma recriaria
+  // esses títulos no CP (dívida em dobro) — primeiro desvincular na cédula nova.
+  const MSG_REFINANCIADO = "Este contrato foi refinanciado: a dívida dele passou para a cédula nova. Para alterar o cronograma, desvincule-o antes na aba Aditivos da cédula nova.";
+
   // ── Calcular parcelas ──
   const calcularParcelas = () => salvar(async () => {
     if (!contratoModal) return;
+    if (contratoModal.status === "refinanciado") { setErroModal(MSG_REFINANCIADO); return; }
     if (!fCalc.dataPrimeiro) { setErroModal("Preencha antes de salvar: Data 1º Pagamento"); return; }
     setErroModal(null);
     // Usa fC (formulário atual) para parâmetros de cálculo — não exige salvar antes
@@ -825,13 +842,14 @@ export default function ContratosFinanceiros() {
     // O lançamento em CP só acontece quando o usuário confirma explicitamente em
     // "Salvar Parcelas e Lançar no CP" (salvarParcelasELancarCP), que também é o
     // botão que aplica eventuais edições manuais de Juros/Amortização.
-    const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
+    const salvas = await salvarParcelasPagamento(contratoModal.id, contratoModal.fazenda_id || fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
     setParcelasPagamento(salvas);
     setParcelasEditadas({});
   });
 
   // ── Aplicar cronograma extraído do PDF pela IA ──
   const aplicarCronogramaIAPdf = async () => {
+    if (contratoModal?.status === "refinanciado") { setErroModal(MSG_REFINANCIADO); return; }
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (aplicarCronogramaIAPdf).", perigo: false }))) return;
     if (!contratoModal || !parcelasIAPdf || parcelasIAPdf.length === 0) return;
     setErroModal(null);
@@ -858,7 +876,7 @@ export default function ContratosFinanceiros() {
         saldo_devedor: repart[idx].saldo,
         status: "em_aberto" as const,
       }));
-      const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
+      const salvas = await salvarParcelasPagamento(contratoModal.id, contratoModal.fazenda_id || fazendaId!, parcelasParaSalvar);
       setParcelasPagamento(salvas);
       setParcelasEditadas({});
       setParcelasIAPdf(null);
@@ -1007,6 +1025,7 @@ export default function ContratosFinanceiros() {
   // de verdade — recalcular/reprocessar aqui é seguro porque só afeta CP não
   // baixado (nunca reabre nem altera o que já foi pago).
   const salvarParcelasELancarCP = async () => salvar(async () => {
+    if (contratoModal?.status === "refinanciado") { setErroModal(MSG_REFINANCIADO); return; }
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar parcelas elancar cp)", perigo: false }))) return;
     if (!contratoModal || !fazendaId) return;
     // Valor = Amortização + Juros + Encargos: o que o usuário editou fica, o restante é calculado (mesma regra da tela)
@@ -1032,7 +1051,7 @@ export default function ContratosFinanceiros() {
       }
     }
     const salvas = await salvarParcelasPagamento(
-      contratoModal.id, fazendaId,
+      contratoModal.id, contratoModal.fazenda_id || fazendaId,
       atualizadas.map(p => ({ ...p, status: p.status ?? "em_aberto" as const }))
     );
 
@@ -1119,7 +1138,7 @@ export default function ContratosFinanceiros() {
     }
     if (!desc) { alert("Informe a descrição da garantia."); return; }
     const nova = await criarGarantia({
-      contrato_id: contratoModal.id, fazenda_id: fazendaId!,
+      contrato_id: contratoModal.id, fazenda_id: contratoModal.fazenda_id || fazendaId!,
       tipo_garantia: fGar.tipo_garantia || undefined, grau: fGar.grau || undefined, tipo_bem: fGar.tipo_bem || undefined,
       matricula_id:     fGar.tipo_bem === "imovel"        ? (fGar.matricula_id     || undefined) : undefined,
       imovel_urbano_id: fGar.tipo_bem === "imovel_urbano" ? (fGar.imovel_urbano_id || undefined) : undefined,
@@ -1176,7 +1195,7 @@ export default function ContratosFinanceiros() {
       if (!confirm(`Repactuação: ${abertasRepact.length} parcela(s) em aberto vão ser adiadas em ${periodos * mesesPorPeriodo} meses (${periodos} período(s) de ${mesesPorPeriodo} meses). A última passa de ${fmtData(ult.data_vencimento)} para ${fmtData(somarMeses(ult.data_vencimento, periodos * mesesPorPeriodo))}. Os vencimentos no Contas a Pagar mudam junto; parcelas pagas não mudam. Confirmar?`)) return;
     }
     const nova = await criarAditivo({
-      contrato_id: contratoModal.id, fazenda_id: fazendaId!,
+      contrato_id: contratoModal.id, fazenda_id: contratoModal.fazenda_id || fazendaId!,
       data_aditivo: fAdit.data_aditivo, tipo: fAdit.tipo, descricao: fAdit.descricao.trim(),
       ...(ehRepact ? { periodos_deslocados: periodos } : {}),
       ...(fAdit.nova_data_vencimento ? { nova_data_vencimento: fAdit.nova_data_vencimento } : {}),
@@ -1213,7 +1232,7 @@ export default function ContratosFinanceiros() {
 
   // ── Filtros + Totais ──
   const contratosFiltrados = contratos.filter(c => {
-    if (fazendaFiltro && c.fazenda_id !== fazendaFiltro) return false;
+    if (produtorFiltro && c.produtor_id !== produtorFiltro) return false;
     if (colTipo && c.tipo !== colTipo) return false;
     if (colMoeda && c.moeda !== colMoeda) return false;
     if (colCalc && (c.tipo_calculo ?? "sac") !== colCalc) return false;
@@ -1278,11 +1297,11 @@ export default function ContratosFinanceiros() {
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {ptax && <span style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
-              {fazendas.length > 1 && (
-                <SelectField value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
+              {produtores.length > 1 && (
+                <SelectField value={produtorFiltro} onChange={e => setProdutorFiltro(e.target.value)}
                   style={{ padding: "8px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
-                  <option value="">Todas as fazendas</option>
-                  {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+                  <option value="">Todos os produtores</option>
+                  {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </SelectField>
               )}
               {userRole === "raccotlo" && (
@@ -1591,20 +1610,6 @@ export default function ContratosFinanceiros() {
 
             {/* Conteúdo */}
             <div data-arato-dialog-body="true" style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
-
-              {/* Fazenda — seletor explícito */}
-              {fazendas.length > 1 && (
-                <div data-arato-panel="true" style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
-                  <div>
-                    <label data-arato-label="true" style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
-                    <SelectField style={inp} value={fC.fazenda_id || fazendaId || ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
-                      <option value="">— Selecionar —</option>
-                      {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-                    </SelectField>
-                  </div>
-                </div>
-              )}
 
               {/* ── Principal ── */}
               {abaModal === "principal" && (
@@ -2509,7 +2514,7 @@ export default function ContratosFinanceiros() {
                     <div style={{ background: "#F5F3FE", border: "0.5px solid #7C6FC340", borderRadius: 10, padding: 16, marginBottom: 20 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#4B3B9B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>🔗 Refinanciamento / Consolidação</div>
                       <div style={{ fontSize: 12, color: "#6B5CA5", marginBottom: 14 }}>
-                        Se esta cédula consolida outros contratos anteriores (refinanciamento 1→1 ou N→1), vincule-os abaixo. Os contratos vinculados passam para status <strong>Refinanciado</strong> e ficam referenciando esta cédula.
+                        Se esta cédula consolida outros contratos anteriores (refinanciamento 1→1 ou N→1), vincule-os abaixo. Os contratos vinculados passam para status <strong>Refinanciado</strong>, ficam referenciando esta cédula e os títulos deles ainda a pagar saem do Contas a Pagar (a dívida passa a ser esta cédula).
                       </div>
 
                       {/* Contratos já vinculados como origem */}
@@ -2531,8 +2536,11 @@ export default function ContratosFinanceiros() {
                                   <td style={{ padding: "7px 10px", fontSize: 12 }}>{o.saldo_incorporado ? fmtBRL(o.saldo_incorporado) : <span style={{ color: "#aaa" }}>—</span>}</td>
                                   <td style={{ padding: "7px 10px" }}>
                                     <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
-                                      if (!confirm("Desvincular este contrato de origem? Ele voltará para status Ativo.")) return;
-                                      await desvincularOrigemRefinanciamento(o.id, o.contrato_origem_id);
+                                      if (!confirm("Desvincular este contrato de origem? Ele volta para status Ativo e os títulos dele encerrados pelo refinanciamento voltam ao Contas a Pagar como estavam.")) return;
+                                      try {
+                                        const j = await apiRefin({ acao: "desvincular", id: o.id }) as { devolvidos?: number; mantidos?: number };
+                                        if (j.mantidos) alert(`${j.devolvidos ?? 0} título(s) voltaram ao Contas a Pagar. ${j.mantidos} foram alterados depois do refinanciamento e ficaram como estão.`);
+                                      } catch (e) { alert("Erro ao desvincular: " + (e as Error).message); return; }
                                       setOrigensRefin(p => p.filter(x => x.id !== o.id));
                                       setContratos(p => p.map(c => c.id === o.contrato_origem_id ? { ...c, status: "ativo", refinanciado_por_id: null } : c));
                                     }}>Desvincular</OperationalButton>
@@ -2548,7 +2556,17 @@ export default function ContratosFinanceiros() {
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 10, alignItems: "end" }}>
                         <div>
                           <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Contrato de Origem</label>
-                          <SelectField style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} onChange={e => setFRefin(p => ({ ...p, contrato_origem_id: e.target.value }))}>
+                          <SelectField style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} onChange={e => {
+                            const id = e.target.value;
+                            setFRefin({ contrato_origem_id: id, saldo_incorporado: "" }); setRefinPrevia(null);
+                            if (!id) return;
+                            // Saldo devedor da origem já calculado (amortizações a pagar, restante das parciais e juros vencidos)
+                            apiRefin({ acao: "saldo", contrato_origem_id: id }).then(j => {
+                              const r = j as { saldo?: number; cancelar?: number; encerrar_parcial?: number; em_bordero?: number };
+                              setFRefin(p => p.contrato_origem_id === id ? { ...p, saldo_incorporado: String(r.saldo ?? 0) } : p);
+                              setRefinPrevia({ cancelar: r.cancelar ?? 0, encerrar_parcial: r.encerrar_parcial ?? 0, em_bordero: r.em_bordero ?? 0 });
+                            }).catch(() => {});
+                          }}>
                             <option value="">— Selecionar contrato a consolidar —</option>
                             {disponiveis.map(c => (
                               <option key={c.id} value={c.id}>{c.descricao}{c.numero_documento ? ` — ${c.numero_documento}` : ""} · {c.credor}</option>
@@ -2563,11 +2581,14 @@ export default function ContratosFinanceiros() {
                           disabled={!fRefin.contrato_origem_id || salvando}
                           style={{ padding: "8px 16px", background: fRefin.contrato_origem_id ? "#4B3B9B" : "#ccc", color: "#fff", border: "none", borderRadius: 8, cursor: fRefin.contrato_origem_id ? "pointer" : "default", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}
                           onClick={async () => {
-                            if (!fRefin.contrato_origem_id || !fazendaId) return;
+                            if (!fRefin.contrato_origem_id) return;
+                            const nTit = (refinPrevia?.cancelar ?? 0) + (refinPrevia?.encerrar_parcial ?? 0);
+                            if (!confirm(`Vincular como refinanciado por esta cédula?\n\n${nTit ? `${nTit} título(s) do contrato de origem saem do Contas a Pagar (em aberto cancelados; parciais ficam com o que já foi pago). ` : ""}O que já foi pago não muda. Desvincular desfaz tudo.`)) return;
                             try {
                               const saldo = fRefin.saldo_incorporado ? parseFloat(fRefin.saldo_incorporado.replace(",", ".")) : undefined;
-                              const novo = await vincularOrigemRefinanciamento(contratoModal.id, fRefin.contrato_origem_id, fazendaId, saldo);
-                              setOrigensRefin(p => [...p, novo]);
+                              const j = await apiRefin({ acao: "vincular", contrato_novo_id: contratoModal.id, contrato_origem_id: fRefin.contrato_origem_id, saldo_incorporado: saldo ?? null }) as { vinculo: ContratoRefinanciamento };
+                              setOrigensRefin(p => [...p, j.vinculo]);
+                              setRefinPrevia(null);
                               setContratos(p => p.map(c => c.id === fRefin.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: contratoModal.id } : c));
                               setFRefin({ contrato_origem_id: "", saldo_incorporado: "" });
                             } catch (e) { alert("Erro ao vincular: " + (e as Error).message); }
@@ -2575,6 +2596,13 @@ export default function ContratosFinanceiros() {
                           + Vincular
                         </OperationalButton>
                       </div>
+                      {refinPrevia && (
+                        <div style={{ fontSize: 11, color: refinPrevia.em_bordero ? "#B42318" : "#6B5CA5", marginTop: 8 }}>
+                          {refinPrevia.em_bordero
+                            ? `${refinPrevia.em_bordero} título(s) da origem estão em borderô não pago — confirme ou estorne o borderô antes de vincular.`
+                            : `Saldo calculado: amortizações a pagar, o que falta das parcelas parciais e juros já vencidos (juros futuros não entram). Ao vincular, ${refinPrevia.cancelar} título(s) em aberto são cancelados e ${refinPrevia.encerrar_parcial} parcial(is) ficam só com o que já foi pago.`}
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
