@@ -228,12 +228,14 @@ export default function ContasAReceberPage() {
   // tela real: período hoje → +3 meses (traz vencidos acumulados também,
   // porque "vencido" não some do status mesmo com data < hoje).
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
-  const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
+  // Padrão: títulos em aberto (inclui vencidos e parciais) até hoje + 60 dias, sem data inicial — o que está nos campos
+  // de data é exatamente o que filtra (antes a data inicial mostrava "hoje" mas os vencidos passavam por fora)
+  const [fStatus,  setFStatus]  = useState<Set<string>>(() => new Set(["em_aberto"]));
   const [fAtalho, setFAtalho] = useState("");
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
   // Padrão: vencimentos de hoje até hoje + 60 dias (pedido do dono 25/10/2026). Vencidos ficam na aba Vencidos.
-  const [fDataDe,  setFDataDe]  = useState(() => hojeLocal());
+  const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisDiasLocal(60));
   // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
   // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
@@ -311,16 +313,18 @@ export default function ContasAReceberPage() {
       let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "receber").neq("status_normalizado", "cartao");
       q = q.eq("conta_id", contaId);
       if (fOrigem.size > 0) q = q.in("origem_tabela", Array.from(fOrigem));
-      if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
+      // "Em aberto" inclui vencidos e parciais; "Vencidos" inclui em aberto com vencimento passado (o status do banco só
+      // vira "vencido" no cron) — a tela refina depois, com o mesmo critério do CP
+      if (fStatus.size > 0) q = q.in("status_normalizado", [...new Set([...fStatus].flatMap(st => st === "em_aberto" || st === "vencido" ? ["em_aberto", "vencido", "vencendo", "parcial"] : [st]))]);
       // Buscando cliente ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas
       const nfBusca = (filtrosCol.nf ?? "").trim();
       // Período padrão (hoje até hoje + 60 dias) também é ignorado em atalho/status que olha o passado (Vencidos,
       // Parciais, Baixados, Barter…), senão "Vencidos" ficaria sempre vazio.
-      const olhaPassado = [...fStatus].some(st => st === "vencido" || st === "parcial" || st === "baixado") || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho);
-      if (periodoManual || (!fBusca.trim() && !nfBusca && !olhaPassado)) {
-        // No período padrão, título vencido e ainda em aberto aparece sempre (o padrão começa hoje e o escondia).
-        if (fDataDe && !periodoManual) q = q.or(`data_vencimento.gte.${fDataDe},status_normalizado.in.(em_aberto,vencido,parcial)`);
-        else if (fDataDe) q = q.gte("data_vencimento", fDataDe);
+      // As datas dos campos valem exatamente; só sem período escolhido à mão a busca por cliente/nº NF e os atalhos de
+      // contrato olham todas as datas (e os campos ficam vazios na tela)
+      const semData = !periodoManual && (!!fBusca.trim() || !!nfBusca || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho));
+      if (!semData) {
+        if (fDataDe) q = q.gte("data_vencimento", fDataDe);
         if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       }
       if (nfBusca) q = q.ilike("nfe_numero", `%${nfBusca}%`);
@@ -432,10 +436,15 @@ export default function ContasAReceberPage() {
     if (k === "dias") return casaFiltroNumero(diasVencimento(l.data_vencimento, l.status_normalizado), f);
     return casaFiltroTexto(textoColuna(l, k), f);
   });
+  const semDataTela = !periodoManual && (!!fBusca.trim() || !!(filtrosCol.nf ?? "").trim() || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho));
   const linhas = (resultado ?? []).filter(l => {
     if (l.lote_id && loteIdsPagos.has(l.lote_id)) return false;
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
-    if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
+    if (fStatus.size > 0) {
+      const st = l.status_normalizado ?? "";
+      const vencidoAgora = (st === "em_aberto" || st === "vencido" || st === "vencendo" || st === "parcial") && !!l.data_vencimento && l.data_vencimento < hojeISO();
+      if (!fStatus.has(st) && !(fStatus.has("vencido") && vencidoAgora) && !(fStatus.has("em_aberto") && (st === "vencido" || st === "vencendo" || st === "parcial"))) return false;
+    }
     if (!passaColunas(l)) return false;
     if (fMoeda.size > 0 && !fMoeda.has(l.moeda ?? "BRL")) return false;
     if (fProdutor.size > 0 && !fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")) return false;
@@ -1379,17 +1388,17 @@ export default function ContasAReceberPage() {
         {/* Atalhos de status (restaurados da tela anterior): um clique aplica o filtro mais usado */}
         <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {([
-            ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
+            ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
             ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
           ] as const).map(([k, rot]) => {
             const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
-              : k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
+              : k === "em_aberto" || k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
               : fAtalho === k;
             return (
               <button key={k} type="button" aria-pressed={ativo}
                 onClick={() => {
                   if (k === "todos") { setFOrigem(new Set()); setFStatus(new Set()); setFAtalho(""); }
-                  else if (k === "vencido" || k === "parcial" || k === "baixado") { setFStatus(new Set([k])); setFAtalho(""); }
+                  else if (k === "em_aberto" || k === "vencido" || k === "parcial" || k === "baixado") { setFStatus(new Set([k])); setFAtalho(""); }
                   else { setFStatus(new Set()); setFAtalho(k); }
                 }}
                 style={{ padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", border: ativo ? "0.5px solid #1A4870" : "0.5px solid #DDE2EE", background: ativo ? "#D5E8F5" : "#fff", color: ativo ? "#0B2D50" : "#555", fontWeight: ativo ? 700 : 400 }}>{rot}</button>
@@ -1427,11 +1436,11 @@ export default function ContasAReceberPage() {
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
-            <InputData type="date" value={fDataDe} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
+            <InputData type="date" value={semDataTela ? "" : fDataDe} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>até</label>
-            <InputData type="date" value={fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
+            <InputData type="date" value={semDataTela ? "" : fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <OperationalButton data-arato-button="primary" onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}

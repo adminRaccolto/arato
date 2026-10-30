@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-m",
+    data: "30/10/2026",
+    titulo: "CP e CR: o filtro de vencimento vale exatamente o que está nos campos",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "correcao", texto: "A data inicial do filtro de vencimento aparecia como \"hoje\", mas títulos vencidos (e, com atalhos como Baixados ou Vencidos, qualquer data) passavam por fora. Agora as datas dos campos valem sempre, para todos os títulos." },
+      { tipo: "melhoria", texto: "A tela abre em \"Em aberto\" (inclui vencidos e parciais), com vencimento até hoje + 60 dias e sem data inicial — por isso os vencidos continuam aparecendo, mas de forma visível. Novo atalho \"Em aberto\"; \"Todos\" e \"Baixados\" mostram o resto. Buscando por fornecedor/cliente ou nº de NF sem ter escolhido período, os campos de data ficam vazios e todas as datas entram." },
+    ],
+  },
+  {
     versao: "2026.10.30-l",
     data: "30/10/2026",
     titulo: "Folha de Pagamento: XLSX formatado e com a situação do pagamento",

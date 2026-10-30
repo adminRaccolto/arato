@@ -259,12 +259,14 @@ export default function ContasAPagarPage() {
   // tela real: período hoje → +3 meses (traz vencidos acumulados também,
   // porque "vencido" não some do status mesmo com data < hoje).
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
-  const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
+  // Padrão: títulos em aberto (inclui vencidos e parciais) até hoje + 60 dias, sem data inicial — o que está nos campos
+  // de data é exatamente o que filtra (antes a data inicial mostrava "hoje" mas os vencidos passavam por fora)
+  const [fStatus,  setFStatus]  = useState<Set<string>>(() => new Set(["em_aberto"]));
   const [fAtalho, setFAtalho] = useState("");
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
   // Padrão: vencimentos de hoje até hoje + 60 dias (pedido do dono 25/10/2026). Vencidos ficam na aba Vencidos.
-  const [fDataDe,  setFDataDe]  = useState(() => hojeLocal());
+  const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisDiasLocal(60));
   // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
   // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
@@ -431,13 +433,12 @@ export default function ContasAPagarPage() {
   // ou atalho/status que olha o passado (Vencidos, Parciais, Baixados, Barter, Contratos, Compra de terra) — senão
   // "Vencidos" ficaria sempre vazio, já que o padrão começa hoje.
   const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra"]);
-  const filtroOlhaPassado = [...fStatus].some(st => st === "vencido" || st === "parcial" || st === "baixado") || ATALHOS_SEM_DATA.has(fAtalho);
-  const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || filtroOlhaPassado);
-  // No período padrão, título vencido e ainda em aberto aparece sempre (o padrão começa hoje e o escondia).
-  const periodoPadrao = !periodoManual && !buscaSemData;
-  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: buscaSemData || periodoPadrao ? "" : fDataDe, ate: buscaSemData ? "" : fDataAte, hoje: hojeISO() };
-  const passaPeriodoPadrao = (l: RelLancamento) => !periodoPadrao || !fDataDe || (!!l.data_vencimento && l.data_vencimento >= fDataDe)
-    || ["em_aberto", "vencido", "parcial"].includes(l.status_normalizado ?? "");
+  // Sem período escolhido à mão, busca por fornecedor/nº NF e os atalhos de contrato (barter, contratos, compra de terra)
+  // olham todas as datas — e os campos de data ficam vazios na tela, para mostrar o que está valendo.
+  const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || ATALHOS_SEM_DATA.has(fAtalho));
+  const deAplicado = buscaSemData ? "" : fDataDe;
+  const ateAplicado = buscaSemData ? "" : fDataAte;
+  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: deAplicado, ate: ateAplicado, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({
@@ -477,7 +478,7 @@ export default function ContasAPagarPage() {
   // Achado real 28/10/2026: o borderô ignorava esses filtros — "Compra de terra" (que desliga o período) listava todos.
   const passaExtras = (l: RelLancamento) => passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? ""));
   const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaPeriodoPadrao(l) && passaExtras(l));
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaExtras(l));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP)
     && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
@@ -1849,17 +1850,17 @@ export default function ContasAPagarPage() {
         {/* Atalhos de status (restaurados da tela anterior): um clique aplica o filtro mais usado */}
         <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {([
-            ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
+            ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
             ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
           ] as const).map(([k, rot]) => {
             const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
-              : k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
+              : k === "em_aberto" || k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
               : fAtalho === k;
             return (
               <button key={k} type="button" aria-pressed={ativo}
                 onClick={() => {
                   if (k === "todos") { setFOrigem(new Set()); setFStatus(new Set()); setFAtalho(""); }
-                  else if (k === "vencido" || k === "parcial" || k === "baixado") { setFStatus(new Set([k])); setFAtalho(""); }
+                  else if (k === "em_aberto" || k === "vencido" || k === "parcial" || k === "baixado") { setFStatus(new Set([k])); setFAtalho(""); }
                   else { setFStatus(new Set()); setFAtalho(k); }
                 }}
                 style={{ padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", border: ativo ? "0.5px solid #1A4870" : "0.5px solid #DDE2EE", background: ativo ? "#D5E8F5" : "#fff", color: ativo ? "#0B2D50" : "#555", fontWeight: ativo ? 700 : 400 }}>{rot}</button>
@@ -1885,11 +1886,11 @@ export default function ContasAPagarPage() {
           </div>
           <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
-            <InputData type="date" value={fDataDe} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
+            <InputData type="date" value={deAplicado} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>até</label>
-            <InputData type="date" value={fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
+            <InputData type="date" value={ateAplicado} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFDataDe(""); setFDataAte(""); setPeriodoManual(false); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); setFProdutor(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
