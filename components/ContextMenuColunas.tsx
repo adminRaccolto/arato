@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useLayout } from "./LayoutProvider";
 import type { ColDef } from "../hooks/useColunasGrid";
 
 interface Props {
@@ -18,7 +17,6 @@ interface Props {
 export default function ContextMenuColunas({
   x, y, colunas, ordemTodas, visiveis, onToggle, onMover, onResetar, onClose,
 }: Props) {
-  const { modern } = useLayout();
   const ref      = useRef<HTMLDivElement>(null);
   const dragIdx  = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -37,7 +35,7 @@ export default function ContextMenuColunas({
   }, [onClose]);
 
   // Posição ajustada para não sair da tela
-  const menuW  = modern ? Math.min(280, typeof window !== "undefined" ? window.innerWidth - 16 : 280) : 240;
+  const menuW  = 240;
   const left   = typeof window !== "undefined" ? Math.max(8, Math.min(x, window.innerWidth - menuW - 8)) : x;
   const top    = typeof window !== "undefined" ? Math.max(8, Math.min(y, window.innerHeight - Math.min(520, window.innerHeight - 16))) : y;
 

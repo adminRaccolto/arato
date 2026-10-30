@@ -1,7 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 import { hasClientWorkspace } from "../lib/layout-preferences";
-import LayoutSettings from "./LayoutSettings";
+import GridDensitySettings from "./GridDensitySettings";
 import { useAuth } from "./AuthProvider";
 
 export default function Footer() {
@@ -32,7 +32,7 @@ export default function Footer() {
         {anoSafraVigenteDesc}
       </span>
 
-      <details className="layout-disclosure footer-layout" style={{ marginLeft: "auto" }}><summary title="Modelo de layout e densidade">Layout ▴</summary><div><LayoutSettings density /></div></details>
+      <details className="density-disclosure footer-density" style={{ marginLeft: "auto" }}><summary title="Densidade dos grids">Densidade ▴</summary><div><GridDensitySettings /></div></details>
       <span style={{ color: "#BBB", fontWeight: 400 }}>
         Arato
       </span>

@@ -1,6 +1,6 @@
 "use client";
 import { PALETTES, MODES, type PaletteId } from "../lib/appearance";
-import LayoutSettings from "./LayoutSettings";
+import GridDensitySettings from "./GridDensitySettings";
 import { useAppearance } from "./AppearanceProvider";
 
 export default function AppearanceSettings({ compact = false }: { compact?: boolean }) {
@@ -26,7 +26,7 @@ export default function AppearanceSettings({ compact = false }: { compact?: bool
           </button>;
         })}
       </div>
-      <details className="layout-disclosure"><summary>Modelo de layout e densidade</summary><LayoutSettings density /></details>
+      <details className="density-disclosure"><summary>Densidade dos grids</summary><GridDensitySettings /></details>
     </section>
   );
 }

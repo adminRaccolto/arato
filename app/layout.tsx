@@ -12,7 +12,7 @@ import ModalNaoFechaFora from "../components/ModalNaoFechaFora";
 import "./globals.css";
 import "./operational.css";
 import AppearanceProvider from "../components/AppearanceProvider";
-import LayoutProvider from "../components/LayoutProvider";
+import GridDensityProvider from "../components/GridDensityProvider";
 import LayoutShell from "../components/LayoutShell";
 import { LAYOUT_SCRIPT } from "../lib/layout-preferences";
 import { APPEARANCE_SCRIPT } from "../lib/appearance";
@@ -60,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppearanceProvider />
         <ModalNaoFechaFora />
         <AuthProvider>
-          <LayoutProvider />
+          <GridDensityProvider />
           <ConfirmarAcaoHost />
           <ConfirmarEstornoCartaoHost />
           <BannerRelogioDessincronizado />

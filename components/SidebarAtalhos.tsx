@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useLayout } from "./LayoutProvider";
 import { useAuth } from "./AuthProvider";
 import { hasClientWorkspace } from "../lib/layout-preferences";
 import { usePathname, useRouter } from "next/navigation";
@@ -68,7 +67,6 @@ function salvarAtalhos(ids: string[]) {
 
 // ═══════════════════════════════════════════════════════════════
 export default function SidebarAtalhos() {
-  const { modern } = useLayout();
   const pathname              = usePathname();
   const { emailUsuario, contaId, fazendaId } = useAuth();
   const workspace = hasClientWorkspace(pathname, emailUsuario, contaId, fazendaId);
@@ -111,14 +109,14 @@ export default function SidebarAtalhos() {
   // CSS variable --sidebar-w: empurra o conteúdo da página para a direita
   useEffect(() => {
     const show =
-      !modern && workspace && montado && ativada &&
+      workspace && montado && ativada &&
       !pathname?.startsWith("/campo") &&
       !pathname?.startsWith("/login") &&
       !pathname?.startsWith("/admin");
     document.documentElement.style.setProperty("--sidebar-w", show ? W + "px" : "0px");
-  }, [montado, ativada, pathname, W, modern, workspace]);
+  }, [montado, ativada, pathname, W, workspace]);
 
-  if (!montado || modern || !workspace) return null;
+  if (!montado || !workspace) return null;
 
   // Não mostrar no App Campo (mobile), login, admin
   if (pathname?.startsWith("/campo") || pathname?.startsWith("/login") || pathname?.startsWith("/admin")) return null;

@@ -1,5 +1,4 @@
 "use client";
-import { useLayout } from "./LayoutProvider";
 import { useState, useEffect, useRef, useCallback, useId } from "react";
 
 export interface SelectBuscaOption {
@@ -18,7 +17,6 @@ interface Props {
 }
 
 export default function SelectBusca({ value, onChange, options, placeholder = "â€” Selecionar â€”", style, disabled }: Props) {
-  const { modern } = useLayout();
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
@@ -80,14 +78,14 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
     <>
       <div
         ref={triggerRef}
-        data-arato-search-trigger={modern ? "true" : undefined}
-        role={modern ? "combobox" : undefined}
-        tabIndex={modern && !disabled ? 0 : undefined}
-        aria-label={modern ? placeholder : undefined}
-        aria-expanded={modern ? aberto : undefined}
-        aria-controls={modern ? dropId : undefined}
-        aria-haspopup={modern ? "listbox" : undefined}
-        onKeyDown={e => { if (modern && ["Enter", " ", "ArrowDown"].includes(e.key)) { e.preventDefault(); abrir(); } }}
+        data-arato-search-trigger="true"
+        role="combobox"
+        tabIndex={disabled ? undefined : 0}
+        aria-label={placeholder}
+        aria-expanded={aberto}
+        aria-controls={dropId}
+        aria-haspopup="listbox"
+        onKeyDown={e => { if (["Enter", " ", "ArrowDown"].includes(e.key)) { e.preventDefault(); abrir(); } }}
         onClick={abrir}
         style={{
           ...style,
@@ -110,12 +108,12 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
       {aberto && typeof window !== "undefined" && (
         <div
           id={dropId}
-          data-arato-search-popup={modern ? "true" : undefined}
+          data-arato-search-popup="true"
           style={{
             position: "fixed",
             top: pos.top,
-            left: modern ? Math.max(10, Math.min(pos.left, window.innerWidth - Math.min(Math.max(pos.width, 300), window.innerWidth - 20) - 10)) : pos.left,
-            width: modern ? Math.min(Math.max(pos.width, 300), window.innerWidth - 20) : Math.max(pos.width, 300),
+            left: pos.left,
+            width: Math.max(pos.width, 300),
             zIndex: 99999,
             background: "var(--bg-card)",
             border: "0.5px solid #C8D4E8",
@@ -139,13 +137,13 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
           </div>
 
           {/* Lista de opÃ§Ãµes */}
-          <div role={modern ? "listbox" : undefined} aria-label={modern ? placeholder : undefined} style={{ overflowY: "auto", flex: 1 }}>
+          <div role="listbox" aria-label={placeholder} style={{ overflowY: "auto", flex: 1 }}>
             {/* OpÃ§Ã£o vazia */}
             <div
-              role={modern ? "option" : undefined}
-              tabIndex={modern ? 0 : undefined}
-              aria-selected={modern ? value === "" : undefined}
-              onKeyDown={e => { if (modern && ["Enter", " "].includes(e.key)) { e.preventDefault(); selectOption(""); } }}
+              role="option"
+              tabIndex={0}
+              aria-selected={value === ""}
+              onKeyDown={e => { if (["Enter", " "].includes(e.key)) { e.preventDefault(); selectOption(""); } }}
               onClick={() => selectOption("")}
               style={{ padding: "7px 12px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", borderBottom: "0.5px solid #F0F4FA", fontStyle: "italic" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#F0F4FA")}
@@ -177,13 +175,12 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
 }
 
 function OptionRow({ o, selected, onSelect }: { o: SelectBuscaOption; selected: boolean; onSelect: (v: string) => void }) {
-  const { modern } = useLayout();
   return (
     <div
-      role={modern ? "option" : undefined}
-      aria-selected={modern ? selected : undefined}
-      tabIndex={modern ? 0 : undefined}
-      onKeyDown={e => { if (modern && ["Enter", " "].includes(e.key)) { e.preventDefault(); onSelect(o.value); } }}
+      role="option"
+      aria-selected={selected}
+      tabIndex={0}
+      onKeyDown={e => { if (["Enter", " "].includes(e.key)) { e.preventDefault(); onSelect(o.value); } }}
       onClick={() => onSelect(o.value)}
       style={{
         padding: "7px 12px 7px 16px",

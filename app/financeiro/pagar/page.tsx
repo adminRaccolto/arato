@@ -39,8 +39,6 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 // (status fica igual, só ganham lote_id); "Confirmar Pagamento" depois é que
 // define data+conta e baixa todos de uma vez via /api/financeiro/bordero-acao.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useLayout } from "../../../components/LayoutProvider";
-import { MONEY_COLUMNS, modernMoneyColumns } from "../../../lib/modern-grid";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import GridPagination, { useGridPagination } from "../../../components/GridPagination";
@@ -246,13 +244,10 @@ const COLS_GRID_CP: ColDef[] = [
   { key: "status", label: "Status" },
 ];
 
-const COLS_GRID_CP_NEW = modernMoneyColumns(COLS_GRID_CP);
-
 export default function ContasAPagarPage() {
-  const { modern } = useLayout();
-  const columnDefinitions = modern ? COLS_GRID_CP_NEW : COLS_GRID_CP;
+  const columnDefinitions = COLS_GRID_CP;
   const { fazendaId, fazendaIds, contaId, emailUsuario, anoSafraVigenteId } = useAuth();
-  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid(modern ? "cp-new" : "cp", columnDefinitions, modern ? MONEY_COLUMNS : undefined);
+  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cp", columnDefinitions);
   const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
   const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => columnDefinitions.find(c => c.key === k)).filter((c): c is ColDef => !!c);
 
@@ -1882,7 +1877,7 @@ export default function ContasAPagarPage() {
           </div>
         )}
 
-        <div className="arato-current-only" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
           <span><strong>{linhasComBordero.length}</strong> título(s) · {borderosVisiveis.length} borderô(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
@@ -1899,7 +1894,7 @@ export default function ContasAPagarPage() {
             sobrou com paddings mais enxutos acima e o borderô saindo do painel fixo. */}
         <div data-arato-grid-container="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 270px)" }}>
 
-          <OperationalGrid data-op-title="Títulos e borderôs" tools={<OperationalButton data-arato-button="secondary" type="button" onClick={e => { const bounds = e.currentTarget.getBoundingClientRect(); setMenuColunas({ x: bounds.left, y: bounds.bottom + 4 }); }}>Colunas ▾</OperationalButton>} data-arato-grid="true" style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
+          <OperationalGrid data-op-title="Títulos e borderôs" data-arato-grid="true" style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
                 onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
@@ -2110,7 +2105,6 @@ export default function ContasAPagarPage() {
           </OperationalGrid>
         </div>
         {!carregando && <GridPagination pagination={gridPagination} />}
-        <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span><span>Pago: <strong>{fmtBRL(totalPago)}</strong></span><span>Saldo em aberto: <strong>{fmtBRL(totalAberto)}</strong></span>{totalPrevisto > 0 && <span>Previsões (não efetivadas): <strong>{fmtBRL(totalPrevisto)}</strong></span>}</div></div>
       </div>
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}

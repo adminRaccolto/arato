@@ -1,5 +1,5 @@
 "use client";
-import { OperationalButton, OperationalFilters, OperationalHeading } from "../components/OperationalUI";
+import { OperationalButton, OperationalFilters } from "../components/OperationalUI";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../components/TopNav";
 import OnboardingPanel from "../components/OnboardingPanel";
@@ -612,16 +612,11 @@ export default function Dashboard() {
       <TopNav />
       {onboardingAtivo && <OnboardingPanel />}
 
-      <main className="op-home" style={{ flex:1, maxWidth:1440, margin:"0 auto", width:"100%", padding:"0 0 60px" }}>
+      <main style={{ flex:1, maxWidth:1440, margin:"0 auto", width:"100%", padding:"0 0 60px" }}>
 
-        <div className="arato-new-only op-home-heading">
-          <OperationalHeading data-arato-page-heading="true">
-            <div><h1 data-arato-h1="true">Visão operacional</h1></div>
-          </OperationalHeading>
-        </div>
 
         {/* ═══ HERO COMPACTO ═══ */}
-        <div className="op-home-context" style={{
+        <div style={{
           padding:"22px 28px 20px",
           background:"linear-gradient(160deg,#0D0D0D 0%,#0D1F38 60%,#091422 100%)",
           borderBottom:"0.5px solid var(--border)",
@@ -677,7 +672,7 @@ export default function Dashboard() {
                 <OperationalButton data-arato-button="icon" onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</OperationalButton>
               )}
               {buscaAberta && buscaGlobal.trim().length >= 2 && (
-                <div className="op-home-search-results" style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:300,overflowY:"auto" }}>
+                <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:300,overflowY:"auto" }}>
                   {resultadosBusca.length === 0 && !buscandoGlobal && (
                     <div style={{ padding:"14px",fontSize:12,color:"var(--text-3)",textAlign:"center" }}>Nenhum resultado para "{buscaGlobal}"</div>
                   )}
@@ -707,10 +702,10 @@ export default function Dashboard() {
                 { nome:"USD SPOT", v:`R$ ${fmtBrl(precos.usdBrl)}`,       brl:"",                                 d:0 },
                 { nome:"PTAX",     v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"",                 d:0 },
               ].map((m,i) => (
-                <div className="op-home-market-item" key={i} style={{ display:"flex",alignItems:"center",gap:7,flexShrink:0 }}>
+                <div key={i} style={{ display:"flex",alignItems:"center",gap:7,flexShrink:0 }}>
                   <span style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:".06em" }}>{m.nome}</span>
                   <span style={{ fontSize:13,fontWeight:700,color:"#ffffff",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
-                  {m.brl && <span className="op-home-market-detail" style={{ fontSize:11,color:"rgba(255,255,255,0.55)" }}>{m.brl}</span>}
+                  {m.brl && <span style={{ fontSize:11,color:"rgba(255,255,255,0.55)" }}>{m.brl}</span>}
                   {m.d !== 0 && <span style={{ fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:4,
                     background:m.d>0?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
                     color:m.d>0?"#22C55E":"#EF4444" }}>{fmtPct(m.d)}</span>}
@@ -725,7 +720,7 @@ export default function Dashboard() {
         </div>
 
         {/* Alertas & Pendências — fora do hero, no conteúdo principal */}
-        <div className="op-home-alerts" style={{ padding:"20px 28px 0" }}>
+        <div style={{ padding:"20px 28px 0" }}>
           <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
             <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
               <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Alertas &amp; Pendências</span>
@@ -771,7 +766,7 @@ export default function Dashboard() {
 
         {/* Conciliação (apenas se houver pendências) */}
         {conciliPend.length > 0 && (
-          <div className="op-home-conciliation" style={{ padding:"20px 28px 0" }}>
+          <div style={{ padding:"20px 28px 0" }}>
             <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
               <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                 <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Inconsistências de Conciliação</span>

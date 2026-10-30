@@ -1,8 +1,6 @@
 "use client";
 import { Fragment, useState, useEffect, useRef } from "react";
 import AppearanceSettings from "./AppearanceSettings";
-import ModernNavigation from "./ModernNavigation";
-import { useLayout } from "./LayoutProvider";
 import { hasClientWorkspace } from "../lib/layout-preferences";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,18 +12,16 @@ import type { Fazenda } from "../lib/supabase";
 import { NAV, NAV_MODULE_MAP, extrairGrupos, type NavItem, type NavLink, type NavSubgroup, type NavChild } from "../lib/navigation";
 
 // ─── Componente ──────────────────────────────────────────────
-interface TopNavProps { automacoesAtivas?: number; global?: boolean }
+interface TopNavProps { automacoesAtivas?: number }
 
-export default function TopNav({ automacoesAtivas = 5, global = false }: TopNavProps) {
-  const { modern } = useLayout();
+export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const pathname = usePathname();
   const { emailUsuario, contaId, fazendaId } = useAuth();
   if (!hasClientWorkspace(pathname, emailUsuario, contaId, fazendaId)) return null;
-  if (modern && !global) return null;
-  return <TopNavContent automacoesAtivas={automacoesAtivas} modern={modern} />;
+  return <TopNavContent automacoesAtivas={automacoesAtivas} />;
 }
 
-function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number; modern: boolean }) {
+function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
   const [dropdown,         setDropdown]         = useState<string | null>(null);
   const [openSub,          setOpenSub]          = useState<string | null>(null);
   const [panelGroup,       setPanelGroup]        = useState<string>("");
@@ -356,7 +352,7 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
 
   return (
   <>
-    {modern ? <ModernNavigation identity={nomeIdentidade} logo={logoArato} name={nomeArato} pending={qtdPendencias} transfers={qtdTransferencias} outdated={desatualizado} onApp={() => setShowQr(true)} /> : <header
+    <header
       data-arato-legacy-navigation
       ref={navRef}
       style={{
@@ -821,7 +817,7 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
           </div>
         )}
       </nav>
-    </header>}
+    </header>
 
     {/* ── Modal QR Code App Campo ── */}
     {showQr && (

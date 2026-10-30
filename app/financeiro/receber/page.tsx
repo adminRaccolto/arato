@@ -38,8 +38,6 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 // Aceita Produtor e Empresa no mesmo borderô (Seção 317 — origem_tabela em
 // pagamento_lote_itens).
 // ═══════════════════════════════════════════════════════════════════════════
-import { useLayout } from "../../../components/LayoutProvider";
-import { MONEY_COLUMNS, modernMoneyColumns } from "../../../lib/modern-grid";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import GridPagination, { useGridPagination } from "../../../components/GridPagination";
@@ -215,13 +213,10 @@ const COLS_GRID_CR: ColDef[] = [
   { key: "status", label: "Status" },
 ];
 
-const COLS_GRID_CR_NEW = modernMoneyColumns(COLS_GRID_CR);
-
 export default function ContasAReceberPage() {
-  const { modern } = useLayout();
-  const columnDefinitions = modern ? COLS_GRID_CR_NEW : COLS_GRID_CR;
+  const columnDefinitions = COLS_GRID_CR;
   const { fazendaId, fazendaIds, contaId, emailUsuario, anoSafraVigenteId } = useAuth();
-  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid(modern ? "cr-new" : "cr", columnDefinitions, modern ? MONEY_COLUMNS : undefined);
+  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cr", columnDefinitions);
   const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
   const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => columnDefinitions.find(c => c.key === k)).filter((c): c is ColDef => !!c);
 
@@ -1417,7 +1412,7 @@ export default function ContasAReceberPage() {
           </div>
         )}
 
-        <div className="arato-current-only" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
           <span><strong>{linhas.length}</strong> lançamento(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
@@ -1432,7 +1427,7 @@ export default function ContasAReceberPage() {
             sobrou com paddings mais enxutos acima e o borderô saindo do painel fixo. */}
         <div data-arato-grid-container="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 270px)" }}>
 
-          <OperationalGrid data-op-title="Títulos e borderôs" tools={<OperationalButton data-arato-button="secondary" type="button" onClick={e => { const bounds = e.currentTarget.getBoundingClientRect(); setMenuColunas({ x: bounds.left, y: bounds.bottom + 4 }); }}>Colunas ▾</OperationalButton>} data-arato-grid="true" style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
+          <OperationalGrid data-op-title="Títulos e borderôs" data-arato-grid="true" style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
                 onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
@@ -1629,7 +1624,6 @@ export default function ContasAReceberPage() {
           </OperationalGrid>
         </div>
         {!carregando && <GridPagination pagination={gridPagination} />}
-        <div className="arato-new-only"><div className="arato-filter-total"><span>{linhas.length} título(s) no filtro</span><span>Total CR do filtro: <strong>{fmtBRL(totalPagar)}</strong></span></div></div>
       </div>
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}
