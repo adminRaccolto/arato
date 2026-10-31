@@ -15,7 +15,7 @@
 import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   atualizarNfEntrada,
   listarNfEntradaItens,
@@ -227,7 +227,14 @@ export default function ModalProcessarLote({
     }));
   }
 
+  // Trava de clique: um segundo clique não dispara outro processamento em paralelo (títulos em dobro no CP)
+  const processandoRef = useRef(false);
   async function processarEmLote() {
+    if (processandoRef.current) return;
+    processandoRef.current = true;
+    try { await processarEmLoteInterno(); } finally { processandoRef.current = false; }
+  }
+  async function processarEmLoteInterno() {
     if (!nfs.length || !fornecedorUnico) return;
     setSaving(true);
     const erros: string[] = [];

@@ -69,7 +69,7 @@ export type Achado = {
 // ── Base carregada ────────────────────────────────────────────────────────────
 export type NfE = { id: string; fazenda_id: string; numero: string; emitente_nome: string | null; emitente_cnpj: string | null; valor_total: number | null; status: string; chave_acesso: string | null; cfop: string | null; nf_origem_id: string | null; pessoa_id: string | null; lancamento_id: string | null; emp_lancamento_id: string | null; processado_por: string | null; data_emissao: string | null; pedido_compra_id: string | null };
 export type NfS = { id: string; fazenda_id: string; numero_nf: string; prestador_nome: string | null; prestador_id: string | null; valor_liquido: number | null; valor_servico: number | null; empresa_id: string | null; lancamento_id: string | null; processado_por: string | null; data_prestacao: string | null; status: string };
-export type Tit = { id: string; tabela: "lancamentos" | "empresa_lancamentos"; fazenda_id: string; tipo: string; descricao: string | null; valor: number; valor_pago: number | null; status: string; pessoa_id: string | null; nf_entrada_id: string | null; contrato_financeiro_id: string | null; data_vencimento: string | null; numero_documento: string | null; origem: string | null; num_parcela: number | null; moeda: string | null; cotacao_usd: number | null; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null };
+export type Tit = { id: string; tabela: "lancamentos" | "empresa_lancamentos"; fazenda_id: string; tipo: string; descricao: string | null; valor: number; valor_pago: number | null; status: string; pessoa_id: string | null; nf_entrada_id: string | null; contrato_financeiro_id: string | null; data_vencimento: string | null; numero_documento: string | null; origem: string | null; num_parcela: number | null; moeda: string | null; cotacao_usd: number | null; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null; titulo_origem_id?: string | null };
 export type Excluido = { audit_id: string; quando: string; quem: string | null; tabela: "lancamentos" | "empresa_lancamentos"; antes: Record<string, unknown> };
 export type Mov = { fazenda_id: string; deposito_id: string | null; insumo_id: string; tipo: string; quantidade: number; usuario_nome?: string | null; created_at?: string | null };
 export type EspelhoPj = { id: string; nfe_numero: string | null };
@@ -229,7 +229,8 @@ export function regrasDuplicidade(b: Base): Achado[] {
       titulo: `NF ${g[0].numero} — ${g[0].emitente_nome ?? ""} (${g.length} cópias)`, valor: num(g[0].valor_total), detalhe: { copias: g.map(n => n.status), processadas: proc } });
   }
   const porTit = new Map<string, Tit[]>();
-  for (const t of b.titulos) if (t.tipo === "pagar" && t.nf_entrada_id && t.status !== "cancelado") {
+  // Partes de um pagamento parcial dividido (parte paga + saldo, mesmo titulo_origem_id) não são duplicata
+  for (const t of b.titulos) if (t.tipo === "pagar" && t.nf_entrada_id && t.status !== "cancelado" && !t.titulo_origem_id) {
     const k = `${t.tabela}|${t.nf_entrada_id}|${num(t.valor).toFixed(2)}|${t.data_vencimento ?? ""}`;
     porTit.set(k, [...(porTit.get(k) ?? []), t]);
   }

@@ -25,6 +25,13 @@ export async function POST(req: NextRequest) {
     const negado = await exigirAcessoFazendas(req, body.rows.map(r => r.fazenda_id as string | undefined));
     if (negado) return negado;
     const sb = admin();
+    // Título de NF que já tem título ativo da Empresa: não cria outro (processamento disparado duas vezes — achado
+    // 30/10/2026, NF 665 em dobro). Devolve os que já existem.
+    const nfIds = [...new Set(body.rows.map(r => r.nf_entrada_id as string | undefined).filter((v): v is string => !!v))];
+    if (nfIds.length) {
+      const { data: ja } = await sb.from("empresa_lancamentos").select("id").in("nf_entrada_id", nfIds).neq("status", "cancelado").order("created_at");
+      if (ja?.length) return NextResponse.json({ ok: true, ids: ja.map(r => r.id), ja_existia: true });
+    }
     const { data, error } = await sb
       .from("empresa_lancamentos")
       .insert(body.rows)

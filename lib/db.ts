@@ -3579,8 +3579,12 @@ export async function processarNfEntrada(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rows: agRows }),
         });
-        const agJson = await agRes.json() as { ok: boolean; ids?: string[]; error?: string };
-        if (!agJson.ok) throw new Error(`Erro ao criar CP da NF: ${agJson.error}`);
+        const agJson = await agRes.json() as { ok: boolean; ids?: string[]; error?: string; duplicado?: boolean };
+        if (!agJson.ok && agJson.duplicado) {
+          // Outro processamento da mesma NF, ao mesmo tempo, já criou o título: usa o que existe (não duplica)
+          const { data: ja } = await supabase.from("lancamentos").select("id").eq("nf_entrada_id", nfId).neq("status", "cancelado").order("created_at").limit(1);
+          if (ja?.[0]?.id) nfUpdates.lancamento_id = ja[0].id;
+        } else if (!agJson.ok) throw new Error(`Erro ao criar CP da NF: ${agJson.error}`);
         if (agJson.ids?.[0]) nfUpdates.lancamento_id = agJson.ids[0];
       }
     }

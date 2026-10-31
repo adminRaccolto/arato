@@ -1367,7 +1367,15 @@ export default function ModalNf({
   }, [tipo, nfEdit?.id, cab.emitente_cnpj]);
 
   // ── Processar NF (finalizar) ──────────────────────────────
+  // Trava de clique: dois cliques seguidos em Processar disparavam dois processamentos ao mesmo tempo, e cada um criava
+  // o seu título no CP (achado 30/10/2026, 5 NFs). O segundo clique é ignorado enquanto o primeiro não termina.
+  const processandoRef = useRef(false);
   async function processarNF() {
+    if (processandoRef.current) return;
+    processandoRef.current = true;
+    try { await processarNFInterno(); } finally { processandoRef.current = false; }
+  }
+  async function processarNFInterno() {
     if (!fazendaId || !nfEdit) return;
     // NF de retorno (armazém 5906/6906…, máquina 1554/1555…) não é compra: é processada na tela Retornos (liga à remessa, sem CP)
     const cfopDig = String(cab.cfop || nfEdit.cfop || "").replace(/\D/g, "");

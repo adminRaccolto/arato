@@ -33,7 +33,7 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
     todas<{ id: string; nf_entrada_id: string; cfop: string | null }>(sb, "nf_entrada_itens", "id,nf_entrada_id,cfop"),
     todas<NfS>(sb, "nf_servicos", "id,fazenda_id,numero_nf,prestador_nome,prestador_id,valor_liquido,valor_servico,empresa_id,lancamento_id,processado_por,data_prestacao,status", q => q.eq("status", "processada")),
     todas<Omit<Tit, "tabela" | "origem"> & { origem_lancamento: string | null }>(sb, "lancamentos",
-      "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,contrato_financeiro_id,data_vencimento,numero_documento,origem_lancamento,num_parcela,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto"),
+      "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,contrato_financeiro_id,data_vencimento,numero_documento,origem_lancamento,num_parcela,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto,titulo_origem_id"),
     todas<Omit<Tit, "tabela" | "contrato_financeiro_id" | "num_parcela" | "cotacao_usd">>(sb, "empresa_lancamentos",
       "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,data_vencimento,numero_documento,origem,moeda,valor_multa,valor_juros,valor_desconto"),
     todas<{ id: string; created_at: string; usuario_app: string | null; tabela: string; dados_antes: Record<string, unknown> }>(sb, "audit_log", "id,created_at,usuario_app,tabela,dados_antes",
@@ -57,7 +57,7 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
   for (const i of itens) if (i.cfop) cfopsItens.set(i.nf_entrada_id, [...(cfopsItens.get(i.nf_entrada_id) ?? []), String(i.cfop).replace(/\D/g, "")]);
   const titulos: Tit[] = [
     ...lanc.map(l => ({ ...l, tabela: "lancamentos" as const, origem: l.origem_lancamento })),
-    ...emp.map(e => ({ ...e, tabela: "empresa_lancamentos" as const, contrato_financeiro_id: null, num_parcela: null, cotacao_usd: null })),
+    ...emp.map(e => ({ ...e, tabela: "empresa_lancamentos" as const, contrato_financeiro_id: null, num_parcela: null, cotacao_usd: null, titulo_origem_id: null })),
   ];
   const comoExcluido = (d: { id: string; created_at: string; usuario_app: string | null; tabela: string; dados_antes: Record<string, unknown> }): Excluido =>
     ({ audit_id: d.id, quando: d.created_at, quem: d.usuario_app, tabela: d.tabela as Excluido["tabela"], antes: d.dados_antes ?? {} });

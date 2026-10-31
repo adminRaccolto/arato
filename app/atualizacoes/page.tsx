@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-zc",
+    data: "30/10/2026",
+    titulo: "NF não gera mais título em dobro no Contas a Pagar",
+    modulos: ["Documentos Fiscais", "Contas a Pagar", "Saúde dos Dados"],
+    itens: [
+      { tipo: "correcao", texto: "Dois cliques seguidos em Processar (NF individual ou em lote) disparavam dois processamentos ao mesmo tempo e cada um criava o seu título no CP. O segundo clique agora é ignorado, e o banco recusa um segundo título da mesma NF e parcela (Seção 401); na NF de Empresa, o título que já existe é reaproveitado." },
+      { tipo: "correcao", texto: "Saúde dos Dados: a parte paga e o saldo de um pagamento parcial dividido não aparecem mais como \"Título duplicado na mesma NF\"." },
+    ],
+  },
+  {
     versao: "2026.10.30-zb",
     data: "30/10/2026",
     titulo: "Folha: uma por empregador, sem separar por fazenda",

@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
       .from("lancamentos")
       .insert(body.rows)
       .select("id");
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    // 23505 = o banco recusou um 2º título da mesma NF/parcela (Seção 401): outro processamento simultâneo já criou
+    if (error) return NextResponse.json({ ok: false, error: error.message, duplicado: error.code === "23505" }, { status: error.code === "23505" ? 409 : 500 });
     return NextResponse.json({ ok: true, ids: (data ?? []).map(r => r.id) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });

@@ -18975,3 +18975,15 @@ DO $$ DECLARE r RECORD; BEGIN
   FOR r IN SELECT id FROM empresa_lancamentos WHERE conta_bancaria IS NOT NULL LOOP PERFORM fn_recalc_rel_lancamento_empresa(r.id); END LOOP;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 401 — Um título de CP por NF e parcela (sem duplicidade em processamento simultâneo)
+-- =============================================================================
+-- Dois cliques em Processar disparavam dois processamentos da mesma NF ao mesmo tempo; os dois viam "sem CP" e cada um
+-- criava o seu título (achado 30/10/2026, 5 NFs). O banco passa a recusar o 2º título ativo da mesma NF + tipo + parcela.
+-- Partes de pagamento parcial dividido (titulo_origem_id) ficam de fora. ANTES desta seção, rode o script que apaga os
+-- duplicados existentes: node --env-file=.env.local scripts/titulos-nf-duplicados.mjs --aplicar
+CREATE UNIQUE INDEX IF NOT EXISTS uq_lancamentos_nf_parcela
+  ON lancamentos (nf_entrada_id, tipo, COALESCE(num_parcela, 0))
+  WHERE nf_entrada_id IS NOT NULL AND status <> 'cancelado' AND titulo_origem_id IS NULL;
+NOTIFY pgrst, 'reload schema';
