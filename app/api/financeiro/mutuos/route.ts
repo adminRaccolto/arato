@@ -21,8 +21,10 @@ const interna = (p: Parte) => p.tipo === "produtor" || p.tipo === "empresa";
 async function tituloPago(sb: Sb, lado: Parte, outro: Parte, o: { fazenda_id: string; tipo: "pagar" | "receber"; valor: number; data: string; conta: string; descricao: string; observacao?: string | null }): Promise<Ref> {
   const pessoa_id = outro.tipo === "pessoa" ? outro.id : null;
   if (lado.tipo === "produtor") {
+    // Fazenda do próprio produtor (o banco exige uma); sem fazenda dele, a padrão do cliente
+    const { data: fzProd } = await sb.from("fazendas").select("id").eq("produtor_id", lado.id).limit(1);
     const { data, error } = await sb.from("lancamentos").insert({
-      fazenda_id: o.fazenda_id, tipo: o.tipo, moeda: "BRL", descricao: o.descricao, categoria: "Mútuo", valor: o.valor,
+      fazenda_id: fzProd?.[0]?.id ?? o.fazenda_id, tipo: o.tipo, moeda: "BRL", descricao: o.descricao, categoria: "Mútuo", valor: o.valor,
       data_lancamento: o.data, data_vencimento: o.data, status: "baixado", data_baixa: o.data, valor_pago: o.valor,
       conta_bancaria: o.conta, auto: false, origem_lancamento: "tesouraria", produtor_id: lado.id, pessoa_id,
       vinculo_atividade: "nao_tributavel", observacao: o.observacao || null,

@@ -45,7 +45,7 @@ interface OpTesoura {
   categoria?: string; observacao?: string; ativo: boolean;
   operacao_gerencial_id?: string | null;
 }
-interface ContaBancariaMin { id: string; nome?: string; banco?: string; agencia?: string; conta?: string; tipo_conta?: string; }
+interface ContaBancariaMin { id: string; nome?: string; banco?: string; agencia?: string; conta?: string; tipo_conta?: string; fazenda_id?: string | null; }
 
 const TIPOS_OP_PADRAO = [
   { id: "__mutuo__",         nome: "Lançamento de Mútuo",       tipo: "ambos"        },
@@ -64,20 +64,24 @@ const TIPOS_OP_PADRAO = [
 // ─────────────────────────────────────────────────────────────
 export default function TesourariaPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
-  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
-  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
-  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  // Sem seletor de fazenda (a Tesouraria é do cliente): fazendaId só serve de fazenda padrão quando o lançamento não
+  // tem conta bancária que diga a fazenda — a lista mostra todas as fazendas do cliente
   const [fazTrabalho, setFazTrabalho] = useState<string>("");
   useEffect(() => {
     if (!fazendaId && !contaId) return;
     listarFazendasDaConta(contaId, fazendaId).then(fzs => {
-      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
       setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
     }).catch(() => {});
   }, [fazendaId, contaId]);
   const fazAtiva = fazTrabalho || fazendaId || "";
 
   const [lancamentos, setLancamentos] = useState<LancTesoura[]>([]);
+  // Produtores do cliente (campo "Produtor" do lançamento — quem é o dono do título no LCDPR)
+  const [produtores, setProdutores] = useState<{ id: string; nome: string }[]>([]);
+  useEffect(() => {
+    if (!contaId) return;
+    supabase.from("produtores").select("id, nome").eq("conta_id", contaId).order("nome").then(({ data }) => setProdutores((data ?? []) as { id: string; nome: string }[]));
+  }, [contaId]);
   const [contas, setContas]           = useState<ContaBancariaMin[]>([]);
   const [opsTesouraria, setOpsTesouraria] = useState<OpTesoura[]>([]);
   const [ogs, setOgs]                 = useState<OgMin[]>([]);
@@ -93,7 +97,7 @@ export default function TesourariaPage() {
     data: hoje(), data_vencimento: "",
     observacao: "",
     conta_ajuste: "", saldo_atual: 0, saldo_correto: 0,
-    og_id: "",
+    og_id: "", produtor_id: "",
   });
   const [lSaving, setLSaving] = useState(false);
   // ── Editar lançamento de tesouraria (linha única). Transferência, aporte e resgate são
@@ -150,7 +154,7 @@ export default function TesourariaPage() {
         }
         return { data: todos };
       })(),
-      supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, tipo_conta").in("fazenda_id", fazendaIds),
+      supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, tipo_conta, fazenda_id").in("fazenda_id", fazendaIds),
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
       supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
     ]);
@@ -207,6 +211,10 @@ export default function TesourariaPage() {
     if (!fazAtiva) return;
     setLSaving(true); setLErr("");
     try {
+      // Sem seletor de fazenda (Tesouraria é do cliente): o título fica na fazenda da conta bancária usada; sem conta,
+      // na primeira fazenda do cliente (o banco exige uma fazenda em cada título) — 31/10/2026
+      const contaUsada = [lForm.conta_origem, lForm.conta_destino, lForm.conta_ajuste, lForm.conta_aplicacao].find(Boolean);
+      const fazLanc = contas.find(c => c.id === contaUsada || contaLabelTesoura(c) === contaUsada)?.fazenda_id || fazAtiva;
       const op = lForm.tipo_op;
       const isAjuste    = op === "__ajuste__";
       const isTransf    = op === "__transferencia__";
@@ -218,7 +226,7 @@ export default function TesourariaPage() {
         if (!lForm.conta_origem) throw new Error("Selecione a conta corrente de origem.");
         if (!lForm.conta_destino) throw new Error("Selecione a conta investimento de destino.");
         const descApl = lForm.descricao.trim() || "Aporte em aplicação financeira";
-        const baseApl = { fazenda_id: fazAtiva, moeda: "BRL", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        const baseApl = { fazenda_id: fazLanc, moeda: "BRL", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
         const ogAporteSaida = ogs.find(o => o.classificacao === "2.02.01.01.006")?.id ?? null;
         await supabase.from("lancamentos").insert([
           { ...baseApl, tipo: "pagar"   as const, descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", operacao_gerencial_id: ogAporteSaida, conta_bancaria: lForm.conta_origem },
@@ -233,11 +241,11 @@ export default function TesourariaPage() {
         const ogResgateEntrada = ogs.find(o => o.classificacao === "3.07")?.id ?? null;
         const ogIofResgate     = ogs.find(o => o.classificacao === "2.02.01.01.001")?.id ?? null;
         const lancamentos: object[] = [
-          { fazenda_id: fazAtiva, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_origem, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
-          { fazenda_id: fazAtiva, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", operacao_gerencial_id: ogResgateEntrada, valor: valorLiq, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
+          { fazenda_id: fazLanc, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_origem, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
+          { fazenda_id: fazLanc, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", operacao_gerencial_id: ogResgateEntrada, valor: valorLiq, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
         ];
-        if ((lForm.iof || 0) > 0) lancamentos.push({ fazenda_id: fazAtiva, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ resgate`, categoria: "IOF — Aplicação Financeira", operacao_gerencial_id: ogIofResgate, valor: lForm.iof, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
-        if ((lForm.ir  || 0) > 0) lancamentos.push({ fazenda_id: fazAtiva, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ rendimentos`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
+        if ((lForm.iof || 0) > 0) lancamentos.push({ fazenda_id: fazLanc, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ resgate`, categoria: "IOF — Aplicação Financeira", operacao_gerencial_id: ogIofResgate, valor: lForm.iof, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
+        if ((lForm.ir  || 0) > 0) lancamentos.push({ fazenda_id: fazLanc, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ rendimentos`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
         await supabase.from("lancamentos").insert(lancamentos);
       } else if (isAjuste) {
         const atual = lForm.saldo_atual || 0;
@@ -246,7 +254,7 @@ export default function TesourariaPage() {
         if (!lForm.conta_ajuste) throw new Error("Selecione a conta.");
         const ogAjuste = ogs.find(o => o.classificacao === (dif >= 0 ? "3.06" : "4.06"))?.id ?? null;
         await supabase.from("lancamentos").insert({
-          fazenda_id: fazAtiva, tipo: dif >= 0 ? "receber" : "pagar" as const,
+          fazenda_id: fazLanc, tipo: dif >= 0 ? "receber" : "pagar" as const,
           moeda: "BRL", descricao: `Ajuste de Saldo — ${lForm.conta_ajuste}`,
           categoria: "Ajuste de Saldo", operacao_gerencial_id: ogAjuste, valor: Math.abs(dif),
           data_lancamento: lForm.data, data_vencimento: lForm.data,
@@ -258,7 +266,7 @@ export default function TesourariaPage() {
       } else if (isTransf) {
         if (!lForm.conta_origem || !lForm.conta_destino || !lForm.valor) throw new Error("Preencha todos os campos.");
         const v = lForm.valor;
-        const base = { fazenda_id: fazAtiva, moeda: "BRL", categoria: "Transferência entre Contas", valor: v, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado", auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        const base = { fazenda_id: fazLanc, moeda: "BRL", categoria: "Transferência entre Contas", valor: v, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado", auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
         await supabase.from("lancamentos").insert([
           { ...base, tipo: "pagar"   as const, descricao: `Transferência → ${lForm.conta_destino}`, conta_bancaria: lForm.conta_origem },
           { ...base, tipo: "receber" as const, descricao: `Transferência ← ${lForm.conta_origem}`, conta_bancaria: lForm.conta_destino },
@@ -271,7 +279,7 @@ export default function TesourariaPage() {
         const opCustom = opsTesouraria.find(o => o.id === op);
         const ogId = lForm.og_id || opCustom?.operacao_gerencial_id || null;
         await supabase.from("lancamentos").insert({
-          fazenda_id: fazAtiva, tipo: tipoLanc, moeda: "BRL",
+          fazenda_id: fazLanc, tipo: tipoLanc, moeda: "BRL",
           descricao: lForm.descricao.trim(), categoria: nomeOp?.nome ?? "Tesouraria",
           valor: lForm.valor,
           data_lancamento: lForm.data, data_vencimento: lForm.data_vencimento || lForm.data,
@@ -280,11 +288,12 @@ export default function TesourariaPage() {
           observacao: lForm.observacao || null,
           origem_lancamento: "tesouraria",
           operacao_gerencial_id: ogId,
+          produtor_id: lForm.produtor_id || null,
         });
       }
       await carregar();
       setModalLanc(false);
-      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0, og_id: "" });
+      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0, og_id: "", produtor_id: "" });
     } catch (e: unknown) {
       setLErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -305,11 +314,6 @@ export default function TesourariaPage() {
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Lançamento de Tesouraria</h1>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {fazendasConta.length > 1 && (
-              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
-                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </SelectField>
-            )}
             <OperationalButton data-arato-button="secondary" onClick={() => setModalMutuo({})} style={{ ...btnV, background: "transparent", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}>Lançamento de Mútuo</OperationalButton>
             <OperationalButton data-arato-button="primary" onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</OperationalButton>
           </div>
@@ -707,6 +711,14 @@ export default function TesourariaPage() {
                 {/* OPERAÇÃO NORMAL */}
                 {!isAjuste && !isTransf && !isAplicacao && !isResgate && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* Ordem padrão das telas de lançamento: de quem → o quê → quanto/quando → onde → observação */}
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Produtor</label>
+                      <SelectField value={lForm.produtor_id} onChange={e => setLForm(f => ({ ...f, produtor_id: e.target.value }))} style={inp}>
+                        <option value="">— Sem produtor —</option>
+                        {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </SelectField>
+                    </div>
                     {isAmbos && (
                       <div>
                         <label data-arato-label="true" style={lbl}>Tipo</label>
@@ -720,6 +732,26 @@ export default function TesourariaPage() {
                         </div>
                       </div>
                     )}
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Operação Gerencial (OG)</label>
+                      <SelectField value={lForm.og_id} onChange={e => setLForm(f => ({ ...f, og_id: e.target.value }))}
+                        style={{ ...inp, borderColor: lForm.og_id ? "#16A34A" : undefined }}>
+                        <option value="">— Sem vínculo (não impacta DRE/LCDPR)</option>
+                        <optgroup label="Receitas">
+                          {ogs.filter(g => g.tipo === "receita").map(g => (
+                            <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Despesas">
+                          {ogs.filter(g => g.tipo === "despesa").map(g => (
+                            <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
+                          ))}
+                        </optgroup>
+                      </SelectField>
+                      {lForm.og_id && (
+                        <div style={{ marginTop: 3, fontSize: 11, color: "#16A34A" }}>✓ Impacta DRE, LCDPR e SPED ECD</div>
+                      )}
+                    </div>
                     <div>
                       <label data-arato-label="true" style={lbl}>Descrição</label>
                       <input value={lForm.descricao} onChange={e => setLForm(f => ({ ...f, descricao: e.target.value }))} style={inp} placeholder="Ex.: Prêmio de seguro agrícola" />
@@ -744,26 +776,6 @@ export default function TesourariaPage() {
                           {contaOpts}
                         </SelectField>
                       </div>
-                    </div>
-                    <div>
-                      <label data-arato-label="true" style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
-                      <SelectField value={lForm.og_id} onChange={e => setLForm(f => ({ ...f, og_id: e.target.value }))}
-                        style={{ ...inp, borderColor: lForm.og_id ? "#16A34A" : undefined }}>
-                        <option value="">— Sem vínculo (não impacta DRE/LCDPR)</option>
-                        <optgroup label="Receitas">
-                          {ogs.filter(g => g.tipo === "receita").map(g => (
-                            <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Despesas">
-                          {ogs.filter(g => g.tipo === "despesa").map(g => (
-                            <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
-                          ))}
-                        </optgroup>
-                      </SelectField>
-                      {lForm.og_id && (
-                        <div style={{ marginTop: 3, fontSize: 11, color: "#16A34A" }}>✓ Impacta DRE, LCDPR e SPED ECD</div>
-                      )}
                     </div>
                   </div>
                 )}

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-d",
+    data: "31/10/2026",
+    titulo: "Tesouraria sem seletor de fazenda e com a ordem padrão dos campos",
+    modulos: ["Tesouraria"],
+    itens: [
+      { tipo: "melhoria", texto: "A Tesouraria não tem mais seletor de fazenda: a lista mostra todo o cliente e o lançamento fica na fazenda da conta bancária usada. O lançamento comum ganhou o campo Produtor e segue a ordem padrão das telas de lançamento: Produtor → Tipo → Operação Gerencial → Descrição → Valor, Data e Vencimento → Conta → Observação." },
+    ],
+  },
+  {
     versao: "2026.10.31-c",
     data: "31/10/2026",
     titulo: "Atalhos com o menu atual, DANFE de terceiro sem logo e centro de custo sem repetição",
