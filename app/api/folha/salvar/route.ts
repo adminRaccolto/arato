@@ -392,16 +392,22 @@ export async function POST(req: Request) {
       const isMissingProdutorCol = (e: { message?: string } | null) =>
         !!e?.message?.includes("produtor_id");
 
-      let q = sb.from("folha_pagamento").select("id").eq("fazenda_id", fazenda_id).eq("competencia", competencia);
+      // A folha do mês é do EMPREGADOR no cliente, em qualquer fazenda dele (achado 30/10/2026: procurar só na fazenda
+      // criava uma 2ª folha do mesmo empregador quando os funcionários estavam em outra fazenda)
+      const { data: fzConta } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+      const { data: fzsDaConta } = fzConta?.conta_id ? await sb.from("fazendas").select("id").eq("conta_id", fzConta.conta_id) : { data: null };
+      const fazendasCliente = (fzsDaConta ?? []).map(f => f.id as string);
+      if (!fazendasCliente.includes(fazenda_id)) fazendasCliente.push(fazenda_id);
+      let q = sb.from("folha_pagamento").select("id").in("fazenda_id", fazendasCliente).eq("competencia", competencia);
       if (empresa_id) q = q.eq("empresa_id", empresa_id); else q = q.is("empresa_id", null);
       if (!empresa_id) q = produtor_id ? q.eq("produtor_id", produtor_id) : q.is("produtor_id", null);
-      let { data: exist, error: findErr } = await q.maybeSingle();
+      let { data: exist, error: findErr } = await q.order("created_at").limit(1).maybeSingle();
       let colunaProdutorDisponivel = true;
       if (findErr && isMissingProdutorCol(findErr)) {
         colunaProdutorDisponivel = false;
-        let q2 = sb.from("folha_pagamento").select("id").eq("fazenda_id", fazenda_id).eq("competencia", competencia);
+        let q2 = sb.from("folha_pagamento").select("id").in("fazenda_id", fazendasCliente).eq("competencia", competencia);
         if (empresa_id) q2 = q2.eq("empresa_id", empresa_id); else q2 = q2.is("empresa_id", null);
-        ({ data: exist } = await q2.maybeSingle());
+        ({ data: exist } = await q2.order("created_at").limit(1).maybeSingle());
       } else if (findErr) {
         throw findErr;
       }

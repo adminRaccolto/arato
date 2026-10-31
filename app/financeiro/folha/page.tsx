@@ -560,22 +560,28 @@ export default function FolhaPagamentoPage() {
         await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, produtorEdit, folhaEdit.fazenda_id);
         setMsg("Folha salva.");
       } else {
-        // Nova folha — agrupa por fazenda + empregador (empresa ou produtor
-        // rural) e gera uma folha por grupo por mês. Produtores diferentes
-        // (empresa_id nulo) NÃO podem cair na mesma folha — cada um vira um
-        // grupo/folha separado (Seção 261).
+        // Nova folha — uma por EMPREGADOR por mês: empresa (PJ) ou, sem empresa, o produtor rural. Produtores diferentes
+        // (empresa_id nulo) NÃO caem na mesma folha (Seção 261). A fazenda do funcionário NÃO separa a folha: o
+        // empregador é do cliente (achado 30/10/2026 — Muriana Out/2026 saiu em folhas separadas por ter funcionários
+        // cadastrados em duas fazendas). A folha fica na fazenda da maioria dos funcionários.
         const grupos = new Map<string, { empresaId: string | null; produtorId: string | null; fazendaIdGrupo: string; itens: FolhaFunc[] }>();
         for (const f of funcs) {
           const fazendaIdGrupo = f.fazenda_id ?? fazendaId!;
           const empresaId  = f.empresa_id ?? null;
           // Folha de PJ continua uma por empresa (o produtor não separa a folha); sem empresa, uma por produtor
           const produtorChave = empresaId ? null : (f.produtor_id ?? null);
-          const key = `${fazendaIdGrupo}|${empresaId ?? ""}|${produtorChave ?? ""}`;
+          const key = `${empresaId ?? ""}|${produtorChave ?? ""}`;
           if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId: produtorChave, fazendaIdGrupo, itens: [] });
           const g = grupos.get(key)!;
           g.itens.push(f);
           // Folha de PJ guarda o produtor vinculado dos funcionários (antes ficava vazio — achado 30/10/2026, Muriana)
           if (empresaId && !g.produtorId && f.produtor_id) g.produtorId = f.produtor_id;
+        }
+        // Fazenda da folha = a da maioria dos funcionários do grupo
+        for (const g of grupos.values()) {
+          const cont = new Map<string, number>();
+          for (const it of g.itens) { const fz = it.fazenda_id ?? fazendaId!; cont.set(fz, (cont.get(fz) ?? 0) + 1); }
+          g.fazendaIdGrupo = [...cont.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? g.fazendaIdGrupo;
         }
         const meses = monthsInRange(modalCompDe, modalCompAte);
         let total = 0;

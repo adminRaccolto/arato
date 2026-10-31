@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-zb",
+    data: "30/10/2026",
+    titulo: "Folha: uma por empregador, sem separar por fazenda",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "correcao", texto: "Gerar a folha separava o mesmo empregador em mais de uma folha quando os funcionários estavam cadastrados em fazendas diferentes (ex.: Muriana Out/2026 saiu em folhas separadas). Agora é uma folha por empregador (empresa ou, sem empresa, produtor) por mês, na fazenda da maioria dos funcionários; e salvar de novo acha a folha do mês em qualquer fazenda do cliente." },
+    ],
+  },
+  {
     versao: "2026.10.30-za",
     data: "30/10/2026",
     titulo: "Conciliação ignora linhas de saldo do extrato",
