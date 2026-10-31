@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-i",
+    data: "31/10/2026",
+    titulo: "Usuários e acesso da Raccolto valem para o cliente inteiro",
+    modulos: ["Usuários e Permissões", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Liberar ou bloquear o acesso da equipe Raccolto agora vale para todas as fazendas do cliente — antes mudava só uma fazenda e as outras continuavam como estavam. O botão mostra \"liberado\" só quando todas as fazendas estão liberadas." },
+      { tipo: "correcao", texto: "Cadastrar um usuário que já existe noutra fazenda do mesmo cliente reaproveita o cadastro, em vez de criar outro. O e-mail de boas-vindas cita o cliente, não uma fazenda." },
+    ],
+  },
+  {
     versao: "2026.10.31-h",
     data: "31/10/2026",
     titulo: "NF-e sai pela fazenda da Inscrição Estadual escolhida",

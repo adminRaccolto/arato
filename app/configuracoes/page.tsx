@@ -107,8 +107,9 @@ function ConfiguracoesInner() {
 
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("fazendas").select("raccolto_acesso").eq("id", fazendaId).single()
-      .then(({ data }) => { if (data) setRaccoltoAcesso(!!(data as { raccolto_acesso?: boolean }).raccolto_acesso); });
+    // Acesso da Raccolto é do cliente: ligado só quando está ligado em todas as fazendas dele
+    supabase.from("fazendas").select("raccolto_acesso").in("id", fazendaIds.length ? fazendaIds : [fazendaId])
+      .then(({ data }) => { if (data) setRaccoltoAcesso(data.length > 0 && data.every(f => !!(f as { raccolto_acesso?: boolean }).raccolto_acesso)); });
     // Produtor é do cliente inteiro, não da fazenda ativa — mesmo motivo documentado em app/fiscal.
     (contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutores(fazendaIds.length ? fazendaIds : fazendaId)).then(data => {
       setProdutores(data);
@@ -121,15 +122,18 @@ function ConfiguracoesInner() {
     listarPlanoContas(fazendaId).then(data => {
       setContas(data.length > 0 ? data : planoContasPadrao);
     }).catch(() => {});
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function toggleRaccolto() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Toggle raccolto)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvandoRaccolto(true);
     const novo = !raccoltoAcesso;
-    const { error } = await supabase.from("fazendas").update({ raccolto_acesso: novo }).eq("id", fazendaId);
-    if (!error) setRaccoltoAcesso(novo);
+    const res = await fetch("/api/fazenda/raccolto-acesso", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fazenda_id: fazendaId, ativo: novo }),
+    }).catch(() => null);
+    if (res?.ok) setRaccoltoAcesso(novo);
     setSalvandoRaccolto(false);
   }
 

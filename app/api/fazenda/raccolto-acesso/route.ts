@@ -56,11 +56,11 @@ export async function POST(req: Request) {
       }
     }
 
-    // Atualiza com service role (ignora RLS)
-    const { error } = await supabase
-      .from("fazendas")
-      .update({ raccolto_acesso: ativo })
-      .eq("id", fazenda_id);
+    // O acesso da Raccolto é do cliente: liga/desliga em todas as fazendas da conta (service role, ignora RLS)
+    const { data: fzConta } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+    const { error } = fzConta?.conta_id
+      ? await supabase.from("fazendas").update({ raccolto_acesso: ativo }).eq("conta_id", fzConta.conta_id)
+      : await supabase.from("fazendas").update({ raccolto_acesso: ativo }).eq("id", fazenda_id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

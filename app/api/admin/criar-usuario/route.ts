@@ -115,12 +115,20 @@ export async function POST(req: Request) {
     }
 
     // ── 3. Criar/atualizar registro na tabela usuarios ──
+    // O usuário é do cliente: procura o cadastro em qualquer fazenda dele (senão duplicava por fazenda)
+    let fazendasDoCliente: string[] = [fazenda_id];
+    if (contaIdFinal) {
+      const { data: fzsCli } = await supabase.from("fazendas").select("id").eq("conta_id", contaIdFinal);
+      if (fzsCli?.length) fazendasDoCliente = [...new Set([fazenda_id, ...fzsCli.map(f => f.id as string)])];
+    }
     // Usa select-then-update para não depender de constraint específico
     const { data: usuExist } = await supabase
       .from("usuarios")
       .select("id")
-      .eq("fazenda_id", fazenda_id)
+      .in("fazenda_id", fazendasDoCliente)
       .eq("email",      user_email)
+      .order("created_at")
+      .limit(1)
       .maybeSingle();
 
     let usuarioRow: { id: string } | null = null;
@@ -145,7 +153,7 @@ export async function POST(req: Request) {
       const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "https://web.arato.agr.br";
       const resendKey = process.env.RESEND_API_KEY;
       const fromAddr  = process.env.RESEND_FROM ?? "noreply@agr.com.br";
-      const nomeFaz   = fazenda_nome ?? "sua fazenda";
+      const nomeFaz   = fazenda_nome ?? "o seu cliente no Arato";
       const munFaz    = fazenda_municipio ?? "";
       const estFaz    = fazenda_estado ?? "";
 
@@ -176,7 +184,7 @@ export async function POST(req: Request) {
           <td style="padding:32px;">
             <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1a1a1a;">Bem-vindo, ${user_nome}!</p>
             <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">
-              Sua conta no Arato foi criada para a fazenda <strong>${nomeFaz}</strong>.
+              Sua conta no Arato foi criada para <strong>${nomeFaz}</strong>.
               Use as credenciais abaixo para fazer seu primeiro acesso.
             </p>
 

@@ -291,7 +291,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
 }
 
 export default function UsuariosPermissoes() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome } = useAuth();
   const [fazendaInfo, setFazendaInfo] = useState<{ nome: string; municipio: string; estado: string } | null>(null);
 
   const [aba, setAba] = useState<"grupos" | "usuarios">("grupos");
@@ -335,9 +335,10 @@ export default function UsuariosPermissoes() {
     if (!fazendaId) return;
     supabase.from("fazendas").select("nome, municipio, estado").eq("id", fazendaId).single()
       .then(({ data }) => { if (data) setFazendaInfo({ nome: data.nome, municipio: data.municipio ?? "", estado: data.estado ?? "" }); });
-    supabase.from("fazendas").select("raccolto_acesso").eq("id", fazendaId).single()
-      .then(({ data }) => { if (data) setRaccoltoAcesso(!!(data as { raccolto_acesso?: boolean }).raccolto_acesso); });
-  }, [fazendaId]);
+    // Acesso da Raccolto é do cliente: ligado só quando está ligado em todas as fazendas dele
+    supabase.from("fazendas").select("raccolto_acesso").in("id", fazendaIds.length ? fazendaIds : [fazendaId])
+      .then(({ data }) => { if (data) setRaccoltoAcesso(data.length > 0 && data.every(f => !!(f as { raccolto_acesso?: boolean }).raccolto_acesso)); });
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => {
     if (!contaId) return;
@@ -560,9 +561,10 @@ export default function UsuariosPermissoes() {
           user_email:        fUser.email.trim(),
           user_senha:        fUser.senha.trim(),
           grupo_id:          fUser.grupo_id || null,
-          fazenda_nome:      fazendaInfo?.nome,
-          fazenda_municipio: fazendaInfo?.municipio,
-          fazenda_estado:    fazendaInfo?.estado,
+          // E-mail de boas-vindas cita o cliente (conta), nunca uma fazenda
+          fazenda_nome:      contaNome ?? fazendaInfo?.nome,
+          fazenda_municipio: contaNome ? undefined : fazendaInfo?.municipio,
+          fazenda_estado:    contaNome ? undefined : fazendaInfo?.estado,
           enviar_email:      fUser.enviarEmail,
           whatsapp:          fUser.whatsapp.trim() || null,
         }),
