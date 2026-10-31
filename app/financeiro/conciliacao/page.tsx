@@ -1409,7 +1409,7 @@ function ConciliacaoInner() {
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
         .update({ status: "resolvido", lancamento_id: ids[0] })
-        .eq("fazenda_id", fazendaId).eq("fitid", linha.id).eq("conta_id", extrato.conta_id);
+        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", linha.id).eq("conta_id", extrato.conta_id);
       registrarHistorico(linha, "conciliado", ids, justificativa ? `${descVinc} · diferença justificada: ${justificativa}` : descVinc);
     }
 
@@ -1493,7 +1493,7 @@ function ConciliacaoInner() {
       if (fazendaId) {
         supabase.from("conciliacao_pendencias")
           .update({ status: "resolvido", lancamento_id: lancToLink.id })
-          .eq("fazenda_id", fazendaId).eq("fitid", modalTes.id);
+          .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", modalTes.id);
         registrarHistorico(modalTes, "conciliado", ids, desc);
       }
       const erroRegraT = await criarRegraDaLinha(modalTes, { acao: "transferencia", conta_destino_id: modalTes.tipo === "debito" ? fTes.conta_destino : fTes.conta_origem });
@@ -1564,7 +1564,7 @@ function ConciliacaoInner() {
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
         .update({ status: "resolvido", lancamento_id: novoLanc.id })
-        .eq("fazenda_id", fazendaId).eq("fitid", modalTes.id);
+        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", modalTes.id);
       registrarHistorico(modalTes, "conciliado", ids, desc);
     }
 
@@ -1660,7 +1660,7 @@ function ConciliacaoInner() {
       for (const l of linhasSel) {
         supabase.from("conciliacao_pendencias")
           .update({ status: "resolvido", lancamento_id: novoLanc.id })
-          .eq("fazenda_id", fazendaId).eq("fitid", l.id);
+          .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", l.id);
         registrarHistorico(l, "conciliado", [novoLanc.id], descAgrupado.trim());
       }
     }

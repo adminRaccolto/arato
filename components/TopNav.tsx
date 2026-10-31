@@ -73,10 +73,10 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
     supabase
       .from("pendencias_operacionais")
       .select("id", { count: "exact", head: true })
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
       .eq("status", "pendente")
       .then(({ count }) => setQtdPendencias(count ?? 0));
-  }, [fazendaId, pathname]);
+  }, [fazendaId, fazendaIds, pathname]);
 
 
   useEffect(() => {
@@ -85,10 +85,10 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
     if (now - lastTransfMs.current < 60_000) return;
     lastTransfMs.current = now;
     Promise.all([
-      supabase.from("solicitacoes_transferencia").select("id", { count: "exact", head: true }).eq("fazenda_destino_id", fazendaId).eq("status", "pendente"),
-      supabase.from("solicitacoes_transferencia_maquinas").select("id", { count: "exact", head: true }).eq("fazenda_destino_id", fazendaId).eq("status", "pendente"),
+      supabase.from("solicitacoes_transferencia").select("id", { count: "exact", head: true }).in("fazenda_destino_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("status", "pendente"),
+      supabase.from("solicitacoes_transferencia_maquinas").select("id", { count: "exact", head: true }).in("fazenda_destino_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("status", "pendente"),
     ]).then(([r1, r2]) => setQtdTransferencias((r1.count ?? 0) + (r2.count ?? 0)));
-  }, [fazendaId, pathname]);
+  }, [fazendaId, fazendaIds, pathname]);
 
   // Toca som de notificação quando qtdTransferencias aumenta (nova solicitação do app)
   useEffect(() => {

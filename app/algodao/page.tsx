@@ -179,18 +179,15 @@ export default function AlgodaoPage() {
 
   useEffect(() => {
     if (!fazendaId) return;
-    // talhões e pessoas — têm fazenda_id direto
-    supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaId).order("nome")
-      .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
     supabase.from("pessoas").select("id, nome").order("nome")
       .then(({ data }) => setPessoas(((data ?? []) as Pessoa[]).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }))));
     // Busca todos os ciclos da fazenda — dois caminhos para garantir
     const loadCiclos = async () => {
-      // caminho 1: direto por fazenda_id (ciclos tem fazenda_id na coluna)
+      // caminho 1: ciclos de todas as fazendas do cliente
       const { data: direto, error: errDireto } = await supabase
         .from("ciclos")
         .select("*")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
         .order("descricao", { ascending: false });
 
       if (!errDireto && direto && direto.length > 0) {
@@ -204,7 +201,7 @@ export default function AlgodaoPage() {
       // cliente inteiro (Seção 254) — busca por conta_id primeiro.
       const { data: anos } = contaId
         ? await supabase.from("anos_safra").select("id").eq("conta_id", contaId)
-        : await supabase.from("anos_safra").select("id").eq("fazenda_id", fazendaId);
+        : await supabase.from("anos_safra").select("id").in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]);
       const anoIds = (anos ?? []).map((a: { id: string }) => a.id);
       if (anoIds.length === 0) { setCiclos([]); setCicloSel(""); return; }
       const { data } = await supabase
@@ -216,20 +213,26 @@ export default function AlgodaoPage() {
       setCicloSel(prev => prev || alg?.id || todos[0]?.id || "");
     };
     loadCiclos();
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Talhões da fazenda do ciclo escolhido
+  useEffect(() => {
+    if (!fazendaDoCiclo) return;
+    supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazendaDoCiclo).order("nome")
+      .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
+  }, [fazendaDoCiclo]);
 
   // ─── Carrega dados quando ciclo muda ─────────────────────────────────────
 
   const carregarDados = useCallback(async () => {
     if (!fazendaId || !cicloSel) return;
     setCarregando(true);
-    const fid = fazendaId;
-
+    // O ciclo já é de uma fazenda do cliente — filtra só por ele.
     const [opRes, armRes, modRes, benefRes, hvRes] = await Promise.allSettled([
-      supabase.from("algodao_operacoes_especiais").select("*, talhoes(nome)").eq("fazenda_id", fid).eq("ciclo_id", cicloSel).order("data_aplicacao", { ascending: false }),
-      supabase.from("bicudo_armadilhas").select("*, talhoes(nome)").eq("fazenda_id", fid).eq("ciclo_id", cicloSel),
-      supabase.from("algodao_modulos").select("*, talhoes(nome), pessoas(nome)").eq("fazenda_id", fid).eq("ciclo_id", cicloSel).order("numero"),
-      supabase.from("algodao_beneficiamentos").select("*, pessoas(nome)").eq("fazenda_id", fid).eq("ciclo_id", cicloSel).order("data_entrada", { ascending: false }),
+      supabase.from("algodao_operacoes_especiais").select("*, talhoes(nome)").eq("ciclo_id", cicloSel).order("data_aplicacao", { ascending: false }),
+      supabase.from("bicudo_armadilhas").select("*, talhoes(nome)").eq("ciclo_id", cicloSel),
+      supabase.from("algodao_modulos").select("*, talhoes(nome), pessoas(nome)").eq("ciclo_id", cicloSel).order("numero"),
+      supabase.from("algodao_beneficiamentos").select("*, pessoas(nome)").eq("ciclo_id", cicloSel).order("data_entrada", { ascending: false }),
       supabase.from("algodao_laudos_hvi").select("*, algodao_beneficiamentos(algodoeira_id, pessoas(nome))").order("created_at", { ascending: false }),
     ]);
 

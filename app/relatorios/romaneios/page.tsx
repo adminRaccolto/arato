@@ -86,8 +86,8 @@ function RelatorioRomaneios() {
 
   useEffect(() => {
     if (!filtAnoCiclo) { setCiclos([]); return; }
-    if (fazendaId) listarTodosCiclos(fazendaId).then(cs => setCiclos(cs.filter(c => c.ano_safra_id === filtAnoCiclo))).catch(() => {});
-  }, [filtAnoCiclo, fazendaId]);
+    if (fazendaId) listarTodosCiclos(fazendaIds.length ? fazendaIds : fazendaId).then(cs => setCiclos(cs.filter(c => c.ano_safra_id === filtAnoCiclo))).catch(() => {});
+  }, [filtAnoCiclo, fazendaId, fazendaIds]);
 
   async function buscar() {
     setLoading(true);

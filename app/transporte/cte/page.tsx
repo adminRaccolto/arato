@@ -504,7 +504,7 @@ function CtePageInner() {
     const { data } = await supabase
       .from("cte_recebidos")
       .select("id,nsu,schema_sefaz,chave_acesso,numero_cte,serie,data_emissao,emitente_cnpj,emitente_nome,remetente_cnpj,remetente_nome,destinatario_cnpj,destinatario_nome,municipio_origem,uf_origem,municipio_destino,uf_destino,valor_frete,produto_descricao,lido,ambiente,created_at")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
       .order("nsu", { ascending: false })
       .limit(200);
     setRecebidos(data ?? []);

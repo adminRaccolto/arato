@@ -6,6 +6,7 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
+import { buscarPaginado } from "../../../lib/buscar-paginado";
 import { useAuth } from "../../../components/AuthProvider";
 import { listarFazendasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
@@ -1325,6 +1326,8 @@ function RefCategorias() {
 // ─── Página principal ─────────────────────────────────────────
 function ImportacaoInner() {
   const { fazendaId, fazendaIds, contaId, userRole } = useAuth();
+  // Checagens de duplicado e vínculos olham todo o cliente, nunca só uma fazenda.
+  const fidsConta: string[] = fazendaIds.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
   const searchParams = useSearchParams();
   const [aba, setAba] = useState<Aba>((searchParams.get("aba") as Aba) ?? "pessoas");
   const [fazendas, setFazendas] = useState<{id:string;nome:string}[]>([]);
@@ -1473,9 +1476,9 @@ function ImportacaoInner() {
     const rows = raw.map(r => validarLanc(r));
     // ── Guarda de duplicidade com contratos financeiros ──────────────────────
     if (fazendaId) {
-      const { data: autoLancs } = await supabase
+      const autoLancs = await buscarPaginado<{ numero_documento: string | null }>((de, ate) => supabase
         .from("lancamentos").select("numero_documento")
-        .eq("fazenda_id", fazendaId).eq("tipo", "pagar").eq("auto", true);
+        .in("fazenda_id", fidsConta).eq("tipo", "pagar").eq("auto", true).order("id").range(de, ate));
       const autoNums = new Set(
         (autoLancs ?? []).map((l: { numero_documento: string | null }) =>
           (l.numero_documento ?? "").toLowerCase().trim()
@@ -1599,9 +1602,9 @@ function ImportacaoInner() {
     const rows = raw.map(r => validarLanc(r));
     // ── Guarda: CR de liberação auto-gerado por contratos financeiros ────────
     if (fazendaId) {
-      const { data: autoLancsCr } = await supabase
+      const autoLancsCr = await buscarPaginado<{ numero_documento: string | null }>((de, ate) => supabase
         .from("lancamentos").select("numero_documento")
-        .eq("fazenda_id", fazendaId).eq("tipo", "receber").eq("auto", true);
+        .in("fazenda_id", fidsConta).eq("tipo", "receber").eq("auto", true).order("id").range(de, ate));
       const autoNumsCr = new Set(
         (autoLancsCr ?? []).map((l: { numero_documento: string | null }) =>
           (l.numero_documento ?? "").toLowerCase().trim()
@@ -1684,8 +1687,8 @@ function ImportacaoInner() {
     });
     // Duplicados já existentes no banco
     if (fazendaId) {
-      const { data: existentes } = await supabase
-        .from("insumos").select("nome").eq("fazenda_id", fazendaId).eq("tipo", "produto");
+      const existentes = await buscarPaginado<{ nome: string }>((de, ate) => supabase
+        .from("insumos").select("nome").in("fazenda_id", fidsConta).eq("tipo", "produto").order("id").range(de, ate));
       const nomesExistentes = new Set((existentes ?? []).map((x: { nome: string }) => x.nome.toLowerCase().trim()));
       rows.forEach(r => {
         if (r._status === "ok" && r.nome) {
@@ -2006,7 +2009,7 @@ function ImportacaoInner() {
     if (fazendaId) {
       // Verifica contratos já existentes no módulo
       const { data: existentes } = await supabase
-        .from("contratos_financeiros").select("numero_contrato").eq("fazenda_id", fazendaId);
+        .from("contratos_financeiros").select("numero_contrato").in("fazenda_id", fidsConta);
       const nrsExistentes = new Set((existentes ?? []).map((c: { numero_contrato: string | null }) => (c.numero_contrato ?? "").trim().toLowerCase()).filter(Boolean));
       // Verifica CP com esse numero_documento (para avisar, não bloquear)
       for (const r of rows) {
@@ -2022,7 +2025,7 @@ function ImportacaoInner() {
         }
         const { count } = await supabase.from("lancamentos")
           .select("id", { count: "exact", head: true })
-          .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+          .in("fazenda_id", fidsConta).eq("tipo", "pagar")
           .eq("numero_documento", r.numero_contrato.trim());
         r._cp_encontrados = count ?? 0;
         if ((count ?? 0) > 0) {
@@ -2052,7 +2055,7 @@ function ImportacaoInner() {
             data_vencimento:      r.data_vencimento?.trim()      || null,
             data_liberacao:       r.data_liberacao?.trim()       || null,
           })
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fidsConta)
           .eq("numero_contrato", r.numero_contrato.trim());
         if (error) { erros++; } else { atualizados++; }
         continue;
@@ -2129,7 +2132,7 @@ function ImportacaoInner() {
         // Verifica se já existe CR auto-gerado para não duplicar
         const { count: crAutoExist } = await supabase
           .from("lancamentos").select("id", { count: "exact", head: true })
-          .eq("fazenda_id", fazendaId).eq("tipo", "receber")
+          .in("fazenda_id", fidsConta).eq("tipo", "receber")
           .eq("auto", true).eq("numero_documento", r.numero_contrato.trim());
         if ((crAutoExist ?? 0) === 0) {
           // Status: se data de liberação já passou → baixado (histórico)
@@ -2227,7 +2230,7 @@ function ImportacaoInner() {
           // ── Guarda de duplicidade: verifica CP auto-gerados anteriores ──────
           const { count: cpAutoExist } = await supabase
             .from("lancamentos").select("id", { count: "exact", head: true })
-            .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+            .in("fazenda_id", fidsConta).eq("tipo", "pagar")
             .eq("auto", true).eq("numero_documento", numDoc);
 
           if ((cpAutoExist ?? 0) > 0) {
@@ -2269,7 +2272,7 @@ function ImportacaoInner() {
       if (!autoP && (r._cp_encontrados ?? 0) > 0 && contrato) {
         const { data: cpExist } = await supabase.from("lancamentos")
           .select("id, valor, data_vencimento")
-          .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+          .in("fazenda_id", fidsConta).eq("tipo", "pagar")
           .eq("numero_documento", r.numero_contrato.trim())
           .order("data_vencimento");
         if (cpExist?.length) {
@@ -2311,7 +2314,7 @@ function ImportacaoInner() {
     // Duplicados já existentes no banco
     if (fazendaId) {
       const { data: existentes } = await supabase
-        .from("maquinas").select("patrimonio, nome").eq("fazenda_id", fazendaId);
+        .from("maquinas").select("patrimonio, nome").in("fazenda_id", fidsConta);
       const patrExistentes = new Set((existentes ?? []).map((m: { patrimonio: string | null }) => (m.patrimonio ?? "").toLowerCase().trim()).filter(Boolean));
       const nomesExistentes = new Set((existentes ?? []).map((m: { nome: string }) => m.nome.toLowerCase().trim()));
       rows.forEach(r => {
@@ -2341,7 +2344,7 @@ function ImportacaoInner() {
     const { data: contratosDB } = await supabase
       .from("contratos_financeiros")
       .select("id, numero_documento")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fidsConta)
       .not("numero_documento", "is", null);
     const contratoMap: Record<string, string> = {};
     (contratosDB ?? []).forEach((c: { id: string; numero_documento: string | null }) => {
@@ -2442,7 +2445,7 @@ function ImportacaoInner() {
       }
     });
     if (fazendaId) {
-      const { data: exist } = await supabase.from("contratos").select("numero").eq("fazenda_id", fazendaId);
+      const { data: exist } = await supabase.from("contratos").select("numero").in("fazenda_id", fidsConta);
       const existSet = new Set((exist ?? []).map((c: { numero: string | null }) => (c.numero ?? "").trim().toLowerCase()).filter(Boolean));
       rows.forEach(r => {
         if (r._status === "ok" && r.numero && existSet.has(r.numero.trim().toLowerCase())) {
@@ -2488,7 +2491,7 @@ function ImportacaoInner() {
         const { data: contratoAtual } = await supabase
           .from("contratos")
           .select("id, lancamento_cr_id")
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fidsConta)
           .eq("numero", r.numero.trim())
           .maybeSingle();
 
@@ -2498,7 +2501,7 @@ function ImportacaoInner() {
             data_entrega:   r.data_entrega.trim(),
             data_pagamento: r.data_pagamento?.trim() || null,
           })
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fidsConta)
           .eq("numero", r.numero.trim());
 
         if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
@@ -2946,7 +2949,7 @@ function ImportacaoInner() {
     });
     // Dedup contra banco
     if (fazendaId) {
-      const { data: existentes } = await supabase.from("funcionarios").select("cpf, nome").eq("fazenda_id", fazendaId);
+      const { data: existentes } = await supabase.from("funcionarios").select("cpf, nome").in("fazenda_id", fidsConta);
       const cpfsExist  = new Set((existentes ?? []).map((f: { cpf: string | null }) => (f.cpf ?? "").replace(/\D/g, "")).filter(Boolean));
       const nomesExist = new Set((existentes ?? []).map((f: { nome: string }) => f.nome.toLowerCase().trim()));
       rows.forEach(r => {

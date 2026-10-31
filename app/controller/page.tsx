@@ -40,7 +40,7 @@ const CAT_ICONE: Record<Categoria, string> = {
 };
 
 export default function ControllerPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [alertas, setAlertas] = useState<ControllerAlerta[]>([]);
   const [loading, setLoading] = useState(true);
   const [executando, setExecutando] = useState(false);
@@ -53,11 +53,11 @@ export default function ControllerPage() {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const data = await listarAlertasController(fazendaId);
+      const data = await listarAlertasController(fazendaIds.length ? fazendaIds : fazendaId);
       setAlertas(data);
     } catch (_) { /* ignora */ }
     finally { setLoading(false); }
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

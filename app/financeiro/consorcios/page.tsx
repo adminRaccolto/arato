@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarFazendasDaConta } from "../../../lib/db";
+import { listarFazendasDaConta, listarOperacoesGerenciaisAtivasDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import PlanoGate from "../../../components/PlanoGate";
@@ -111,14 +111,10 @@ const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> 
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
+// OG do cliente (cópia que vale para a conta), nunca só a da fazenda.
 async function buscarOgId(fazendaId: string, classificacao: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("operacoes_gerenciais")
-    .select("id")
-    .eq("fazenda_id", fazendaId)
-    .eq("classificacao", classificacao)
-    .maybeSingle();
-  return data?.id ?? null;
+  const ogs = await listarOperacoesGerenciaisAtivasDaConta(undefined, fazendaId);
+  return ogs.find(o => o.classificacao === classificacao)?.id ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -280,17 +276,18 @@ export default function ConsorciosPage() {
   // Carrega anos/ciclos quando o modal de consórcio abre
   useEffect(() => {
     if (!modalConsor || !fazendaId) return;
+    const fazIdsConta = fazendaIds.length ? fazendaIds : [fazendaId];
     // Ano Safra é do cliente inteiro, não da fazenda (Seção 254) — sem isso, um cliente cuja fazenda
     // ativa nunca recebeu Ano Safra própria (todas criadas noutra fazenda da mesma conta) via o select vazio.
     Promise.all([
       contaId ? supabase.from("anos_safra").select("id, descricao").eq("conta_id", contaId).order("descricao", { ascending: false })
-              : supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("descricao"),
+              : supabase.from("anos_safra").select("id, descricao").in("fazenda_id", fazIdsConta).order("descricao", { ascending: false }),
+      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").in("fazenda_id", fazIdsConta).order("descricao"),
     ]).then(([{ data: anos }, { data: cics }]) => {
       setAnosRat((anos ?? []) as { id: string; descricao: string }[]);
       setCiclosRat((cics ?? []) as { id: string; descricao: string; cultura: string | null; ano_safra_id: string }[]);
     });
-  }, [modalConsor, fazendaId]);
+  }, [modalConsor, fazendaId, fazendaIds]);
 
   // Carrega rateio existente ao editar um consórcio
   useEffect(() => {

@@ -102,7 +102,7 @@ function Modal({ titulo, subtitulo, onClose, width = 520, children }: { titulo: 
 // COMPONENTE PRINCIPAL
 // ────────────────────────────────────────────────────────
 export default function PlanoAgricola() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba]             = useState<Aba>("ciclos");
   const [ciclos, setCiclos]       = useState<CicloVM[]>([]);
   const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
@@ -137,11 +137,11 @@ export default function PlanoAgricola() {
       try {
         setLoading(true);
         const [sList, aList] = await Promise.all([
-          listarSafras(fazendaId!),
+          listarSafras(fazendaIds.length ? fazendaIds : fazendaId!),
           listarAnosSafra(fazendaId!).catch(() => [] as AnoSafra[]),
         ]);
         setAnosSafra(aList);
-        listarTodosCiclos(fazendaId!).then(setCadastroCiclos).catch(() => {});
+        listarTodosCiclos(fazendaIds.length ? fazendaIds : fazendaId!).then(setCadastroCiclos).catch(() => {});
         const vms: CicloVM[] = await Promise.all(
           sList.map(async s => ({ ...s, operacoes: await listarOperacoes(s.id) }))
         );

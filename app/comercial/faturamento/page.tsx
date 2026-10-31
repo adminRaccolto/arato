@@ -181,7 +181,7 @@ const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(
 
 // ═══════════════════════════════════════════════════════════════════════════════
 function FaturamentoInner() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
   const searchParams   = useSearchParams();
 
   const [notas,        setNotas]        = useState<NotaFiscal[]>([]);
@@ -250,12 +250,12 @@ function FaturamentoInner() {
       listarFazendasDaConta(contaId, fazendaId),  // todas as fazendas da conta
       listarProdutoresDaConta(contaId ?? "", fazendaId ?? ""),
       listarPessoasDaConta(fazendaId ?? ""),
-      listarContratos(fazendaId ?? ""),
+      listarContratos(fazendaIds.length ? fazendaIds : (fazendaId ?? "")),
       listarAnosSafra(fazendaId ?? ""),
       produtosAgricolasDoCliente(contaId, fazendaId),
       supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazendaId ?? "").single(),
       supabase.from("textos_legais_uf").select("uf, cfop_tipo, texto"),
-      supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId ?? "").or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
+      supabase.from("configuracoes_modulo").select("modulo, config").in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId ?? ""]).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
     ]).then(([fzs, p, pe, c, as_, pa, faz, tlu, fm]) => {
       setFazendas(fzs);
       setProdutores(p);
@@ -284,7 +284,7 @@ function FaturamentoInner() {
           .then(({ data }) => setNotas(data ?? []));
       }
     }).catch(console.error).finally(() => setLoading(false));
-  }, [fazendaId, contaId, searchParams]);
+  }, [fazendaId, fazendaIds, contaId, searchParams]);
 
   // ── Recarregar dados quando usuário troca a fazenda no modal ──────────────
   useEffect(() => {

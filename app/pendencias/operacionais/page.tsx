@@ -82,7 +82,7 @@ export default function PendenciasOperacionais() {
     setLoading(true);
     try {
       const [rows, { data: st }, { data: sm }] = await Promise.all([
-        listarPendenciasOperacionais(fazendaId),
+        listarPendenciasOperacionais(fazendaIds.length ? fazendaIds : fazendaId),
         supabase.from("solicitacoes_transferencia")
           .select("id, numero, status, urgencia, data_transferencia, solicitante_nome, observacao, fazenda_origem:fazendas!fazenda_origem_id(nome), fazenda_destino:fazendas!fazenda_destino_id(nome), itens:solicitacoes_transferencia_itens(quantidade, unidade_medida, insumo:insumos(nome))")
           .eq("fazenda_destino_id", fazendaId).eq("status", "solicitada").order("created_at", { ascending: false }),

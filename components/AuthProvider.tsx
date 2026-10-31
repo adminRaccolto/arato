@@ -554,12 +554,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     supabase
       .from("anos_safra")
       .select("id, descricao, data_inicio, data_fim")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
       .lte("data_inicio", hoje)
       .gte("data_fim", hoje)
       .order("data_inicio", { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setAnoSafraVigenteId(data.id);
@@ -569,7 +569,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           supabase
             .from("anos_safra")
             .select("id, descricao")
-            .eq("fazenda_id", fazendaId)
+            .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
             .lte("data_inicio", hoje)
             .order("data_inicio", { ascending: false })
             .limit(1)
@@ -580,7 +580,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             });
         }
       });
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   const podeAcessar = useCallback((modulo: string) => {
     const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "");

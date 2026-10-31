@@ -681,10 +681,10 @@ function CadastrosInner() {
     setErro(null);
     const carregarProdutores = () => contaId
       ? listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(e => setErro(e.message))
-      : listarProdutores(fazendaId).then(setProdutores).catch(e => setErro(e.message));
+      : listarProdutores(fazendaIds.length ? fazendaIds : fazendaId).then(setProdutores).catch(e => setErro(e.message));
     const carregarProdutoresSilencioso = () => contaId
       ? listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(() => {})
-      : listarProdutores(fazendaId).then(setProdutores).catch(() => {});
+      : listarProdutores(fazendaIds.length ? fazendaIds : fazendaId).then(setProdutores).catch(() => {});
 
     if (aba === "produtores")  carregarProdutores();
     if (aba === "empresas") {
@@ -713,7 +713,7 @@ function CadastrosInner() {
         }).catch(e => setErro(e.message));
       }
       carregarProdutoresSilencioso();
-      listarEmpresas(fazendaId).then(emps => {
+      listarEmpresas(fazendaIds.length ? fazendaIds : fazendaId).then(emps => {
         setEmpresas(emps);
         // Rebuild mapa produtor → empresa para Produtores PJ
         const map: Record<string, string> = {};
@@ -727,9 +727,9 @@ function CadastrosInner() {
     if (aba === "maquinas") {
       listarMaquinas(fazendaId).then(setMaquinas).catch(e => setErro(e.message));
       listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
-      listarContratosFinanceiros(fazendaId).then(setContratsFinanc).catch(() => {});
+      listarContratosFinanceiros(fazendaIds.length ? fazendaIds : fazendaId).then(setContratsFinanc).catch(() => {});
     }
-    if (aba === "benfeitorias") listarBenfeitorias(fazendaId).then(setBenfeitorias).catch(e => setErro(e.message));
+    if (aba === "benfeitorias") listarBenfeitorias(fazendaIds.length ? fazendaIds : fazendaId).then(setBenfeitorias).catch(e => setErro(e.message));
     if (aba === "bens" && contaId) {
       listarBens(contaId).then(setBens).catch(e => setErro(e.message));
       listarConsorciosContemplados(contaId).then(setConsorciosContemplados).catch(() => {});
@@ -761,16 +761,16 @@ function CadastrosInner() {
       }).catch(e => setErro(e.message));
       listarGruposInsumoDaConta(fazendaId).then(setGruposInsumo).catch(() => {});
       listarSubgruposInsumoDaConta(fazendaId).then(setSubgruposInsumo).catch(() => {});
-      listarDepositos(fazendaId).then(setDepositos).catch(() => {});
-      listarBombas(fazendaId).then(setBombas).catch(() => {});
+      listarDepositos(fazendaIds.length ? fazendaIds : fazendaId).then(setDepositos).catch(() => {});
+      listarBombas(fazendaIds.length ? fazendaIds : fazendaId).then(setBombas).catch(() => {});
       listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
     }
     if (aba === "depositos") {
       listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     }
-    if (aba === "imoveis_urbanos") listarImoveisUrbanos(fazendaId).then(setImoveisUrbanos).catch(e => setErro(e.message));
+    if (aba === "imoveis_urbanos") listarImoveisUrbanos(fazendaIds.length ? fazendaIds : fazendaId).then(setImoveisUrbanos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
-      listarContas(fazendaId).then(setContas).catch(e => setErro(e.message));
+      listarContas(fazendaIds.length ? fazendaIds : fazendaId).then(setContas).catch(e => setErro(e.message));
       if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {});
       if (produtores.length === 0) carregarProdutoresSilencioso();
     }

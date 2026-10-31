@@ -418,7 +418,7 @@ function FinanceiroRelatoriosInner() {
     // Combina as duas fontes: produtores da conta (por conta_id) + da fazenda (fallback/sem conta_id)
     Promise.all([
       contaId ? listarProdutoresDaConta(contaId).catch(() => [] as Produtor[]) : Promise.resolve([] as Produtor[]),
-      listarProdutores(fazendaId).catch(() => [] as Produtor[]),
+      listarProdutores(fazendaIds.length ? fazendaIds : fazendaId).catch(() => [] as Produtor[]),
     ]).then(([porConta, porFazenda]) => {
       const mapa = new Map<string, Produtor>();
       [...porConta, ...porFazenda].forEach(p => mapa.set(p.id, p));

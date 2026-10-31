@@ -4,6 +4,7 @@
 // pendente (NF-e de entrada ou NFS-e) ou seguir "sem NF".
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../AuthProvider";
 
 type NfVinc = { id: string; tipo: "nf" | "nfse"; numero: string; serie?: string; emitente_nome?: string; data_emissao?: string; data_vencimento_cp?: string; valor_total: number; status?: string };
 
@@ -23,14 +24,18 @@ export default function ModalVincularNf({ titulo, fazendaId, onCancelar, onSemNf
   const [sel, setSel] = useState<NfVinc | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  // NFs pendentes de todo o cliente — a NF pode estar noutra fazenda dele que não a do título.
+  const { fazendaIds } = useAuth();
+  const fids = fazendaIds.length ? fazendaIds : [fazendaId];
+  const chaveFids = fids.join(",");
 
   useEffect(() => {
     let vivo = true;
     Promise.all([
       supabase.from("nf_entradas").select("id,numero,serie,emitente_nome,valor_total,data_emissao,data_vencimento_cp,status")
-        .eq("fazenda_id", fazendaId).in("status", ["pendente"]).order("data_emissao", { ascending: false }).limit(150),
+        .in("fazenda_id", fids).in("status", ["pendente"]).order("data_emissao", { ascending: false }).limit(300),
       supabase.from("nf_servicos").select("id,numero_nf,prestador_nome,valor_liquido,data_prestacao,data_vencimento_cp,status")
-        .eq("fazenda_id", fazendaId).in("status", ["pendente"]).order("data_prestacao", { ascending: false }).limit(50),
+        .in("fazenda_id", fids).in("status", ["pendente"]).order("data_prestacao", { ascending: false }).limit(100),
     ]).then(([{ data: nfs }, { data: svcs }]) => {
       if (!vivo) return;
       const l: NfVinc[] = [
@@ -41,7 +46,7 @@ export default function ModalVincularNf({ titulo, fazendaId, onCancelar, onSemNf
       setLista(l); setCarregando(false);
     }).catch(() => { if (vivo) { setErro("Não foi possível carregar as NFs."); setCarregando(false); } });
     return () => { vivo = false; };
-  }, [fazendaId]);
+  }, [chaveFids]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const b = busca.toLowerCase();
   const filtradas = lista.filter(nf => !b || nf.numero.includes(b) || (nf.emitente_nome ?? "").toLowerCase().includes(b) || nf.valor_total.toFixed(2).includes(b));

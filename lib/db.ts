@@ -206,8 +206,8 @@ export async function excluirFazenda(id: string): Promise<void> {
 // TALHÕES
 // ————————————————————————————————————————
 
-export async function listarTalhoes(fazenda_id: string): Promise<Talhao[]> {
-  const { data, error } = await supabase.from("talhoes").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarTalhoes(fazenda_id: string | string[]): Promise<Talhao[]> {
+  const { data, error } = await supabase.from("talhoes").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -303,8 +303,8 @@ export async function salvarDocumentacaoTalhao(talhao_id: string, matricula_ids:
 // SAFRAS
 // ————————————————————————————————————————
 
-export async function listarSafras(fazenda_id: string): Promise<Safra[]> {
-  const { data, error } = await supabase.from("safras").select("*").eq("fazenda_id", fazenda_id).order("created_at", { ascending: false });
+export async function listarSafras(fazenda_id: string | string[]): Promise<Safra[]> {
+  const { data, error } = await supabase.from("safras").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -1318,11 +1318,11 @@ export async function listarBorderosPagos(fazenda_ids: string[], tipo: "pagar" |
   return data ?? [];
 }
 
-export async function listarPagamentoLotes(fazenda_id: string, tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
+export async function listarPagamentoLotes(fazenda_id: string | string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
   const { data, error } = await supabase
     .from("pagamento_lotes")
     .select("*, itens:pagamento_lote_itens(*)")
-    .eq("fazenda_id", fazenda_id)
+    .in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id])
     .eq("tipo", tipo)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -1347,8 +1347,8 @@ export async function listarBorderosPendentes(fazenda_ids: string[], tipo: "paga
 // CONTRATOS E ROMANEIOS
 // ————————————————————————————————————————
 
-export async function listarContratos(fazenda_id: string): Promise<Contrato[]> {
-  const { data, error } = await supabase.from("contratos").select("*").eq("fazenda_id", fazenda_id).order("data_contrato", { ascending: false });
+export async function listarContratos(fazenda_id: string | string[]): Promise<Contrato[]> {
+  const { data, error } = await supabase.from("contratos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data_contrato", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -1359,8 +1359,8 @@ export async function criarContrato(c: Omit<Contrato, "id" | "created_at">): Pro
   return data;
 }
 
-export async function listarRomaneios(fazenda_id: string): Promise<Romaneio[]> {
-  const { data, error } = await supabase.from("romaneios").select("*").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
+export async function listarRomaneios(fazenda_id: string | string[]): Promise<Romaneio[]> {
+  const { data, error } = await supabase.from("romaneios").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -1532,8 +1532,8 @@ export async function excluirSimulacao(id: string): Promise<void> {
 // PRODUTORES
 // ————————————————————————————————————————
 
-export async function listarProdutores(fazenda_id: string): Promise<Produtor[]> {
-  const { data, error } = await supabase.from("produtores").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarProdutores(fazenda_id: string | string[]): Promise<Produtor[]> {
+  const { data, error } = await supabase.from("produtores").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -1659,8 +1659,8 @@ export async function listarIEsDeMultiplosProdutores(produtor_ids: string[]): Pr
 // MATRÍCULAS DE IMÓVEIS
 // ————————————————————————————————————————
 
-export async function listarMatriculas(fazenda_id: string): Promise<MatriculaImovel[]> {
-  const { data, error } = await supabase.from("matriculas_imoveis").select("*").eq("fazenda_id", fazenda_id).order("numero");
+export async function listarMatriculas(fazenda_id: string | string[]): Promise<MatriculaImovel[]> {
+  const { data, error } = await supabase.from("matriculas_imoveis").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("numero");
   if (error) throw error;
   return data ?? [];
 }
@@ -1947,8 +1947,8 @@ export async function listarTalhoesDasFazendas(fazenda_ids: string[]): Promise<T
   if (error) throw error;
   return data ?? [];
 }
-export async function listarTodosCiclos(fazenda_id: string): Promise<Ciclo[]> {
-  const { data, error } = await supabase.from("ciclos").select("*").eq("fazenda_id", fazenda_id).order("data_inicio");
+export async function listarTodosCiclos(fazenda_id: string | string[]): Promise<Ciclo[]> {
+  const { data, error } = await supabase.from("ciclos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data_inicio");
   if (error) throw error;
   return data ?? [];
 }
@@ -2064,8 +2064,8 @@ export async function excluirMaquinas(ids: string[]): Promise<void> {
 // BOMBAS DE COMBUSTÍVEL
 // ————————————————————————————————————————
 
-export async function listarBombas(fazenda_id: string): Promise<BombaCombustivel[]> {
-  const { data, error } = await supabase.from("bombas_combustivel").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarBombas(fazenda_id: string | string[]): Promise<BombaCombustivel[]> {
+  const { data, error } = await supabase.from("bombas_combustivel").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -2319,8 +2319,8 @@ export async function excluirUsuario(id: string): Promise<void> {
 // EMPRESAS (PRODUTORES PF / PJ)
 // ————————————————————————————————————————
 
-export async function listarEmpresas(fazenda_id: string): Promise<Empresa[]> {
-  const { data, error } = await supabase.from("empresas").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarEmpresas(fazenda_id: string | string[]): Promise<Empresa[]> {
+  const { data, error } = await supabase.from("empresas").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -2476,8 +2476,8 @@ export async function listarBancos(): Promise<import("./supabase").Banco[]> {
   return data ?? [];
 }
 
-export async function listarContas(fazenda_id: string): Promise<ContaBancaria[]> {
-  const { data, error } = await supabase.from("contas_bancarias").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarContas(fazenda_id: string | string[]): Promise<ContaBancaria[]> {
+  const { data, error } = await supabase.from("contas_bancarias").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -2524,8 +2524,8 @@ export async function excluirConta(id: string): Promise<void> {
 // ————————————————————————————————————————
 
 // ── Benfeitorias ─────────────────────────────────────────────
-export async function listarBenfeitorias(fazenda_id: string): Promise<Benfeitoria[]> {
-  const { data, error } = await supabase.from("benfeitorias").select("*").eq("fazenda_id", fazenda_id).order("tipo").order("nome");
+export async function listarBenfeitorias(fazenda_id: string | string[]): Promise<Benfeitoria[]> {
+  const { data, error } = await supabase.from("benfeitorias").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("tipo").order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -2610,8 +2610,8 @@ export async function listarBensPorConsorcio(consorcio_id: string): Promise<Bem[
   return (data ?? []).map((r: Record<string, unknown>) => r.bem as Bem);
 }
 
-export async function listarDepositos(fazenda_id: string): Promise<Deposito[]> {
-  const { data, error } = await supabase.from("depositos").select("*").eq("fazenda_id", fazenda_id).order("nome");
+export async function listarDepositos(fazenda_id: string | string[]): Promise<Deposito[]> {
+  const { data, error } = await supabase.from("depositos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -3981,8 +3981,8 @@ function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
   } as ContratoFinanceiro;
 }
 
-export async function listarContratosFinanceiros(fazenda_id: string): Promise<ContratoFinanceiro[]> {
-  const { data, error } = await supabase.from("contratos_financeiros").select("*").eq("fazenda_id", fazenda_id).order("data_contrato", { ascending: false });
+export async function listarContratosFinanceiros(fazenda_id: string | string[]): Promise<ContratoFinanceiro[]> {
+  const { data, error } = await supabase.from("contratos_financeiros").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data_contrato", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(normalizarContrato);
 }
@@ -5804,11 +5804,11 @@ export async function excluirRateioGlobal(id: string): Promise<void> {
 // REGRAS DE CLASSIFICAÇÃO AUTOMÁTICA
 // ————————————————————————————————————————
 
-export async function listarRegrasClassificacao(fazenda_id: string): Promise<RegraClassificacao[]> {
+export async function listarRegrasClassificacao(fazenda_id: string | string[]): Promise<RegraClassificacao[]> {
   const { data, error } = await supabase
     .from("regras_classificacao")
     .select("*")
-    .eq("fazenda_id", fazenda_id)
+    .in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id])
     .order("prioridade", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -6309,11 +6309,11 @@ export async function desmarcarLicao(fazenda_id: string, user_id: string, lesson
 // CONTROLLER / ALERTAS
 // ————————————————————————————————————————
 
-export async function listarAlertasController(fazenda_id: string): Promise<ControllerAlerta[]> {
+export async function listarAlertasController(fazenda_id: string | string[]): Promise<ControllerAlerta[]> {
   const { data, error } = await supabase
     .from("controller_alertas")
     .select("*")
-    .eq("fazenda_id", fazenda_id)
+    .in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id])
     .is("resolved_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -6434,11 +6434,11 @@ export type PendenciaRow = {
   resolvido_em?: string;
 };
 
-export async function listarPendenciasOperacionais(fazendaId: string): Promise<PendenciaRow[]> {
+export async function listarPendenciasOperacionais(fazendaId: string | string[]): Promise<PendenciaRow[]> {
   const { data, error } = await supabase
     .from("pendencias_operacionais")
     .select("*")
-    .eq("fazenda_id", fazendaId)
+    .in("fazenda_id", Array.isArray(fazendaId) ? fazendaId : [fazendaId])
     .order("criado_em", { ascending: false });
   if (error) throw error;
   return (data ?? []) as PendenciaRow[];
@@ -7093,8 +7093,8 @@ import type { ImovelUrbano } from "./supabase";
 // IMÓVEIS URBANOS
 // ————————————————————————————————————————
 
-export async function listarImoveisUrbanos(fazenda_id: string): Promise<ImovelUrbano[]> {
-  const { data, error } = await supabase.from("imoveis_urbanos").select("*").eq("fazenda_id", fazenda_id).order("descricao");
+export async function listarImoveisUrbanos(fazenda_id: string | string[]): Promise<ImovelUrbano[]> {
+  const { data, error } = await supabase.from("imoveis_urbanos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("descricao");
   if (error) throw error;
   return data ?? [];
 }

@@ -316,7 +316,7 @@ export default function ContratosFinanceiros() {
         setErroCarregamento(String(err?.message ?? err ?? "Erro desconhecido ao carregar contratos"));
       });
     listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string; produtor_id?: string | null }[])).catch(() => {});
-    listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
+    listarContas(fazendaIds.length ? fazendaIds : fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
     listarPessoasDaConta(fazendaId).then(all => setPessoas(all)).catch(() => {});
     supabase.from("produtores").select("*").eq("conta_id", contaId).order("nome").then(({ data }) => setProdutores(data ?? []));
     const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
@@ -422,9 +422,9 @@ export default function ContratosFinanceiros() {
     }).catch(() => {});
     if (abaModal === "garantias") {
       listarGarantias(id).then(setGarantias).catch(() => {});
-      listarMatriculas(fazendaId!).then(setMatriculas).catch(() => {});
+      listarMatriculas(fazendaIds.length ? fazendaIds : fazendaId!).then(setMatriculas).catch(() => {});
       listarMaquinas(fazendaId!).then(m => setMaquinas(m.filter(x => x.ativa))).catch(() => {});
-      listarImoveisUrbanos(fazendaId!).then(setImoveisUrbanos).catch(() => {});
+      listarImoveisUrbanos(fazendaIds.length ? fazendaIds : fazendaId!).then(setImoveisUrbanos).catch(() => {});
     }
     if (abaModal === "centrocusto") {
       listarCentrosCusto(id).then(cc => {

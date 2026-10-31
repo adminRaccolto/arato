@@ -7,6 +7,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { RegraClassificacaoNf } from "../../../lib/supabase";
+import { listarInsumosParaConta, listarCentrosCustoGeralDaConta, listarOperacoesGerenciaisAtivasDaConta } from "../../../lib/db";
 
 type Insumo        = { id: string; nome: string; categoria?: string };
 type CentroCusto   = { id: string; nome: string; codigo?: string; parent_id?: string };
@@ -88,7 +89,7 @@ const VAZIO: Omit<RegraClassificacaoNf, "id" | "created_at" | "qtd_aplicacoes" |
 };
 
 export default function ClassificacaoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
   const [regras,          setRegras]          = useState<RegraClassificacaoNf[]>([]);
   const [loading,         setLoading]         = useState(true);
   const [modal,           setModal]           = useState(false);
@@ -109,24 +110,24 @@ export default function ClassificacaoPage() {
     const { data } = await supabase
       .from("regras_classificacao_nf")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
       .order("created_at", { ascending: false });
     setRegras((data ?? []) as RegraClassificacaoNf[]);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("insumos").select("id, nome, categoria").eq("fazenda_id", fazendaId).order("nome")
-      .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
-    supabase.from("centros_custo").select("id, nome, codigo").eq("fazenda_id", fazendaId).order("nome")
-      .then(({ data }) => setCentrosCusto((data ?? []) as CentroCusto[]));
-    supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
-      .or(`fazenda_id.eq.${fazendaId},fazenda_id.is.null`).eq("inativo", false).order("classificacao")
-      .then(({ data }) => setOgsDisponiveis((data ?? []) as OGOption[]));
-  }, [fazendaId]);
+    // Catálogos do cliente (todas as fazendas), nunca só de uma fazenda.
+    listarInsumosParaConta(contaId, fazendaId)
+      .then(l => setInsumos(l.map(i => ({ id: i.id, nome: i.nome, categoria: i.categoria })) as Insumo[])).catch(() => {});
+    listarCentrosCustoGeralDaConta(fazendaId)
+      .then(l => setCentrosCusto(l.map(c => ({ id: c.id, nome: c.nome, codigo: c.codigo })) as CentroCusto[])).catch(() => {});
+    listarOperacoesGerenciaisAtivasDaConta(undefined, fazendaId)
+      .then(l => setOgsDisponiveis(l.map(o => ({ id: o.id, descricao: o.descricao, classificacao: o.classificacao })))).catch(() => {});
+  }, [fazendaId, contaId]);
 
   function abrirNova() {
     setForm({ ...VAZIO, fazenda_id: fazendaId ?? "" });

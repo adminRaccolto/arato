@@ -56,7 +56,7 @@ const calcDias = (d?: string | null): number | null => {
 
 // ── Componente principal ──────────────────────────────────────
 function ConfiguracoesInner() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
   const searchParams = useSearchParams();
 
   const tabParaAba = (t: string | null): Aba => {
@@ -110,7 +110,7 @@ function ConfiguracoesInner() {
     supabase.from("fazendas").select("raccolto_acesso").eq("id", fazendaId).single()
       .then(({ data }) => { if (data) setRaccoltoAcesso(!!(data as { raccolto_acesso?: boolean }).raccolto_acesso); });
     // Produtor é do cliente inteiro, não da fazenda ativa — mesmo motivo documentado em app/fiscal.
-    (contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutores(fazendaId)).then(data => {
+    (contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutores(fazendaIds.length ? fazendaIds : fazendaId)).then(data => {
       setProdutores(data);
       if (data.length === 1) setCertProdutorId(data[0].id);
     }).catch(() => {});

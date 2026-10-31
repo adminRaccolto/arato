@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-f",
+    data: "31/10/2026",
+    titulo: "Buscas sempre no cliente inteiro, nunca numa fazenda só",
+    modulos: ["Parâmetros do Sistema", "Importação", "Cadastros", "Financeiro", "Lavoura", "Comercial", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Várias telas ainda buscavam dados só na fazenda de referência do usuário, e o que estava gravado em outra fazenda do mesmo cliente não aparecia. Agora buscam em todas as fazendas do cliente: Parâmetros do Sistema (parâmetros, Tabela NCM, Operações Fiscais, Transportadoras, Veículos, Motoristas), Importação (checagem de duplicados), Cadastros (Empresas, Depósitos, Bombas, Contas Bancárias, Benfeitorias, Imóveis Urbanos, Contratos Financeiros), DRE de Empresas, Consórcios, Conciliação, Automações, Contabilidade, LCDPR, Regras de Classificação, Algodão, CT-e recebidos, Contratos de Grãos (culturas e adiantamentos), Arrendamentos, Faturamento, Colheita, Recomendações, Pendências, Controller, BI e o Ano Safra vigente no topo." },
+      { tipo: "melhoria", texto: "Parâmetro salvo sem fazenda específica é gravado em todas as cópias que o cliente já tem — nunca cria uma cópia nova e desencontrada." },
+    ],
+  },
+  {
     versao: "2026.10.31-e",
     data: "31/10/2026",
     titulo: "Contas a Pagar e a Receber com a ordem padrão dos campos",

@@ -802,11 +802,11 @@ export default function RecomendacoesPage() {
   useEffect(() => {
     if (!fazendaId) return;
     carregar();
-    listarTalhoes(fazendaId).then(setTalhoes);
+    listarTalhoes(fazendaIds.length ? fazendaIds : fazendaId).then(setTalhoes);
     listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && insumoAtivo(i))));
     listarAnosSafra(fazendaId).then(setAnosSafra);
-    listarTodosCiclos(fazendaId).then(setTodosCiclos);
-  }, [fazendaId, carregar]);
+    listarTodosCiclos(fazendaIds.length ? fazendaIds : fazendaId).then(setTodosCiclos);
+  }, [fazendaId, fazendaIds, carregar]);
 
   async function abrirExecucao(rec: Recomendacao) {
     const [{ data: tal }, { data: prod }] = await Promise.all([

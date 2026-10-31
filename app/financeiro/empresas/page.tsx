@@ -3,6 +3,7 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
+import { buscarPaginado } from "../../../lib/buscar-paginado";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
@@ -92,7 +93,7 @@ function buildDRE(receitas: number, cogs: number, salarios: number, inssPatronal
 
 // ─── Componente ───────────────────────────────────────────────
 export default function DREEmpresasPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [empresas,  setEmpresas]  = useState<Empresa[]>([]);
   const [loading,   setLoading]   = useState(true);
 
@@ -109,19 +110,23 @@ export default function DREEmpresasPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
+    // Empresas, lançamentos e folhas de todo o cliente — nunca só de uma fazenda.
+    const fids = fazendaIds.length ? fazendaIds : [fazendaId];
     try {
-      const [{ data: emp }, { data: lanc }, { data: fols }] = await Promise.all([
-        supabase.from("empresas").select("id,nome,cnpj").eq("fazenda_id", fazendaId).order("nome"),
-        supabase.from("empresa_lancamentos")
+      const [{ data: emp }, lanc, fols] = await Promise.all([
+        supabase.from("empresas").select("id,nome,cnpj").in("fazenda_id", fids).order("nome"),
+        buscarPaginado<Record<string, unknown>>((de, ate) => supabase.from("empresa_lancamentos")
           .select("id,tipo,valor,categoria,empresa_id,competencia,status,data_vencimento")
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fids)
           .gte("data_vencimento", fDe + "-01")
-          .lte("data_vencimento", fAte + "-31"),
-        supabase.from("folha_pagamento")
+          .lte("data_vencimento", fAte + "-31")
+          .order("id").range(de, ate)),
+        buscarPaginado<Record<string, unknown>>((de, ate) => supabase.from("folha_pagamento")
           .select("id,empresa_id,competencia,valor_bruto,valor_liquido,inss_patronal,fgts_total,status")
-          .eq("fazenda_id", fazendaId)
+          .in("fazenda_id", fids)
           .gte("competencia", fDe)
-          .lte("competencia", fAte),
+          .lte("competencia", fAte)
+          .order("id").range(de, ate)),
       ]);
       setEmpresas(emp ?? []);
       setLancamentos(lanc ?? []);
@@ -129,7 +134,7 @@ export default function DREEmpresasPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, fDe, fAte]);
+  }, [fazendaId, fazendaIds, fDe, fAte]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

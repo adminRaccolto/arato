@@ -669,7 +669,7 @@ export default function NfCompraPage() {
 
     // Regras de classificação automática
     try {
-      const rc = await listarRegrasClassificacao(fazendaId);
+      const rc = await listarRegrasClassificacao(fazendaIds.length ? fazendaIds : fazendaId);
       setRegrasClass(rc);
     } catch {}
 

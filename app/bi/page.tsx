@@ -480,9 +480,9 @@ export default function BI() {
   const carregarAlertas = useCallback(async () => {
     if (!fazendaId) return;
     setAlertasLoading(true);
-    try { setAlertas(await listarAlertasController(fazendaId)); } catch (_) { /* ignora */ }
+    try { setAlertas(await listarAlertasController(fazendaIds.length ? fazendaIds : fazendaId)); } catch (_) { /* ignora */ }
     finally { setAlertasLoading(false); }
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   const carregarAuditContratos = useCallback(async (contratoIds: string[], contratos: CFContrato[]) => {
     if (!contratoIds.length) return;

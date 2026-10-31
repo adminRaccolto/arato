@@ -82,7 +82,7 @@ const CAT_LABEL: Record<string, string> = {
 // ─── Página ───────────────────────────────────────────────────
 
 export default function AutomacoesPage() {
-  const { fazendaId, nomeUsuario, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, nomeUsuario, podeAcessarPlano } = useAuth();
 
   const [status,    setStatus]    = useState<Record<string, StatusExec>>({});
   const [resultados,setResultados]= useState<Record<string, string>>({});
@@ -96,30 +96,37 @@ export default function AutomacoesPage() {
   // Modal config SIEG
   const [modalSieg, setModalSieg] = useState(false);
   const [siegForm,  setSiegForm]  = useState({ api_key: "", cnpjs: "" });
+  const [linhaIds,  setLinhaIds]  = useState<Record<string, string>>({}); // automação → linha gravada (em qualquer fazenda do cliente)
 
   // ── Carrega configurações salvas ─────────────────────────
 
   const carregarConfigs = useCallback(async () => {
     if (!fazendaId) return;
+    // Configuração é do cliente: lê as linhas de todas as fazendas dele (uma por automação).
     const { data } = await supabase
       .from("configuracoes_automacao")
-      .select("automacao_id, ativa, config")
-      .eq("fazenda_id", fazendaId);
+      .select("id, automacao_id, ativa, config")
+      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
+      .order("id");
     const ativasMap: Record<string, boolean> = {};
     const cfgMap:    Record<string, Record<string, string>> = {};
+    const idsMap:    Record<string, string> = {};
     for (const row of data ?? []) {
+      if (idsMap[row.automacao_id]) continue;
+      idsMap[row.automacao_id]    = row.id;
       ativasMap[row.automacao_id] = row.ativa;
       cfgMap[row.automacao_id]    = (row.config ?? {}) as Record<string, string>;
     }
     setAtivas(ativasMap);
     setConfigs(cfgMap);
+    setLinhaIds(idsMap);
     if (cfgMap["sieg-sync"]) {
       setSiegForm({
         api_key: cfgMap["sieg-sync"].api_key ?? "",
         cnpjs:   cfgMap["sieg-sync"].cnpjs   ?? "",
       });
     }
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregarConfigs(); }, [carregarConfigs]);
 
@@ -128,16 +135,14 @@ export default function AutomacoesPage() {
   async function toggleAtiva(autId: string, novoValor: boolean) {
     if (!fazendaId) return;
     setAtivas(prev => ({ ...prev, [autId]: novoValor }));
-    const { data: exists } = await supabase
-      .from("configuracoes_automacao").select("id")
-      .eq("fazenda_id", fazendaId).eq("automacao_id", autId).maybeSingle();
-    if (exists) {
-      await supabase.from("configuracoes_automacao")
-        .update({ ativa: novoValor })
-        .eq("fazenda_id", fazendaId).eq("automacao_id", autId);
+    const idLinha = linhaIds[autId];
+    if (idLinha) {
+      await supabase.from("configuracoes_automacao").update({ ativa: novoValor }).eq("id", idLinha);
     } else {
-      await supabase.from("configuracoes_automacao")
-        .insert({ fazenda_id: fazendaId, automacao_id: autId, ativa: novoValor, config: {} });
+      const { data: nova } = await supabase.from("configuracoes_automacao")
+        .insert({ fazenda_id: fazendaIds[0] ?? fazendaId, automacao_id: autId, ativa: novoValor, config: {} })
+        .select("id").single();
+      if (nova) setLinhaIds(prev => ({ ...prev, [autId]: nova.id }));
     }
   }
 
@@ -148,16 +153,14 @@ export default function AutomacoesPage() {
     if (!fazendaId) return;
     setSalvando(prev => ({ ...prev, "sieg-sync": true }));
     const cfg = { api_key: siegForm.api_key, cnpjs: siegForm.cnpjs };
-    const { data: exists } = await supabase
-      .from("configuracoes_automacao").select("id")
-      .eq("fazenda_id", fazendaId).eq("automacao_id", "sieg-sync").maybeSingle();
-    if (exists) {
-      await supabase.from("configuracoes_automacao")
-        .update({ config: cfg })
-        .eq("fazenda_id", fazendaId).eq("automacao_id", "sieg-sync");
+    const idLinha = linhaIds["sieg-sync"];
+    if (idLinha) {
+      await supabase.from("configuracoes_automacao").update({ config: cfg }).eq("id", idLinha);
     } else {
-      await supabase.from("configuracoes_automacao")
-        .insert({ fazenda_id: fazendaId, automacao_id: "sieg-sync", ativa: false, config: cfg });
+      const { data: nova } = await supabase.from("configuracoes_automacao")
+        .insert({ fazenda_id: fazendaIds[0] ?? fazendaId, automacao_id: "sieg-sync", ativa: false, config: cfg })
+        .select("id").single();
+      if (nova) setLinhaIds(prev => ({ ...prev, "sieg-sync": nova.id }));
     }
     setConfigs(prev => ({ ...prev, "sieg-sync": cfg }));
     setSalvando(prev => ({ ...prev, "sieg-sync": false }));

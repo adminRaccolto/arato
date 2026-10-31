@@ -199,7 +199,7 @@ const conciliados: { data: string; descricao: string; valor: number; tipo: "cred
 
 // ═══════════════════════════════════════════════════════════════
 export default function Financeiro() {
-  const { fazendaId, contaId, nomeFazendaSelecionada } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeFazendaSelecionada } = useAuth();
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [pessoasMap,  setPessoasMap]  = useState<Record<string, string>>({}); // id → nome
   const [loading, setLoading]   = useState(true);
@@ -285,7 +285,7 @@ export default function Financeiro() {
       ]);
       setLancamentos(lans);
       listarSimulacoes(contaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
-      if (fazendaId) listarPagamentoLotes(fazendaId, "pagar").then(lotes => setBorderosPagos(lotes.filter(l => l.status === "pago"))).catch(() => {});
+      if (fazendaId) listarPagamentoLotes(fazendaIds.length ? fazendaIds : fazendaId, "pagar").then(lotes => setBorderosPagos(lotes.filter(l => l.status === "pago"))).catch(() => {});
       listarPessoasDaConta(fazendaId!).then(ps => {
         const m: Record<string, string> = {};
         for (const p of ps) m[p.id] = p.nome ?? "";

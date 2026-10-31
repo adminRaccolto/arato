@@ -616,7 +616,7 @@ export default function ModalNf({
     setPessoas(pesData);
     try { setCentros(await listarCentrosCustoGeralDaConta(fazendaId)); } catch {}
     try { setMaquinas(await listarMaquinas(fazendaId)); } catch {}
-    try { setRegrasClass(await listarRegrasClassificacao(fazendaId)); } catch {}
+    try { setRegrasClass(await listarRegrasClassificacao(fazendaIds.length ? fazendaIds : fazendaId)); } catch {}
     // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (antes só CP/CR: OG só de NF nem aparecia)
     try {
       const [ogNf, ogCp] = await Promise.all([

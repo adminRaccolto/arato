@@ -205,6 +205,7 @@ export default function LCDPR() {
   const [mesAuditoria, setMesAuditoria] = useState<string>("todos"); // "todos" ou "01".."12"
 
   const [config, setConfig]       = useState<ConfigLCDPR>(CONFIG_VAZIA);
+  const [configFazendaId, setConfigFazendaId] = useState<string | null>(null); // onde a config do cliente está gravada
   const [savingCfg, setSavingCfg] = useState(false);
 
   const [fazDados, setFazDados]               = useState<FazLcdpr[]>([]);
@@ -247,9 +248,8 @@ export default function LCDPR() {
       sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
       sb.from("fazendas").select("id,nome,produtor_id,cpf_cnpj_fiscal,nirf,itr,municipio,estado,area_total_ha,arrendada,cep,logradouro,numero_end,complemento,bairro,caepf,tipo_exploracao,participacao_lcdpr,municipio_ibge,entidade_contabil").in("id", ids),
       contaId ? listarProdutoresDaConta(contaId) : Promise.resolve([]),
-      fazendaId
-        ? sb.from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "lcdpr").maybeSingle()
-        : Promise.resolve({ data: null }),
+      // Configuração do LCDPR é do cliente: lê a cópia de qualquer fazenda dele.
+      sb.from("configuracoes_modulo").select("config, fazenda_id").in("fazenda_id", ids).eq("modulo", "lcdpr").order("fazenda_id").limit(1).maybeSingle(),
       sb.from("contas_bancarias").select("id,nome,banco,banco_id,codigo_bacen,agencia,conta,conta_dv,tipo_conta,produtor_id,fazenda_id").in("fazenda_id", ids).eq("ativa", true),
       sb.from("bancos").select("nome,nome_curto,codigo_compe"),
       sb.from("pessoas").select("id,cpf_cnpj").in("fazenda_id", ids),
@@ -277,6 +277,7 @@ export default function LCDPR() {
           .filter((p: ProdutorLcdpr) => p.cpf.length === 11)
       );
       setConfig((cfgRow as { config?: ConfigLCDPR } | null)?.config ?? CONFIG_VAZIA);
+      setConfigFazendaId((cfgRow as { fazenda_id?: string } | null)?.fazenda_id ?? null);
       setContasDados((contasRows ?? []) as ContaLcdpr[]);
 
       const bMap = new Map<string, string>();
@@ -444,11 +445,12 @@ export default function LCDPR() {
   const salvarConfig = async (nova: ConfigLCDPR) => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar config)", perigo: false }))) return;
     setConfig(nova); // optimistic
-    if (!fazendaId) return;
+    const fazCfg = configFazendaId ?? fazendaIds?.[0] ?? fazendaId;
+    if (!fazCfg) return;
     setSavingCfg(true);
     try {
       await supabase.from("configuracoes_modulo").upsert(
-        { fazenda_id: fazendaId, modulo: "lcdpr", config: nova },
+        { fazenda_id: fazCfg, modulo: "lcdpr", config: nova },
         { onConflict: "fazenda_id,modulo" }
       );
     } finally {

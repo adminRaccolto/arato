@@ -267,7 +267,7 @@ function CustosInner() {
   useEffect(() => {
     if (!fazendaId) return;
     Promise.all([
-      listarSafras(fazendaId),
+      listarSafras(fazendaIds.length ? fazendaIds : fazendaId),
       supabase.from("anos_safra").select("id,descricao").in("fazenda_id", fazendaIds).order("descricao", { ascending: false }),
       supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_plantada_ha,fazenda_id").in("fazenda_id", fazendaIds).order("descricao"),
       supabase.from("fazendas").select("id,nome").in("id", fazendaIds).order("nome"),

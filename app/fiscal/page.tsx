@@ -762,7 +762,7 @@ function FiscalInner() {
   // Depósitos da fazenda — usados nos seletores de Local de Retirada/Entrega
   useEffect(() => {
     if (!fazendaId) return;
-    listarDepositos(fazendaId).then(setDepositos).catch(() => setDepositos([]));
+    listarDepositos(fazendaIds.length ? fazendaIds : fazendaId).then(setDepositos).catch(() => setDepositos([]));
   }, [fazendaId]);
 
   // Remessa a partir da NF de entrada agora é emitida na tela Remessas (diretriz 27/10/2026): o endereço antigo
@@ -783,7 +783,7 @@ function FiscalInner() {
       const { data: fmods } = await supabase
         .from("configuracoes_modulo")
         .select("modulo, config")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
         .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
       const ufEmit = ((fmods?.[0]?.config ?? {}) as Record<string, string>).uf ?? "MT";
       setRemessaUfEmit(ufEmit);
@@ -1186,7 +1186,7 @@ function FiscalInner() {
     carregar();
     // Produtor é do cliente inteiro, não da fazenda ativa (Seção 116/19) — senão o dropdown de
     // certificado A1 fica vazio numa fazenda cujo produtor foi cadastrado com outra "fazenda de origem".
-    (contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutores(fazendaId))
+    (contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutores(fazendaIds.length ? fazendaIds : fazendaId))
       .then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
     // Carrega fazendas da conta (para transferência)
     listarFazendasDaConta(contaId, fazendaId)

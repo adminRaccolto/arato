@@ -63,7 +63,7 @@ const VAZIO_CONFIG = (entidade: "pf" | "pj"): Omit<ConfigContabilidade, "id" | "
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 
 export default function ContabilidadePage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
   const [aba, setAba] = useState<"pf" | "pj">("pf");
   const [configs, setConfigs] = useState<Record<"pf"|"pj", ConfigContabilidade | null>>({ pf: null, pj: null });
   const [form, setForm] = useState<Omit<ConfigContabilidade, "id" | "fazenda_id" | "created_at">>(VAZIO_CONFIG("pf"));
@@ -76,10 +76,12 @@ export default function ContabilidadePage() {
     const { data } = await supabase
       .from("config_contabilidade")
       .select("*")
-      .eq("fazenda_id", fazendaId);
+      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
+      .order("created_at");
+    // Parâmetro contábil é do cliente: vale a primeira cópia gravada de cada entidade, em qualquer fazenda dele.
     const mapa: Record<"pf"|"pj", ConfigContabilidade | null> = { pf: null, pj: null };
     for (const c of (data ?? []) as ConfigContabilidade[]) {
-      if (c.entidade === "pf" || c.entidade === "pj") mapa[c.entidade] = c;
+      if ((c.entidade === "pf" || c.entidade === "pj") && !mapa[c.entidade]) mapa[c.entidade] = c;
     }
     setConfigs(mapa);
     const atual = mapa[aba];
@@ -90,7 +92,7 @@ export default function ContabilidadePage() {
     } else {
       setForm(VAZIO_CONFIG(aba));
     }
-  }, [fazendaId, aba]);
+  }, [fazendaId, fazendaIds, aba]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

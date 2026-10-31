@@ -211,8 +211,8 @@ export default function ColheitaPage() {
     try {
       const [allC, t, d, ins] = await Promise.all([
         listarColheitasDaConta(fazendaId),
-        listarTalhoes(fazendaId),
-        listarDepositos(fazendaId),
+        listarTalhoes(fazendaIds.length ? fazendaIds : fazendaId),
+        listarDepositos(fazendaIds.length ? fazendaIds : fazendaId),
         listarInsumos(fazendaId),
       ]);
       const c = fazendaFiltro ? allC.filter(x => x.fazenda_id === fazendaFiltro) : allC;
@@ -222,13 +222,13 @@ export default function ColheitaPage() {
       setInsumos(ins.filter(i => i.categoria === "produto_agricola"));
       listarFazendas(fazendaId).then(setFazendas).catch(() => {});
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-      listarTodosCiclos(fazendaId).then(setTodosCiclos).catch(() => {});
+      listarTodosCiclos(fazendaIds.length ? fazendaIds : fazendaId).then(setTodosCiclos).catch(() => {});
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, fazendaFiltro]);
+  }, [fazendaId, fazendaIds, fazendaFiltro]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

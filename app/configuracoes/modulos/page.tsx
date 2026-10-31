@@ -594,20 +594,37 @@ function ParametrosSistemaContent() {
   const [subAba, setSubAba] = useState<"transportadoras" | "veiculos" | "motoristas">("transportadoras");
 
   // ── Carregar tudo
+  // Parâmetros são do cliente: lê as cópias de todas as fazendas dele. Quando um módulo tem cópia em
+  // mais de uma fazenda, vale a da fazenda de referência (as cópias são gravadas iguais ao salvar).
+  const fidsCliente = (): string[] => contaFazendaIds.length ? contaFazendaIds : (fazendaId ? [fazendaId] : []);
+  const umPorChave = <T extends { fazenda_id?: string | null }>(rows: T[], chave: (r: T) => string): T[] => {
+    const m = new Map<string, T>();
+    for (const r of rows) { const k = chave(r); if (!m.has(k) || r.fazenda_id === fazendaId) m.set(k, r); }
+    return [...m.values()];
+  };
+  const chaveNcm = (r: NcmTributacao) => String(r.ncm ?? "").replace(/\D/g, "");
+  const chaveOp  = (r: OperacaoFiscal) => `${(r.nome ?? "").trim().toLowerCase()}|${(r as { cfop_interno?: string }).cfop_interno ?? ""}`;
+  const recarregarNcms = async () => {
+    const { data } = await supabase.from("ncm_tributacoes").select("*").in("fazenda_id", fidsCliente()).order("ncm");
+    if (data) setNcms(umPorChave(data as (NcmTributacao & { fazenda_id?: string })[], chaveNcm));
+  };
+  const recarregarOps = async () => {
+    const { data } = await supabase.from("operacoes_fiscais").select("*").in("fazenda_id", fidsCliente()).order("nome");
+    if (data) setOperacoes(umPorChave(data as (OperacaoFiscal & { fazenda_id?: string })[], chaveOp));
+  };
+
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazendaId)
+    supabase.from("configuracoes_modulo").select("modulo, config, fazenda_id").in("fazenda_id", fidsCliente())
       .then(({ data }) => {
         if (!data) return;
         const map: { [mod: string]: CfgModulo } = {};
-        data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; });
-        setCfgs(prev => ({ ...map, ...prev })); // prev pode já ter os fiscal_* carregados conta-wide (ver efeito abaixo) — não sobrescrever com a versão fazenda-scoped
+        for (const r of umPorChave(data, r => r.modulo as string)) if (r.config) map[r.modulo] = r.config as CfgModulo;
+        setCfgs(prev => ({ ...map, ...prev })); // prev pode já ter os fiscal_* carregados conta-wide (ver efeito abaixo)
       });
-    supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm")
-      .then(({ data }) => data && setNcms(data as NcmTributacao[]));
-    supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome")
-      .then(({ data }) => data && setOperacoes(data as OperacaoFiscal[]));
-  }, [fazendaId]);
+    recarregarNcms();
+    recarregarOps();
+  }, [fazendaId, contaFazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Emitentes (produtores/empresas) e config fiscal são do CLIENTE (conta),
   // não da fazenda ativa — um cliente com 7 fazendas continua tendo os mesmos
@@ -675,12 +692,12 @@ function ParametrosSistemaContent() {
 
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setTransportadoras(data));
-    supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setVeiculos(data));
-    supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setMotoristas(data));
+    supabase.from("transportadoras").select("*").in("fazenda_id", fidsCliente()).then(({ data }) => data && setTransportadoras(data));
+    supabase.from("veiculos").select("*").in("fazenda_id", fidsCliente()).then(({ data }) => data && setVeiculos(data));
+    supabase.from("motoristas").select("*").in("fazenda_id", fidsCliente()).then(({ data }) => data && setMotoristas(data));
     // Pessoa é do cliente inteiro, não só da fazenda ativa
     supabase.from("pessoas").select("id, nome, cpf_cnpj").in("fazenda_id", contaFazendaIds.length ? contaFazendaIds : [fazendaId]).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
-  }, [fazendaId, contaFazendaIds]);
+  }, [fazendaId, contaFazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve contaId: usa direto se disponível, senão busca da fazenda (admin Raccolto ou backfill pendente)
   useEffect(() => {
@@ -741,8 +758,17 @@ function ParametrosSistemaContent() {
     const fazAlvo = fazendaIdAlvo ?? fazendaId;
     if (!fazAlvo) return;
     setSalvando(modulo);
+    // Sem fazenda específica, o parâmetro é do cliente: grava em todas as cópias já existentes dele
+    // (nunca cria uma cópia nova e desencontrada na fazenda de referência).
+    let fazendas = [fazAlvo];
+    if (!fazendaIdAlvo && contaFazendaIds.length > 0) {
+      const { data: existentes } = await supabase.from("configuracoes_modulo").select("fazenda_id")
+        .in("fazenda_id", contaFazendaIds).eq("modulo", modulo);
+      if (existentes && existentes.length > 0) fazendas = existentes.map(e => e.fazenda_id as string);
+    }
+    const agora = new Date().toISOString();
     const { error } = await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazAlvo, modulo, config: cfgs[modulo] ?? {}, updated_at: new Date().toISOString() },
+      fazendas.map(fid => ({ fazenda_id: fid, modulo, config: cfgs[modulo] ?? {}, updated_at: agora })),
       { onConflict: "fazenda_id,modulo" }
     );
     setSalvando(null);
@@ -777,8 +803,7 @@ function ParametrosSistemaContent() {
     // sem precisar apagar/consolidar linhas às cegas). Só cria uma linha nova (na fazenda ativa)
     // quando não existe NENHUMA cópia ainda.
     let fazendasParaSalvar = [fazendaId];
-    const ehConfigDeConta = modulo.startsWith("fiscal_") || modulo.startsWith("cte_emp_") || modulo.startsWith("mdfe_emp_");
-    if (ehConfigDeConta && contaFazendaIds.length > 0) {
+    if (contaFazendaIds.length > 0) {
       const { data: existentes } = await supabase
         .from("configuracoes_modulo")
         .select("fazenda_id")
@@ -847,8 +872,7 @@ function ParametrosSistemaContent() {
     } else {
       await supabase.from("ncm_tributacoes").insert(payload);
     }
-    const { data } = await supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm");
-    if (data) setNcms(data as NcmTributacao[]);
+    await recarregarNcms();
     setModalNcm(null);
   };
 
@@ -867,8 +891,7 @@ function ParametrosSistemaContent() {
         await supabase.from("ncm_tributacoes").insert({ ...preset, fazenda_id: fazendaId });
       }
     }
-    const { data } = await supabase.from("ncm_tributacoes").select("*").eq("fazenda_id", fazendaId).order("ncm");
-    if (data) setNcms(data as NcmTributacao[]);
+    await recarregarNcms();
     setCarregandoPresets(false);
   };
 
@@ -878,8 +901,7 @@ function ParametrosSistemaContent() {
     const payload = { ...OP_MODAL_VAZIO, ...modalOp, fazenda_id: fazendaId };
     if (modalOp.id) await supabase.from("operacoes_fiscais").update(payload).eq("id", modalOp.id);
     else await supabase.from("operacoes_fiscais").insert(payload);
-    const { data } = await supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome");
-    if (data) setOperacoes(data as OperacaoFiscal[]);
+    await recarregarOps();
     setModalOp(null);
   };
 
@@ -896,8 +918,7 @@ function ParametrosSistemaContent() {
       const exists = operacoes.find(o => o.cfop_interno === preset.cfop_interno && o.nome === preset.nome);
       if (!exists) await supabase.from("operacoes_fiscais").insert({ ...preset, fazenda_id: fazendaId });
     }
-    const { data } = await supabase.from("operacoes_fiscais").select("*").eq("fazenda_id", fazendaId).order("nome");
-    if (data) setOperacoes(data as OperacaoFiscal[]);
+    await recarregarOps();
     setCarregandoOps(false);
   };
 
@@ -1971,7 +1992,7 @@ function ParametrosSistemaContent() {
       }
       await supabase.from("transportadoras").insert({ ...modalT, fazenda_id: fazendaId, ativa: true });
     }
-    const { data } = await supabase.from("transportadoras").select("*").eq("fazenda_id", fazendaId);
+    const { data } = await supabase.from("transportadoras").select("*").in("fazenda_id", fidsCliente());
     if (data) setTransportadoras(data);
     setModalT(null);
   };
@@ -1980,7 +2001,7 @@ function ParametrosSistemaContent() {
     if (!modalV || !fazendaId) return;
     if (modalV.id) await supabase.from("veiculos").update({ ...modalV }).eq("id", modalV.id);
     else await supabase.from("veiculos").insert({ ...modalV, fazenda_id: fazendaId, ativo: true });
-    const { data } = await supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId);
+    const { data } = await supabase.from("veiculos").select("*").in("fazenda_id", fidsCliente());
     if (data) setVeiculos(data);
     setModalV(null);
   };
@@ -1989,7 +2010,7 @@ function ParametrosSistemaContent() {
     if (!modalM || !fazendaId) return;
     if (modalM.id) await supabase.from("motoristas").update({ ...modalM }).eq("id", modalM.id);
     else await supabase.from("motoristas").insert({ ...modalM, fazenda_id: fazendaId, ativo: true });
-    const { data } = await supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId);
+    const { data } = await supabase.from("motoristas").select("*").in("fazenda_id", fidsCliente());
     if (data) setMotoristas(data);
     setModalM(null);
   };

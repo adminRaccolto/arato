@@ -481,7 +481,7 @@ export default function ComprasPage() {
         listarPedidosCompraRelDaConta(fazendaId),
         listarPessoasDaConta(fazendaId),
         listarInsumosParaConta(contaId, fazendaId),  // catálogo de TODA a conta — não só da fazenda ativa
-        listarTodosCiclos(fazendaId),
+        listarTodosCiclos(fazendaIds.length ? fazendaIds : fazendaId),
         listarAnosSafra(fazendaId),
         listarCentrosCustoGeralDaConta(fazendaId),  // conta-wide — não só da fazenda ativa (bug real: sumia em clientes multi-fazenda)
         listarOperacoesGerenciais(fazendaIds?.length ? fazendaIds : [fazendaId]),

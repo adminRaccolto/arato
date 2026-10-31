@@ -805,16 +805,16 @@ export default function Contratos() {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
       const [cList, rList, pList, prodList, aList, dList, fList, cultRes, prodAgriRes, adiantRes] = await Promise.all([
         listarContratosDaConta(contaId, fazendaId, hintIds),
-        listarRomaneios(fazendaId!),
+        listarRomaneios(fazendaIds.length ? fazendaIds : fazendaId!),
         listarPessoasDaConta(fazendaId!),
         listarProdutoresDaConta(contaId ?? "", fazendaId ?? undefined),
         listarAnosSafra(fazendaId!),
-        listarDepositos(fazendaId!),
+        listarDepositos(fazendaIds.length ? fazendaIds : fazendaId!),
         listarFazendas(fazendaId ?? undefined),
-        supabase.from("culturas").select("*").eq("fazenda_id", fazendaId!).eq("ativa", true).order("ordem").order("nome"),
+        supabase.from("culturas").select("*").in("fazenda_id", hintIds).eq("ativa", true).order("ordem").order("nome"),
         // Produtos agrícolas do cliente (todas as fazendas): o contrato se liga ao cadastro, que dá nome/NCM da NF de venda
         supabase.from("insumos").select("*").in("fazenda_id", fazendaIds?.length ? fazendaIds : [fazendaId!]).eq("categoria", "produto_agricola").order("nome"),
-        supabase.from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data"),
+        supabase.from("adiantamentos_cliente").select("*").in("fazenda_id", hintIds).order("data"),
       ]);
       const rMap: Record<string,Romaneio[]> = {};
       for (const r of rList) rMap[r.contrato_id] = [...(rMap[r.contrato_id]??[]), r];
@@ -825,7 +825,15 @@ export default function Contratos() {
       setAnosSafra(aList);
       setDepositos(dList);
       setFazendas(fList);
-      if (cultRes.data && cultRes.data.length > 0) setCulturasCont(cultRes.data as CulturaContrato[]);
+      // Culturas do cliente: uma por nome (a mesma cultura pode estar cadastrada em mais de uma fazenda)
+      if (cultRes.data && cultRes.data.length > 0) {
+        const porNome = new Map<string, CulturaContrato>();
+        for (const c of cultRes.data as (CulturaContrato & { fazenda_id?: string })[]) {
+          const k = String(c.nome ?? "").trim().toLowerCase();
+          if (!porNome.has(k) || c.fazenda_id === fazendaId) porNome.set(k, c);
+        }
+        setCulturasCont([...porNome.values()]);
+      }
       if (prodAgriRes.data && prodAgriRes.data.length > 0) setProdAgricolas(prodAgriRes.data as Insumo[]);
       const adiantMap: Record<string, AdiantamentoCliente[]> = {};
       for (const a of (adiantRes.data ?? [])) {
