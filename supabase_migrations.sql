@@ -18987,3 +18987,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_lancamentos_nf_parcela
   ON lancamentos (nf_entrada_id, tipo, COALESCE(num_parcela, 0))
   WHERE nf_entrada_id IS NOT NULL AND status <> 'cancelado' AND titulo_origem_id IS NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 402 — Lançamento de Mútuo (Tesouraria): quem empresta, quem recebe e encontro de contas
+-- =============================================================================
+-- O mútuo é lançado na Tesouraria ("Lançamento de Mútuo"): credor (quem empresta) e devedor (quem recebe) — produtor,
+-- empresa do cliente ou pessoa do cadastro. Quando o lado é do cliente, nasce o título já pago desse lado (saída de
+-- quem empresta, entrada de quem recebe). A devolução é ligada ao mútuo, abate o saldo e o quita quando zera.
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS conta_id     uuid REFERENCES contas(id) ON DELETE CASCADE;
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS credor_tipo  text CHECK (credor_tipo IN ('produtor','empresa','pessoa'));
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS credor_id    uuid;
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS credor_nome  text;
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS devedor_tipo text CHECK (devedor_tipo IN ('produtor','empresa','pessoa'));
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS devedor_id   uuid;
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS devedor_nome text;
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS lancamentos  jsonb NOT NULL DEFAULT '[]'::jsonb;  -- [{tabela, id}] títulos da concessão
+ALTER TABLE mutuos ALTER COLUMN data_vencimento DROP NOT NULL;
+ALTER TABLE pagamentos_mutuo ADD COLUMN IF NOT EXISTS lancamentos jsonb NOT NULL DEFAULT '[]'::jsonb;  -- títulos da devolução
+CREATE INDEX IF NOT EXISTS idx_mutuos_conta ON mutuos(conta_id);
+NOTIFY pgrst, 'reload schema';

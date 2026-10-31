@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-b",
+    data: "31/10/2026",
+    titulo: "Lançamento de Mútuo na Tesouraria",
+    modulos: ["Tesouraria", "Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "novidade", texto: "Mútuo agora é lançado só na Tesouraria (botão \"Lançamento de Mútuo\" ou operação de mesmo nome). Novo mútuo: escolha quem empresta e quem recebe (produtor, empresa do cliente ou fornecedor/pessoa) e a conta bancária de cada lado do cliente — quando os dois são do cliente, nascem a saída de um e a entrada do outro, já pagas." },
+      { tipo: "novidade", texto: "Devolução com encontro de contas: escolha o mútuo em aberto, o valor e as contas; o saldo é abatido e o mútuo fica Quitado quando zera. O quadro \"Mútuos em aberto\" mostra quem deve a quem, as devoluções e o saldo; dá para desfazer uma devolução ou excluir um mútuo sem devolução. A tela antiga \"Mútuos entre Empresas\" saiu do menu (Seção 402)." },
+    ],
+  },
+  {
     versao: "2026.10.31-a",
     data: "31/10/2026",
     titulo: "Contrato em andamento: parcelas vencidas entram em aberto",

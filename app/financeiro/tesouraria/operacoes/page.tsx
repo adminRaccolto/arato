@@ -23,7 +23,7 @@ interface OpTesoura {
 }
 
 const TIPOS_OP_PADRAO = [
-  { id: "__mutuo__",         nome: "Mútuo entre Empresas",      tipo: "ambos",         desc: "Empréstimos entre empresas do grupo" },
+  { id: "__mutuo__",         nome: "Lançamento de Mútuo",       tipo: "ambos",         desc: "Empréstimo entre produtor, empresas e terceiros, com devolução ligada ao mútuo" },
   { id: "__seguro__",        nome: "Seguros",                    tipo: "saida",         desc: "Prêmios e parcelas de apólices de seguro" },
   { id: "__consorcio__",     nome: "Consórcio",                  tipo: "saida",         desc: "Parcelas mensais de consórcio" },
   { id: "__ajuste__",        nome: "Ajuste de Saldo",           tipo: "ajuste",        desc: "Correção de divergência entre saldo real e sistema" },

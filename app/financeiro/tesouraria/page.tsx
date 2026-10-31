@@ -11,6 +11,7 @@ import { supabase } from "../../../lib/supabase";
 import { listarFazendasDaConta } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
+import { ModalLancamentoMutuo, PainelMutuos, useMutuos } from "../../../components/financeiro/LancamentoMutuo";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -47,7 +48,7 @@ interface OpTesoura {
 interface ContaBancariaMin { id: string; nome?: string; banco?: string; agencia?: string; conta?: string; tipo_conta?: string; }
 
 const TIPOS_OP_PADRAO = [
-  { id: "__mutuo__",         nome: "Mútuo entre Empresas",      tipo: "ambos"        },
+  { id: "__mutuo__",         nome: "Lançamento de Mútuo",       tipo: "ambos"        },
   { id: "__seguro__",        nome: "Seguros",                    tipo: "saida"        },
   { id: "__consorcio__",     nome: "Consórcio",                  tipo: "saida"        },
   { id: "__ajuste__",        nome: "Ajuste de Saldo",           tipo: "ajuste"       },
@@ -161,6 +162,10 @@ export default function TesourariaPage() {
   }, [fazAtiva, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Lançamento de Mútuo: quem empresta, quem recebe, os dois lados no caixa e a devolução ligada ao mútuo
+  const mutuoDados = useMutuos(fazAtiva, fazendaIds ?? [], contaId ?? null);
+  const [modalMutuo, setModalMutuo] = useState<{ mutuoId?: string } | null>(null);
 
   // ── Filtros do grid ───────────────────────────────────────
   const [fBusca, setFBusca]   = useState("");
@@ -305,6 +310,7 @@ export default function TesourariaPage() {
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
+            <OperationalButton data-arato-button="secondary" onClick={() => setModalMutuo({})} style={{ ...btnV, background: "transparent", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}>Lançamento de Mútuo</OperationalButton>
             <OperationalButton data-arato-button="primary" onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</OperationalButton>
           </div>
         </OperationalHeading>
@@ -425,7 +431,14 @@ export default function TesourariaPage() {
             </OperationalGrid>
           </div>
         )}
+        <PainelMutuos dados={mutuoDados} onDevolver={id => setModalMutuo({ mutuoId: id })} />
       </main>
+
+      {modalMutuo && (
+        <ModalLancamentoMutuo fazendaId={fazAtiva} dados={mutuoDados} mutuoInicial={modalMutuo.mutuoId}
+          onClose={() => setModalMutuo(null)}
+          onSalvo={async () => { setModalMutuo(null); await Promise.all([mutuoDados.carregar(), carregar()]); }} />
+      )}
 
       {/* ══════════════════════════════════════════════════════
           MODAL NOVO LANÇAMENTO
@@ -513,6 +526,8 @@ export default function TesourariaPage() {
                 <div data-arato-dialog-body="true">
                   <label data-arato-label="true" style={lbl}>Operação</label>
                   <SelectField value={lForm.tipo_op} onChange={e => {
+                    // Mútuo tem tela própria (quem empresta, quem recebe, devolução ligada ao mútuo)
+                    if (e.target.value === "__mutuo__") { setModalLanc(false); setModalMutuo({}); return; }
                     const opCustom = opsTesouraria.find(o => o.id === e.target.value);
                     setLForm(f => ({
                       ...f,

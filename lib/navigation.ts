@@ -184,7 +184,6 @@ export const NAV: NavItem[] = [
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
       { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",      path: "/financeiro/tesouraria/operacoes", moduleId: "fin_tesouraria" },
-      { id: "fin-mutuo",           label: "Mútuos entre Empresas",        path: "/financeiro/tesouraria/mutuo",     moduleId: "fin_tesouraria" },
       { id: "fin-aplicacoes",      label: "Aplicações Financeiras",       path: "/financeiro/aplicacoes",           moduleId: "fin_tesouraria" },
       { id: "fin-conciliacao",     label: "Conciliação Bancária",         path: "/financeiro/conciliacao",          moduleId: "fin_tesouraria" },
       { type: "divider", label: "Relatórios Financeiros" },

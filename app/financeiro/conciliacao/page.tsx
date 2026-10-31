@@ -175,7 +175,7 @@ const OPS_TESOURARIA_PADRAO: OpTesouraria[] = [
   { id: "__aplicacao__",     nome: "Aplicação Financeira",      tipo: "saida",        descricao: "Investimento em CDB, LCA, tesouro direto, etc." },
   { id: "__transferencia__", nome: "Transferência entre Contas",tipo: "transferencia",descricao: "Movimentação entre contas bancárias próprias" },
   { id: "__ajuste__",        nome: "Ajuste de Saldo",           tipo: "ajuste",       descricao: "Correção de divergência entre saldo real e sistema" },
-  { id: "__mutuo__",         nome: "Mútuo entre Empresas",      tipo: "ambos",        descricao: "Empréstimos entre empresas do grupo" },
+  { id: "__mutuo__",         nome: "Lançamento de Mútuo",       tipo: "ambos",        descricao: "Empréstimo entre produtor, empresas e terceiros" },
   { id: "__seguro__",        nome: "Seguros",                   tipo: "saida",        descricao: "Prêmios e parcelas de apólices de seguro" },
   { id: "__consorcio__",     nome: "Consórcio",                 tipo: "saida",        descricao: "Parcelas mensais de consórcio" },
   { id: "__outros__",        nome: "Outros",                    tipo: "ambos",        descricao: "Operações financeiras diversas não classificadas" },
