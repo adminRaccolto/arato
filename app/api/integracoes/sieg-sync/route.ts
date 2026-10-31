@@ -62,13 +62,35 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* usa só fazenda_id como fallback */ }
 
-    // ── 1. Config desta fazenda ──────────────────────────────────────────────
-    const { data: row } = await db
+    // ── 1. Config do SIEG do cliente ─────────────────────────────────────────
+    // A config (e a marca da última sincronização) mora numa linha por fazenda; usa a da fazenda recebida
+    // ou, se ela não tiver, a que o cliente já tem noutra fazenda — nunca cria uma cópia desencontrada.
+    const { data: rowsCfg } = await db
       .from("configuracoes_modulo")
-      .select("config")
-      .eq("fazenda_id", fazenda_id)
+      .select("config, fazenda_id")
+      .in("fazenda_id", fazendaIdsDaConta)
       .eq("modulo", "sieg")
-      .maybeSingle();
+      .order("fazenda_id");
+    const row = (rowsCfg ?? []).find(r => r.fazenda_id === fazenda_id) ?? (rowsCfg ?? [])[0] ?? null;
+    const fazCfg: string = (row?.fazenda_id as string | undefined) ?? fazenda_id;
+
+    // NF importada vai para a fazenda do destinatário (produtor dono da fazenda ou empresa), senão a recebida
+    const soDig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+    const fazendaDoDestino = new Map<string, string>();
+    {
+      const [{ data: prods }, { data: emps }, { data: fzsDono }] = await Promise.all([
+        db.from("produtores").select("id, cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
+        db.from("empresas").select("cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
+        db.from("fazendas").select("id, produtor_id, created_at").in("id", fazendaIdsDaConta).order("created_at"),
+      ]);
+      for (const e of emps ?? []) { const d = soDig(e.cpf_cnpj); if (d && e.fazenda_id && !fazendaDoDestino.has(d)) fazendaDoDestino.set(d, e.fazenda_id as string); }
+      for (const p of prods ?? []) {
+        const d = soDig(p.cpf_cnpj); if (!d) continue;
+        const dono = (fzsDono ?? []).find(f => f.produtor_id === p.id)?.id as string | undefined;
+        if (dono) fazendaDoDestino.set(d, dono);
+        else if (p.fazenda_id && !fazendaDoDestino.has(d)) fazendaDoDestino.set(d, p.fazenda_id as string);
+      }
+    }
 
     const cfg = (row?.config ?? {}) as Record<string, string>;
 
@@ -203,8 +225,9 @@ export async function POST(req: NextRequest) {
         if (dupCron) { duplicados_nfe++; continue; }
       }
 
+      const fazNf = fazendaDoDestino.get(soDig(nfe.cnpj_destinatario || cnpj_destino)) ?? fazenda_id;
       const itensPayload = nfe.itens.map(item => ({
-        fazenda_id,
+        fazenda_id: dup?.fazenda_id ?? fazNf,
         descricao_produto: item.descricao,
         descricao_nf:      item.descricao,
         ncm:               item.ncm   || null,
@@ -267,7 +290,7 @@ export async function POST(req: NextRequest) {
       const { data: nfRow, error: nfErr } = await db
         .from("nf_entradas")
         .insert({
-          fazenda_id,
+          fazenda_id:        fazNf,
           numero:            nfe.numero,
           serie:             nfe.serie,
           chave_acesso:      nfe.chave,
@@ -421,11 +444,11 @@ export async function POST(req: NextRequest) {
     };
 
     // relê a config antes de gravar: a sincronização de NFS-e pode ter gravado a marca dela neste intervalo
-    const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazenda_id).eq("modulo", "sieg").maybeSingle();
+    const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazCfg).eq("modulo", "sieg").maybeSingle();
     const cfgFresca = (fresca?.config ?? {}) as Record<string, unknown>;
     await db
       .from("configuracoes_modulo")
-      .upsert({ fazenda_id, modulo: "sieg", config: { ...cfg, ...cfgFresca, ...novoCfg } });
+      .upsert({ fazenda_id: fazCfg, modulo: "sieg", config: { ...cfg, ...cfgFresca, ...novoCfg } });
 
     return NextResponse.json({
       sucesso:       true,

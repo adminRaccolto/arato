@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-k",
+    data: "31/10/2026",
+    titulo: "SIEG: configuração do cliente e notas na fazenda do destinatário",
+    modulos: ["SIEG", "Integrações", "Manifestação"],
+    itens: [
+      { tipo: "correcao", texto: "A configuração do SIEG (CPF/CNPJ monitorados e a marca da última sincronização) é do cliente: a tela de Integrações e as sincronizações usam a configuração que o cliente já tem, em qualquer fazenda dele, em vez de criar outra cópia desencontrada." },
+      { tipo: "correcao", texto: "NF-e e NFS-e importadas do SIEG entram na fazenda do destinatário/tomador (o produtor dono da fazenda ou a empresa), e não mais na fazenda de quem clicou em sincronizar." },
+      { tipo: "correcao", texto: "Manifestação do Destinatário lista as notas de todas as fazendas do cliente." },
+    ],
+  },
+  {
     versao: "2026.10.31-j",
     data: "31/10/2026",
     titulo: "Fim da fazenda padrão do usuário",

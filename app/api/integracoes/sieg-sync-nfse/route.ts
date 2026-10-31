@@ -155,10 +155,31 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* usa só fazenda_id como fallback */ }
 
-    const { data: row } = await db
-      .from("configuracoes_modulo").select("config")
-      .eq("fazenda_id", fazenda_id).eq("modulo", "sieg").maybeSingle();
+    // Config do SIEG do cliente: a da fazenda recebida ou a que o cliente já tem noutra fazenda (nunca cria cópia)
+    const { data: rowsCfg } = await db
+      .from("configuracoes_modulo").select("config, fazenda_id")
+      .in("fazenda_id", fazendaIdsDaConta).eq("modulo", "sieg").order("fazenda_id");
+    const row = (rowsCfg ?? []).find(r => r.fazenda_id === fazenda_id) ?? (rowsCfg ?? [])[0] ?? null;
+    const fazCfg: string = (row?.fazenda_id as string | undefined) ?? fazenda_id;
     const cfg = (row?.config ?? {}) as Record<string, string>;
+
+    // NFS-e importada vai para a fazenda do tomador (produtor dono da fazenda ou empresa), senão a recebida
+    const soDig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+    const fazendaDoTomador = new Map<string, string>();
+    {
+      const [{ data: prods }, { data: emps }, { data: fzsDono }] = await Promise.all([
+        db.from("produtores").select("id, cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
+        db.from("empresas").select("cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
+        db.from("fazendas").select("id, produtor_id, created_at").in("id", fazendaIdsDaConta).order("created_at"),
+      ]);
+      for (const e of emps ?? []) { const d = soDig(e.cpf_cnpj); if (d && e.fazenda_id && !fazendaDoTomador.has(d)) fazendaDoTomador.set(d, e.fazenda_id as string); }
+      for (const p of prods ?? []) {
+        const d = soDig(p.cpf_cnpj); if (!d) continue;
+        const dono = (fzsDono ?? []).find(f => f.produtor_id === p.id)?.id as string | undefined;
+        if (dono) fazendaDoTomador.set(d, dono);
+        else if (p.fazenda_id && !fazendaDoTomador.has(d)) fazendaDoTomador.set(d, p.fazenda_id as string);
+      }
+    }
 
     const siegCreds = credenciaisEnv();
     if (!credenciaisValidas(siegCreds)) {
@@ -409,7 +430,7 @@ export async function POST(req: NextRequest) {
       }
 
       const { error: insErr } = await db.from("nf_servicos").insert({
-        fazenda_id,
+        fazenda_id:          fazendaDoTomador.get(soDig(nfse.tomador_cnpj)) ?? fazenda_id,
         numero_nf:           nfse.numero,
         serie:               "NFS",
         chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
@@ -450,9 +471,9 @@ export async function POST(req: NextRequest) {
     const periodoManualNfse = !!(dtIni || dtFim);
     if (!periodoManualNfse && erros.length === 0) {
       // relê a config antes de gravar: a sincronização de NF-e pode ter gravado a marca dela neste intervalo
-      const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazenda_id).eq("modulo", "sieg").maybeSingle();
+      const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazCfg).eq("modulo", "sieg").maybeSingle();
       await db.from("configuracoes_modulo").upsert({
-        fazenda_id, modulo: "sieg",
+        fazenda_id: fazCfg, modulo: "sieg",
         config: { ...((fresca?.config as Record<string, unknown> | null) ?? cfg), ultima_sync_nfse_ts: new Date(new Date(fimStr).getTime() - 86_400_000).toISOString() },
       });
     }

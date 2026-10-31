@@ -42,7 +42,10 @@ const fmtData = (s?: string | null) => { if (!s) return "—"; const [y,m,d]=s.s
 const fmtDoc  = (s: string) => s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 
 export default function SiegManifestacao() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
+  // NFs e destinatários de todo o cliente, não só de uma fazenda
+  const fidsCliente = fazendaIds.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+  const chaveFids = fidsCliente.join(",");
   const [nfs,                 setNfs]                 = useState<NfRow[]>([]);
   const [loading,             setLoading]             = useState(false);
   const [syncing,             setSyncing]             = useState(false);
@@ -62,7 +65,7 @@ export default function SiegManifestacao() {
     let query = supabase
       .from("nf_entradas")
       .select("id,numero,serie,chave_acesso,data_emissao,emitente_nome,emitente_cnpj,valor_total,natureza,status,origem,manifestacao_tipo,manifestacao_data,manifestacao_msg")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fidsCliente)
       .order("data_emissao", { ascending: false })
       .limit(500);
     if (cnpjFiltro) query = query.eq("cnpj_destino", cnpjFiltro);
@@ -72,7 +75,7 @@ export default function SiegManifestacao() {
     const { data: cfgs } = await supabase
       .from("configuracoes_modulo")
       .select("config, modulo")
-      .eq("fazenda_id", fazendaId)
+      .in("fazenda_id", fidsCliente)
       .in("modulo", ["sieg", "fiscal", "fiscal_nfe"])
       .limit(5);
     const todos: string[] = [];
@@ -91,7 +94,7 @@ export default function SiegManifestacao() {
     if (todos.length > 0 && !cnpjDest) setCnpjDest(todos[0]);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId]);
+  }, [fazendaId, chaveFids]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -102,7 +105,7 @@ export default function SiegManifestacao() {
     const { data } = await supabase
       .from("nf_entradas")
       .select("id,numero,serie,chave_acesso,data_emissao,emitente_nome,emitente_cnpj,valor_total,natureza,status,origem,manifestacao_tipo,manifestacao_data,manifestacao_msg")
-      .eq("fazenda_id", fazendaId).eq("cnpj_destino", novo)
+      .in("fazenda_id", fidsCliente).eq("cnpj_destino", novo)
       .order("data_emissao", { ascending: false }).limit(500);
     setNfs((data ?? []) as NfRow[]);
     setLoading(false);
@@ -116,7 +119,7 @@ export default function SiegManifestacao() {
           const { data: d2 } = await supabase
             .from("nf_entradas")
             .select("id,numero,serie,chave_acesso,data_emissao,emitente_nome,emitente_cnpj,valor_total,natureza,status,origem,manifestacao_tipo,manifestacao_data,manifestacao_msg")
-            .eq("fazenda_id", fazendaId).eq("cnpj_destino", novo)
+            .in("fazenda_id", fidsCliente).eq("cnpj_destino", novo)
             .order("data_emissao", { ascending: false }).limit(500);
           setNfs((d2 ?? []) as NfRow[]);
         }

@@ -860,7 +860,9 @@ function ModalConfigurar({
 
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function IntegracoesPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Integrações são do cliente: lê de todas as fazendas dele
+  const fidsCliente = fazendaIds.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
   const router = useRouter();
   const [abaCat,  setAbaCat]  = useState<Categoria>("fiscal");
   const [catalogo, setCatalogo] = useState<IntegracaoCatalogo[]>([]);
@@ -885,15 +887,18 @@ export default function IntegracoesPage() {
   const [siegCfg,   setSiegCfg]   = useState<SiegCfg>({ cnpjs_destino: [] });
   const [siegAtivo, setSiegAtivo] = useState(false);
   const [modalSieg, setModalSieg] = useState(false);
+  const [siegFazendaId, setSiegFazendaId] = useState<string | null>(null); // fazenda onde a config do SIEG do cliente está gravada
 
   async function carregar() {
     setLoading(true);
-    const [{ data: cat }, { data: cfg }, { data: siegRow }] = await Promise.all([
+    const [{ data: cat }, { data: cfg }, { data: siegRows }] = await Promise.all([
       supabase.from("integracoes_catalogo").select("*").eq("ativo", true).order("ordem"),
-      supabase.from("integracoes_fazenda").select("*").eq("fazenda_id", fazendaId ?? ""),
-      supabase.from("configuracoes_modulo").select("config")
-        .eq("fazenda_id", fazendaId ?? "").eq("modulo", "sieg").maybeSingle(),
+      supabase.from("integracoes_fazenda").select("*").in("fazenda_id", fidsCliente).order("created_at"),
+      supabase.from("configuracoes_modulo").select("config, fazenda_id")
+        .in("fazenda_id", fidsCliente).eq("modulo", "sieg").order("fazenda_id"),
     ]);
+    const siegRow = (siegRows ?? []).find(r => r.fazenda_id === fazendaId) ?? (siegRows ?? [])[0] ?? null;
+    setSiegFazendaId((siegRow?.fazenda_id as string | undefined) ?? null);
     setCatalogo((cat ?? []) as IntegracaoCatalogo[]);
     setConfigs((cfg ?? []) as IntegracaoFazenda[]);
     if (siegRow?.config) {
@@ -904,7 +909,7 @@ export default function IntegracoesPage() {
     setLoading(false);
   }
 
-  useEffect(() => { if (fazendaId) carregar(); }, [fazendaId]);
+  useEffect(() => { if (fazendaId) carregar(); }, [fazendaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function configDe(id: string) { return configs.find(c => c.integracao_id === id) ?? null; }
 
@@ -1285,7 +1290,7 @@ export default function IntegracoesPage() {
       {/* Modal Sieg */}
       {modalSieg && fazendaId && (
         <ModalSieg
-          fazendaId={fazendaId}
+          fazendaId={siegFazendaId ?? fazendaId}
           contaId={contaId ?? null}
           cfgInicial={siegCfg}
           onClose={() => setModalSieg(false)}
