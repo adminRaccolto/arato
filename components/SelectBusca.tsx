@@ -88,6 +88,9 @@ export default function SelectBusca({ value, onChange, options, placeholder = "�
         onKeyDown={e => { if (["Enter", " ", "ArrowDown"].includes(e.key)) { e.preventDefault(); abrir(); } }}
         onClick={abrir}
         style={{
+          // Moldura padrão de campo: sem style, o seletor parecia texto solto (achado 31/10/2026, OG e Fornecedor da
+          // Previsão de Gastos). O style da tela, quando vem, prevalece.
+          padding: "8px 10px", border: "0.5px solid var(--border-table, #D4DAE6)", borderRadius: 8, width: "100%", boxSizing: "border-box", minHeight: 36,
           ...style,
           cursor: disabled ? "not-allowed" : "pointer",
           display: "flex",

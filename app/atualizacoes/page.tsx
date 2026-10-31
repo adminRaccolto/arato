@@ -15,6 +15,7 @@ const RELEASES = [
       { tipo: "correcao", texto: "Configurar atalhos agora lista as telas do menu atual (antes usava uma lista antiga, com telas que mudaram de lugar). Atalhos já escolhidos continuam, apontando para a tela atual." },
       { tipo: "correcao", texto: "Imprimir o DANFE de uma NF de fornecedor não coloca mais o logo do cliente: o logo só aparece em NF emitida pelo próprio cliente." },
       { tipo: "correcao", texto: "Previsão de Gastos: o seletor de centro de custo mostrava o mesmo centro várias vezes (uma cópia por fazenda). Agora aparece uma vez só." },
+      { tipo: "correcao", texto: "Seletores com busca (como Operação Gerencial e Fornecedor na Previsão de Gastos) apareciam sem moldura e pareciam texto. Agora têm a moldura de campo em todas as telas." },
     ],
   },
   {
