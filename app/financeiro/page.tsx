@@ -9,7 +9,8 @@ import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior, listarPessoasDaConta, listarPagamentoLotes } from "../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior, listarPessoasDaConta, listarPagamentoLotes, listarProdutoresDaConta } from "../../lib/db";
+import { fazendaDoProdutor } from "../../lib/fazenda-de";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao, PagamentoLote } from "../../lib/supabase";
 
@@ -245,7 +246,9 @@ export default function Financeiro() {
   const [novaSim, setNovaSim]           = useState({ tipo: "pagar" as TipoLanc, descricao: "", valorMask: "", data: TODAY });
 
   const [baixa, setBaixa] = useState({ valorMask: "", data: TODAY, conta: "BB Conta Corrente", obs: "" });
+  const [produtoresConta, setProdutoresConta] = useState<{ id: string; nome: string }[]>([]);
   const [novoLanc, setNovoLanc] = useState({
+    produtor_id: "",
     tipo: "pagar" as TipoLanc, moeda: "BRL" as Moeda,
     descricao: "", categoria: "Insumos", vencimento: "",
     valorMask: "", cotacaoMask: "5,12",
@@ -286,6 +289,7 @@ export default function Financeiro() {
       setLancamentos(lans);
       listarSimulacoes(contaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
       if (fazendaId) listarPagamentoLotes(fazendaIds.length ? fazendaIds : fazendaId, "pagar").then(lotes => setBorderosPagos(lotes.filter(l => l.status === "pago"))).catch(() => {});
+      if (contaId) listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(ps => setProdutoresConta(ps.map(p => ({ id: p.id, nome: p.nome })))).catch(() => {});
       listarPessoasDaConta(fazendaId!).then(ps => {
         const m: Record<string, string> = {};
         for (const p of ps) m[p.id] = p.nome ?? "";
@@ -336,12 +340,16 @@ export default function Financeiro() {
     if (!novoLanc.descricao || !novoLanc.vencimento) return;
     if (novoLanc.moeda !== "barter" && !novoLanc.valorMask) return;
     if (novoLanc.moeda === "barter" && !novoLanc.sacasMask) return;
+    if (produtoresConta.length > 0 && !novoLanc.produtor_id) { alert("Selecione o produtor."); return; }
+    // Fazenda interna = a do produtor (sem seletor de fazenda na tela)
+    const fazLanc = (await fazendaDoProdutor(novoLanc.produtor_id)) ?? fazendaId!;
     const sacas       = Number(novoLanc.sacasMask);
     const precoSaca   = desmascarar(novoLanc.precoSacaMask);
     const valorFinal  = novoLanc.moeda === "barter" ? sacas * precoSaca : desmascarar(novoLanc.valorMask);
     const cotacao_usd = novoLanc.moeda === "USD" ? desmascarar(novoLanc.cotacaoMask) : undefined;
     const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
-      fazenda_id:              fazendaId!,
+      fazenda_id:              fazLanc,
+      produtor_id:             novoLanc.produtor_id || undefined,
       tipo:                    novoLanc.tipo,
       moeda:                   novoLanc.moeda,
       descricao:               novoLanc.descricao,
@@ -377,7 +385,7 @@ export default function Financeiro() {
         criados = [unico];
       }
       setLancamentos(prev => [...criados, ...prev]);
-      setNovoLanc({ tipo: "pagar", moeda: "BRL", descricao: "", categoria: "Insumos", vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, chave_xml: "", talhao: "", centro_custo: "" });
+      setNovoLanc({ produtor_id: "", tipo: "pagar", moeda: "BRL", descricao: "", categoria: "Insumos", vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, chave_xml: "", talhao: "", centro_custo: "" });
       setModalNovo(false);
     } catch (e: unknown) {
       alert("Erro ao salvar: " + (e instanceof Error ? e.message : e));
@@ -1917,6 +1925,15 @@ export default function Financeiro() {
 
               {/* ── Aba Principal ── */}
               <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                {produtoresConta.length > 0 && (
+                  <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                    <label data-arato-label="true" style={labelStyle}>Produtor *</label>
+                    <SelectField style={inputStyle} value={novoLanc.produtor_id} onChange={e => setNovoLanc(p => ({ ...p, produtor_id: e.target.value }))}>
+                      <option value="">— Selecionar —</option>
+                      {produtoresConta.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </SelectField>
+                  </div>
+                )}
                 <div data-arato-dialog-body="true">
                   <label data-arato-label="true" style={labelStyle}>Operação *</label>
                   <SelectField style={inputStyle} value={novoLanc.tipo} onChange={e => setNovoLanc(p => ({ ...p, tipo: e.target.value as TipoLanc }))}>

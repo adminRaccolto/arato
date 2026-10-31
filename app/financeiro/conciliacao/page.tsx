@@ -863,6 +863,8 @@ function ConciliacaoInner() {
       }
 
       const contaObj = contas.find(c => c.id === contaSel);
+      // Extrato e pendências ficam na fazenda da conta bancária, não na fazenda de referência
+      const fazExtrato = (contaObj as { fazenda_id?: string | null } | undefined)?.fazenda_id || fazendaId;
       // Confiança do casamento (proposta aprovada 21/09/2026): só "alta" concilia e baixa
       // sozinha; "média" vira sugestão (um clique); o resto fica pendente para as regras/manual.
       const titulares = [contaObj?.produtor_id, ...(contaObj?.cotitulares ?? []).map(c => c.produtor_id)].filter(Boolean) as string[];
@@ -903,11 +905,11 @@ function ConciliacaoInner() {
       // Ordem importa: (1) registro do import em extratos_bancarios — as transações apontam para ele
       // por FK (primeiro_/ultimo_extrato_id); gravá-las antes derrubava TODO import; (2) transações
       // (fonte única); (3) só então as baixas. Falhou (1) ou (2) = nada é baixado nem conciliado.
-      const ofxPath = `ofx-conciliacao/${fazendaId}/${novoExtrato.id}.ofx`;
+      const ofxPath = `ofx-conciliacao/${fazExtrato}/${novoExtrato.id}.ofx`;
       const up = await supabase.storage.from("arquivos").upload(ofxPath, new Blob([texto], { type: "text/plain" }), { upsert: false });
       if (up.error) console.error("[handleOFX] upload OFX", up.error);
       const logIns = await supabase.from("extratos_bancarios").insert({
-        id: novoExtrato.id, fazenda_id: fazendaId,
+        id: novoExtrato.id, fazenda_id: fazExtrato,
         conta_id: contaSel || null, conta_nome: novoExtrato.conta_nome,
         data_importacao: novoExtrato.data_importacao,
         data_inicio: dataInicio, data_fim: dataFim,
@@ -921,7 +923,7 @@ function ConciliacaoInner() {
         alert("Não foi possível registrar a importação do extrato. Nada foi baixado nem conciliado — tente importar novamente.");
         return;
       }
-      const okSync = await syncExtratoTransacoes(fazendaId, contaSel, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
+      const okSync = await syncExtratoTransacoes(fazExtrato, contaSel, novoExtrato.conta_nome, linhas, novoExtrato.id, "import");
       if (!okSync) {
         // desfaz o registro do import (e o arquivo) para não deixar um import "fantasma" no histórico
         await supabase.from("extratos_bancarios").delete().eq("id", novoExtrato.id);
@@ -1014,7 +1016,7 @@ function ConciliacaoInner() {
       if (naoConc.length > 0) {
         const { error: ePend } = await supabase.from("conciliacao_pendencias").upsert(
           naoConc.map(l => ({
-            fazenda_id: fazendaId, conta_id: contaSel || null,
+            fazenda_id: fazExtrato, conta_id: contaSel || null,
             conta_nome: contaObj?.nome ?? null, fitid: l.id,
             data: l.data, descricao: l.descricao, valor: l.valor,
             tipo: l.tipo, status: "pendente",
@@ -1134,7 +1136,8 @@ function ConciliacaoInner() {
       // feita aqui (vincular, desvincular, tesouraria, agrupar). Modo "acao":
       // reflete exatamente o que o usuário acabou de decidir, sem comparar
       // com o que já existia.
-      const okSync = await syncExtratoTransacoes(fazendaId!, upd.conta_id || null, upd.conta_nome, upd.linhas, upd.id, "acao");
+      const fazUpd = (contas.find(c => c.id === upd.conta_id) as { fazenda_id?: string | null } | undefined)?.fazenda_id || fazendaId!;
+      const okSync = await syncExtratoTransacoes(fazUpd, upd.conta_id || null, upd.conta_nome, upd.linhas, upd.id, "acao");
       if (!okSync) {
         // O lançamento já foi baixado/conciliado pela API, mas extrato_transacoes (o que a
         // tela lê ao reabrir) não foi atualizada. Repetir a ação é seguro (idempotente).
@@ -1189,8 +1192,9 @@ function ConciliacaoInner() {
   // ── Registrar no histórico ─────────────────────────────────────────────────
   async function registrarHistorico(linha: LinhaOFX, acao: "conciliado" | "desvinculado", lancsIds: string[], lancDesc: string) {
     if (!fazendaId || !extrato) return;
+    const fazHist = (contas.find(c => c.id === extrato.conta_id) as { fazenda_id?: string | null } | undefined)?.fazenda_id || fazendaId;
     const row = {
-      fazenda_id: fazendaId, extrato_id: extrato.id, fitid: linha.id,
+      fazenda_id: fazHist, extrato_id: extrato.id, fitid: linha.id,
       conta_nome: extrato.conta_nome, data_transacao: linha.data,
       descricao: linha.descricao, valor: linha.valor, tipo: linha.tipo,
       acao, lancamento_ids: lancsIds, lancamento_desc: lancDesc,

@@ -638,7 +638,7 @@ export default function Arrendamentos() {
             const sacas = parseFloat((arr.area_ha * scHa).toFixed(4));
             if (sacas > 0) {
               await criarContrato({
-                fazenda_id:      fazendaId,
+                fazenda_id:      arr.fazenda_id || fazendaId,
                 numero:          `ARR-SOJ-${cfg.anoFim}-${arr.id.slice(-4).toUpperCase()}`,
                 safra:           cfg.descricao,
                 comprador:       propNome,
@@ -669,7 +669,7 @@ export default function Arrendamentos() {
             const sacas = parseFloat((arr.area_ha * scHa).toFixed(4));
             if (sacas > 0) {
               await criarContrato({
-                fazenda_id:      fazendaId,
+                fazenda_id:      arr.fazenda_id || fazendaId,
                 numero:          `ARR-MIL-${cfg.anoFim}-${arr.id.slice(-4).toUpperCase()}`,
                 safra:           cfg.descricao,
                 comprador:       propNome,

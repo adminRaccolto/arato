@@ -47,6 +47,7 @@ import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef, Fragment, cloneElement, isValidElement, type CSSProperties, type ReactNode } from "react";
+import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
@@ -1383,7 +1384,7 @@ export default function ContasAPagarPage() {
         // Avulso = uma linha só. Parcelado = parcelasNovo (datas/valores editáveis na grade).
         // Recorrência = mesmo valor repetido, espaçado pela frequência.
         const baseEmp = {
-          fazenda_id: fazendaId, empresa_id: novoForm.empresa_id, tipo: "pagar" as const, descricao: novoForm.descricao.trim(),
+          fazenda_id: (await fazendaDaEmpresa(novoForm.empresa_id)) ?? fazendaId, empresa_id: novoForm.empresa_id, tipo: "pagar" as const, descricao: novoForm.descricao.trim(),
           categoria: novoForm.categoria || undefined, moeda: novoForm.moeda,
           status: "pendente" as const, competencia: novoForm.competencia || undefined,
           pessoa_id: novoForm.pessoa_id || undefined, centro_custo_id: novoForm.centro_custo_id || null,

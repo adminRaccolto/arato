@@ -14,6 +14,7 @@
 // lógica foi preservada EXATAMENTE como estava — só a casca mudou (recebe
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
+import { fazendaDoProdutor } from "../../lib/fazenda-de";
 import { hojeLocal } from "../../lib/data-local";
 import { listarCartoesDaConta } from "../../lib/db";
 import type { CartaoCredito } from "../../lib/supabase";
@@ -1234,8 +1235,10 @@ export default function ModalNf({
         return null;
       }
     }
+    // NF nova fica na fazenda do produtor destinatário; NF existente nunca muda de fazenda ao salvar
+    const fazNf = nfEdit?.fazenda_id || (await fazendaDoProdutor(cab.produtor_id)) || fazendaId;
     const payload: Omit<NfEntrada, "id" | "created_at"> = {
-      fazenda_id:            fazendaId,
+      fazenda_id:            fazNf,
       numero:                cab.numero,
       serie:                 cab.serie,
       chave_acesso:          cab.chave_acesso || undefined,
@@ -1306,7 +1309,7 @@ export default function ModalNf({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nf_id:        nf.id,
-          fazenda_id:   fazendaId,
+          fazenda_id:   nf.fazenda_id || fazendaId,
           chave_acesso: chaveRaw.length === 44 ? chaveRaw : undefined,
           xml_text:     xmlRawRef.current ?? undefined,
           itens:        itensPayload,
@@ -1547,7 +1550,7 @@ export default function ModalNf({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id:                    nfEdit.id,
-          fazenda_id:            fazendaId,
+          fazenda_id:            nfEdit.fazenda_id || fazendaId,
           data_vencimento_cp:    cab.data_vencimento_cp    || null,
           forma_pagamento:       cab.forma_pagamento       || null,
           ...(cab.forma_pagamento === "cartao_credito" || (nfEdit as Record<string,unknown>).cartao_id ? { cartao_id: cab.forma_pagamento === "cartao_credito" ? (cab.cartao_id || null) : null } : {}),
@@ -1633,7 +1636,7 @@ export default function ModalNf({
         const isPAItem = !!it.principio_ativo_id;
         const itemPayload: Omit<NfEntradaItem, "id" | "created_at"> = {
           nf_entrada_id:       nfEdit.id,
-          fazenda_id:          fazendaId,
+          fazenda_id:          nfEdit.fazenda_id || fazendaId,
           insumo_id:           (!isPAItem && it.insumo_id) ? it.insumo_id : undefined,
           principio_ativo_id:  it.principio_ativo_id  || undefined,
           nome_comercial_ref:  it.nome_comercial_ref  || undefined,

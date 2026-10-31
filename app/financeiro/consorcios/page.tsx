@@ -9,6 +9,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarFazendasDaConta, listarOperacoesGerenciaisAtivasDaConta } from "../../../lib/db";
+import { fazendaDoProdutor } from "../../../lib/fazenda-de";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import PlanoGate from "../../../components/PlanoGate";
@@ -149,7 +150,7 @@ export default function ConsorciosPage() {
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
 
   // Fazendas da conta — seletor explícito no modal (não existe "fazenda ativa")
-  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
   useEffect(() => {
     if (!fazendaId && !contaId) return;
     listarFazendasDaConta(contaId, fazendaId)
@@ -510,13 +511,15 @@ export default function ConsorciosPage() {
     setCSaving(true);
     setCErr("");
     try {
-      if (!cForm.fazenda_id && !fazendaId) throw new Error("Selecione a fazenda.");
+      // Fazenda interna: a do produtor do consórcio (sem seletor de fazenda na tela)
+      const fazConsor = (await fazendaDoProdutor(cForm.produtor_id)) || cForm.fazenda_id || fazendaId;
+      if (!fazConsor) throw new Error("Selecione o produtor.");
       if (!cForm.administradora?.trim()) throw new Error("Informe a administradora.");
       if (!cForm.numero_cota?.trim())    throw new Error("Informe o número da cota.");
       if (!cForm.data_inicio)            throw new Error("Informe a data de início.");
 
       const payload: Record<string, unknown> = {
-        fazenda_id: cForm.fazenda_id || fazendaId,
+        fazenda_id: fazConsor,
         administradora: cForm.administradora.trim(),
         administradora_pessoa_id: cForm.administradora_pessoa_id || null,
         numero_cota: cForm.numero_cota.trim(),
@@ -548,7 +551,7 @@ export default function ConsorciosPage() {
       await carregar();
       setModalConsor(false);
       // Consórcio novo: abre o grid de parcelas. Nada vai para o CP até confirmar no grid.
-      if (!consorEdit && json.id) abrirGridNovo(json.id, (cForm.fazenda_id || fazendaId) as string);
+      if (!consorEdit && json.id) abrirGridNovo(json.id, fazConsor);
     } catch (e: unknown) {
       setCErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -1133,15 +1136,6 @@ export default function ConsorciosPage() {
             {tabConsor === "dados" && (
             <div style={{ padding: "20px 22px" }}>
               <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                {fazendasConta.length > 1 && (
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label data-arato-label="true" style={lbl}>Fazenda *</label>
-                    <SelectField value={cForm.fazenda_id} onChange={e => setCForm(f => ({ ...f, fazenda_id: e.target.value }))} style={inp}>
-                      <option value="">— Selecionar —</option>
-                      {fazendasConta.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-                    </SelectField>
-                  </div>
-                )}
                 {/* Row 1 — Administradora (fornecedor) | Cota | Grupo */}
                 <div>
                   <label data-arato-label="true" style={lbl}>

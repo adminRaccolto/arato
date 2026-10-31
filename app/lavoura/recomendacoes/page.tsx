@@ -911,7 +911,7 @@ export default function RecomendacoesPage() {
 
             const { data: itemRec } = await supabase.from("pulverizacao_itens").insert({
               pulverizacao_id: pulvRecord.id,
-              fazenda_id:      fazendaId,
+              fazenda_id:      (pulvRecord as { fazenda_id?: string }).fazenda_id ?? fazendaId,
               insumo_id:       p.insumo_id,
               nome_produto:    p.produto_nome,
               dose_ha:         p.dose_ha,

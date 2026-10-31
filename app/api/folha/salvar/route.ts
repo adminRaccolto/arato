@@ -5,6 +5,16 @@ import { vencimentoSalario } from "../../../../lib/folha-calculo";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { consumirPrevisao, tabelaPrevisoesAusente } from "../../../../lib/financeiro/previsoes-server";
 
+// Usa a fazenda candidata só se for do mesmo cliente da fazenda que a requisição validou; senão a da requisição.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fazendaDoMesmoCliente(sb: any, candidata: string | null | undefined, daRequisicao: string): Promise<string> {
+  if (!candidata || candidata === daRequisicao) return daRequisicao;
+  const { data } = await sb.from("fazendas").select("id, conta_id").in("id", [candidata, daRequisicao]);
+  const contas = new Map<string, string | null>((data ?? []).map((f: { id: string; conta_id: string | null }) => [f.id, f.conta_id]));
+  const c1 = contas.get(candidata), c2 = contas.get(daRequisicao);
+  return c1 && c1 === c2 ? candidata : daRequisicao;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolverOgPorClassificacao(sb: any, fazenda_id: string, classificacao: string): Promise<string | null> {
   const { data: fazendaRow } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
@@ -424,7 +434,17 @@ export async function POST(req: Request) {
         if (error) throw error;
         return NextResponse.json({ ok: true, id: exist.id, criou: false });
       } else {
-        const insertPayload: Record<string, unknown> = { fazenda_id, empresa_id: empresa_id ?? null, competencia, status: "rascunho", ...dados };
+        // Folha nova fica na fazenda do empregador (empresa ou produtor), nunca na fazenda de referência da sessão
+        let fazEmpregador: string | null = null;
+        if (empresa_id) {
+          const { data: e } = await sb.from("empresas").select("fazenda_id").eq("id", empresa_id).maybeSingle();
+          fazEmpregador = (e?.fazenda_id as string | undefined) ?? null;
+        } else if (produtor_id) {
+          const { data: f } = await sb.from("fazendas").select("id").eq("produtor_id", produtor_id).order("created_at").limit(1).maybeSingle();
+          fazEmpregador = (f?.id as string | undefined) ?? null;
+        }
+        if (fazEmpregador && !fazendasCliente.includes(fazEmpregador)) fazEmpregador = null;
+        const insertPayload: Record<string, unknown> = { fazenda_id: fazEmpregador ?? fazenda_id, empresa_id: empresa_id ?? null, competencia, status: "rascunho", ...dados };
         if (colunaProdutorDisponivel) insertPayload.produtor_id = produtor_id ?? null;
         let { data, error } = await sb.from("folha_pagamento")
           .insert(insertPayload)
@@ -1035,7 +1055,10 @@ export async function POST(req: Request) {
 
     // ─── salvar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "salvar_adiantamento") {
-      const { fazenda_id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      const { fazenda_id: fazendaPayload, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      // Fazenda do funcionário (não a fazenda de referência da sessão)
+      const { data: funcFaz } = await sb.from("funcionarios").select("fazenda_id").eq("id", funcionario_id).maybeSingle();
+      const fazenda_id: string = await fazendaDoMesmoCliente(sb, funcFaz?.fazenda_id as string | undefined, fazendaPayload);
       const tipoAdi: "salario" | "gratificacao" = (payload as any).tipo === "gratificacao" ? "gratificacao" : "salario";
       if (tipoAdi === "gratificacao") {
         const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor });
@@ -1136,7 +1159,9 @@ export async function POST(req: Request) {
 
     // ─── salvar_premiacao ─────────────────────────────────────────────────────
     if (operacao === "salvar_premiacao") {
-      const { fazenda_id, funcionario_id, mes_referencia, descricao, valor } = payload as any;
+      const { fazenda_id: fazendaPayload, funcionario_id, mes_referencia, descricao, valor } = payload as any;
+      const { data: funcFaz } = await sb.from("funcionarios").select("fazenda_id").eq("id", funcionario_id).maybeSingle();
+      const fazenda_id: string = await fazendaDoMesmoCliente(sb, funcFaz?.fazenda_id as string | undefined, fazendaPayload);
       const { error } = await sb.from("funcionarios_premiacoes").insert({
         fazenda_id, funcionario_id, mes_referencia, descricao,
         valor, lancado_financeiro: false,

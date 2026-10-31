@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-g",
+    data: "31/10/2026",
+    titulo: "Cada lançamento grava na fazenda do que foi escolhido",
+    modulos: ["Financeiro", "Empresas", "Folha", "Conciliação", "Contratos", "Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Lançamentos passam a gravar na fazenda do que o usuário escolheu, e não mais na fazenda de referência do usuário — é essa fazenda que decide o LCDPR (PF ou PJ). CP/CR de Empresa: na fazenda da empresa. Folha nova: na fazenda do empregador; adiantamento e gratificação: na do funcionário. Extrato importado na Conciliação: na fazenda da conta bancária. Contrato de grãos, consórcio e parcelas de compra de terra: na fazenda do produtor. Contratos gerados pelo arrendamento: na fazenda do arrendamento. NF de entrada lançada à mão: na fazenda do produtor destinatário." },
+      { tipo: "correcao", texto: "Salvar uma NF de entrada aberta de outra fazenda do cliente não muda mais a NF de fazenda." },
+      { tipo: "melhoria", texto: "Contratos de Grãos e Consórcios não têm mais o seletor \"Fazenda\": vale a fazenda do produtor. O Novo Lançamento do Fluxo de Caixa ganhou o campo Produtor." },
+    ],
+  },
+  {
     versao: "2026.10.31-f",
     data: "31/10/2026",
     titulo: "Buscas sempre no cliente inteiro, nunca numa fazenda só",

@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
+import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -243,7 +244,7 @@ export default function FolhaEmpresaPage() {
       let folhaId = folhaEdit.id;
       if (!folhaId) {
         const { data, error } = await supabase.from("folha_pagamento").insert({
-          fazenda_id: fazendaId, empresa_id: empresaSel,
+          fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, empresa_id: empresaSel,
           competencia: folhaEdit.competencia, status: "rascunho",
           valor_bruto: totalBruto, valor_liquido: totalLiq,
           inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs,
@@ -321,7 +322,7 @@ export default function FolhaEmpresaPage() {
     try {
       const ogAdiantFunc = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.09.002");
       const { data: lanc, error: lancErr } = await supabase.from("lancamentos").insert({
-        fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
+        fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, empresa_id: empresaSel, tipo: "pagar",
         descricao: `Adiantamento — ${funcionarios.find(f=>f.id===adiEdit.funcionario_id)?.nome ?? ""}${adiEdit.descricao ? ` — ${adiEdit.descricao}` : ""}`,
         valor: adiEdit.valor, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Adiantamentos",
         operacao_gerencial_id: ogAdiantFunc ?? null,
@@ -329,7 +330,7 @@ export default function FolhaEmpresaPage() {
       }).select("id").single();
       if (lancErr || !lanc?.id) throw new Error(`Não foi possível gerar o CP do adiantamento: ${lancErr?.message ?? "sem retorno"}`);
       await supabase.from("adiantamentos_salario").insert({
-        fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
+        fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
         valor: adiEdit.valor, competencia_ref: adiEdit.competencia_ref || null,
         descricao: adiEdit.descricao || null, lancamento_id: lanc.id, status: "pendente",
       });
@@ -356,7 +357,7 @@ export default function FolhaEmpresaPage() {
     if (!fazendaId || !premEdit.funcionario_id || !premEdit.valor || !premEdit.descricao || !premEdit.mes_referencia) { setMsg("Preencha todos os campos."); return; }
     setSaving(true);
     try {
-      await supabase.from("funcionarios_premiacoes").insert({ fazenda_id: fazendaId, funcionario_id: premEdit.funcionario_id, mes_referencia: premEdit.mes_referencia, descricao: premEdit.descricao, valor: premEdit.valor, lancado_financeiro: false });
+      await supabase.from("funcionarios_premiacoes").insert({ fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, funcionario_id: premEdit.funcionario_id, mes_referencia: premEdit.mes_referencia, descricao: premEdit.descricao, valor: premEdit.valor, lancado_financeiro: false });
       setMsg("Gratificação registrada."); setModalPrem(false); setPremEdit({}); carregar();
     } catch (e: any) { setMsg("Erro: " + e.message); }
     finally { setSaving(false); }
@@ -389,7 +390,7 @@ export default function FolhaEmpresaPage() {
         const { data: existe } = await supabase.from("folha_pagamento").select("id").eq("empresa_id", empresaSel).eq("competencia", novaComp).maybeSingle();
         if (existe) { criadas.push(`${nomeMes(novaComp)} (já existe — ignorada)`); continue; }
         const { data: nova, error } = await supabase.from("folha_pagamento").insert({
-          fazenda_id: fazendaId, empresa_id: empresaSel, competencia: novaComp, status: "rascunho",
+          fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, empresa_id: empresaSel, competencia: novaComp, status: "rascunho",
           valor_bruto: repFolha.valor_bruto, valor_liquido: repFolha.valor_liquido,
           inss_patronal: repFolha.inss_patronal, fgts_total: repFolha.fgts_total,
         }).select("id").single();

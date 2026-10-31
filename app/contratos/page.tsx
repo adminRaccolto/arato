@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../lib/data-local";
+import { fazendaDoProdutor } from "../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -1039,7 +1040,9 @@ export default function Contratos() {
     try {
       // produto/quantidade principal = primeiro item
       const primeiroItem = itensCalc[0];
-      const fidContrato = fC.fazenda_id || fazendaId!;
+      // Fazenda interna = a do produtor (sem seletor de fazenda). Edição sem troca de produtor mantém a já gravada.
+      const mesmoProdutor = !!editContrato && (editContrato.produtor_id ?? "") === (fC.produtor_id ?? "");
+      const fidContrato = (mesmoProdutor && fC.fazenda_id) || (await fazendaDoProdutor(fC.produtor_id)) || fC.fazenda_id || fazendaId!;
       const payload: Omit<Contrato,"id"|"created_at"|"entregue_sc"> = {
         fazenda_id: fidContrato,
         numero: editContrato?.numero ?? `CTR-${new Date().getFullYear()}/${String(contratos.length+1).padStart(3,"0")}`,
@@ -2209,22 +2212,6 @@ export default function Contratos() {
 
             {/* Conteúdo das abas */}
             <div data-arato-dialog-body="true" style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-              {/* Fazenda — seletor explícito */}
-              {fazendas.length > 1 && (
-                <div data-arato-panel="true" style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
-                  <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr", gap:10 }}>
-                    <div>
-                      <label data-arato-label="true" style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
-                      <SelectField style={inp} value={fC.fazenda_id ?? fazendaId ?? ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
-                        <option value="">— Selecionar —</option>
-                        {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                      </SelectField>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {abaForm === "principal" && (
                 <>
                   {/* ── Banner IA — upload de contrato PDF (Add-on ia_contrato_venda) ── */}

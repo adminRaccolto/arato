@@ -59,12 +59,19 @@ export async function POST(req: NextRequest) {
     const TODAY = hojeLocal();
 
     // Busca OG "COMPRA DE IMÓVEIS" (2.03.01.001) para classificar os lançamentos
-    const { data: ogRow } = await sb
+    // OG do cliente: cópia da fazenda, senão de outra fazenda do cliente, senão a da conta
+    const { data: fzOg } = await sb.from("fazendas").select("conta_id").eq("id", body.fazenda_id).maybeSingle();
+    const { data: fzsOg } = fzOg?.conta_id ? await sb.from("fazendas").select("id").eq("conta_id", fzOg.conta_id) : { data: null };
+    const idsOg = (fzsOg ?? []).map((f: { id: string }) => f.id);
+    if (!idsOg.includes(body.fazenda_id)) idsOg.push(body.fazenda_id);
+    const filtroOg = [`fazenda_id.in.(${idsOg.join(",")})`, ...(fzOg?.conta_id ? [`conta_id.eq.${fzOg.conta_id}`] : [])].join(",");
+    const { data: ogRows } = await sb
       .from("operacoes_gerenciais")
-      .select("id")
+      .select("id, fazenda_id")
       .eq("classificacao", "2.03.01.001")
-      .eq("fazenda_id", body.fazenda_id)
-      .maybeSingle();
+      .or(filtroOg)
+      .limit(20);
+    const ogRow = (ogRows ?? []).find((o: { fazenda_id: string | null }) => o.fazenda_id === body.fazenda_id) ?? (ogRows ?? [])[0];
     const ogId: string | null = ogRow?.id ?? null;
 
     // Busca dados do contrato de compra de terra para os contratos de grãos

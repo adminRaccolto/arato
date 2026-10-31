@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
+import { fazendaDoProdutor } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -439,7 +440,8 @@ export default function CompraTerrPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contrato_id:  contratoId,
-            fazenda_id:   fazendaId,
+            // Parcelas (CP) na fazenda do produtor comprador — é o que vale para o LCDPR
+            fazenda_id:   (await fazendaDoProdutor(form.comprador_produtor_id)) || form.fazenda_id || fazendaId,
             imovel_nome:  form.imovel_nome,
             produtor_id:  form.comprador_produtor_id || null,
             parcelas:     parcelasPayload,

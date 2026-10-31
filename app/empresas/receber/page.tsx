@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
+import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -141,7 +142,8 @@ export default function EmpresaReceberPage() {
       // não colunas reais — mandá-los no update quebrava com "Could not find the 'empresa_nome'
       // column ... in the schema cache" (achado real 29/09/2026).
       const { empresa_nome: _en, pessoa_nome: _pn, numero: _nu, created_at: _ca, id: _id, ...formLimpo } = form as EmpresaLancamento;
-      const payload = { ...formLimpo, fazenda_id: fazendaId, tipo: "receber" as const };
+      // Fazenda interna = a da empresa do título (edição mantém a fazenda já gravada)
+      const payload = { ...formLimpo, fazenda_id: editId ? (formLimpo.fazenda_id || fazendaId) : ((await fazendaDaEmpresa(form.empresa_id)) ?? fazendaId), tipo: "receber" as const };
       if (editId) { await atualizarEmpresaLancamento(editId, payload); }
       else         { await criarEmpresaLancamento(payload as any); }
       setModalOpen(false); carregar();
