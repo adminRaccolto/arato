@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
+import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -919,7 +920,8 @@ function MdfePageInner() {
       }
 
       const payload = {
-        fazenda_id: mdfeEdit?.fazenda_id ?? fazendaId, // editar não muda a fazenda do documento
+        // MDF-e novo fica na fazenda da empresa emitente; editar não muda a fazenda do documento
+        fazenda_id: mdfeEdit?.fazenda_id ?? ((await fazendaDaEmpresa(form.emitente_id)) || fazendaId),
         numero_mdfe: form.numero_mdfe.trim(),
         serie: form.serie,
         chave_acesso: mdfeEdit?.chave_acesso ?? null,
@@ -1051,7 +1053,7 @@ function MdfePageInner() {
     try {
       const res = await fetch("/api/fiscal/emitir-mdfe", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: m.id }),
+        body: JSON.stringify({ fazenda_id: (m as { fazenda_id?: string }).fazenda_id || fazendaId, mdfe_id: m.id }),
       });
       const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; respostaSefaz?: boolean };
       if (data.sucesso) {
@@ -1116,7 +1118,7 @@ function MdfePageInner() {
       if (!cmun) { alert("Município não encontrado — confira o nome digitado."); return; }
       const res = await fetch("/api/fiscal/encerrar-mdfe", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: modalEnc.id, data_enc: encForm.data_encerramento, uf_enc: encForm.uf_encerramento, cmun_enc: cmun, municipio_enc: encForm.municipio_encerramento }),
+        body: JSON.stringify({ fazenda_id: (modalEnc as { fazenda_id?: string }).fazenda_id || fazendaId, mdfe_id: modalEnc.id, data_enc: encForm.data_encerramento, uf_enc: encForm.uf_encerramento, cmun_enc: cmun, municipio_enc: encForm.municipio_encerramento }),
       });
       const j = await res.json() as { sucesso?: boolean; cStat?: string; xMotivo?: string };
       if (!j.sucesso) { alert(`Encerramento não aceito pela SEFAZ.\n\n${j.cStat ?? ""} ${j.xMotivo ?? "erro desconhecido"}`); return; }
@@ -1178,7 +1180,7 @@ function MdfePageInner() {
     if (just.trim().length < 15) { alert("A justificativa precisa ter pelo menos 15 caracteres."); return; }
     try {
       const res = await fetch("/api/fiscal/cancelar-mdfe", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: m.id, justificativa: just.trim() }) });
+        body: JSON.stringify({ fazenda_id: (m as { fazenda_id?: string }).fazenda_id || fazendaId, mdfe_id: m.id, justificativa: just.trim() }) });
       const j = await res.json() as { sucesso: boolean; cStat: string; xMotivo: string };
       alert(j.sucesso ? "✓ MDF-e cancelado na SEFAZ." : `⚠ Não foi possível cancelar\ncStat ${j.cStat}: ${j.xMotivo}`);
     } catch (e) { alert("Erro ao cancelar: " + (e instanceof Error ? e.message : String(e))); }

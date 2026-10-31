@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
+import { fazendaDoProdutor } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -216,7 +217,7 @@ function FaturamentoInner() {
   const [retornoOrigemId, setRetornoOrigemId] = useState<string | null>(null);
   const [nfEmitida,   setNfEmitida]   = useState<{numero:string;chave?:string;cfop:string;venda_a_ordem:boolean;entrega_futura:boolean}|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
-  const [fazendas,     setFazendas]     = useState<{id:string;nome:string;municipio?:string;estado?:string}[]>([]);
+  const [,             setFazendas]     = useState<{id:string;nome:string;municipio?:string;estado?:string}[]>([]);
   const [fazNFe,       setFazNFe]       = useState<string>("");
   const [fazendaUF,    setFazendaUF]    = useState("");
   const [fazendaNome,  setFazendaNome]  = useState("");
@@ -286,33 +287,32 @@ function FaturamentoInner() {
     }).catch(console.error).finally(() => setLoading(false));
   }, [fazendaId, fazendaIds, contaId, searchParams]);
 
-  // ── Recarregar dados quando usuário troca a fazenda no modal ──────────────
+  // ── Fazenda emitente = fazenda da IE escolhida (senão a do produtor). Listas são do cliente inteiro e
+  //    não mudam; aqui só os dados da fazenda que emite (UF, textos legais da UF).
+  useEffect(() => {
+    let vivo = true;
+    const ie = iesProdutor.find(i => i.id === fVenda.ie_id);
+    (async () => {
+      const fid = ie?.fazenda_id || (await fazendaDoProdutor(fVenda.produtor_id));
+      if (vivo && fid) setFazNFe(fid);
+    })();
+    return () => { vivo = false; };
+  }, [fVenda.ie_id, fVenda.produtor_id, iesProdutor]);
+
   useEffect(() => {
     if (!fazNFe) return;
-    Promise.all([
-      listarProdutoresDaConta(contaId ?? "", fazNFe),
-      listarContratos(fazNFe),
-      listarAnosSafra(fazNFe),
-      produtosAgricolasDoCliente(contaId, fazNFe),
-      supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazNFe).single(),
-      supabase.from("configuracoes_modulo").select("modulo, config").eq("fazenda_id", fazNFe).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
-    ]).then(([p, c, as_, pa, faz, fm]) => {
-      setProdutores(p);
-      setContratos((c as Contrato[]).filter(c => c.tipo === "venda" || !c.tipo));
-      setAnosSafra([...as_].sort((a, b) => b.descricao.localeCompare(a.descricao)));
-      setProdAgricolas((pa.data ?? []) as Insumo[]);
-      const fazData = (faz as {data?: {estado?: string; nome?: string; municipio?: string}}).data;
-      const uf = fazData?.estado ?? "";
-      setFazendaUF(uf);
-      setFazendaNome(fazData?.nome ?? "");
-      setFazendaCidade(fazData?.municipio ?? "");
-      // Reconstrói mapa textosUF para a UF da fazenda selecionada
-      const mapa: Record<string, string> = {};
-      allTextos.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
-      if (uf) allTextos.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
-      setTextosUF(mapa);
-      setFiscalModulos((fm as {data?: {modulo: string; config: Record<string,string>}[]}).data ?? []);
-    }).catch(console.error);
+    supabase.from("fazendas").select("estado, nome, municipio").eq("id", fazNFe).single()
+      .then(({ data: fazData }) => {
+        const uf = fazData?.estado ?? "";
+        setFazendaUF(uf);
+        setFazendaNome(fazData?.nome ?? "");
+        setFazendaCidade(fazData?.municipio ?? "");
+        // Reconstrói mapa textosUF para a UF da fazenda emitente
+        const mapa: Record<string, string> = {};
+        allTextos.filter(r => r.uf === "BR").forEach(r => { mapa[r.cfop_tipo] = r.texto; });
+        if (uf) allTextos.filter(r => r.uf === uf).forEach(r => { mapa[r.cfop_tipo] = r.texto; });
+        setTextosUF(mapa);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazNFe]);
 
@@ -368,7 +368,7 @@ function FaturamentoInner() {
     setContratoSelecionado(null);
     setRomaneios([]);
     setErroForm(null);
-    setFazNFe(fazendaId ?? ""); // sugestão inicial; usuário troca no seletor da aba Produtor
+    setFazNFe(fazendaId ?? ""); // provisório: passa a ser a fazenda da IE escolhida
     setRetornoOrigemId(null);
     setModalAberto(true);
   }
@@ -577,6 +577,7 @@ function FaturamentoInner() {
     const fazEmissao = fazNFe || fazendaId || "";
     if (!fazEmissao) { setErroForm("Selecione a fazenda emitente."); return; }
     if (!fVenda.produtor_id) { setErroForm("Selecione o produtor."); return; }
+    if (iesProdutor.length > 1 && !fVenda.ie_id) { setErroForm("Selecione a IE do produtor — ela define a fazenda que emite a nota."); return; }
     if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
     if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
     if (!fVenda.dest_municipio_ibge) { setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
@@ -871,19 +872,6 @@ function FaturamentoInner() {
     switch (tabNFe) {
       case "produtor": return (
         <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
-          {/* Seletor de fazenda emitente — explícito, obrigatório */}
-          <div style={{ gridColumn:"1/-1" }}>
-            <label data-arato-label="true" style={lbl}>Fazenda Emitente *</label>
-            <SelectField style={{ ...inp, fontWeight:600, color:"#111111" }} value={fazNFe}
-              onChange={e => setFazNFe(e.target.value)}>
-              <option value="">— selecione a fazenda que emite a nota —</option>
-              {fazendas.map(f => (
-                <option key={f.id} value={f.id}>
-                  {f.nome}{f.municipio ? ` — ${f.municipio}` : ""}{f.estado ? `/${f.estado}` : ""}
-                </option>
-              ))}
-            </SelectField>
-          </div>
           <div>
             <label data-arato-label="true" style={lbl}>Tipo de Nota</label>
             <SelectField style={inp} value={fVenda.tipo_nota} onChange={e => fv({ tipo_nota: e.target.value as "propria"|"terceiros" })}>
@@ -917,6 +905,9 @@ function FaturamentoInner() {
                   ))}
                 </SelectField>
               </div>
+            )}
+            {fVenda.produtor_id && fazendaNome && (
+              <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-2)" }}>Emite pela fazenda: <strong>{fazendaNome}</strong></div>
             )}
           </div>
           <div>

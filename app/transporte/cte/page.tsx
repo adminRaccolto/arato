@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
+import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -1063,8 +1064,9 @@ function CtePageInner() {
       const ciotDados = { data_fim: ciotForm.data_fim || null, distancia_km: ciotForm.distancia_km || null, natureza: ciotForm.natureza || null,
         chave_pix: ciotForm.chave_pix || null, cep_origem: ciotForm.cep_origem || null, cep_destino: ciotForm.cep_destino || null,
         implementos: ciotForm.implementos || null, sem_implemento: ciotSemImpl };
+      // CT-e fica na fazenda da empresa emitente; um CT-e existente nunca muda de fazenda
       const payload = {
-        fazenda_id: fazendaId,
+        fazenda_id: (cteEdit as { fazenda_id?: string } | null)?.fazenda_id || (await fazendaDaEmpresa(form.emitente_id)) || fazendaId,
         emitente_id: form.emitente_id || null,
         emitente_razao_social: (emitente?.razao_social ?? emitente?.nome ?? form.emitente_razao_social) || null,
         emitente_cnpj: (emitente?.cpf_cnpj ?? form.emitente_cnpj) || null,
@@ -1141,7 +1143,7 @@ function CtePageInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id: fazendaId,
+          fazenda_id: payload.fazenda_id,
           cte_id: cteEdit?.id ?? undefined,
           payload,
         }),
@@ -1224,7 +1226,7 @@ function CtePageInner() {
         setCiotGerado(gerado);
         if (cteEdit?.id) {
           await fetch("/api/transporte/cte-salvar", { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fazenda_id: fazendaId, cte_id: cteEdit.id, payload: { ciot: gerado.id, ciot_codigo_verificador: gerado.cv, ciot_protocolo: gerado.protocolo } }) }).catch(() => {});
+            body: JSON.stringify({ fazenda_id: (cteEdit as { fazenda_id?: string }).fazenda_id || fazendaId, cte_id: cteEdit.id, payload: { ciot: gerado.id, ciot_codigo_verificador: gerado.cv, ciot_protocolo: gerado.protocolo } }) }).catch(() => {});
         }
       } else {
         if (data.Dados?.IdOperacaoTransporte) setCiotReservado(String(data.Dados.IdOperacaoTransporte)); // reaproveita na próxima tentativa
@@ -1393,7 +1395,7 @@ function CtePageInner() {
     const tomPayload = await montarPartic(particDeCte(c, "tomador"));
 
     const payload = {
-      fazenda_id:         fazendaId,
+      fazenda_id:         (c as { fazenda_id?: string }).fazenda_id || fazendaId,
       cte_id:             c.id,
       emitente_id:        c.emitente_id ?? undefined,
       emitente_cnpj:      c.emitente_cnpj ?? undefined,
@@ -1564,7 +1566,7 @@ function CtePageInner() {
       const res = await fetch("/api/fiscal/carta-correcao-cte", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id: fazendaId, cte_id: cceCte.id, emitente_cnpj: cceCte.emitente_cnpj, chave_acesso: cceCte.chave_acesso,
+          fazenda_id: (cceCte as { fazenda_id?: string }).fazenda_id || fazendaId, cte_id: cceCte.id, emitente_cnpj: cceCte.emitente_cnpj, chave_acesso: cceCte.chave_acesso,
           correcoes: linhas.map(l => ({ grupo: l.grupo.trim(), campo: l.campo.trim(), valor: l.valor.trim(), item: l.item.trim() || undefined })),
         }),
       });
@@ -1600,7 +1602,7 @@ function CtePageInner() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            fazenda_id: fazendaId,
+            fazenda_id: (c as { fazenda_id?: string }).fazenda_id || fazendaId,
             cte_id: c.id,
             emitente_cnpj: c.emitente_cnpj,
             chave_acesso: c.chave_acesso,
@@ -2474,7 +2476,7 @@ function CtePageInner() {
                   setCiotGerado(g); setCiotErro("");
                   if (cteEdit?.id && fazendaId) {
                     await fetch("/api/transporte/cte-salvar", { method: "POST", headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ fazenda_id: fazendaId, cte_id: cteEdit.id, payload: { ciot: g.id, ciot_codigo_verificador: g.cv || null } }) }).catch(() => {});
+                      body: JSON.stringify({ fazenda_id: (cteEdit as { fazenda_id?: string }).fazenda_id || fazendaId, cte_id: cteEdit.id, payload: { ciot: g.id, ciot_codigo_verificador: g.cv || null } }) }).catch(() => {});
                   }
                 };
                 const NAT = [["2101","Soja"],["2102","Milho"],["2103","Algodão"],["2104","Trigo"],["2201","Fertilizantes / corretivos"],["2202","Granel vegetal"],["4101","Carga geral"]];

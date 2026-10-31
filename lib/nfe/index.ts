@@ -211,28 +211,37 @@ export async function carregarPfx(
   const r1 = await tentarDownload(storagePath);
   if (r1) return r1;
 
-  // 2. Tenta <fazendaId>/<filename> se o storagePath não inclui o fazendaId
-  const filename = storagePath.split("/").pop() ?? "";
-  if (filename && !storagePath.startsWith(fazendaId)) {
-    const r2 = await tentarDownload(`${fazendaId}/${filename}`);
-    if (r2) return r2;
+  // 2/3. Procura nas pastas das fazendas do MESMO cliente (a fazenda que emite primeiro). O certificado é do
+  //      titular, e o upload pode ter sido feito com outra fazenda do cliente. Nunca escanear a raiz do
+  //      bucket nem pastas de outro cliente.
+  const { data: fzCert } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  let pastas = [fazendaId];
+  if (fzCert?.conta_id) {
+    const { data: fzsCert } = await sb().from("fazendas").select("id").eq("conta_id", fzCert.conta_id);
+    pastas = [fazendaId, ...(fzsCert ?? []).map((f: { id: string }) => f.id).filter((id: string) => id !== fazendaId)];
   }
-
-  // 3. Scan RESTRITO à pasta da fazenda — nunca escanear a raiz do bucket,
-  //    pois isso expõe certificados de outros tenants.
-  const { data: fazFiles } = await sb().storage.from("certificados").list(fazendaId, { limit: 100 });
-  for (const f of fazFiles ?? []) {
-    if (/\.(pfx|p12)$/i.test(f.name)) {
-      const r3 = await tentarDownload(`${fazendaId}/${f.name}`);
-      if (r3) return r3;
+  const filename = storagePath.split("/").pop() ?? "";
+  for (const pasta of pastas) {
+    if (filename && !storagePath.startsWith(pasta)) {
+      const r2 = await tentarDownload(`${pasta}/${filename}`);
+      if (r2) return r2;
     }
-    // Sub-pasta dentro da fazenda (ex: fazendaId/pf/ ou fazendaId/pj/)
-    if (!f.name.includes(".")) {
-      const { data: sub } = await sb().storage.from("certificados").list(`${fazendaId}/${f.name}`, { limit: 20 });
-      for (const sf of sub ?? []) {
-        if (/\.(pfx|p12)$/i.test(sf.name)) {
-          const r4 = await tentarDownload(`${fazendaId}/${f.name}/${sf.name}`);
-          if (r4) return r4;
+  }
+  for (const pasta of pastas) {
+    const { data: fazFiles } = await sb().storage.from("certificados").list(pasta, { limit: 100 });
+    for (const f of fazFiles ?? []) {
+      if (/\.(pfx|p12)$/i.test(f.name)) {
+        const r3 = await tentarDownload(`${pasta}/${f.name}`);
+        if (r3) return r3;
+      }
+      // Sub-pasta dentro da fazenda (ex: fazendaId/pf/ ou fazendaId/pj/)
+      if (!f.name.includes(".")) {
+        const { data: sub } = await sb().storage.from("certificados").list(`${pasta}/${f.name}`, { limit: 20 });
+        for (const sf of sub ?? []) {
+          if (/\.(pfx|p12)$/i.test(sf.name)) {
+            const r4 = await tentarDownload(`${pasta}/${f.name}/${sf.name}`);
+            if (r4) return r4;
+          }
         }
       }
     }

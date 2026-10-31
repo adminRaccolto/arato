@@ -17,6 +17,7 @@ import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
 import { ratearDescontoNf, emissorDoProdutor } from "../../lib/nfe/remessa";
 import { fmtNcm } from "../../lib/fiscal/ncm-produtos";
+import { fazendaDoProdutor } from "../../lib/fazenda-de";
 
 // ── Naturezas fiscais ────────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -954,6 +955,25 @@ function FiscalInner() {
 
   // IEs do produtor selecionado
   const [iesProdutor, setIesProdutor] = useState<ProdutorIE[]>([]);
+  // A NF-e sai pela fazenda da Inscrição Estadual escolhida (cada IE é um estabelecimento de uma fazenda);
+  // IE de empresa ou sem fazenda: fazenda do produtor. Nunca a fazenda de referência da sessão.
+  const fazendaDaIe = (ies: ProdutorIE[], ie: string | undefined) => (ie ? ies.find(i => i.inscricao_estadual === ie)?.fazenda_id : null) || null;
+  // Transferência: a origem é a fazenda da IE do produtor emitente
+  const [iesTransf, setIesTransf] = useState<ProdutorIE[]>([]);
+  useEffect(() => {
+    if (!fTransf.produtor_id) { setIesTransf([]); return; }
+    let vivo = true;
+    listarIEsDoProdutor(fTransf.produtor_id).then(list => {
+      if (!vivo) return;
+      const ativas = list.filter(i => (i as { ativa?: boolean }).ativa !== false);
+      setIesTransf(ativas);
+      if (ativas.length === 1) setFTransf(p => ({ ...p, ie_selecionada: ativas[0].inscricao_estadual }));
+    }).catch(() => { if (vivo) setIesTransf([]); });
+    return () => { vivo = false; };
+  }, [fTransf.produtor_id]);
+  const fazOrigemTransf = fazendaDaIe(iesTransf, fTransf.ie_selecionada) || fazendaId;
+  const fazendaEmissaoVenda = async (): Promise<string> =>
+    fazendaDaIe(iesProdutor, fVenda.ie_selecionada) || (await fazendaDoProdutor(fVenda.produtor_id)) || fazendaId!;
 
   // Auto-fill Produtor → dados do produtor + carrega IEs
   function onProdutorChange(prodId: string) {
@@ -1406,13 +1426,13 @@ function FiscalInner() {
         const prodRasc = produtores.find(p => p.id === fVenda.produtor_id);
         const rn = await fetch("/api/fiscal/numeracao-nfe", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fazenda_id: fazendaId, modulo_key: moduloKeyAtivo, emit_ie_override: fVenda.ie_selecionada || prodRasc?.inscricao_est || undefined }),
+          body: JSON.stringify({ fazenda_id: await fazendaEmissaoVenda(), modulo_key: moduloKeyAtivo, emit_ie_override: fVenda.ie_selecionada || prodRasc?.inscricao_est || undefined }),
         });
         if (rn.ok) numPrevia = await rn.json();
       } catch { /* sem prévia: comportamento antigo */ }
       const pendentesMesmaSerie = notas.filter(n => n.status === "em_digitacao" && n.serie === numPrevia.serie).length;
       await criarNotaFiscal({
-        fazenda_id: fazendaId!,
+        fazenda_id: await fazendaEmissaoVenda(),
         numero: numPrevia.numero != null ? String(numPrevia.numero + pendentesMesmaSerie).padStart(6, "0") : proximoNumero(),
         serie: numPrevia.serie ?? (fVenda.serie || "1"),
         tipo: "saida",
@@ -1521,12 +1541,13 @@ function FiscalInner() {
       // IE efetiva do emitente: dropdown de múltiplas IEs > IE única do cadastro > Parâmetros do Sistema
       const prodSelEmit = produtores.find(p => p.id === fVenda.produtor_id);
       const ieEfetiva   = fVenda.ie_selecionada || prodSelEmit?.inscricao_est || undefined;
+      const fazEmissao  = await fazendaEmissaoVenda();
 
       const res = await fetch("/api/fiscal/emitir-nfe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:        fazendaId,
+          fazenda_id:        fazEmissao,
           modulo_key:        moduloKeyAtivo,
           emit_ie_override:  ieEfetiva || undefined,
           destinatario: {
@@ -1582,7 +1603,7 @@ function FiscalInner() {
       const resultado = resBody;
 
       await criarNotaFiscal({
-        fazenda_id:        fazendaId!,
+        fazenda_id:        fazEmissao,
         numero:            resultado.numero ?? proximoNumero(),
         serie:             (resultado as { serie?: string }).serie ?? (fVenda.serie || "1"),
         tipo:              "saida",
@@ -1641,7 +1662,7 @@ function FiscalInner() {
       if (resultado.sucesso && nfEntradaOrigem) {
         try {
           await criarNfRemessaLogistica({
-            fazenda_id: fazendaId!,
+            fazenda_id: fazEmissao,
             nf_entrada_id: nfEntradaOrigem,
             nf_remessa_chave: resultado.chave ?? undefined,
             nf_remessa_numero: resultado.numero ?? undefined,
@@ -1747,7 +1768,7 @@ function FiscalInner() {
     setSalvando(true);
     try {
       await criarNotaFiscal({
-        fazenda_id: fazendaId!, numero: proximoNumero(), serie: "1", tipo: "saida",
+        fazenda_id: modalComplemento.fazenda_id || fazendaId!, numero: proximoNumero(), serie: "1", tipo: "saida",
         cfop: modalComplemento.cfop,
         natureza: `Complemento à NF-e ${modalComplemento.numero} — ${NATUREZAS_VENDA.find(n => n.codigo === modalComplemento.cfop)?.descricao ?? modalComplemento.cfop}`,
         destinatario: modalComplemento.destinatario, cnpj_destinatario: modalComplemento.cnpj_destinatario ?? undefined,
@@ -1845,8 +1866,11 @@ function FiscalInner() {
   const emitirTransferencia = async () => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir transferencia)", perigo: false }))) return;
     if (!fazendaId) return;
+    if (iesTransf.length > 1 && !fTransf.ie_selecionada) { alert("Selecione a Inscrição Estadual de origem do produtor."); return; }
+    const fazOrigem = fazendaDaIe(iesTransf, fTransf.ie_selecionada) || (await fazendaDoProdutor(fTransf.produtor_id)) || fazendaId;
     const fzDest = fazendasConta.find(f => f.id === fTransf.fazenda_destino_id);
     if (!fzDest) { alert("Selecione a fazenda de destino."); return; }
+    if (fzDest.id === fazOrigem) { alert("A fazenda de destino é a mesma da origem (fazenda da IE do emitente)."); return; }
     if (!fTransf.quantidade || !fTransf.valor_unitario) { alert("Informe quantidade e valor unitário."); return; }
     const qtd   = parseFloat(fTransf.quantidade.replace(",", ".")) || 0;
     const vUnit = desmascarar(fTransf.valor_unitario);
@@ -1865,7 +1889,7 @@ function FiscalInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:       fazendaId,
+          fazenda_id:       fazOrigem,
           modulo_key:       moduloKeyAtivo || undefined,
           emit_ie_override: fTransf.ie_selecionada || prodSel?.inscricao_est || undefined,
           destinatario: {
@@ -1904,7 +1928,7 @@ function FiscalInner() {
       }
 
       await criarNotaFiscal({
-        fazenda_id:        fazendaId,
+        fazenda_id:        fazOrigem,
         numero:            resBody.numero ?? proximoNumero(),
         serie:             resBody.serie ?? "1",
         tipo:              "saida",
@@ -3396,6 +3420,22 @@ function FiscalInner() {
                   {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </SelectField>
               </div>
+              {iesTransf.length > 0 && (
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={labelSt}>Inscrição Estadual (origem) *</label>
+                  {iesTransf.length > 1 ? (
+                    <SelectField style={{ ...inputSt, borderColor: !fTransf.ie_selecionada ? "#E24B4A" : undefined }} value={fTransf.ie_selecionada} onChange={e => setFTransf(p => ({ ...p, ie_selecionada: e.target.value }))}>
+                      <option value="">— Selecionar —</option>
+                      {iesTransf.map(ie => {
+                        const fz = fazendasConta.find(f => f.id === ie.fazenda_id);
+                        return <option key={ie.id} value={ie.inscricao_estadual}>{ie.inscricao_estadual}{fz ? ` — ${fz.nome}` : ""}</option>;
+                      })}
+                    </SelectField>
+                  ) : (
+                    <input style={{ ...inputSt, background: "#f4f4f4" }} readOnly value={`${iesTransf[0].inscricao_estadual}${fazendasConta.find(f => f.id === iesTransf[0].fazenda_id) ? ` — ${fazendasConta.find(f => f.id === iesTransf[0].fazenda_id)!.nome}` : ""}`} />
+                  )}
+                </div>
+              )}
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={labelSt}>Natureza / CFOP *</label>
                 <SelectField style={inputSt} value={fTransf.cfop} onChange={e => setFTransf(p => ({ ...p, cfop: e.target.value }))}>
@@ -3411,11 +3451,11 @@ function FiscalInner() {
                 <label data-arato-label="true" style={labelSt}>Fazenda de Destino *</label>
                 <SelectField style={inputSt} value={fTransf.fazenda_destino_id} onChange={e => setFTransf(p => ({ ...p, fazenda_destino_id: e.target.value }))}>
                   <option value="">— Selecionar fazenda de destino —</option>
-                  {fazendasConta.filter(f => f.id !== fazendaId).map(f => (
+                  {fazendasConta.filter(f => f.id !== fazOrigemTransf).map(f => (
                     <option key={f.id} value={f.id}>{f.nome}{f.municipio ? ` — ${f.municipio}/${f.estado ?? ""}` : ""}</option>
                   ))}
                 </SelectField>
-                {fazendasConta.filter(f => f.id !== fazendaId).length === 0 && (
+                {fazendasConta.filter(f => f.id !== fazOrigemTransf).length === 0 && (
                   <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>⚠ Nenhuma outra fazenda cadastrada nesta conta. Cadastre em Cadastros → Fazendas.</div>
                 )}
               </div>

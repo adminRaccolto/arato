@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-h",
+    data: "31/10/2026",
+    titulo: "NF-e sai pela fazenda da Inscrição Estadual escolhida",
+    modulos: ["Notas de Venda", "Faturamento", "Transferência", "CT-e", "MDF-e"],
+    itens: [
+      { tipo: "melhoria", texto: "A NF-e sai pela fazenda da Inscrição Estadual escolhida (cada IE é um estabelecimento de uma fazenda), e não mais pela fazenda de referência do usuário. Se o produtor tem mais de uma IE, escolher a IE é obrigatório. Parâmetros, série, numeração, certificado e ambiente continuam como estão." },
+      { tipo: "melhoria", texto: "Faturamento: saiu o seletor \"Fazenda Emitente\" — a fazenda vem da IE do produtor e aparece abaixo dela (\"Emite pela fazenda: …\")." },
+      { tipo: "melhoria", texto: "NF-e de Transferência ganhou o campo Inscrição Estadual (origem): a origem é a fazenda dessa IE, e o destino continua sendo escolhido na tela." },
+      { tipo: "correcao", texto: "CT-e e MDF-e novos ficam na fazenda da empresa emitente; transmitir, cancelar, carta de correção, CIOT e encerramento usam a fazenda do próprio documento. O certificado A1 passa a ser procurado nas pastas de todas as fazendas do cliente quando o caminho gravado não funciona." },
+    ],
+  },
+  {
     versao: "2026.10.31-g",
     data: "31/10/2026",
     titulo: "Cada lançamento grava na fazenda do que foi escolhido",
