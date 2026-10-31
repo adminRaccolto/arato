@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-e",
+    data: "31/10/2026",
+    titulo: "Contas a Pagar e a Receber com a ordem padrão dos campos",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "melhoria", texto: "O Novo Lançamento do CP e do CR segue a ordem padrão das telas de lançamento: de quem (Produtor ou Empresa) → com quem (Fornecedor/Cliente e documento) → o quê (Operação Gerencial, Descrição) → quanto e quando (Valor, Vencimento) → onde (Forma e Conta) → classificação (Ano Safra, Ciclo, Centro de Custo) → extras. O campo Fazenda saiu: o título fica na fazenda do produtor escolhido. No lado Empresa, Forma, Conta e Nº Documento vieram da aba Adicionais para a Principal." },
+    ],
+  },
+  {
     versao: "2026.10.31-d",
     data: "31/10/2026",
     titulo: "Tesouraria sem seletor de fazenda e com a ordem padrão dos campos",

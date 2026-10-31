@@ -715,6 +715,13 @@ export default function ContasAReceberPage() {
   const [novoForm,  setNovoForm]  = useState(NOVO_VAZIO);
   const [erroNovo,  setErroNovo]  = useState("");
   const [cascadeNovo, setCascadeNovo] = useState<Partial<CascadeValues>>({});
+  // Fazendas do cliente com o produtor dono — o título vai para a fazenda do produtor escolhido (a fazenda não aparece
+  // na tela: o banco exige uma em cada título)
+  const [fazendasProdutor, setFazendasProdutor] = useState<{ id: string; produtor_id: string | null }[]>([]);
+  useEffect(() => {
+    if (!contaId) return;
+    supabase.from("fazendas").select("id, produtor_id").eq("conta_id", contaId).then(({ data }) => setFazendasProdutor((data ?? []) as { id: string; produtor_id: string | null }[]));
+  }, [contaId]);
   const [parcelasNovo, setParcelasNovo] = useState<ParcelaGrid[]>([]);
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
@@ -966,7 +973,7 @@ export default function ContasAReceberPage() {
         const sacas = Number(novoForm.sacas);
         const valorFinal = novoForm.moeda === "barter" ? sacas * novoForm.preco_saca_barter : novoForm.valor;
         const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
-          fazenda_id: fazendaId, tipo: "receber", moeda: novoForm.moeda,
+          fazenda_id: cascadeNovo.fazendaId || fazendaId, tipo: "receber", moeda: novoForm.moeda,
           pessoa_id: novoForm.pessoa_id || undefined,
           descricao: novoForm.descricao.trim() || (pessoas.find(p => p.id === novoForm.pessoa_id)?.nome ?? ""),
           categoria: novoForm.categoria, data_lancamento: hoje, data_vencimento: novoForm.data_vencimento,
@@ -2292,6 +2299,7 @@ export default function ContasAReceberPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {ehEmpresa ? (
                     <>
+                      {/* Ordem padrão: de quem → com quem → o quê → quanto/quando → onde → classificação → extras */}
                       <div>
                         <label data-arato-label="true" style={lbl}>Empresa *</label>
                         <SelectField value={novoForm.empresa_id} onChange={e => setNovoForm(p => ({ ...p, empresa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
@@ -2299,33 +2307,7 @@ export default function ContasAReceberPage() {
                           {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
                         </SelectField>
                       </div>
-                      <div>
-                        <label data-arato-label="true" style={lbl}>Descrição *</label>
-                        <input value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Venda de soja — safra 25/26" />
-                      </div>
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Categoria *</label>
-                          <SelectField value={novoForm.categoria} onChange={e => setNovoForm(p => ({ ...p, categoria: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                            {CATS_CR_EMPRESA.map(c => <option key={c} value={c}>{c}</option>)}
-                          </SelectField>
-                        </div>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Competência</label>
-                          <InputData type="month" value={novoForm.competencia} onChange={e => setNovoForm(p => ({ ...p, competencia: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-                        </div>
-                      </div>
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Valor (R$) *</label>
-                          <InputMonetario value={novoForm.valor} onChange={v => setNovoForm(p => ({ ...p, valor: v }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="0,00" />
-                        </div>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Vencimento *</label>
-                          <InputData type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-                        </div>
-                      </div>
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 12 }}>
                         <div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Cliente</label><button type="button" onClick={() => setCadPessoaAberto(true)} title="Abre o cadastro com consulta de CNPJ" style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>Cadastro Cliente</button></div>
                           <SelectField value={novoForm.pessoa_id} onChange={e => setNovoForm(p => ({ ...p, pessoa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
@@ -2334,12 +2316,57 @@ export default function ContasAReceberPage() {
                           </SelectField>
                         </div>
                         <div>
-                          <label data-arato-label="true" style={lbl}>Centro de Custo</label>
-                          <SelectField value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                            <option value="">— Sem vínculo —</option>
-                            {centrosNovo.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ${c.nome}` : c.nome}</option>)}
+                        <label data-arato-label="true" style={lbl}>Nº Documento</label>
+                        <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.numero_documento} onChange={e => setNovoForm(p => ({ ...p, numero_documento: e.target.value }))} placeholder="NF, Boleto, Recibo..." />
+                      </div>
+                      </div>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
+                          <SelectField value={novoForm.operacao_gerencial_id} onChange={e => setNovoForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem OG —</option>
+                            {opGerenciais.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
                           </SelectField>
                         </div>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Categoria *</label>
+                          <SelectField value={novoForm.categoria} onChange={e => setNovoForm(p => ({ ...p, categoria: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            {CATS_CR_EMPRESA.map(c => <option key={c} value={c}>{c}</option>)}
+                          </SelectField>
+                        </div>
+                      </div>
+                      <div>
+                        <label data-arato-label="true" style={lbl}>Descrição *</label>
+                        <input value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Venda de soja — safra 25/26" />
+                      </div>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Valor (R$) *</label>
+                          <InputMonetario value={novoForm.valor} onChange={v => setNovoForm(p => ({ ...p, valor: v }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="0,00" />
+                        </div>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Vencimento *</label>
+                          <InputData type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                        </div>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Competência</label>
+                          <InputData type="month" value={novoForm.competencia} onChange={e => setNovoForm(p => ({ ...p, competencia: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                        </div>
+                      </div>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                        <label data-arato-label="true" style={lbl}>Forma de Recebimento</label>
+                        <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                          {FORMAS_RECEBIMENTO.map(f => <option key={f} value={f}>{f}</option>)}
+                        </SelectField>
+                      </div>
+                        <div>
+                        <label data-arato-label="true" style={lbl}>Conta Bancária</label>
+                        <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                          <option value="">— Nenhuma —</option>
+                          {contasNovo.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                        </SelectField>
+                      </div>
                       </div>
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                         <div>
@@ -2357,10 +2384,10 @@ export default function ContasAReceberPage() {
                           </SelectField>
                         </div>
                         <div>
-                          <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
-                          <SelectField value={novoForm.operacao_gerencial_id} onChange={e => setNovoForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                            <option value="">— Sem OG —</option>
-                            {opGerenciais.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                          <label data-arato-label="true" style={lbl}>Centro de Custo</label>
+                          <SelectField value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem vínculo —</option>
+                            {centrosNovo.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ${c.nome}` : c.nome}</option>)}
                           </SelectField>
                         </div>
                       </div>
@@ -2368,56 +2395,17 @@ export default function ContasAReceberPage() {
                     </>
                   ) : (
                     <>
-                      {/* Produtor → Fazenda → Safra → Ciclo */}
+                      {/* 1 · De quem — Produtor (a fazenda não aparece: é a do produtor, só para o banco) */}
                       <CascadeSelector
                         contaId={contaId}
                         fazendaIdFallback={fazendaId}
                         fazendaRequired={false}
-                        levels={["produtor", "fazenda", "anoSafra", "ciclo"]}
-                        anoSafraRequired
+                        levels={["produtor"]}
                         values={cascadeNovo}
-                        onChange={setCascadeNovo}
+                        onChange={v => setCascadeNovo({ ...v, fazendaId: (v.produtorId && fazendasProdutor.find(f => f.produtor_id === v.produtorId)?.id) || v.fazendaId || fazendaId || "" })}
                       />
 
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "120px 1fr 140px", gap: 12 }}>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Moeda</label>
-                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.moeda} onChange={e => setNovoForm(p => ({ ...p, moeda: e.target.value as typeof p.moeda }))}>
-                            <option value="BRL">Real (R$)</option>
-                            <option value="USD">Dólar (US$)</option>
-                            <option value="barter">Barter</option>
-                          </SelectField>
-                        </div>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span></label>
-                          <SelectBusca
-                            value={novoForm.operacao_gerencial_id}
-                            onChange={id => {
-                              const op = opGerenciais.find(o => o.id === id);
-                              setNovoForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaReceita(op.classificacao ?? "") : p.categoria }));
-                            }}
-                            options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
-                            placeholder="— Selecionar operação —"
-                            style={{ ...inp, width: "100%", boxSizing: "border-box" }}
-                          />
-                        </div>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Entidade Contábil</label>
-                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.entidade_contabil} onChange={e => setNovoForm(p => ({ ...p, entidade_contabil: e.target.value as typeof p.entidade_contabil }))}>
-                            <option value="">— Padrão da fazenda —</option>
-                            <option value="pf">Pessoa Física</option>
-                            <option value="pj">Pessoa Jurídica</option>
-                          </SelectField>
-                        </div>
-                      </div>
-
-                      {ogSelecionada && (ogSelecionada.conta_debito || ogSelecionada.conta_credito) && (
-                        <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
-                          <span>Débito: <strong>{ogSelecionada.conta_debito || "—"}</strong></span>
-                          <span>Crédito: <strong>{ogSelecionada.conta_credito || "—"}</strong></span>
-                        </div>
-                      )}
-
+                      {/* 2 · Com quem — Cliente e documento */}
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 140px 90px 160px", gap: 12 }}>
                         <div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Cliente / Devedor</label><button type="button" onClick={() => setCadPessoaAberto(true)} title="Abre o cadastro com consulta de CNPJ" style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>Cadastro Cliente</button></div>
@@ -2459,45 +2447,52 @@ export default function ContasAReceberPage() {
                         </label>
                       )}
 
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 160px 160px", gap: 12 }}>
+                      {/* 3 · O quê — Operação Gerencial e Descrição */}
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "120px 1fr 140px", gap: 12 }}>
                         <div>
-                          <label data-arato-label="true" style={lbl}>Descrição {!novoForm.pessoa_id && <span style={{ color: "#E24B4A" }}>*</span>}</label>
-                          <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Venda de soja — Talhão 3" value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} />
+                          <label data-arato-label="true" style={lbl}>Moeda</label>
+                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.moeda} onChange={e => setNovoForm(p => ({ ...p, moeda: e.target.value as typeof p.moeda }))}>
+                            <option value="BRL">Real (R$)</option>
+                            <option value="USD">Dólar (US$)</option>
+                            <option value="barter">Barter</option>
+                          </SelectField>
                         </div>
                         <div>
-                          <label data-arato-label="true" style={lbl}>1º Vencimento *</label>
-                          <InputData style={{ ...inp, width: "100%", boxSizing: "border-box" }} type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} />
+                          <label data-arato-label="true" style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span></label>
+                          <SelectBusca
+                            value={novoForm.operacao_gerencial_id}
+                            onChange={id => {
+                              const op = opGerenciais.find(o => o.id === id);
+                              setNovoForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaReceita(op.classificacao ?? "") : p.categoria }));
+                            }}
+                            options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                            placeholder="— Selecionar operação —"
+                            style={{ ...inp, width: "100%", boxSizing: "border-box" }}
+                          />
                         </div>
                         <div>
-                          <label data-arato-label="true" style={lbl}>Forma de Recebimento</label>
-                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
-                            {FORMAS_RECEBIMENTO.map(f => <option key={f}>{f}</option>)}
+                          <label data-arato-label="true" style={lbl}>Entidade Contábil</label>
+                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.entidade_contabil} onChange={e => setNovoForm(p => ({ ...p, entidade_contabil: e.target.value as typeof p.entidade_contabil }))}>
+                            <option value="">— Padrão da fazenda —</option>
+                            <option value="pf">Pessoa Física</option>
+                            <option value="pj">Pessoa Jurídica</option>
                           </SelectField>
                         </div>
                       </div>
 
-                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Conta de Recebimento</label>
-                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
-                            <option value="">— Selecionar —</option>
-                            {contasNovo.map(c => {
-                              const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                              return <option key={c.id} value={label}>{label}</option>;
-                            })}
-                          </SelectField>
+                      {ogSelecionada && (ogSelecionada.conta_debito || ogSelecionada.conta_credito) && (
+                        <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
+                          <span>Débito: <strong>{ogSelecionada.conta_debito || "—"}</strong></span>
+                          <span>Crédito: <strong>{ogSelecionada.conta_credito || "—"}</strong></span>
                         </div>
-                        <div>
-                          <label data-arato-label="true" style={lbl}>Centro de Custo</label>
-                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))}>
-                            <option value="">— Sem vínculo —</option>
-                            {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
-                              <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                            ))}
-                          </SelectField>
-                        </div>
+                      )}
+
+                      <div>
+                        <label data-arato-label="true" style={lbl}>Descrição {!novoForm.pessoa_id && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                        <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Venda de soja — Talhão 3" value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} />
                       </div>
 
+                      {/* 4 · Quanto e quando */}
                       {/* Valor — por moeda */}
                       {novoForm.moeda === "BRL" && (
                         <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12 }}>
@@ -2543,6 +2538,56 @@ export default function ContasAReceberPage() {
                         </div>
                       )}
 
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>1º Vencimento *</label>
+                          <InputData style={{ ...inp, width: "100%", boxSizing: "border-box" }} type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Forma de Recebimento</label>
+                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                            {FORMAS_RECEBIMENTO.map(f => <option key={f}>{f}</option>)}
+                          </SelectField>
+                        </div>
+                      </div>
+
+                      {/* 5 · Onde — Conta */}
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Conta de Recebimento</label>
+                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                            <option value="">— Selecionar —</option>
+                            {contasNovo.map(c => {
+                              const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                              return <option key={c.id} value={label}>{label}</option>;
+                            })}
+                          </SelectField>
+                        </div>
+                      </div>
+
+                      {/* 6 · Classificação — Ano Safra, Ciclo e Centro de Custo */}
+                      <CascadeSelector
+                        contaId={contaId}
+                        fazendaIdFallback={fazendaId}
+                        fazendaRequired={false}
+                        levels={["anoSafra", "ciclo"]}
+                        anoSafraRequired
+                        values={{ ...cascadeNovo, fazendaId: cascadeNovo.fazendaId || fazendaId || "" }}
+                        onChange={setCascadeNovo}
+                      />
+
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label data-arato-label="true" style={lbl}>Centro de Custo</label>
+                          <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))}>
+                            <option value="">— Sem vínculo —</option>
+                            {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
+                              <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                            ))}
+                          </SelectField>
+                        </div>
+                      </div>
+
                       {condicaoNovoJsx}
                     </>
                   )}
@@ -2558,27 +2603,6 @@ export default function ContasAReceberPage() {
                         <option value="">— Fazenda (padrão) —</option>
                         {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}{e.razao_social && e.razao_social !== e.nome ? ` — ${e.razao_social}` : ""}</option>)}
                       </SelectField>
-                    </div>
-                  )}
-                  {ehEmpresa && (
-                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div>
-                        <label data-arato-label="true" style={lbl}>Forma de Recebimento</label>
-                        <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
-                          {FORMAS_RECEBIMENTO.map(f => <option key={f} value={f}>{f}</option>)}
-                        </SelectField>
-                      </div>
-                      <div>
-                        <label data-arato-label="true" style={lbl}>Conta Bancária</label>
-                        <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
-                          <option value="">— Nenhuma —</option>
-                          {contasNovo.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                        </SelectField>
-                      </div>
-                      <div>
-                        <label data-arato-label="true" style={lbl}>Nº Documento</label>
-                        <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.numero_documento} onChange={e => setNovoForm(p => ({ ...p, numero_documento: e.target.value }))} placeholder="NF, Boleto, Recibo..." />
-                      </div>
                     </div>
                   )}
                   <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
