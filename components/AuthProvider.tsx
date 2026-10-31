@@ -54,7 +54,6 @@ type AuthCtx = {
   modulosCarregados:      boolean;  // true quando plano e overrides foram carregados
   refetchOnboarding:      () => void;
   selectFazenda:          (id: string, fazendaNome: string, produtorNome?: string | null) => void;
-  setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
   setLogoCliente:         (url: string | null) => void;
   clearFazenda:           () => void;
   signOut:                () => Promise<void>;
@@ -90,7 +89,6 @@ const Ctx = createContext<AuthCtx>({
   modulosCarregados:      false,
   refetchOnboarding:      () => {},
   selectFazenda:          () => {},
-  setFazendaAtiva:        async () => {},
   setLogoCliente:         () => {},
   clearFazenda:           () => {},
   signOut:                async () => {},
@@ -106,6 +104,12 @@ function ehStaffInterno(role: string | null): boolean {
 
 // Instala antes do primeiro render: toda chamada a /api/ leva o token renovado da sessão
 instalarFetchComToken();
+
+// Fazenda técnica do cliente: a primeira cadastrada (mesma regra para cliente, Raccolto e BPO). Só serve de
+// carimbo interno em dado que é do cliente — nunca é escolhida nem aparece como "fazenda ativa".
+function ordenarFazendasDoCliente<T extends { id: string; created_at?: string | null }>(fzs: T[]): T[] {
+  return [...fzs].sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "") || a.id.localeCompare(b.id));
+}
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [fazendaId,              setFazendaId]              = useState<string | null>(null);
@@ -181,8 +185,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conta_id: cidReal, fazenda_id: id }),
-    }).then(r => r.ok ? r.json() : null).then((json: { ok: boolean; fazendas?: { id: string }[] } | null) => {
-      if (json?.ok && json.fazendas?.length) setFazendaIds(json.fazendas.map(f => f.id));
+    }).then(r => r.ok ? r.json() : null).then((json: { ok: boolean; fazendas?: { id: string; created_at?: string | null }[] } | null) => {
+      if (json?.ok && json.fazendas?.length) {
+        const fzs = ordenarFazendasDoCliente(json.fazendas);
+        setFazendaIds(fzs.map(f => f.id));
+        if (cidReal) { setFazendaId(fzs[0].id); localStorage.setItem("raccotlo_fazenda_id", fzs[0].id); }
+      }
     }).catch(() => {});
     router.push("/");
   }, [router, userRole]);
@@ -304,8 +312,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ conta_id: cidReal, fazenda_id: savedId }),
-          }).then(r => r.ok ? r.json() : null).then((json: { ok: boolean; fazendas?: { id: string }[] } | null) => {
-            if (json?.ok && json.fazendas?.length) setFazendaIds(json.fazendas.map(f => f.id));
+          }).then(r => r.ok ? r.json() : null).then((json: { ok: boolean; fazendas?: { id: string; created_at?: string | null }[] } | null) => {
+            if (json?.ok && json.fazendas?.length) {
+              const fzs = ordenarFazendasDoCliente(json.fazendas);
+              setFazendaIds(fzs.map(f => f.id));
+              if (cidReal) { setFazendaId(fzs[0].id); localStorage.setItem("raccotlo_fazenda_id", fzs[0].id); }
+            }
           }).catch(() => {});
         } else {
           // Sem farm selecionada: rotas de gestão interna são livres; rotas de dados do cliente requerem farm
@@ -636,23 +648,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return planoInclui(planoAtual, modulo);
   }, [planoAtual, userRole, contaModulosOverrides, modulosCarregados, permissoes]);
 
-  // Troca de fazenda ativa dentro da mesma conta (farm switcher)
-  const setFazendaAtiva = useCallback(async (id: string, nome: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      // Usa API route com service_role_key para garantir UPDATE mesmo com JWT próximo do vencimento
-      fetch("/api/perfil/fazenda-ativa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ fazenda_id: id }),
-      }).catch(() => {}); // fire-and-forget — localStorage já atualiza a UI imediatamente
-    }
-    localStorage.setItem("raccotlo_fazenda_id", id);
-    localStorage.setItem("raccotlo_fazenda_nome", nome);
-    setFazendaId(id);
-    setNomeFazendaSelecionada(nome);
-  }, []);
-
   async function signOut() {
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     localStorage.removeItem(LAST_ACTIVE_KEY);
@@ -668,12 +663,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       fazendaId, fazendaIds, contaId, contaNome, nomeUsuario, emailUsuario, userRole, raccotloGestor,
       isBpo, parceiroId,
-      nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
+      // Nome exibido em relatórios e telas é o do cliente, nunca o de uma fazenda
+      nomeFazendaSelecionada: contaNome ?? nomeProdutor ?? nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,
       permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcao, podeAcessarPlano, modulosCarregados,
       anoSafraVigenteId, anoSafraVigenteDesc,
-      selectFazenda, setFazendaAtiva, clearFazenda, signOut,
+      selectFazenda, clearFazenda, signOut,
     }}>
       {children}
     </Ctx.Provider>

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-j",
+    data: "31/10/2026",
+    titulo: "Fim da fazenda padrão do usuário",
+    modulos: ["Login", "Seletor de Clientes", "Relatórios"],
+    itens: [
+      { tipo: "melhoria", texto: "O sistema não trabalha mais com uma \"fazenda padrão\" do usuário: o que está ativo é sempre o cliente. Buscas olham todas as fazendas dele, e cada lançamento ou nota grava na fazenda do que foi escolhido (produtor, empresa, conta bancária, IE, depósito, ciclo). A equipe Raccolto entra escolhendo o cliente, e todos os usuários do mesmo cliente trabalham com a mesma base." },
+      { tipo: "correcao", texto: "Cabeçalhos de relatório e telas que mostravam o nome de uma fazenda (ou \"Fazenda\") passam a mostrar o nome do cliente." },
+    ],
+  },
+  {
     versao: "2026.10.31-i",
     data: "31/10/2026",
     titulo: "Usuários e acesso da Raccolto valem para o cliente inteiro",
