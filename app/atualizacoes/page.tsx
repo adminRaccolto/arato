@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-c",
+    data: "31/10/2026",
+    titulo: "Atalhos com o menu atual, DANFE de terceiro sem logo e centro de custo sem repetição",
+    modulos: ["Atalhos", "Documentos Fiscais", "Previsão de Gastos"],
+    itens: [
+      { tipo: "correcao", texto: "Configurar atalhos agora lista as telas do menu atual (antes usava uma lista antiga, com telas que mudaram de lugar). Atalhos já escolhidos continuam, apontando para a tela atual." },
+      { tipo: "correcao", texto: "Imprimir o DANFE de uma NF de fornecedor não coloca mais o logo do cliente: o logo só aparece em NF emitida pelo próprio cliente." },
+      { tipo: "correcao", texto: "Previsão de Gastos: o seletor de centro de custo mostrava o mesmo centro várias vezes (uma cópia por fazenda). Agora aparece uma vez só." },
+    ],
+  },
+  {
     versao: "2026.10.31-b",
     data: "31/10/2026",
     titulo: "Lançamento de Mútuo na Tesouraria",

@@ -2,62 +2,88 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "./AuthProvider";
 import { hasClientWorkspace } from "../lib/layout-preferences";
+import { NAV, type NavLink } from "../lib/navigation";
 import { usePathname, useRouter } from "next/navigation";
 
 // ─── Catálogo de itens disponíveis para atalho ────────────────────────────────
 export type ItemAtalho = { id: string; emoji: string; label: string; path: string; grupo: string };
 
-export const CATALOGO_ATALHOS: ItemAtalho[] = [
-  // Financeiro
-  { id: "cp",        emoji: "💸", label: "Contas a Pagar",        path: "/financeiro/pagar",               grupo: "Financeiro" },
-  { id: "cr",        emoji: "💰", label: "Contas a Receber",       path: "/financeiro/receber",             grupo: "Financeiro" },
-  { id: "fluxo",     emoji: "📈", label: "Fluxo de Caixa",         path: "/financeiro/relatorios",          grupo: "Financeiro" },
-  { id: "contratos-fin", emoji: "🏦", label: "Contratos Financeiros", path: "/financeiro/contratos",        grupo: "Financeiro" },
-  { id: "concil",    emoji: "🔄", label: "Conciliação Bancária",    path: "/financeiro/conciliacao",         grupo: "Financeiro" },
-  { id: "cartoes",   emoji: "💳", label: "Cartões de Crédito",     path: "/financeiro/cartoes",             grupo: "Financeiro" },
-  { id: "endivid",   emoji: "📊", label: "Endividamento",          path: "/financeiro/endividamento",       grupo: "Financeiro" },
-  // Suprimentos
-  { id: "nf",        emoji: "📄", label: "NF de Produtos",         path: "/compras/nf",                     grupo: "Suprimentos" },
-  { id: "pedidos",   emoji: "🛒", label: "Pedidos de Compra",      path: "/compras",                        grupo: "Suprimentos" },
-  { id: "estoque",   emoji: "📦", label: "Posição de Estoque",     path: "/estoque",                        grupo: "Suprimentos" },
-  { id: "kardex",    emoji: "📋", label: "Kardex",                  path: "/estoque/kardex",                  grupo: "Suprimentos" },
-  { id: "abastec",   emoji: "⛽", label: "Abastecimento",           path: "/estoque/abastecimento",          grupo: "Suprimentos" },
-  // Comercial
-  { id: "contratos", emoji: "🌾", label: "Contratos de Grãos",     path: "/contratos",                      grupo: "Comercial" },
-  { id: "expedicao", emoji: "🚛", label: "Expedição",               path: "/expedicao",                      grupo: "Comercial" },
-  { id: "balanca",   emoji: "⚖️", label: "Pesagem Avulsa",          path: "/balanca/pesagem-avulsa",         grupo: "Comercial" },
-  { id: "romaneios", emoji: "📃", label: "Romaneios de Entrada",    path: "/estoque/romaneio-entrada",       grupo: "Comercial" },
-  // Produção
-  { id: "plantio",   emoji: "🌱", label: "Plantio",                 path: "/lavoura/plantio",                grupo: "Produção" },
-  { id: "pulv",      emoji: "💧", label: "Pulverização",            path: "/lavoura/pulverizacao",           grupo: "Produção" },
-  { id: "colheita",  emoji: "🌾", label: "Colheita",                path: "/lavoura/colheita",               grupo: "Produção" },
-  { id: "mapa",      emoji: "🗺️", label: "Mapa de Talhões",         path: "/mapa",                           grupo: "Produção" },
-  { id: "pluviom",   emoji: "🌧️", label: "Pluviometria",            path: "/lavoura/pluviometria",           grupo: "Produção" },
-  { id: "manut",     emoji: "🔧", label: "Manutenções",             path: "/relatorios/manutencao",          grupo: "Produção" },
-  // Resultados
-  { id: "dre",       emoji: "📉", label: "DRE Agrícola",            path: "/custos?aba=dre",                 grupo: "Resultados" },
-  { id: "bi",        emoji: "🔭", label: "BI / Análises",           path: "/bi",                             grupo: "Resultados" },
-  { id: "custos",    emoji: "🧮", label: "Custos por ha",           path: "/custos?aba=custoha",             grupo: "Resultados" },
-  // Fiscal
-  { id: "nfe-saida", emoji: "📤", label: "NF-e de Saída",           path: "/comercial/faturamento",          grupo: "Fiscal" },
-  { id: "lcdpr",     emoji: "📑", label: "LCDPR",                   path: "/lcdpr",                          grupo: "Fiscal" },
-  // Cadastros
-  { id: "pessoas",   emoji: "👥", label: "Pessoas / Entidades",     path: "/cadastros?tab=pessoas",          grupo: "Cadastros" },
-  { id: "insumos",   emoji: "🧪", label: "Catálogo de Insumos",     path: "/cadastros?tab=insumos",          grupo: "Cadastros" },
-];
+// Catálogo montado do MENU ATUAL (lib/navigation.ts) — antes era uma lista fixa antiga, com telas que mudaram de lugar
+// (ex.: "NF de Produtos" em /compras/nf, "NF-e de Saída" em /comercial/faturamento). Achado 31/10/2026.
+const EMOJI_GRUPO: Record<string, string> = {
+  cadastros: "👥", producao: "🌱", "documentos-fiscais": "📄", comercial: "🌾", financeiro: "💰",
+  fiscal: "📑", resultados: "📊", configuracoes: "⚙️", ajuda: "❓",
+};
+// Atalhos da lista antiga: id antigo → [endereço, emoji]. Usado para migrar atalhos já salvos e manter o emoji conhecido.
+const LEGADO: Record<string, [string, string]> = {
+  "cp": ["/financeiro/pagar", "💸"],
+  "cr": ["/financeiro/receber", "💰"],
+  "fluxo": ["/financeiro/relatorios", "📈"],
+  "contratos-fin": ["/financeiro/contratos", "🏦"],
+  "concil": ["/financeiro/conciliacao", "🔄"],
+  "cartoes": ["/financeiro/cartoes", "💳"],
+  "endivid": ["/financeiro/endividamento", "📊"],
+  "nf": ["/fiscal/documentos", "📄"],
+  "pedidos": ["/compras", "🛒"],
+  "estoque": ["/estoque", "📦"],
+  "kardex": ["/estoque/kardex", "📋"],
+  "abastec": ["/estoque/abastecimento", "⛽"],
+  "contratos": ["/contratos", "🌾"],
+  "expedicao": ["/expedicao", "🚛"],
+  "balanca": ["/balanca/pesagem-avulsa", "⚖️"],
+  "romaneios": ["/estoque/romaneio-entrada", "📃"],
+  "plantio": ["/lavoura/plantio", "🌱"],
+  "pulv": ["/lavoura/pulverizacao", "💧"],
+  "colheita": ["/lavoura/colheita", "🌾"],
+  "mapa": ["/mapa", "🗺️"],
+  "pluviom": ["/lavoura/pluviometria", "🌧️"],
+  "manut": ["/relatorios/manutencao", "🔧"],
+  "dre": ["/custos?aba=dre", "📉"],
+  "bi": ["/bi", "🔭"],
+  "custos": ["/custos?aba=custoha", "🧮"],
+  "nfe-saida": ["/comercial/faturamento", "📤"],
+  "lcdpr": ["/lcdpr", "📑"],
+  "pessoas": ["/cadastros?tab=pessoas", "👥"],
+  "insumos": ["/cadastros?tab=insumos", "🧪"],
+};
+const EMOJI_POR_PATH = new Map(Object.values(LEGADO).map(([path, emoji]) => [path, emoji]));
+
+function montarCatalogo(): ItemAtalho[] {
+  const out: ItemAtalho[] = [];
+  for (const n of NAV) {
+    if (n.type !== "group") {
+      if (n.path && n.path !== "/") out.push({ id: n.id, emoji: EMOJI_POR_PATH.get(n.path) ?? "⭐", label: n.label, path: n.path, grupo: "Geral" });
+      continue;
+    }
+    const links = n.children.flatMap(c => c.type === "divider" ? [] : c.type === "subgroup" ? c.children : [c as NavLink]);
+    for (const l of links) if (l.path && !l.disabled && !out.some(o => o.id === l.id))
+      out.push({ id: l.id, emoji: EMOJI_POR_PATH.get(l.path) ?? EMOJI_GRUPO[n.id] ?? "•", label: l.label, path: l.path, grupo: n.label });
+  }
+  return out;
+}
+export const CATALOGO_ATALHOS: ItemAtalho[] = montarCatalogo();
+
+/** Atalho salvo com id da lista antiga → o item do menu atual com o mesmo endereço (ou some, se a tela não existe mais). */
+function migrarId(id: string): string | null {
+  if (CATALOGO_ATALHOS.some(i => i.id === id)) return id;
+  const path = LEGADO[id]?.[0];
+  if (!path) return null;
+  const base = (x: string) => x.split("?")[0];
+  return (CATALOGO_ATALHOS.find(i => i.path === path) ?? CATALOGO_ATALHOS.find(i => base(i.path) === base(path)))?.id ?? null;
+}
 
 const STORAGE_KEY    = "arato-atalhos-v2";   // array de ids
 const STORAGE_EXPAND = "arato-sidebar-exp";  // "1" | "0"
 const STORAGE_VIS    = "arato-sidebar-vis";  // "1" | "0" — ativa ou oculta
 
-const DEFAULTS = ["cp", "cr", "nf", "contratos", "estoque", "plantio"];
+const DEFAULTS = ["cp", "cr", "nf", "contratos", "estoque", "plantio"].map(migrarId).filter((x): x is string => !!x);
 
 function lerAtalhos(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULTS;
     const ids = JSON.parse(raw) as string[];
-    return Array.isArray(ids) ? ids : DEFAULTS;
+    return Array.isArray(ids) ? [...new Set(ids.map(migrarId).filter((x): x is string => !!x))] : DEFAULTS;
   } catch { return DEFAULTS; }
 }
 

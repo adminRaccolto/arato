@@ -136,7 +136,11 @@ export default function PrevisaoGastosPage() {
     }).catch(() => {});
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     listarAnosSafra(fazendaId).then(setSafras).catch(() => {});
-    listarCentrosCustoGeralDaConta(fazendaId).then(setCentros).catch(() => {});
+    // Centro de custo tem uma cópia por fazenda: a lista mostra cada um uma vez só (mesmo código e nome)
+    listarCentrosCustoGeralDaConta(fazendaId).then(cs => {
+      const vistos = new Set<string>();
+      setCentros(cs.filter(c => { const k = `${(c.codigo ?? "").trim()}|${(c.nome ?? "").trim().toUpperCase()}`; if (vistos.has(k)) return false; vistos.add(k); return true; }));
+    }).catch(() => {});
     api({ operacao: "config" }).then(j => { setTolPct(String(j.tolerancia?.pct ?? 0)); setTolValor(String(j.tolerancia?.valor ?? 0)); }).catch(() => {});
   }, [fazendaId, api]);
   useEffect(() => {

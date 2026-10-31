@@ -92,7 +92,26 @@ export async function GET(req: NextRequest) {
     }
     if (fzIdLogo) {
       const { data: faz } = await db.from("fazendas").select("conta_id").eq("id", fzIdLogo).maybeSingle();
+      // Logo só na NF emitida pelo PRÓPRIO cliente — NF de fornecedor (terceiro) impressa saía com o logo da fazenda
+      // (achado 31/10/2026). Própria = emitida pelo Arato (Monitor) ou CPF/CNPJ do emitente é de produtor, empresa ou
+      // fazenda do cliente.
+      let propria = false;
       if (faz?.conta_id) {
+        const { data: emitida } = await db.from("notas_fiscais").select("id").eq("chave_acesso", chave).limit(1);
+        propria = !!emitida?.length;
+        const docEmit = (xmlContent.match(/<emit>[\s\S]*?<(CNPJ|CPF)>(\d+)<\/\1>/)?.[2] ?? "").replace(/\D/g, "");
+        if (!propria && docEmit) {
+          const dig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+          const [{ data: prods }, { data: emps }, { data: fzs }] = await Promise.all([
+            db.from("produtores").select("cpf_cnpj").eq("conta_id", faz.conta_id),
+            db.from("empresas").select("cpf_cnpj").eq("conta_id", faz.conta_id),
+            db.from("fazendas").select("cpf_cnpj_fiscal").eq("conta_id", faz.conta_id),
+          ]);
+          const docs = new Set([...(prods ?? []).map(p => dig(p.cpf_cnpj)), ...(emps ?? []).map(e => dig(e.cpf_cnpj)), ...(fzs ?? []).map(f => dig(f.cpf_cnpj_fiscal))].filter(Boolean));
+          propria = docs.has(docEmit);
+        }
+      }
+      if (faz?.conta_id && propria) {
         const { data: conta } = await db.from("contas").select("logo_url").eq("id", faz.conta_id).maybeSingle();
         if (conta?.logo_url) {
           const imgRes = await fetch(conta.logo_url as string);
