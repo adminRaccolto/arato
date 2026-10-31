@@ -1100,7 +1100,6 @@ export default function ContratosFinanceiros() {
       if (error) throw error;
     }
 
-    const hoje = hojeLocal();
     const ogMap = await buscarOgsCf(fazendaId);
     const tipoContrato   = fC.tipo || contratoModal.tipo;
     const moedaCalc      = fC.moeda || contratoModal.moeda;
@@ -1121,7 +1120,9 @@ export default function ContratosFinanceiros() {
     for (const p of salvas) {
       // Parcela com pagamento real no CP não é relançada (o título pago fica como está)
       if (datasPagas.has(p.data_vencimento)) { parcelasJaPagas.push(p.num_parcela); continue; }
-      const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
+      // Parcela vencida entra EM ABERTO (aparece como vencida no CP) e o usuário baixa à mão, com a conta e a data reais —
+      // antes entrava já "baixada" sem conta nem data de pagamento (decisão do dono 31/10/2026)
+      const statusLanc = "em_aberto";
       const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
       const camposBase = {
         fazenda_id: fazContrato, contrato_financeiro_id: contratoModal.id, tipo: "pagar",

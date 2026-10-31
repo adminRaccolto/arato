@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.31-a",
+    data: "31/10/2026",
+    titulo: "Contrato em andamento: parcelas vencidas entram em aberto",
+    modulos: ["Contratos Financeiros", "Contas a Pagar"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao lançar no CP o cronograma de um contrato financeiro já em andamento, as parcelas com vencimento passado não entram mais como baixadas: entram em aberto (aparecem como vencidas) e a baixa é feita à mão, com a conta e a data reais do pagamento." },
+    ],
+  },
+  {
     versao: "2026.10.30-zc",
     data: "30/10/2026",
     titulo: "NF não gera mais título em dobro no Contas a Pagar",
