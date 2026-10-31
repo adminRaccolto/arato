@@ -102,3 +102,12 @@ export function linhasJaImportadas<N extends TransacaoExtrato & { id: string }>(
   }
   return repetidas;
 }
+
+/**
+ * Linha informativa de SALDO do extrato (Itaú manda "SALDO TOTAL DISPONÍVEL DIA" e "SALDO ANTERIOR" como transações no
+ * OFX): não é entrada nem saída de dinheiro e não pode virar título nem ser conciliada. Achado 30/10/2026: 74 títulos
+ * de "recebimento" (R$ 19,5 mi) num cliente criados a partir dessas linhas.
+ */
+export function ehLinhaSaldo(descricao: string | null | undefined): boolean {
+  return /^\s*(SALDO\s+(TOTAL|ANTERIOR|DO\s+DIA|DISPON|FINAL|INICIAL|BLOQUEADO|EM\s+C)|SDO\s+(CTA|ANT|DIA))/i.test(descricao ?? "");
+}

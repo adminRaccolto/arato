@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.30-za",
+    data: "30/10/2026",
+    titulo: "Conciliação ignora linhas de saldo do extrato",
+    modulos: ["Conciliação Bancária"],
+    itens: [
+      { tipo: "correcao", texto: "Linhas de saldo que alguns bancos mandam no extrato OFX (ex.: Itaú \"SALDO TOTAL DISPONÍVEL DIA\", \"SALDO ANTERIOR\") não aparecem mais para conciliar — não são entrada nem saída de dinheiro e estavam virando títulos de Contas a Receber." },
+    ],
+  },
+  {
     versao: "2026.10.30-z",
     data: "30/10/2026",
     titulo: "CP/CR mostram quem fez a baixa",

@@ -13,7 +13,7 @@ import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarCentrosCustoGeralDaConta, listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
-import { caixaDoBordero, pagoSemExtrato } from "../../../lib/financeiro/conciliacao";
+import { caixaDoBordero, ehLinhaSaldo, pagoSemExtrato } from "../../../lib/financeiro/conciliacao";
 import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -210,6 +210,8 @@ function parseOFX(texto: string): LinhaOFX[] {
     const trnAmt = parseFloat(get("TRNAMT").replace(",", "."));
     const memo   = get("MEMO") || get("NAME") || "(sem descrição)";
     if (!fitid || isNaN(trnAmt)) continue;
+    // Linha de saldo (ex.: Itaú "SALDO TOTAL DISPONÍVEL DIA") não é transação: não entra para conciliar nem virar título
+    if (ehLinhaSaldo(memo)) continue;
     const data = dtPost.length >= 8
       ? `${dtPost.slice(0, 4)}-${dtPost.slice(4, 6)}-${dtPost.slice(6, 8)}`
       : "";
@@ -716,7 +718,8 @@ function ConciliacaoInner() {
         .order("data", { ascending: true }).order("fitid", { ascending: true }).order("id", { ascending: true })
         .range(de, ate) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>);
 
-      const linhas: LinhaOFX[] = data.map(t => ({
+      // Linhas de saldo já importadas ficam fora da conciliação (as já ligadas a algum título continuam visíveis)
+      const linhas: LinhaOFX[] = data.filter(t => !ehLinhaSaldo(t.descricao as string) || !!t.conciliado).map(t => ({
         id: t.fitid as string,
         data: t.data as string,
         descricao: t.descricao as string,
