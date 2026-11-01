@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.01-a",
+    data: "01/11/2026",
+    titulo: "Apólices lançadas voltam a aparecer no Controle de Seguros",
+    modulos: ["Seguros"],
+    itens: [
+      { tipo: "correcao", texto: "A apólice era salva, mas a lista podia mostrar \"Nenhuma apólice cadastrada\" para quem acessa o cliente pelo seletor (equipe Raccolto e BPO) ou com a sessão vencida. A lista agora é carregada pelo servidor, e um erro de leitura aparece na tela em vez de parecer lista vazia." },
+      { tipo: "correcao", texto: "Registrar sinistro e pagar prêmio também passam pelo servidor. Se o pagamento do prêmio falhar, a tela avisa — antes o erro não aparecia." },
+    ],
+  },
+  {
     versao: "2026.10.31-k",
     data: "31/10/2026",
     titulo: "SIEG: configuração do cliente e notas na fazenda do destinatário",

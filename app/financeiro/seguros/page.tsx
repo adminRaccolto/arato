@@ -7,7 +7,6 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
-import { supabase } from "../../../lib/supabase";
 import {
   listarMaquinas, listarProdutoresDaConta, listarFuncionarios, listarFazendasDaConta,
 } from "../../../lib/db";
@@ -170,6 +169,7 @@ export default function SegurosPage() {
   const [aba, setAba] = useState<"apolices" | "vencimentos" | "sinistros">("apolices");
 
   // Dados
+  const [erroCarga,  setErroCarga]  = useState("");
   const [apolices,   setApolices]   = useState<Apolice[]>([]);
   const [premios,    setPremios]    = useState<PagamentoPremio[]>([]);
   const [sinistros,  setSinistros]  = useState<Sinistro[]>([]);
@@ -228,20 +228,22 @@ export default function SegurosPage() {
   const [premioSaving,  setPremioSaving]  = useState(false);
 
   // ── Carregar dados ─────────────────────────────────────────────────────────
-  // Apólices são do CLIENTE (conta), nunca da fazenda: sem a conta carregada, não busca (antes buscava pelas fazendas da
-  // sessão e a apólice salva noutra fazenda do cliente não aparecia). Prêmios e sinistros só os das apólices do cliente.
+  // Apólices são do CLIENTE (conta), nunca da fazenda. Leitura pelo servidor, com a mesma checagem de acesso do salvamento
+  // (o servidor descobre o cliente a partir da fazenda); erro de leitura aparece na tela, não vira "nenhuma apólice".
   const carregar = useCallback(async () => {
-    if (!contaId) return;
-    const { data: ap } = await supabase.from("apolices_seguro").select("*").eq("conta_id", contaId).order("data_fim_vigencia");
-    const ids = (ap ?? []).map(a => a.id as string);
-    const [{ data: pr }, { data: si }] = ids.length ? await Promise.all([
-      supabase.from("pagamentos_premio_seguro").select("*").in("apolice_id", ids).order("data_vencimento"),
-      supabase.from("sinistros_seguro").select("*").in("apolice_id", ids).order("data_ocorrencia", { ascending: false }),
-    ]) : [{ data: [] }, { data: [] }];
-    setApolices(ap ?? []);
-    setPremios(pr ?? []);
-    setSinistros(si ?? []);
-  }, [contaId]);
+    if (!fazendaId) return;
+    setErroCarga("");
+    try {
+      const res = await fetch(`/api/financeiro/seguros?fazenda_id=${fazendaId}`);
+      const json = await res.json() as { ok: boolean; error?: string; apolices?: Apolice[]; premios?: PagamentoPremio[]; sinistros?: Sinistro[] };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? `Erro ${res.status}`);
+      setApolices(json.apolices ?? []);
+      setPremios(json.premios ?? []);
+      setSinistros(json.sinistros ?? []);
+    } catch (e: unknown) {
+      setErroCarga(e instanceof Error ? e.message : "Erro ao carregar as apólices.");
+    }
+  }, [fazendaId]);
 
   const carregarCatalogos = useCallback(async () => {
     if (!fazendaId || !contaId) return;
@@ -372,15 +374,6 @@ export default function SegurosPage() {
     }
   }
 
-  // OG do ramo é do cliente (conta): a cópia dele, senão a legada da fazenda, senão o modelo global
-  async function buscarOgSeguro(fazendaIdArg: string, ramo: RamoSeguro): Promise<string | null> {
-    const classificacao = RAMO_META[ramo].og;
-    const filtro = [contaId ? `conta_id.eq.${contaId}` : "", `fazenda_id.eq.${fazendaIdArg}`, "and(conta_id.is.null,fazenda_id.is.null)"].filter(Boolean).join(",");
-    const { data } = await supabase.from("operacoes_gerenciais").select("id, conta_id, fazenda_id").eq("classificacao", classificacao).or(filtro);
-    const melhor = (data ?? []).sort((x, y) => (y.conta_id ? 2 : y.fazenda_id ? 1 : 0) - (x.conta_id ? 2 : x.fazenda_id ? 1 : 0) || x.id.localeCompare(y.id))[0];
-    return melhor?.id ?? null;
-  }
-
   async function salvarApolice() {
     if (!fazendaId) return;
     if (!aForm.numero_apolice.trim()) { setAErr("Informe o número da apólice."); return; }
@@ -485,10 +478,12 @@ export default function SegurosPage() {
     setSSaving(true); setSErr("");
     try {
       const payload = { apolice_id: modalSinistro.id, data_ocorrencia: sForm.data_ocorrencia, data_comunicacao: sForm.data_comunicacao || null, descricao: sForm.descricao.trim(), valor_reclamado: sForm.valor_reclamado || 0, valor_indenizado: sForm.valor_indenizado || 0, status: sForm.status, numero_protocolo: sForm.numero_protocolo || null, observacao: sForm.observacao || null };
-      let saveError;
-      if (sinistroEdit) { ({ error: saveError } = await supabase.from("sinistros_seguro").update(payload).eq("id", sinistroEdit.id)); }
-      else              { ({ error: saveError } = await supabase.from("sinistros_seguro").insert(payload)); }
-      if (saveError) throw new Error(saveError.message);
+      const res = await fetch("/api/financeiro/seguros", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "salvar_sinistro", id: sinistroEdit?.id, payload }),
+      });
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao salvar.");
       await carregar();
       setModalSinistro(null);
     } catch (e: unknown) {
@@ -504,36 +499,17 @@ export default function SegurosPage() {
     if (!modalPremio || !fazendaId) return;
     setPremioSaving(true);
     try {
-      const apolice = apolices.find(a => a.id === modalPremio.apolice_id);
-      if (!apolice) throw new Error("Apólice não encontrada.");
-
-      if (modalPremio.lancamento_id) {
-        // Baixa o lançamento já existente
-        await supabase.from("lancamentos").update({ status: "baixado", data_baixa: premioData }).eq("id", modalPremio.lancamento_id);
-      } else {
-        // Lançamento CP não existia — cria agora
-        const ogId = await buscarOgSeguro(apolice.fazenda_id ?? fazendaId, apolice.ramo);
-        const { data: lanc } = await supabase.from("lancamentos").insert({
-          fazenda_id: apolice.fazenda_id ?? fazendaId, tipo: "pagar",
-          descricao: `Prêmio Seguro ${apolice.seguradora} — ${RAMO_META[apolice.ramo].label}`,
-          categoria: `Prêmio de Seguro (${RAMO_META[apolice.ramo].label})`,
-          operacao_gerencial_id: ogId,
-          data_lancamento: premioData,
-          data_vencimento: modalPremio.data_vencimento,
-          valor: modalPremio.valor,
-          status: "baixado", data_baixa: premioData,
-          auto: false, origem_lancamento: "seguro",
-          numero_documento: apolice.numero_apolice,
-        }).select("id").single();
-        if (lanc) {
-          await supabase.from("pagamentos_premio_seguro").update({ lancamento_id: lanc.id }).eq("id", modalPremio.id);
-        }
-      }
-      await supabase.from("pagamentos_premio_seguro").update({ pago: true, data_pagamento: premioData }).eq("id", modalPremio.id);
+      const res = await fetch("/api/financeiro/seguros", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "pagar_premio", premio_id: modalPremio.id, data_pagamento: premioData }),
+      });
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao pagar o prêmio.");
       await carregar();
       setModalPremio(null);
     } catch (e) {
       console.error("[pagarPremio]", e);
+      alert(e instanceof Error ? e.message : "Erro ao pagar o prêmio.");
     } finally {
       setPremioSaving(false);
     }
@@ -631,7 +607,7 @@ export default function SegurosPage() {
               <OperationalButton data-arato-button="primary" onClick={() => abrirApolice()} style={btnV}>+ Nova Apólice</OperationalButton>
             </div>
             {apolices.length === 0 ? (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma apólice cadastrada.</div>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: erroCarga ? "#E24B4A" : "var(--text-3)", fontSize: 13 }}>{erroCarga ? `Não foi possível carregar as apólices: ${erroCarga}` : "Nenhuma apólice cadastrada."}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {apolices.map(a => {
