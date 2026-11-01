@@ -19006,3 +19006,107 @@ ALTER TABLE mutuos ALTER COLUMN data_vencimento DROP NOT NULL;
 ALTER TABLE pagamentos_mutuo ADD COLUMN IF NOT EXISTS lancamentos jsonb NOT NULL DEFAULT '[]'::jsonb;  -- títulos da devolução
 CREATE INDEX IF NOT EXISTS idx_mutuos_conta ON mutuos(conta_id);
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 403 — Fecha o vazamento entre clientes: troca a regra aberta (emergencial_autenticado / allow_all_*)
+-- por regra do cliente. Antes: qualquer usuário logado lia e gravava dados de todos os clientes.
+-- Depois: só usuários do cliente, BPO do parceiro do cliente e equipe Raccolto.
+-- Tudo ou nada (um único bloco). Reversão no fim da seção. NÃO rodar sem a lista completa das tabelas.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+
+-- Fazendas e contas que o usuário logado acessa. SECURITY DEFINER: não relê perfis pela RLS (evita a recursão da Seção 258).
+CREATE OR REPLACE FUNCTION public.rls_minhas_contas()
+RETURNS SETOF uuid LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+  SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL
+  UNION
+  SELECT c.id FROM contas c JOIN perfis p ON p.parceiro_id = c.parceiro_id
+   WHERE p.user_id = auth.uid() AND p.role = 'bpo' AND p.parceiro_id IS NOT NULL;
+$$;
+
+CREATE OR REPLACE FUNCTION public.rls_minhas_fazendas()
+RETURNS SETOF uuid LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+  SELECT f.id FROM fazendas f WHERE f.conta_id IN (SELECT public.rls_minhas_contas())
+  UNION
+  SELECT f.id FROM fazendas f WHERE f.owner_user_id = auth.uid()
+  UNION
+  SELECT p.fazenda_id FROM perfis p WHERE p.user_id = auth.uid() AND p.conta_id IS NULL AND p.fazenda_id IS NOT NULL;
+$$;
+
+DO $$
+DECLARE
+  t text;
+  regra text;
+  so_fazenda text[] := ARRAY[
+    'adubacoes_base','adubacoes_base_itens','arrendamento_matriculas','arrendamento_pagamentos','arrendamentos',
+    'bombas_combustivel','cargas_expedicao','ciclo_talhoes','ciclos','colheita_romaneios','colheitas',
+    'config_contabilidade','configuracoes','configuracoes_nfe','contrato_itens','contratos','contratos_financeiros',
+    'correcoes_solo','correcoes_solo_itens','depositos','estoque_terceiros','garantias_contrato','grupos_insumos',
+    'historico_manutencao','maquinas','matriculas_imoveis','mdfe','movimentacoes_estoque','ncm_tributacoes',
+    'nf_entrada_itens','nf_entradas','nf_servicos','notas_fiscais','operacoes_compra','operacoes_fiscais',
+    'operacoes_tesouraria','orcamento_itens','orcamentos','pagamento_lotes','parcelas_liberacao','parcelas_pagamento',
+    'pedidos_compra','pedidos_compra_entregas','pedidos_compra_itens','pendencias_operacionais','planejamento_tarefas',
+    'plantios','pulverizacao_itens','pulverizacoes','rateio_global_fazendas','recomendacoes_tecnicas','romaneios',
+    'safras','sessoes_whatsapp','subgrupos_insumos','talhoes','transferencias_maquinas'];
+  conta_e_fazenda text[] := ARRAY[
+    'anos_safra','bens','categorias_lancamento','centros_custo','configuracoes_modulo','empresas','extratos_bancarios',
+    'formas_pagamento','funcionarios','grupos_insumo','insumos','motoristas','notas_proprias_externas',
+    'padroes_classificacao','pesagens_avulsas','regras_rateio','rel_contratos','rel_documentos_fiscais',
+    'rel_lancamentos','rel_movimentacoes_estoque','rel_pedidos_compra','subgrupos_insumo','tipos_pessoa','transportadoras'];
+  so_conta text[] := ARRAY['insumos_duplicados_revisados','lcdpr_contador','regras_rateio_global'];
+  -- Filha sem dono próprio: vale o acesso ao registro-mãe (a regra da mãe é aplicada na subconsulta)
+  filhas text[][] := ARRAY[
+    ['bem_consorcios','consorcio_id','consorcios'],
+    ['centros_custo_contrato','contrato_id','contratos_financeiros'],
+    ['consorcio_rateios','consorcio_id','consorcios'],
+    ['notas_proprias_externas_itens','nota_id','notas_proprias_externas'],
+    ['operacoes','safra_id','safras'],
+    ['pagamento_lote_itens','lote_id','pagamento_lotes'],
+    ['pulverizacao_talhoes','pulverizacao_id','pulverizacoes'],
+    ['rateio_global_ciclos','rateio_fazenda_id','rateio_global_fazendas']];
+  f text[];
+  raccolto text := '(SELECT public.rls_sou_raccotlo())';
+  por_fazenda text := 'fazenda_id IN (SELECT public.rls_minhas_fazendas())';
+  por_conta text := 'conta_id IN (SELECT public.rls_minhas_contas())';
+BEGIN
+  FOREACH t IN ARRAY so_fazenda || conta_e_fazenda || so_conta LOOP
+    regra := raccolto
+      || CASE WHEN t = ANY(so_conta) THEN '' ELSE ' OR ' || por_fazenda END
+      || CASE WHEN t = ANY(so_fazenda) THEN '' ELSE ' OR ' || por_conta END;
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', t || '_cliente', t);
+    EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO authenticated USING (%s) WITH CHECK (%s)', t || '_cliente', t, regra, regra);
+    EXECUTE format('DROP POLICY IF EXISTS "emergencial_autenticado" ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', 'allow_all_' || t, t);
+  END LOOP;
+
+  FOREACH f SLICE 1 IN ARRAY filhas LOOP
+    regra := format('%s OR EXISTS (SELECT 1 FROM %I m WHERE m.id = %I.%I)', raccolto, f[3], f[1], f[2]);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', f[1] || '_cliente', f[1]);
+    EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO authenticated USING (%s) WITH CHECK (%s)', f[1] || '_cliente', f[1], regra, regra);
+    EXECUTE format('DROP POLICY IF EXISTS "emergencial_autenticado" ON %I', f[1]);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', 'allow_all_' || f[1], f[1]);
+  END LOOP;
+
+  -- Inscrições Estaduais: 5 linhas sem fazenda, ligadas só ao produtor
+  regra := raccolto || ' OR ' || por_fazenda || ' OR EXISTS (SELECT 1 FROM produtores m WHERE m.id = produtor_inscricoes_estaduais.produtor_id)';
+  DROP POLICY IF EXISTS "produtor_inscricoes_estaduais_cliente" ON produtor_inscricoes_estaduais;
+  EXECUTE format('CREATE POLICY "produtor_inscricoes_estaduais_cliente" ON produtor_inscricoes_estaduais FOR ALL TO authenticated USING (%s) WITH CHECK (%s)', regra, regra);
+  DROP POLICY IF EXISTS "emergencial_autenticado" ON produtor_inscricoes_estaduais;
+
+  -- Referência comum: continua legível por todos (taxas_select_all); só deixa de aceitar gravação de qualquer um
+  DROP POLICY IF EXISTS "emergencial_autenticado" ON taxas_variaveis_historico;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- Conferência depois de rodar (deve listar só tabelas de referência comum ou as ainda não tratadas):
+--   SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND qual = 'true' ORDER BY 1;
+--
+-- REVERSÃO (se alguma tela quebrar): devolve a regra aberta em todas as tabelas que ganharam a regra do cliente.
+--   DO $$ DECLARE r record; BEGIN
+--     FOR r IN SELECT tablename FROM pg_policies WHERE schemaname = 'public' AND policyname = tablename || '_cliente' LOOP
+--       EXECUTE format('DROP POLICY IF EXISTS "emergencial_autenticado" ON %I', r.tablename);
+--       EXECUTE format('CREATE POLICY "emergencial_autenticado" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)', r.tablename);
+--     END LOOP;
+--   END $$;
+--   DROP POLICY IF EXISTS "emergencial_autenticado" ON taxas_variaveis_historico;
+--   CREATE POLICY "emergencial_autenticado" ON taxas_variaveis_historico FOR ALL TO authenticated USING (true) WITH CHECK (true);
