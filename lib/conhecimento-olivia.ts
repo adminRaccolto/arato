@@ -334,6 +334,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **IA — Lançar Apólice de Seguro (30/10/2026)**: add-on liberado pela Raccolto em Admin → Módulos (ia_apolice). Em Financeiro → Seguros aparece o quadro \"Lançar Apólice com IA\": envie o PDF da apólice; a IA lê nº da apólice, seguradora, corretora e contato, ramo (máquinas, automóvel, rural, patrimonial, vida, responsabilidade civil), bem segurado, importância segurada, prêmio total, vigência e as parcelas do prêmio, e abre o formulário preenchido. Máquina/veículo é vinculado ao cadastro pelo chassi, placa ou nº de série; seguro rural, à fazenda pelo local do risco; seguro de vida, ao produtor pelo CPF. Franquia, coberturas e segurado ficam na observação. Confira e clique em Salvar: as parcelas do prêmio viram Contas a Pagar com a operação gerencial do ramo, igual ao lançamento manual. O PDF não é anexado sozinho: depois de salvar, anexe na aba Anexo.
 
+**Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
+
 **Seguros (01/11/2026)**: as apólices são do cliente e aparecem para todos os usuários dele e para a equipe Raccolto. Se a lista não carregar, a tela mostra o motivo em vermelho; peça o texto dessa mensagem ao usuário.
 
 **SIEG por cliente (31/10/2026)**: a configuração do SIEG é uma só por cliente. NF-e/NFS-e importadas entram na fazenda do destinatário (produtor dono da fazenda ou empresa do CNPJ). Se uma nota cair numa fazenda inesperada, conferir se o CPF/CNPJ do destinatário está cadastrado no produtor/empresa certo.

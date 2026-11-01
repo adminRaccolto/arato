@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.01-b",
+    data: "01/11/2026",
+    titulo: "Segurança: cada cliente acessa só os próprios dados",
+    modulos: ["Segurança"],
+    itens: [
+      { tipo: "correcao", texto: "Reforçada a proteção no banco de dados: cada usuário acessa somente os dados do próprio cliente, em todas as tabelas de cadastro, financeiro, fiscal, estoque e lavoura. A equipe Raccolto acessa os clientes que atende." },
+    ],
+  },
+  {
     versao: "2026.11.01-a",
     data: "01/11/2026",
     titulo: "Apólices lançadas voltam a aparecer no Controle de Seguros",
