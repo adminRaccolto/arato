@@ -19011,7 +19011,8 @@ NOTIFY pgrst, 'reload schema';
 -- Seção 403 — Fecha o vazamento entre clientes: troca a regra aberta (emergencial_autenticado / allow_all_*)
 -- por regra do cliente. Antes: qualquer usuário logado lia e gravava dados de todos os clientes.
 -- Depois: só usuários do cliente, BPO do parceiro do cliente e equipe Raccolto.
--- Tudo ou nada (um único bloco). Reversão no fim da seção. NÃO rodar sem a lista completa das tabelas.
+-- Também libera a equipe Raccolto nas 50 tabelas cuja regra só via quem tem a conta no perfil (lista vazia na tela).
+-- Tudo ou nada (um único bloco). Reversão no fim da seção. Rodar em horário sem uso.
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 
 -- Fazendas e contas que o usuário logado acessa. SECURITY DEFINER: não relê perfis pela RLS (evita a recursão da Seção 258).
@@ -19051,7 +19052,8 @@ DECLARE
     'anos_safra','bens','categorias_lancamento','centros_custo','configuracoes_modulo','empresas','extratos_bancarios',
     'formas_pagamento','funcionarios','grupos_insumo','insumos','motoristas','notas_proprias_externas',
     'padroes_classificacao','pesagens_avulsas','regras_rateio','rel_contratos','rel_documentos_fiscais',
-    'rel_lancamentos','rel_movimentacoes_estoque','rel_pedidos_compra','subgrupos_insumo','tipos_pessoa','transportadoras'];
+    'rel_lancamentos','rel_movimentacoes_estoque','rel_pedidos_compra','subgrupos_insumo','tipos_pessoa','transportadoras',
+    'usuarios','veiculos'];
   so_conta text[] := ARRAY['insumos_duplicados_revisados','lcdpr_contador','regras_rateio_global'];
   -- Filha sem dono próprio: vale o acesso ao registro-mãe (a regra da mãe é aplicada na subconsulta)
   filhas text[][] := ARRAY[
@@ -19063,6 +19065,20 @@ DECLARE
     ['pagamento_lote_itens','lote_id','pagamento_lotes'],
     ['pulverizacao_talhoes','pulverizacao_id','pulverizacoes'],
     ['rateio_global_ciclos','rateio_fazenda_id','rateio_global_fazendas']];
+  -- Já têm regra por cliente, mas sem a equipe Raccolto: só acrescenta o acesso dela (não muda nada para o cliente)
+  sem_raccolto text[] := ARRAY[
+    'acerto_frete_itens','acertos_frete','adiantamentos_salario','aditivos_contrato','aplicacoes_aereas',
+    'aplicacoes_aereas_itens','aplicacoes_aereas_talhoes','apoio_baixas','apolices_seguro','ciots',
+    'configuracoes_automacao','consorcios','cte_recebidos','empresas_aplicadoras','esocial_eventos',
+    'esocial_trabalhadores','funcionarios_premiacoes','gnre_guias','historico_conciliacao','movimentacoes_pa',
+    'mutuos','nf_importada_itens_sieg','nf_importadas_sieg','pa_saldos','pagamentos_mutuo','pagamentos_premio_seguro',
+    'parcelas_consorcio','recomendacao_execucoes','recomendacao_produtos','recomendacao_talhoes',
+    'recomendacoes_adubacao','recomendacoes_adubacao_produtos','recomendacoes_adubacao_talhoes',
+    'recomendacoes_corretivo','recomendacoes_corretivo_produtos','recomendacoes_corretivo_talhoes',
+    'recomendacoes_plantio','recomendacoes_plantio_produtos','recomendacoes_plantio_talhoes',
+    'recomendacoes_pulverizacao','recomendacoes_pulverizacao_produtos','recomendacoes_pulverizacao_talhoes',
+    'sinistros_seguro','solicitacoes_transferencia_maquinas','talhao_arrendamentos','tarefas','tarefas_transferencias',
+    'taxas_bancarias','transferencias_estoque','transferencias_estoque_itens'];
   f text[];
   raccolto text := '(SELECT public.rls_sou_raccotlo())';
   por_fazenda text := 'fazenda_id IN (SELECT public.rls_minhas_fazendas())';
@@ -19094,6 +19110,15 @@ BEGIN
 
   -- Referência comum: continua legível por todos (taxas_select_all); só deixa de aceitar gravação de qualquer um
   DROP POLICY IF EXISTS "emergencial_autenticado" ON taxas_variaveis_historico;
+
+  -- O próprio cadastro do usuário continua legível por ele (o login lê grupo e permissões daqui)
+  DROP POLICY IF EXISTS "usuarios_proprio" ON usuarios;
+  CREATE POLICY "usuarios_proprio" ON usuarios FOR SELECT TO authenticated USING (auth_user_id = auth.uid());
+
+  FOREACH t IN ARRAY sem_raccolto LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', t || '_raccolto', t);
+    EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO authenticated USING (%s) WITH CHECK (%s)', t || '_raccolto', t, raccolto, raccolto);
+  END LOOP;
 END $$;
 
 NOTIFY pgrst, 'reload schema';
