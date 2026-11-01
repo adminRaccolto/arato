@@ -26,6 +26,8 @@ const customHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
+  turbopack: { root: process.cwd() },
   serverExternalPackages: ["node-forge", "pdfkit", "nfe-danfe-pdf"],
   outputFileTracingIncludes: {
     "/api/fiscal/danfe": [

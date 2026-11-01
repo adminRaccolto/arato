@@ -1,23 +1,22 @@
-"use client";
-
-import type { ButtonHTMLAttributes, HTMLAttributes, Ref, TableHTMLAttributes } from "react";
-
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement>; "data-arato-button"?: string };
-export function OperationalButton(props: ButtonProps) {
-  return <button {...props} />;
-}
-
-type HeadingProps = HTMLAttributes<HTMLDivElement> & { as?: "div" | "header" };
-export function OperationalHeading({ as: Tag = "div", ...props }: HeadingProps) {
-  return <Tag {...props} />;
-}
-
-type FiltersProps = HTMLAttributes<HTMLDivElement> & { "data-arato-filters"?: string };
-export function OperationalFilters(props: FiltersProps) {
-  return <div {...props} />;
-}
-
-type GridProps = TableHTMLAttributes<HTMLTableElement> & { ref?: Ref<HTMLTableElement>; "data-arato-grid"?: string; "data-op-title"?: string };
-export function OperationalGrid(props: GridProps) {
-  return <table {...props} />;
+'use client';
+import {Children,isValidElement,useCallback,useEffect,useId,useRef,useState,type ReactNode,type ButtonHTMLAttributes,type HTMLAttributes,type Ref,type TableHTMLAttributes} from 'react';
+import * as Original from './OperationalUIOriginal';
+import {useOperationalPresentation} from './arato-layout/presentation-mode';
+type ButtonProps=ButtonHTMLAttributes<HTMLButtonElement>&{ref?:Ref<HTMLButtonElement>;'data-arato-button'?:string};
+export function OperationalButton(props:ButtonProps){const active=useOperationalPresentation();return <Original.OperationalButton {...props} className={[props.className,active?'native-operational-button':''].filter(Boolean).join(' ')}/>;}
+type HeadingProps=HTMLAttributes<HTMLDivElement>&{as?:'div'|'header'};
+export function OperationalHeading(props:HeadingProps){const active=useOperationalPresentation();return <Original.OperationalHeading {...props} className={[props.className,active?'native-operational-heading':''].filter(Boolean).join(' ')}/>;}
+type FiltersProps=HTMLAttributes<HTMLDivElement>&{'data-arato-filters'?:string};
+export function OperationalFilters(props:FiltersProps){const active=useOperationalPresentation();return <Original.OperationalFilters {...props} className={[props.className,active?'native-operational-filters':''].filter(Boolean).join(' ')}/>;}
+type GridProps=TableHTMLAttributes<HTMLTableElement>&{ref?:Ref<HTMLTableElement>;'data-arato-grid'?:string;'data-op-title'?:string};
+export function OperationalGrid(props:GridProps){const active=useOperationalPresentation();return active?<ReadingGrid {...props}/>:<Original.OperationalGrid {...props}/>;}
+function ReadingGrid({ref:forwarded,...props}:GridProps){
+ function hasMenu(node:ReactNode):boolean{return Children.toArray(node).some(value=>isValidElement<{onContextMenu?:unknown;children?:ReactNode}>(value)&&(Boolean(value.props.onContextMenu)||hasMenu(value.props.children)));}
+ const configurable=hasMenu(Children.toArray(props.children).filter(value=>isValidElement(value)&&value.type==='thead'));
+ const table=useRef<HTMLTableElement|null>(null),[view,setView]=useState<'grid'|'cards'>('grid'),[density,setDensity]=useState<'comfortable'|'compact'>('comfortable'),[counts,setCounts]=useState({rows:0,selected:0,flat:true});const title=props['data-op-title'],primary=Boolean(title),id=useId();
+ const reference=useCallback((node:HTMLTableElement|null)=>{table.current=node;if(typeof forwarded==='function'){const cleanup=forwarded(node);if(typeof cleanup==='function')return ()=>{table.current=null;cleanup();};}else if(forwarded)forwarded.current=node;},[forwarded]);
+ useEffect(()=>{const el=table.current;if(!el||!primary)return;let frame=0;const read=()=>{const labels=Array.from(el.tHead?.rows[0]?.cells??[]).map(c=>c.textContent?.trim()||(c.querySelector('input[type=checkbox]')?'Seleção':''));let top=0;for(const header of Array.from(el.tHead?.rows??[])){header.style.setProperty('--native-sticky-offset',top+'px');top+=header.getBoundingClientRect().height;}const selectionIndex=Array.from(el.tHead?.rows[0]?.cells??[]).findIndex(c=>Boolean(c.querySelector('input[type=checkbox]'))||/selecion|seleção/i.test(c.textContent??''));let total=0,selected=0;for(const body of Array.from(el.tBodies))for(const row of Array.from(body.rows)){if(row.hidden||getComputedStyle(row).display==='none')continue;if(row.cells.length>1||row.hasAttribute('data-native-record')){total++;if((selectionIndex>=0?row.cells[selectionIndex]?.querySelector('input[type=checkbox]:checked'):null))selected++;}for(const cell of Array.from(row.cells)){if(cell.colSpan===1)cell.dataset.nativeLabel=cell.querySelector('.native-cadastro-row-actions')?'Movimentos':labels[cell.cellIndex]??'';}row.dataset.nativeSelected=String(Boolean((selectionIndex>=0?row.cells[selectionIndex]?.querySelector('input[type=checkbox]:checked'):null)));}const flat=Array.from(el.tHead?.rows[0]?.cells??[]).every(c=>c.colSpan===1&&c.rowSpan===1);if(!flat)setView('grid');setCounts(v=>v.rows===total&&v.selected===selected&&v.flat===flat?v:{rows:total,selected,flat});};const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(read);};read();const observer=new MutationObserver(schedule);observer.observe(el,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['hidden','class']});el.addEventListener('change',schedule);return()=>{observer.disconnect();cancelAnimationFrame(frame);el.removeEventListener('change',schedule);};},[primary]);
+ const element=<Original.OperationalGrid {...props} ref={reference} className={[props.className,'native-grid-table',!primary?'native-grid-secondary':''].filter(Boolean).join(' ')}/>;
+ if(!primary)return element;
+ return <section className="native-data-grid" data-view={view} data-density={density} aria-label={title}><div className="native-grid-toolbar"><div><b>{title}</b><span role="status">{counts.rows} registros nesta página{counts.selected?` · ${counts.selected} marcados nesta página`:''}</span></div><div className="native-grid-tools"><div role="group" aria-label={`Visualização de ${title}`}><button type="button" aria-pressed={view==='grid'} onClick={()=>setView('grid')}>Grade</button><button type="button" aria-pressed={view==='cards'} disabled={!counts.flat} title={!counts.flat?'Cabeçalhos agrupados preservados na grade':undefined} onClick={()=>setView('cards')}>Fichas</button></div><button type="button" aria-pressed={density==='compact'} aria-label={`Usar linhas compactas em ${title}`} onClick={()=>setDensity(v=>v==='compact'?'comfortable':'compact')}>Compacta</button>{configurable&&<button type="button" title="Usa a configuração de colunas original" onClick={()=>{const header=table.current?.tHead?.rows[0];if(!header)return;const box=header.getBoundingClientRect();header.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:Math.min(box.left+80,innerWidth-240),clientY:Math.max(30,box.top+25)}));}}>Colunas</button>}</div></div><div className="native-grid-viewport" id={id}>{element}</div><p className="native-grid-hint">Filtros de coluna, ordenação e seleção mantêm o comportamento da rotina. A seleção de todos pode abranger outras páginas.</p></section>;
 }

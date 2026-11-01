@@ -1,4 +1,9 @@
 "use client";
+import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
+import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
+import NativeFocusPicker from '../../../components/arato-layout/NativeFocusPicker';
+import EntryOutline from '../../../components/arato-layout/EntryOutline';
+
 import { motivoBloqueioExclusao, notaDoTitulo } from "../../../lib/financeiro/bloqueio-exclusao";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
@@ -216,6 +221,8 @@ const COLS_GRID_CR: ColDef[] = [
 ];
 
 export default function ContasAReceberPage() {
+  const nativePresentation=useOperationalPresentation();
+  const [nativeBorderoFocus,setNativeBorderoFocus]=useState('');
   const columnDefinitions = COLS_GRID_CR;
   const { fazendaId, fazendaIds, contaId, emailUsuario, anoSafraVigenteId } = useAuth();
   const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cr", columnDefinitions);
@@ -1464,13 +1471,186 @@ export default function ContasAReceberPage() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
+        <div className={nativePresentation?"native-finance-indicators native-finance-receivables":undefined} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
           <span><strong>{linhas.length}</strong> lançamento(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
           <span>·</span>
           <span>Saldo a receber: <strong style={{ color: "#16A34A" }}>{fmtBRL(totalAberto)}</strong></span>
         </div>
+
+        {nativePresentation && <NativeFocusPicker entries={(carregando?[]:linhasComBordero).map(entry=>entry.kind==='bordero'?{key:'bordero:'+entry.b.id,label:['Borderô',entry.b.numero_titulo,entry.b.descricao].filter(Boolean).join(' · ')}:{key:entry.l.origem_tabela+':'+entry.l.id,label:[entry.l.numero,entry.l.pessoa_nome??entry.l.empresa_nome??entry.l.produtor_nome,entry.l.descricao].filter(Boolean).join(' · ')})} value={nativeBorderoFocus?'bordero:'+nativeBorderoFocus:popover?popover.l.origem_tabela+':'+popover.l.id:''} onChange={key=>{const entry=linhasComBordero.find(row=>(row.kind==='bordero'?'bordero:'+row.b.id:row.l.origem_tabela+':'+row.l.id)===key);if(entry?.kind==='bordero'){setPopover(null);setNativeBorderoFocus(entry.b.id);}else{setNativeBorderoFocus('');setPopover(entry?.kind==='lanc'?{l:entry.l,x:0,y:0}:null);}}}/>}
+      {nativePresentation && !carregando && popover && linhas.some(row=>row.id===popover.l.id&&row.origem_tabela===popover.l.origem_tabela) && (() => {
+        const l = linhas.find(row=>row.id===popover.l.id&&row.origem_tabela===popover.l.origem_tabela)!;
+        const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
+        const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
+        const nome = l.pessoa_nome ?? l.descricao ?? "—";
+        const saldo = saldoBRL(l);
+        const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
+        const W = 560, H = 420;
+        const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+        return (
+          <>
+            
+            <div className="native-title-focus" role="region" aria-label="Título em foco">
+              <details className="native-focus-details"><summary>Ver detalhes de {nome} · {fmtNaMoeda(l.valor,l.moeda)}</summary><div>
+              {/* Header */}
+              <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</div>
+                    {l.descricao && l.descricao !== nome && <div style={{ fontSize: 11, color: "#888", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
+                      {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
+                    </span>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
+                    <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cr" zIndex={1500} />
+                    <OperationalButton data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</OperationalButton>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div data-arato-statistic="display" style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Valor</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtNaMoeda(l.valor, l.moeda)}</div>
+                  {ehUSD(l.moeda) && emReais(l, l.valor) != null && <div style={{ fontSize: 11, color: "#666" }}>≈ {fmtBRL(emReais(l, l.valor))}</div>}
+                </div>
+
+                {l.status_normalizado === "parcial" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Recebido</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#16A34A" }}>{fmtBRL(l.valor_pago)}</div>
+                    </div>
+                    <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#8B5E14", marginBottom: 2, fontWeight: 600 }}>Saldo a receber</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#C9921B" }}>{fmtBRL(saldo)}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 11 }}>
+                  <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Vencimento</div>
+                    <div style={{ fontWeight: 600, color: dias != null && dias < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtData(l.data_vencimento)}</div>
+                    {dias != null && <div style={{ fontSize: 10, color: dias < 0 ? "#E24B4A" : "#888", fontWeight: 700 }}>{dias < 0 ? `${Math.abs(dias)} dia${Math.abs(dias) !== 1 ? "s" : ""} em atraso` : dias === 0 ? "Vence hoje" : `em ${dias} dia${dias !== 1 ? "s" : ""}`}</div>}
+                  </div>
+                  {(l.produtor_nome || l.empresa_nome) && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>{l.produtor_nome ? "Produtor" : "Empresa"}</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.produtor_nome ?? l.empresa_nome}</div>
+                  </div>}
+                  {l.operacao_gerencial_nome && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Operação Gerencial</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.operacao_gerencial_nome}</div>
+                  </div>}
+                  {l.ano_safra_descricao && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Safra</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.ano_safra_descricao}</div>
+                  </div>}
+                  {l.ciclo_descricao && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Ciclo</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.ciclo_descricao}</div>
+                  </div>}
+                  {l.centro_custo_nome && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Centro de Custo</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.centro_custo_nome}</div>
+                  </div>}
+                  {l.conta_bancaria_nome && l.status_normalizado === "baixado" && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Conta bancária</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.conta_bancaria_nome}</div>
+                  </div>}
+                  {l.data_baixa && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Recebido em</div>
+                    <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
+                  </div>}
+                  {(l.numero || l.nfe_numero) && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.numero}</div>
+                  </div>}
+                  {l.origem_lancamento && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Origem do lançamento</div>
+                    <div style={{ color: "#1a1a1a" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento] ?? l.origem_lancamento}</div>
+                  </div>}
+                </div>
+
+                {l.observacao && (
+                  <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#555", borderLeft: "3px solid #DDE2EE" }}>
+                    {l.observacao}
+                  </div>
+                )}
+              </div>
+
+              </div></details>
+              {/* Comandos preservados, agora no núcleo superior */}
+              <NativeActionOrbit label={nome}>
+                {aberto && (
+                  <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</OperationalButton>
+                )}
+                {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↺ Reabrir</OperationalButton>
+                )}
+                {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); abrirReprog(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↕ Reprogramar</OperationalButton>
+                )}
+                {l.status_normalizado !== "baixado" && (
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); abrirEditar(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✎ Editar</OperationalButton>
+                )}
+                {podeExcluir(l) && (
+                  <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</OperationalButton>
+                )}
+              </NativeActionOrbit>
+            </div>
+          </>
+        );
+      })()}
+
+      {nativePresentation && !carregando && nativeBorderoFocus && (()=>{const entry=linhasComBordero.find(row=>row.kind==='bordero'&&row.b.id===nativeBorderoFocus);if(!entry||entry.kind!=='bordero')return null;const b=entry.b,pago=entry.pago,qtdItens=(b.itens??[]).length;return <div className="native-title-focus" role="region" aria-label="Borderô em foco"><details className="native-focus-details"><summary>Ver detalhes de {b.descricao||'Borderô'} · {fmtBRL(pago?(b.valor_pago??b.valor_total):b.valor_total)}</summary><div><div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            {pago
+                              ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
+                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>}
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
+                            {b.numero_titulo && <span style={{ fontSize: 11, color: "#888" }}>Nº {b.numero_titulo}</span>}
+                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(pago ? (b.valor_pago ?? b.valor_total) : b.valor_total)}</strong></span>
+                            {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
+                            {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>recebido em {fmtData(b.data_pagamento)}</span>}
+                          </div></div></details><NativeActionOrbit label={b.descricao||'Borderô'}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver NFs</OperationalButton>
+                            {pago ? (
+                              <OperationalButton data-arato-button="secondary" onClick={() => estornarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>↩ Estornar</OperationalButton>
+                            ) : (
+                              <>
+                                <OperationalButton data-arato-button="primary" onClick={() => abrirConfirmarBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>✅ Confirmar Recebimento</OperationalButton>
+                                <OperationalButton data-arato-button="secondary" onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</OperationalButton>
+                              </>
+                            )}
+                          </NativeActionOrbit></div>;})()}
+      {nativePresentation && !carregando && selecionados.size > 0 && (
+        <div className="op-bulk-actions native-bulk-actions" style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: "#111111", color: "#fff", borderRadius: 12, padding: "10px 18px",
+          display: "flex", alignItems: "center", gap: 14, boxShadow: "0 4px 20px rgba(0,0,0,.25)",
+          zIndex: 900, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)",
+        }}>
+          <span style={{ fontSize: 12 }}>
+            <strong>{itensLote.length}</strong> título{itensLote.length !== 1 ? "s" : ""} selecionado{itensLote.length !== 1 ? "s" : ""}
+            {itensLote.length > 0 && <>&nbsp;·&nbsp;<strong>{fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}</strong></>}
+          </span>
+<NativeActionOrbit label="Seleção em lote">          <OperationalButton data-arato-button="primary" onClick={abrirModalLote} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            ✓ Baixar em Lote
+          </OperationalButton>
+          <OperationalButton data-arato-button="primary" onClick={abrirModalCriarBordero} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            📋 Criar Borderô
+          </OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => setSelecionados(new Set())} style={{ background: "none", border: "0.5px solid #555", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+            Cancelar
+          </OperationalButton></NativeActionOrbit>
+        </div>
+      )}
 
         {/* maxHeight + overflow:auto (em vez de só overflowX no container inteiro) —
             a barra de rolagem horizontal fica logo abaixo da área visível, não depois
@@ -1484,7 +1664,7 @@ export default function ContasAReceberPage() {
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
                 onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
                 title="Clique com botão direito para configurar colunas">
-                {colunasVisiveis.map(c => { const h = c.label; if (c.key === "checkbox") return (
+                {colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").map(c => { const h = c.label; if (c.key === "checkbox") return (
                   <th key="checkbox" style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
                     <input type="checkbox" aria-label="Selecionar todos os títulos do filtro" title="Seleciona todos os títulos disponíveis no filtro, em todas as páginas" checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))} onChange={toggleTodos} />
                   </th>
@@ -1505,7 +1685,7 @@ export default function ContasAReceberPage() {
               </tr>
               {/* Filtros de coluna em todas as colunas: texto (contém) e valores (exato, >n, <n ou faixa n-m) */}
               <tr className="arato-grid-column-filters" style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
-                {colunasVisiveis.map(c => {
+                {colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").map(c => {
                   const numerico = ["valor", "pago", "saldo", "dias"].includes(c.key);
                   const filtravel = numerico || c.key in COLUNAS_TEXTO_FILTRO;
                   return (
@@ -1522,7 +1702,7 @@ export default function ContasAReceberPage() {
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && gridPagination.rows.map(entry => {
                 if (entry.kind === "bordero") {
@@ -1530,8 +1710,8 @@ export default function ContasAReceberPage() {
                   const pago = entry.pago;
                   const qtdItens = (b.itens ?? []).length;
                   return (
-                    <tr key={`bdr-${b.id}`} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60" }}>
-                      <td colSpan={colunasVisiveis.length} style={{ padding: "10px 14px" }}>
+                    <tr key={`bdr-${b.id}`} data-native-record="true" tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar borderô ${b.numero_titulo??b.descricao??b.id}`:undefined} onClick={nativePresentation?()=>{setPopover(null);setNativeBorderoFocus(b.id);}:undefined} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setPopover(null);setNativeBorderoFocus(b.id);}}} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60" }}>
+                      <td colSpan={colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").length} style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                             {pago
@@ -1543,7 +1723,7 @@ export default function ContasAReceberPage() {
                             {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
                             {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>recebido em {fmtData(b.data_pagamento)}</span>}
                           </div>
-                          <div style={{ display: "flex", gap: 6 }}>
+                          {!nativePresentation&&<><div style={{ display: "flex", gap: 6 }}>
                             <OperationalButton data-arato-button="secondary" onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver NFs</OperationalButton>
                             {pago ? (
                               <OperationalButton data-arato-button="secondary" onClick={() => estornarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>↩ Estornar</OperationalButton>
@@ -1553,7 +1733,7 @@ export default function ContasAReceberPage() {
                                 <OperationalButton data-arato-button="secondary" onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</OperationalButton>
                               </>
                             )}
-                          </div>
+                          </div></>}
                         </div>
                       </td>
                     </tr>
@@ -1567,7 +1747,7 @@ export default function ContasAReceberPage() {
                 const celulasGrid: Record<string, ReactNode> = {
                   checkbox: (
                     <td style={{ padding: "7px 10px" }}>
-                      {aberto && <input type="checkbox" checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />}
+                      {aberto && <input type="checkbox" checked={selecionados.has(l.id)} aria-label={`Selecionar título ${l.numero??l.pessoa_nome??l.id}`} onChange={() => { toggleSel(l.id); if(nativePresentation){setNativeBorderoFocus('');setPopover({l,x:0,y:0});} }} />}
                     </td>
                   ),
                   origem: (
@@ -1659,18 +1839,19 @@ export default function ContasAReceberPage() {
                   ),
                 };
                 return (
-                  <tr key={l.id}
+                  <tr key={l.id} tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar título ${l.numero??l.descricao??l.id}`:undefined} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setNativeBorderoFocus('');setPopover({l,x:0,y:0});}}}
                     onClick={e => {
                       if ((e.target as HTMLElement).closest("button,input,select,a")) return;
-                      setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
+                      if(nativePresentation){setNativeBorderoFocus('');}
+                      setPopover(p => p?.l.id === l.id && (!nativePresentation || p.l.origem_tabela === l.origem_tabela) ? null : { l, x: e.clientX, y: e.clientY });
                     }}
                     style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined, cursor: "pointer" }}>
-                    {colunasVisiveis.map(c => <Fragment key={c.key}>{celulasGrid[c.key]}</Fragment>)}
+                    {colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").map(c => <Fragment key={c.key}>{celulasGrid[c.key]}</Fragment>)}
                   </tr>
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
+                <tr><td colSpan={colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
           </OperationalGrid>
@@ -1679,8 +1860,8 @@ export default function ContasAReceberPage() {
       </div>
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}
-      {menuColunas && <ContextMenuColunas x={menuColunas.x} y={menuColunas.y} colunas={columnDefinitions} ordemTodas={ordemCols} visiveis={visCols} onToggle={toggleCol} onMover={moverColuna} onResetar={resetarCols} onClose={() => setMenuColunas(null)} />}
-      {popover && (() => {
+      {menuColunas && <ContextMenuColunas x={menuColunas.x} y={menuColunas.y} colunas={columnDefinitions.filter(c=>!nativePresentation||c.key!=="acoes")} ordemTodas={ordemCols.filter(key=>!nativePresentation||key!=="acoes")} visiveis={visCols} onToggle={toggleCol} onMover={moverColuna} onResetar={resetarCols} onClose={() => setMenuColunas(null)} />}
+      {!nativePresentation && <>      {popover && (() => {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
         const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
@@ -1809,8 +1990,10 @@ export default function ContasAReceberPage() {
         );
       })()}
 
+</>}
+
       {/* ── Barra flutuante de seleção — Baixar em Lote ── */}
-      {selecionados.size > 0 && (
+      {!nativePresentation && <>      {selecionados.size > 0 && (
         <div className="op-bulk-actions" style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           background: "#111111", color: "#fff", borderRadius: 12, padding: "10px 18px",
@@ -1833,6 +2016,7 @@ export default function ContasAReceberPage() {
         </div>
       )}
 
+</>}
       {/* ══ MODAL — Criar Borderô ══ */}
       {modalCriarBordero && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -2250,7 +2434,7 @@ export default function ContasAReceberPage() {
         return (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setModalNovo(false)}>
-          <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, width: "min(95vw, 820px)", maxHeight: "92vh", overflowY: "auto", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+          <div data-arato-dialog="page" className={nativePresentation?"native-entry-workspace":undefined} style={{ background: "#fff", borderRadius: 12, width: "min(95vw, 820px)", maxHeight: "92vh", overflowY: "auto", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" style={{ padding: "18px 24px 0" }}>
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div data-arato-dialog-body="true" style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2295,6 +2479,7 @@ export default function ContasAReceberPage() {
               </div>
             </div>
 
+            {nativePresentation&&<EntryOutline/>}
             <div data-arato-dialog-body="true" style={{ padding: "16px 24px", flex: 1, overflowY: "auto" }}>
               {novoTab === "principal" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

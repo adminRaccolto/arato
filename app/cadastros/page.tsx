@@ -1,4 +1,8 @@
 "use client";
+import {useOperationalPresentation} from '../../components/arato-layout/presentation-mode';
+import NativeRowActions from '../../components/arato-layout/NativeRowActions';
+import NativeCadastroDialog from '../../components/arato-layout/NativeCadastroDialog';
+
 import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
@@ -263,7 +267,7 @@ function maskCep(v: string) {
 
 // ── Modal wrapper ──────────────────────────────────────
 function Modal({ titulo, subtitulo, onClose, children, width = 860 }: { titulo: string; subtitulo?: string; onClose: () => void; children: React.ReactNode; width?: number }) {
-  return (
+  const nativePresentation=useOperationalPresentation();if(nativePresentation)return <NativeCadastroDialog titulo={titulo} subtitulo={subtitulo} onClose={onClose} width={width}>{children}</NativeCadastroDialog>;return (
     <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
       <div data-arato-dialog={width >= 680 ? "page" : "form"} style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width, maxWidth: "96vw", maxHeight: "94vh", overflowY: "auto" }}>
@@ -2567,7 +2571,7 @@ function CadastrosInner() {
                 <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Produtores <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({produtores.length})</span></div>
                 <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalProd()}>+ Novo Produtor</OperationalButton>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Produtores" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Nome", "Tipo", "CPF / CNPJ", "Município / Estado", "Contato", ""]} />
                 <tbody>
                   {produtores.length === 0 && <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum produtor cadastrado</td></tr>}
@@ -2578,12 +2582,12 @@ function CadastrosInner() {
                       <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.cpf_cnpj || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.municipio ? `${p.municipio} · ${p.estado}` : "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.email || p.telefone || "—"}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalProd(p)}>Editar</OperationalButton>
-                          <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir produtor?")) excluirProdutor(p.id).then(() => setProdutores(x => x.filter(r => r.id !== p.id))); }}>✕</OperationalButton>
+                          <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir produtor?")) excluirProdutor(p.id).then(() => setProdutores(x => x.filter(r => r.id !== p.id))); }}>✕</OperationalButton>
                         </div>
-                      </td>
+                      </NativeRowActions></td>
                     </tr>
                   ))}
                 </tbody>
@@ -2598,7 +2602,7 @@ function CadastrosInner() {
                 <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Empresas <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({empresas.length})</span></div>
                 <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalEmp()}>+ Nova Empresa</OperationalButton>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Empresas" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Empresa / Razão Social", "Tipo", "CNPJ / CPF", "IE", "Regime", "Produtor vinculado", ""]} />
                 <tbody>
                   {empresas.length === 0 && (
@@ -2625,12 +2629,12 @@ function CadastrosInner() {
                       <td style={{ padding: "10px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 12 }}>{e.inscricao_est || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "var(--text-2)" }}>{e.regime_tributario || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{produtores.find(p => p.id === e.produtor_id)?.nome || "—"}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalEmp(e)}>Editar</OperationalButton>
-                          <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir empresa?")) excluirEmpresa(e.id).then(() => setEmpresas(x => x.filter(r => r.id !== e.id))); }}>✕</OperationalButton>
+                          <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir empresa?")) excluirEmpresa(e.id).then(() => setEmpresas(x => x.filter(r => r.id !== e.id))); }}>✕</OperationalButton>
                         </div>
-                      </td>
+                      </NativeRowActions></td>
                     </tr>
                   ))}
                 </tbody>
@@ -2713,7 +2717,7 @@ function CadastrosInner() {
                               <OperationalButton data-arato-button="secondary" style={{ ...btnE, fontSize: 12, border: "0.5px solid #C9921B", color: "#C9921B", background: "#FBF0D8" }} onClick={() => abrirModalMatricula(f.id)}>+ Nova Matrícula</OperationalButton>
                             </div>
                             {mats.length === 0 ? <div style={{ fontSize: 12, color: "#444", padding: "6px 0" }}>Nenhuma matrícula vinculada</div> : (
-                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Matrículas de Imóvel" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                                 <TH cols={["Nº Matrícula", "Cartório", "Área (ha)", "Produtor", "Garantia", ""]} />
                                 <tbody>
                                   {mats.map((m, mi) => {
@@ -2728,12 +2732,12 @@ function CadastrosInner() {
                                           {m.em_garantia ? badge("⚠ Em garantia", "#FCEBEB", "#791F1F") : badge("Livre", "#E8E8E8", "#0D0D0D")}
                                           {m.em_garantia && m.garantia_banco && <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>{m.garantia_banco}</div>}
                                         </td>
-                                        <td style={{ padding: "8px 14px", textAlign: "right" }}>
+                                        <td style={{ padding: "8px 14px", textAlign: "right" }}><NativeRowActions>
                                           <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalMatricula(f.id, m)}>Editar</OperationalButton>
-                                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir matrícula?")) excluirMatricula(m.id).then(() => setMatriculas(prev => ({ ...prev, [f.id]: (prev[f.id] ?? []).filter(x => x.id !== m.id) }))); }}>✕</OperationalButton>
+                                            <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir matrícula?")) excluirMatricula(m.id).then(() => setMatriculas(prev => ({ ...prev, [f.id]: (prev[f.id] ?? []).filter(x => x.id !== m.id) }))); }}>✕</OperationalButton>
                                           </div>
-                                        </td>
+                                        </NativeRowActions></td>
                                       </tr>
                                     );
                                   })}
@@ -2774,7 +2778,7 @@ function CadastrosInner() {
                               );
                             })()}
                             {tals.length === 0 ? <div style={{ fontSize: 12, color: "#444", padding: "6px 0" }}>Nenhum talhão cadastrado</div> : (
-                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Talhões" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                                 <TH cols={["Talhão", "Área Total (ha)", "Área Plantada (ha)", "Posse", "Solo", "Latitude", "Longitude", ""]} />
                                 <tbody>
                                   {tals.map((t, ti) => (
@@ -2795,7 +2799,7 @@ function CadastrosInner() {
                                       <td style={{ padding: "8px 14px", textAlign: "center" }}><span style={{ fontSize: 11, background: "#F1EFE8", color: "var(--text-2)", padding: "2px 7px", borderRadius: 5 }}>{t.tipo_solo || "—"}</span></td>
                                       <td style={{ padding: "8px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{t.lat ?? "—"}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{t.lng ?? "—"}</td>
-                                      <td style={{ padding: "8px 14px", textAlign: "right" }}>
+                                      <td style={{ padding: "8px 14px", textAlign: "right" }}><NativeRowActions>
                                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                                           <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalTalhao(f.id, t)}>Editar</OperationalButton>
                                           <OperationalButton data-arato-button="secondary"
@@ -2807,7 +2811,7 @@ function CadastrosInner() {
                                             }}
                                           >Excluir</OperationalButton>
                                         </div>
-                                      </td>
+                                      </NativeRowActions></td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -2875,7 +2879,7 @@ function CadastrosInner() {
                   <OperationalButton data-arato-button="primary" style={{ ...btnV, marginLeft: "auto" }} onClick={() => abrirModalPes()}>+ Nova Pessoa</OperationalButton>
                 </div>
                 <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+                <OperationalGrid data-native-cadastro-grid="true" data-op-title="Pessoas" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Nome", "Subcategorias", "Tipo", "CPF / CNPJ", "Papel", "Município", "Contato", ""].map((h, i) => (
@@ -2942,12 +2946,12 @@ function CadastrosInner() {
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.municipio ? `${p.municipio} · ${p.estado}` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.email || p.telefone || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalPes(p)}>Editar</OperationalButton>
-                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir pessoa?")) excluirPessoa(p.id).then(() => setPessoas(x => x.filter(r => r.id !== p.id))).catch(e => alert("Não foi possível excluir: " + (e?.message ?? e))); }}>✕</OperationalButton>
+                            <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir pessoa?")) excluirPessoa(p.id).then(() => setPessoas(x => x.filter(r => r.id !== p.id))).catch(e => alert("Não foi possível excluir: " + (e?.message ?? e))); }}>✕</OperationalButton>
                           </div>
-                        </td>
+                        </NativeRowActions></td>
                       </tr>
                     ))}
                   </tbody>
@@ -3114,7 +3118,7 @@ function CadastrosInner() {
                   <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalMaq()}>+ Nova Máquina / Veículo</OperationalButton>
                 </div>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Máquinas e Veículos" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ ...thS, width: 40, padding: "8px 12px" }}>
@@ -3176,12 +3180,12 @@ function CadastrosInner() {
                             ? badge("Financiado", "#FBF3E0", "#7A5520")
                             : badge("Quitado", "#D5F0DD", "#1A5C38")}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalMaq(m)}>Editar</OperationalButton>
-                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirMaquina(m.id).then(() => setMaquinas(x => x.filter(r => r.id !== m.id))); }}>✕</OperationalButton>
+                            <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirMaquina(m.id).then(() => setMaquinas(x => x.filter(r => r.id !== m.id))); }}>✕</OperationalButton>
                           </div>
-                        </td>
+                        </NativeRowActions></td>
                       </tr>
                     );
                   });
@@ -3277,7 +3281,7 @@ function CadastrosInner() {
                   </div>
                   <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirBenf()}>+ Nova Benfeitoria</OperationalButton>
                 </div>
-                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-native-cadastro-grid="true" data-op-title="Benfeitorias" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Fazenda", "Nome", "Tipo", "Localização", "Área (m²)", "Ano", "Valor Atual", "Vida Útil", "Status", ""]} />
                   <tbody>
                     {benfeitorias.length === 0 && (
@@ -3300,12 +3304,12 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13 }}>{fmtBRL(b.valor_atual)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{b.vida_util_anos != null ? `${b.vida_util_anos} anos` : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#E8E8E8" : "#F1EFE8", b.ativa ? "#0D0D0D" : "var(--text-2)")}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirBenf(b)}>Editar</OperationalButton>
-                              <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${b.nome}"?`)) excluirBenfeitoria(b.id).then(() => setBenfeitorias(x => x.filter(r => r.id !== b.id))); }}>✕</OperationalButton>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${b.nome}"?`)) excluirBenfeitoria(b.id).then(() => setBenfeitorias(x => x.filter(r => r.id !== b.id))); }}>✕</OperationalButton>
                             </div>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                       );
                     })}
@@ -3535,7 +3539,7 @@ function CadastrosInner() {
                   </div>
                   <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirBem()}>+ Novo Bem</OperationalButton>
                 </div>
-                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-native-cadastro-grid="true" data-op-title="Bens com Alienação Fiduciária" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Tipo", "Descrição", "Marca / Modelo", "Ano", "Valor Aquisição", "Cartas Alienadas", "Saldo Alienado", ""]} />
                   <tbody>
                     {bens.length === 0 && (
@@ -3567,12 +3571,12 @@ function CadastrosInner() {
                             }
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13, color: saldo > 0 ? "#E24B4A" : "var(--text-2)" }}>{saldo > 0 ? fmtBRL(saldo) : "—"}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirBem(b)}>Editar</OperationalButton>
-                              <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${b.descricao}"?`)) excluirBem(b.id).then(() => setBens(x => x.filter(r => r.id !== b.id))); }}>✕</OperationalButton>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${b.descricao}"?`)) excluirBem(b.id).then(() => setBens(x => x.filter(r => r.id !== b.id))); }}>✕</OperationalButton>
                             </div>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                       );
                     })}
@@ -3797,7 +3801,7 @@ function CadastrosInner() {
                         <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalBomba(undefined, fazBombasView)}>+ Nova Bomba</OperationalButton>
                       </div>
                     </OperationalFilters>
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Bombas de Combustível" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Nome / Localização", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Controle", "Status", ""]} />
                       <tbody>
                         {bombas.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
@@ -3823,12 +3827,12 @@ function CadastrosInner() {
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.consume_estoque !== false ? "Estoque" : "Posto externo", b.consume_estoque !== false ? "#E8E8E8" : "#FBF3E0", b.consume_estoque !== false ? "#0D0D0D" : "#7A5A12")}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#E8E8E8" : "#F1EFE8", b.ativa ? "#0D0D0D" : "var(--text-2)")}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalBomba(b)}>Editar</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir bomba?")) excluirBomba(b.id).then(() => setBombas(x => x.filter(r => r.id !== b.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir bomba?")) excluirBomba(b.id).then(() => setBombas(x => x.filter(r => r.id !== b.id))); }}>✕</OperationalButton>
                                 </div>
-                              </td>
+                              </NativeRowActions></td>
                             </tr>
                           );
                         })}
@@ -3856,7 +3860,7 @@ function CadastrosInner() {
                       {combFiltr.length === 0 ? (
                         <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>Nenhum combustível cadastrado. Ex: Diesel S10, Gasolina, ARLA 32.</div>
                       ) : (
-                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <OperationalGrid data-native-cadastro-grid="true" data-op-title="Combustíveis & Lubrificantes" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <TH cols={["Nome", "Tipo", "Unid.", "Estoque (L)", "Mín.", "Valor (R$/L)", "Total", ""]} />
                           <tbody>
                             {combFiltr.map((ins, i) => {
@@ -3873,13 +3877,13 @@ function CadastrosInner() {
                                   <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.estoque_minimo.toLocaleString("pt-BR",{maximumFractionDigits:1})}</td>
                                   <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
                                   <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12 }}>{(ins.estoque*ins.valor_unitario).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
-                                  <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                  <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                       <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalComb("combustivel", ins)}>Editar</OperationalButton>
                                       <OperationalButton data-arato-button="secondary" style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
                                     </div>
-                                  </td>
+                                  </NativeRowActions></td>
                                 </tr>
                               );
                             })}
@@ -3909,7 +3913,7 @@ function CadastrosInner() {
                       {lubriFiltr.length === 0 ? (
                         <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>Nenhum lubrificante cadastrado. Ex: Óleo Motor, Óleo Hidráulico, Graxa.</div>
                       ) : (
-                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <OperationalGrid data-native-cadastro-grid="true" data-op-title="Combustíveis & Lubrificantes" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <TH cols={["Nome / Fabricante", "Tipo", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", ""]} />
                           <tbody>
                             {lubriFiltr.map((ins, i) => {
@@ -3929,13 +3933,13 @@ function CadastrosInner() {
                                   <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.estoque_minimo.toLocaleString("pt-BR",{maximumFractionDigits:2})}</td>
                                   <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
                                   <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12 }}>{(ins.estoque*ins.valor_unitario).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
-                                  <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                  <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                       <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalComb("lubrificante", ins)}>Editar</OperationalButton>
                                       <OperationalButton data-arato-button="secondary" style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
                                     </div>
-                                  </td>
+                                  </NativeRowActions></td>
                                 </tr>
                               );
                             })}
@@ -4042,7 +4046,7 @@ function CadastrosInner() {
                     <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditGrupoIns(null); setFGrupoIns({ nome: "", cor: "#111111" }); setModalGrupoIns(true); }}>+ Novo Grupo</OperationalButton>
                   </div>
                 </div>
-                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-native-cadastro-grid="true" data-op-title="Grupos de Insumos" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Cor", "Nome", ""]} />
                   <tbody>
                     {seedingGrupos && <tr><td colSpan={3} style={{ padding: 24, textAlign: "center", color: "#111111", fontSize: 12 }}>Carregando grupos padrão…</td></tr>}
@@ -4051,12 +4055,12 @@ function CadastrosInner() {
                       <tr key={g.id} style={{ borderBottom: i < gruposInsumo.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "10px 14px", width: 40 }}><div style={{ width: 18, height: 18, borderRadius: 4, background: g.cor ?? "#666" }} /></td>
                         <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{g.nome}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditGrupoIns(g); setFGrupoIns({ nome: g.nome, cor: g.cor ?? "#111111" }); setModalGrupoIns(true); }}>Editar</OperationalButton>
-                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir grupo?")) excluirGrupoInsumo(g.id).then(() => setGruposInsumo(x => x.filter(r => r.id !== g.id))); }}>✕</OperationalButton>
+                            <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir grupo?")) excluirGrupoInsumo(g.id).then(() => setGruposInsumo(x => x.filter(r => r.id !== g.id))); }}>✕</OperationalButton>
                           </div>
-                        </td>
+                        </NativeRowActions></td>
                       </tr>
                     ))}
                   </tbody>
@@ -4138,7 +4142,7 @@ function CadastrosInner() {
                       </div>
                       <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditGrupoIns(null); setFGrupoIns({ nome: "", cor: "#111111" }); setModalGrupoIns(true); }}>+ Novo</OperationalButton>
                     </div>
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Grupos" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Cor", "Nome", ""]} />
                       <tbody>
                         {gruposInsumo.length === 0 && <tr><td colSpan={3} style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum grupo cadastrado</td></tr>}
@@ -4148,12 +4152,12 @@ function CadastrosInner() {
                               <div style={{ width: 18, height: 18, borderRadius: 4, background: g.cor ?? "#666" }} />
                             </td>
                             <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{g.nome}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditGrupoIns(g); setFGrupoIns({ nome: g.nome, cor: g.cor ?? "#111111" }); setModalGrupoIns(true); }}>Editar</OperationalButton>
-                                <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir grupo?")) excluirGrupoInsumo(g.id).then(() => setGruposInsumo(x => x.filter(r => r.id !== g.id))); }}>✕</OperationalButton>
+                                <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir grupo?")) excluirGrupoInsumo(g.id).then(() => setGruposInsumo(x => x.filter(r => r.id !== g.id))); }}>✕</OperationalButton>
                               </div>
-                            </td>
+                            </NativeRowActions></td>
                           </tr>
                         ))}
                       </tbody>
@@ -4169,7 +4173,7 @@ function CadastrosInner() {
                       </div>
                       <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditSubgIns(null); setFSubgIns({ nome: "", grupo_id: gruposInsumo[0]?.id ?? "" }); setModalSubgIns(true); }}>+ Novo</OperationalButton>
                     </div>
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Subgrupos" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Nome", "Grupo", ""]} />
                       <tbody>
                         {subgruposInsumo.length === 0 && <tr><td colSpan={3} style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum subgrupo cadastrado</td></tr>}
@@ -4181,12 +4185,12 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px" }}>
                                 {g && <span style={{ fontSize: 11, background: g.cor ?? "#E8E8E8", color: "#0D0D0D", padding: "2px 8px", borderRadius: 8 }}>{g.nome}</span>}
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditSubgIns(s); setFSubgIns({ nome: s.nome, grupo_id: s.grupo_id }); setModalSubgIns(true); }}>Editar</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir subgrupo?")) excluirSubgrupoInsumo(s.id).then(() => setSubgruposInsumo(x => x.filter(r => r.id !== s.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir subgrupo?")) excluirSubgrupoInsumo(s.id).then(() => setSubgruposInsumo(x => x.filter(r => r.id !== s.id))); }}>✕</OperationalButton>
                                 </div>
-                              </td>
+                              </NativeRowActions></td>
                             </tr>
                           );
                         })}
@@ -4206,7 +4210,7 @@ function CadastrosInner() {
                     </div>
                     <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditTipoPes(null); setFTipoPes({ nome: "", descricao: "" }); setModalTipoPes(true); }}>+ Novo Tipo</OperationalButton>
                   </div>
-                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Tipos de Pessoa" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <TH cols={["Nome", "Descrição", ""]} />
                     <tbody>
                       {tiposPessoa.length === 0 && <tr><td colSpan={3} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum tipo cadastrado</td></tr>}
@@ -4214,12 +4218,12 @@ function CadastrosInner() {
                         <tr key={t.id} style={{ borderBottom: i < tiposPessoa.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                           <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{t.nome}</td>
                           <td style={{ padding: "10px 14px", color: "var(--text-1)", fontSize: 12 }}>{t.descricao || "—"}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditTipoPes(t); setFTipoPes({ nome: t.nome, descricao: t.descricao ?? "" }); setModalTipoPes(true); }}>Editar</OperationalButton>
-                              <OperationalButton data-arato-button="toggle" style={btnX} onClick={() => { if (confirm("Excluir tipo?")) excluirTipoPessoa(t.id).then(() => setTiposPessoa(x => x.filter(r => r.id !== t.id))); }}>✕</OperationalButton>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="toggle" style={btnX} onClick={() => { if (confirm("Excluir tipo?")) excluirTipoPessoa(t.id).then(() => setTiposPessoa(x => x.filter(r => r.id !== t.id))); }}>✕</OperationalButton>
                             </div>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                       ))}
                     </tbody>
@@ -4237,7 +4241,7 @@ function CadastrosInner() {
                     </div>
                     <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditCC(null); setFCC({ fazenda_id: fazIdEff || "", codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</OperationalButton>
                   </div>
-                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Centros de Custo" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <TH cols={["Código", "Nome", "Tipo", "Centro Pai", ""]} />
                     <tbody>
                       {centrosCusto.length === 0 && <tr><td colSpan={5} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum centro de custo cadastrado</td></tr>}
@@ -4255,12 +4259,12 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{c.nome}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo, bg, cl)}</td>
                             <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{pai?.nome || "—"}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditCC(c); setFCC({ fazenda_id: c.fazenda_id, codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</OperationalButton>
-                                <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</OperationalButton>
+                                <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</OperationalButton>
                               </div>
-                            </td>
+                            </NativeRowActions></td>
                           </tr>
                         );
                       })}
@@ -4279,7 +4283,7 @@ function CadastrosInner() {
                     </div>
                     <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditCatLanc(null); setFCatLanc({ nome: "", tipo: "ambos" }); setModalCatLanc(true); }}>+ Nova Categoria</OperationalButton>
                   </div>
-                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Categorias Financeiras" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <TH cols={["Nome", "Uso", ""]} />
                     <tbody>
                       {categoriasLanc.length === 0 && <tr><td colSpan={3} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma categoria cadastrada</td></tr>}
@@ -4295,12 +4299,12 @@ function CadastrosInner() {
                           <tr key={c.id} style={{ borderBottom: i < categoriasLanc.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                             <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{c.nome}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(labelTipo ?? c.tipo, bg, cl)}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditCatLanc(c); setFCatLanc({ nome: c.nome, tipo: c.tipo }); setModalCatLanc(true); }}>Editar</OperationalButton>
-                                <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCategoriaLancamento(c.id).then(() => setCategoriasLanc(x => x.filter(r => r.id !== c.id))); }}>✕</OperationalButton>
+                                <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCategoriaLancamento(c.id).then(() => setCategoriasLanc(x => x.filter(r => r.id !== c.id))); }}>✕</OperationalButton>
                               </div>
-                            </td>
+                            </NativeRowActions></td>
                           </tr>
                         );
                       })}
@@ -4321,7 +4325,7 @@ function CadastrosInner() {
                 </div>
                 <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditCC(null); setFCC({ fazenda_id: fazIdEff || "", codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</OperationalButton>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Centros de Custo" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Código", "Nome", "Tipo", "Centro Pai", "Fazenda", ""]} />
                 <tbody>
                   {(() => {
@@ -4343,12 +4347,12 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo, bg, cl)}</td>
                           <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{pai?.nome || "—"}</td>
                           <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fazNome}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditCC(c); setFCC({ fazenda_id: c.fazenda_id, codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</OperationalButton>
-                              <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</OperationalButton>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</OperationalButton>
                             </div>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                       );
                     });
@@ -4479,7 +4483,7 @@ function CadastrosInner() {
                   <OperationalButton data-arato-button="toggle" style={btnV} onClick={() => { setEditOpGer(null); setFOG({ ...OG_VAZIO }); setAbaOpGer("principal"); setModalOpGer(true); }}>+ Nova Operação</OperationalButton>
                 </div>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Operações Gerenciais — Plano de Contas" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Código / Descrição", "Tipo", "Telas", "Tesouraria", "Escopo CC", "Ativo", ""]} />
                 <tbody>
                   {opGers.length === 0 && <tr><td colSpan={4} style={{ padding: 32, textAlign: "center", color: "var(--text-3)" }}>Nenhuma operação cadastrada. Clique em "+ Nova Operação" para começar.</td></tr>}
@@ -4552,7 +4556,7 @@ function CadastrosInner() {
                             }}
                           >{o.inativo ? "Inativo" : "Ativo"}</OperationalButton>
                         </td>
-                        <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                        <td style={{ padding: "9px 14px", textAlign: "right" }}><NativeRowActions>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <OperationalButton data-arato-button="toggle" style={btnE} onClick={() => {
                               setEditOpGer(o);
@@ -4594,9 +4598,9 @@ function CadastrosInner() {
                               setCfopsOp([]);
                               setModalOpGer(true);
                             }}>Editar</OperationalButton>
-                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir operação?")) excluirOperacaoGerencial(o.id).then(() => setOpGers(x => x.filter(r => r.id !== o.id))); }}>✕</OperationalButton>
+                            <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir operação?")) excluirOperacaoGerencial(o.id).then(() => setOpGers(x => x.filter(r => r.id !== o.id))); }}>✕</OperationalButton>
                           </div>
-                        </td>
+                        </NativeRowActions></td>
                       </tr>
                     );
                   })}
@@ -4726,7 +4730,7 @@ function CadastrosInner() {
                         <span style={{ fontSize: 11, color: "var(--text-3)" }}>{g.rows.length} CFOP{g.rows.length !== 1 ? "s" : ""}</span>
                       </div>
                       {/* Tabela de CFOPs */}
-                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "var(--bg-card)", borderRadius: 8, overflow: "hidden" }}>
+                      <OperationalGrid data-native-cadastro-grid="true" data-op-title="Histórico Fiscal — CFOPs vinculados às Operações Gerenciais" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "var(--bg-card)", borderRadius: 8, overflow: "hidden" }}>
                         <thead>
                           <tr style={{ background: "#EEF3FA" }}>
                             {["CFOP","Descrição do CFOP","Operação NF","CST PIS","CST COFINS","NCM","Fins Exp.","Comp. Fat."].map(h => (
@@ -4778,7 +4782,7 @@ function CadastrosInner() {
                 </div>
                 <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditFP(null); setFFP({ nome: "", parcelas: "", dias: "", descricao: "" }); setModalFP(true); }}>+ Nova Forma</OperationalButton>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Formas de Pagamento" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Nome", "Parcelas", "Intervalo (dias)", "Descrição", ""]} />
                 <tbody>
                   {formasPagamento.length === 0 && <tr><td colSpan={5} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma forma de pagamento cadastrada</td></tr>}
@@ -4790,12 +4794,12 @@ function CadastrosInner() {
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>{fp.dias || "—"}</td>
                       <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fp.descricao || "—"}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditFP(fp); setFFP({ nome: fp.nome, parcelas: String(fp.parcelas ?? ""), dias: fp.dias ?? "", descricao: fp.descricao ?? "" }); setModalFP(true); }}>Editar</OperationalButton>
-                          <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirFormaPagamento(fp.id).then(() => setFormasPagamento(x => x.filter(r => r.id !== fp.id))); }}>✕</OperationalButton>
+                          <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirFormaPagamento(fp.id).then(() => setFormasPagamento(x => x.filter(r => r.id !== fp.id))); }}>✕</OperationalButton>
                         </div>
-                      </td>
+                      </NativeRowActions></td>
                     </tr>
                   ))}
                 </tbody>
@@ -4993,7 +4997,7 @@ function CadastrosInner() {
                       {buscaIns ? `Nenhum insumo encontrado para "${buscaIns}"` : "Nenhum insumo cadastrado. Use '+ Novo Insumo' para cadastrar Sementes, Fertilizantes, Defensivos ou Corretivos."}
                     </div>
                   ) : (
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Insumos" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Nome / Fabricante", "Categoria", "Subgrupo", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", "Validade", ""]} />
                       <tbody>
                         {insFiltr.map((ins, i) => {
@@ -5030,13 +5034,13 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: ins.validade && ins.validade < hojeLocal() ? "#E24B4A" : "var(--text-2)" }}>
                                 {ins.validade ? new Date(ins.validade + "T12:00").toLocaleDateString("pt-BR") : "—"}
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalIns(ins)}>Editar</OperationalButton>
                                   <OperationalButton data-arato-button="secondary" style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
                                 </div>
-                              </td>
+                              </NativeRowActions></td>
                             </tr>
                           );
                         })}
@@ -5437,7 +5441,7 @@ function CadastrosInner() {
                           <div style={{ padding: "16px 14px", fontSize: 12, color: "var(--text-3)" }}>Nenhum produto ativo{buscaProd ? ` para "${buscaProd}"` : ""}.</div>
                         ) : (
                     <div style={{ opacity: inativos ? 0.75 : 1 }}>
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Produtos Agrícolas" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Nome do Produto", "Cultura", "NCM", "Unid.", "Estoque", "Valor Unit.", "Total em Estoque", ""]} />
                       <tbody>
                         {lista.map((ins, i) => {
@@ -5461,13 +5465,13 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{ins.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#111111" }}>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalProd(ins)}>Editar</OperationalButton>
                                   <OperationalButton data-arato-button="secondary" style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
                                 </div>
-                              </td>
+                              </NativeRowActions></td>
                             </tr>
                           );
                         })}
@@ -5697,7 +5701,7 @@ function CadastrosInner() {
                       {buscaIt ? `Nenhum item encontrado para "${buscaIt}"` : "Nenhum item geral cadastrado. Use '+ Novo Item' para peças, materiais, escritório, ferramentas, etc."}
                     </div>
                   ) : (
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Itens Gerais" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Nome / Fabricante", "Subcategoria", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", ""]} />
                       <tbody>
                         {itFiltr.map((ins, i) => {
@@ -5729,13 +5733,13 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.estoque_minimo.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "var(--text-1)", fontSize: 12 }}>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalIt(ins)}>Editar</OperationalButton>
                                   <OperationalButton data-arato-button="secondary" style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</OperationalButton>
-                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</OperationalButton>
                                 </div>
-                              </td>
+                              </NativeRowActions></td>
                             </tr>
                           );
                         })}
@@ -5867,7 +5871,7 @@ function CadastrosInner() {
                 </div>
                 <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalDep()}>+ Novo Depósito</OperationalButton>
               </div>
-              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-native-cadastro-grid="true" data-op-title="Depósitos e Armazéns" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Fazenda", "Nome", "Tipo", "Pessoa/Armazém", "Capacidade (sc)", "Status", ""]} />
                 <tbody>
                   {depositos.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado</td></tr>}
@@ -5899,7 +5903,7 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", fontSize: 12, color: pessoaVinc ? "#7C3AED" : "var(--text-3)" }}>{pessoaVinc ?? "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{d.capacidade_sc ? d.capacidade_sc.toLocaleString("pt-BR") + " sc" : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(d.ativo ? "Ativo" : "Inativo", d.ativo ? "#E8E8E8" : "#F1EFE8", d.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalDep(d)}>Editar</OperationalButton>
                             <OperationalButton data-arato-button="toggle"
@@ -5911,7 +5915,7 @@ function CadastrosInner() {
                               }}>
                               {d.ativo ? "Desativar" : "Ativar"}
                             </OperationalButton>
-                            <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
+                            <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={async () => {
                               if (!confirm("Excluir depósito? Esta ação não pode ser desfeita.")) return;
                               try {
                                 await excluirDeposito(d.id);
@@ -5926,7 +5930,7 @@ function CadastrosInner() {
                               }
                             }}>✕</OperationalButton>
                           </div>
-                        </td>
+                        </NativeRowActions></td>
                       </tr>
                     );
                   })}
@@ -5955,7 +5959,7 @@ function CadastrosInner() {
                     <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalFunc()}>+ Novo</OperationalButton>
                   </div>
                 </OperationalFilters>
-                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-native-cadastro-grid="true" data-op-title="Funcionários" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Nome", "Vínculo", "Produtor / Empresa", "Função", "Admissão", "Salário Base", "Custo Total Est.", "Status", ""]} />
                   <tbody>
                     {funcs.length === 0 && <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
@@ -5995,12 +5999,12 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-1)" }}>{sal > 0 ? `R$ ${sal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: custoTotal > 0 ? "#C9921B" : "var(--text-3)", fontWeight: custoTotal > 0 ? 600 : 400 }}>{custoTotal > 0 ? `R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.ativo ? "Ativo" : "Inativo", f.ativo ? "#E8E8E8" : "#F1EFE8", f.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalFunc(f)}>Editar</OperationalButton>
-                              <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirFuncionario(f.id).then(() => setFuncs(x => x.filter(r => r.id !== f.id))); }}>✕</OperationalButton>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirFuncionario(f.id).then(() => setFuncs(x => x.filter(r => r.id !== f.id))); }}>✕</OperationalButton>
                             </div>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                       );
                     })}
@@ -6125,7 +6129,7 @@ function CadastrosInner() {
                       <span style={{ fontWeight: 700, fontSize: 13, color: "#111111" }}>{comm}</span>
                       <span style={{ fontSize: 11, color: "#666" }}>{lista.length} padrão{lista.length !== 1 ? "s" : ""}</span>
                     </div>
-                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-native-cadastro-grid="true" data-op-title="Padrões de Classificação" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-card)" }}>
                           <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Nome do Padrão</th>
@@ -6168,12 +6172,12 @@ function CadastrosInner() {
                             </>}
                             <td style={{ padding: "10px 10px", textAlign: "center", color: "var(--text-1)" }}>{p.kg_saca}</td>
                             <td style={{ padding: "10px 10px", textAlign: "center" }}>{badge(p.ativo ? "Ativo" : "Inativo", p.ativo ? "#E8E8E8" : "#F1EFE8", p.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
-                            <td style={{ padding: "10px 10px", textAlign: "right" }}>
+                            <td style={{ padding: "10px 10px", textAlign: "right" }}><NativeRowActions>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalPCls(p)}>Editar</OperationalButton>
-                                <OperationalButton data-arato-button="danger" style={btnX} onClick={() => excluirPCls(p.id)}>✕</OperationalButton>
+                                <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => excluirPCls(p.id)}>✕</OperationalButton>
                               </div>
-                            </td>
+                            </NativeRowActions></td>
                           </tr>
                         ))}
                       </tbody>
@@ -6346,7 +6350,7 @@ function CadastrosInner() {
                     <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Usuários</div>
                     <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalUser()}>+ Novo Usuário</OperationalButton>
                   </div>
-                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Usuários" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <TH cols={["Nome", "E-mail", "Acesso", "Grupo", "Status", ""]} />
                     <tbody>
                       {usuarios.length === 0 && <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum usuário cadastrado</td></tr>}
@@ -6364,12 +6368,12 @@ function CadastrosInner() {
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{gr ? badge(gr.nome, "#FBF0D8", "#7A5A12") : <span style={{ color: "#444" }}>—</span>}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(u.ativo ? "Ativo" : "Inativo", u.ativo ? "#E8E8E8" : "#F1EFE8", u.ativo ? "#0D0D0D" : "var(--text-2)")}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                 <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModalUser(u)}>Editar</OperationalButton>
-                                <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir usuário?")) excluirUsuario(u.id).then(() => setUsuarios(x => x.filter(r => r.id !== u.id))); }}>✕</OperationalButton>
+                                <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir usuário?")) excluirUsuario(u.id).then(() => setUsuarios(x => x.filter(r => r.id !== u.id))); }}>✕</OperationalButton>
                               </div>
-                            </td>
+                            </NativeRowActions></td>
                           </tr>
                         );
                       })}
@@ -6393,7 +6397,7 @@ function CadastrosInner() {
                 <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", fontSize: 13 }}>Nenhuma conta bancária cadastrada</div>
               ) : (
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Contas Bancárias" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Nome / Apelido", "Tipo", "Banco", "Conta", "Saldo Inicial", "Moeda", "Status", ""].map(h => (
@@ -6450,10 +6454,10 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px" }}>
                             <span style={{ background: c.ativa ? "#DCF5E8" : "var(--bg-page)", color: c.ativa ? "#14532D" : "var(--text-3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.ativa ? "Ativa" : "Inativa"}</span>
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
                             <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { setEditConta(c); setFConta({ fazenda_id: c.fazenda_id ?? fazIdEff ?? "", nome: c.nome, banco_id: c.banco_id ?? "", banco: c.banco ?? "", agencia: c.agencia ?? "", agencia_dv: c.agencia_dv ?? "", conta: c.conta ?? "", conta_dv: c.conta_dv ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? ""), titular_produtor_id: c.produtor_id ?? "", conjunta: c.conjunta ?? false, cotitulares: c.cotitulares ?? [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>Editar</OperationalButton>
                             <OperationalButton data-arato-button="danger" style={{ ...btnX, marginLeft: 6, color: "#E24B4A" }} onClick={async () => { if (!confirm("Excluir esta conta?")) return; await excluirConta(c.id); setContas(x => x.filter(r => r.id !== c.id)); }}>Excluir</OperationalButton>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                         );
                       })}
@@ -6488,7 +6492,7 @@ function CadastrosInner() {
                 <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-3)", fontSize: 13 }}>Nenhum imóvel urbano cadastrado.</div>
               ) : (
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Imóveis Urbanos" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <TH cols={["Descrição", "Tipo", "Matrícula", "Município / UF", "Área (m²)", "Valor Avaliação", ""]} />
                     <tbody>
                       {imoveisUrbanos.map((u, i) => {
@@ -6501,10 +6505,10 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{u.municipio ? `${u.municipio} — ${u.estado}` : u.estado}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{u.area_m2 ? `${Number(u.area_m2).toLocaleString("pt-BR")} m²` : "—"}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: u.valor_avaliacao ? "var(--text-1)" : "var(--text-muted)" }}>{u.valor_avaliacao ? `R$ ${Number(u.valor_avaliacao).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right", display: "flex", gap: 6 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", display: "flex", gap: 6 }}><NativeRowActions>
                               <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditIU(u); setFIU({ matricula: u.matricula ?? "", tipo: u.tipo, descricao: u.descricao, logradouro: u.logradouro ?? "", numero_end: u.numero_end ?? "", complemento: u.complemento ?? "", bairro: u.bairro ?? "", cep: u.cep ?? "", municipio: u.municipio ?? "", estado: u.estado, area_m2: String(u.area_m2 ?? ""), valor_avaliacao: String(u.valor_avaliacao ?? ""), observacao: u.observacao ?? "" }); setModalIU(true); }}>Editar</OperationalButton>
-                              <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir este imóvel?")) excluirImovelUrbano(u.id).then(() => setImoveisUrbanos(p => p.filter(x => x.id !== u.id))); }}>✕</OperationalButton>
-                            </td>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir este imóvel?")) excluirImovelUrbano(u.id).then(() => setImoveisUrbanos(p => p.filter(x => x.id !== u.id))); }}>✕</OperationalButton>
+                            </NativeRowActions></td>
                           </tr>
                         );
                       })}
@@ -6913,7 +6917,7 @@ function CadastrosInner() {
                           <span style={{ fontSize: 11, color: grupo.cor.color, opacity: 0.7 }}>({grupo.items.length})</span>
                         </div>
                         {/* Tabela de itens */}
-                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <OperationalGrid data-native-cadastro-grid="true" data-op-title="Unidades de Medida" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <thead>
                             <tr style={{ background: "#FAFBFC" }}>
                               {["Sigla", "Nome", "Conversão", "Status", ""].map((h, i) => (
@@ -6943,14 +6947,14 @@ function CadastrosInner() {
                                     ? <span style={{ fontSize: 10, background: "#F3F3F3", color: "var(--text-3)", padding: "2px 7px", borderRadius: 8 }}>Inativo</span>
                                     : <span style={{ fontSize: 10, background: "#DCF5E8", color: "#14532D", padding: "2px 7px", borderRadius: 8 }}>Ativo</span>}
                                 </td>
-                                <td style={{ padding: "8px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                <td style={{ padding: "8px 10px", textAlign: "right", whiteSpace: "nowrap" }}><NativeRowActions>
                                   <OperationalButton data-arato-button="secondary" onClick={() => abrirEditarUM(u)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                                     Editar
                                   </OperationalButton>
-                                  <OperationalButton data-arato-button="icon" onClick={() => excluirUM(u.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
+                                  <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="icon" onClick={() => excluirUM(u.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
                                     ✕
                                   </OperationalButton>
-                                </td>
+                                </NativeRowActions></td>
                               </tr>
                             ))}
                           </tbody>
@@ -7053,7 +7057,7 @@ function CadastrosInner() {
                   <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#111111" }} onClick={() => abrirModal()}>+ Nova Cultura</OperationalButton>
                 </div>
 
-                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-native-cadastro-grid="true" data-op-title="Culturas" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
                       {["Nome","Categoria","Unidade","NCM","Ordem","Status",""].map((h, i) => (
@@ -7085,11 +7089,11 @@ function CadastrosInner() {
                               ? <span style={{ fontSize: 11, background: "#EAFFE6", color: "#14532D", padding: "2px 8px", borderRadius: 8 }}>Ativa</span>
                               : <span style={{ fontSize: 11, background: "var(--bg-page)", color: "var(--text-3)", padding: "2px 8px", borderRadius: 8 }}>Inativa</span>}
                           </td>
-                          <td style={{ padding: "10px 10px", textAlign: "right" }}>
+                          <td style={{ padding: "10px 10px", textAlign: "right" }}><NativeRowActions>
                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirModal(c)}>Editar</OperationalButton>
                             {" "}
                             <OperationalButton data-arato-button="danger" style={btnX} onClick={() => excluir(c.id)}>Excluir</OperationalButton>
-                          </td>
+                          </NativeRowActions></td>
                         </tr>
                       );
                     })}
@@ -11356,7 +11360,7 @@ function CartoesCreditoCadastro({ contaId, fazendaId }: { contaId: string; fazen
         </div>
       ) : (
         <div style={{ border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden" }}>
-          <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+          <OperationalGrid data-native-cadastro-grid="true" data-op-title="Cartões de Crédito" data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
             <thead>
               <tr style={{ background:"var(--bg-page)" }}>
                 {["Titular","Bandeira","Banco","Número","Fecha dia","Vence dia","Limite",""].map((h,i) => (
@@ -11376,10 +11380,10 @@ function CartoesCreditoCadastro({ contaId, fazendaId }: { contaId: string; fazen
                   <td style={{ padding:"9px 12px", textAlign:"center" }}>{c.dia_fechamento}</td>
                   <td style={{ padding:"9px 12px", textAlign:"center" }}>{c.dia_vencimento}</td>
                   <td style={{ padding:"9px 12px", color:"var(--text-2)" }}>{c.limite ? c.limite.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "—"}</td>
-                  <td style={{ padding:"9px 10px", textAlign:"right" }}>
+                  <td style={{ padding:"9px 10px", textAlign:"right" }}><NativeRowActions>
                     <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { setEditId(c.id); setForm({ titular:c.titular, banco:c.banco??""  , bandeira:c.bandeira, numero_final:c.numero_final??"", dia_fechamento:String(c.dia_fechamento), dia_vencimento:String(c.dia_vencimento), limite:c.limite ? String(c.limite) : "", observacao:c.observacao??"" }); setModal(true); }}>Editar</OperationalButton>
                     <OperationalButton data-arato-button="danger" style={{ ...btnX, marginLeft:6, color:"#E24B4A" }} onClick={() => excluir(c.id)}>Inativar</OperationalButton>
-                  </td>
+                  </NativeRowActions></td>
                 </tr>
               ))}
             </tbody>

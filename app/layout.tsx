@@ -10,6 +10,7 @@ import SidebarAtalhos from "../components/SidebarAtalhos";
 import OliviaWidget from "../components/OliviaWidget";
 import ModalNaoFechaFora from "../components/ModalNaoFechaFora";
 import "./globals.css";
+import "./arato-operational.css";
 import "./operational.css";
 import AppearanceProvider from "../components/AppearanceProvider";
 import GridDensityProvider from "../components/GridDensityProvider";

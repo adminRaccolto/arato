@@ -13,9 +13,9 @@ import type { PrecosData } from "../api/precos/route";
 import { listarAlertasController, reconhecerAlerta, resolverAlerta, listarContratosFinanceirosDaConta } from "../../lib/db";
 import { rodarChecksController } from "../../lib/controller-checks";
 import type { ControllerAlerta } from "../../lib/supabase";
-import { HedgePainel } from "../comercial/hedge/page";
-import { AuditoriaClassificacaoPainel } from "../auditoria/classificacao/page";
-import { AuditoriaSafraCicloPainel } from "../auditoria/safra-ciclo/page";
+import { HedgePainel } from "../comercial/hedge/panel";
+import { AuditoriaClassificacaoPainel } from "../auditoria/classificacao/panel";
+import { AuditoriaSafraCicloPainel } from "../auditoria/safra-ciclo/panel";
 
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }

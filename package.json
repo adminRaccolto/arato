@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/generate-theme-compat.mjs",
+    "prebuild": "node scripts/verify-operational-layout.mjs && node scripts/generate-theme-compat.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

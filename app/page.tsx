@@ -1,4 +1,6 @@
 "use client";
+import {useOperationalPresentation} from '../components/arato-layout/presentation-mode';
+
 import { OperationalButton, OperationalFilters } from "../components/OperationalUI";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../components/TopNav";
@@ -116,6 +118,7 @@ function saudar(): string {
 
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
+  const nativePresentation=useOperationalPresentation();
   const { fazendaId, fazendaIds, contaId, onboardingAtivo, nomeUsuario, anoSafraVigenteDesc } = useAuth();
 
   const [alertas,    setAlertas]    = useState<Alerta[]>([]);
@@ -605,7 +608,208 @@ export default function Dashboard() {
     .mkt-flash-dn  { background: rgba(239,68,68,0.12) !important }
   `;
 
-  return (
+  return nativePresentation?(
+    <div className="native-home" data-arato-page="true" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg-page)", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" }}>
+      {/* eslint-disable-next-line react/no-danger */}
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      <TopNav />
+      {onboardingAtivo && <OnboardingPanel />}
+
+      <main className="native-home-layout" style={{ flex:1, maxWidth:1440, margin:"0 auto", width:"100%", padding:"0 0 60px" }}>
+
+
+        {/* ═══ HERO COMPACTO ═══ */}
+        <div className="native-home-welcome" style={{
+          padding:"22px 28px 20px",
+          background:"linear-gradient(160deg,#0D0D0D 0%,#0D1F38 60%,#091422 100%)",
+          borderBottom:"0.5px solid var(--border)",
+          animation:"fadeUp .5s ease both",
+        }}><div className="native-home-title"><span className="native-home-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10 12 3l9 7v11h-7v-7h-4v7H3Z"/></svg></span><div><p>SEU ESPAÇO DE TRABALHO</p><h1>Início</h1></div></div>
+
+          {/* Linha 1: saudação + status bolsas + busca */}
+          <OperationalFilters className="native-home-context" data-arato-filters="true" style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18,flexWrap:"wrap" }}>
+            <span className="native-home-greeting" style={{ fontSize:13,color:"var(--text-3)",fontWeight:500,letterSpacing:".01em" }}>
+              {saudar()}, {(nomeUsuario ?? "").split(" ")[0] || "…"}&nbsp;·&nbsp;
+              {new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}
+              {ciclosAtivos > 0 && <span style={{ color:"#22C55E" }}> · {ciclosAtivos} ciclo{ciclosAtivos>1?"s":""} ativo{ciclosAtivos>1?"s":""}</span>}
+            </span>
+            {[mercado.cbot,mercado.b3].map((m,i) => (
+              <span className="native-home-status" data-home-status={m.aberto?"open":"closed"} key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,
+                color:m.aberto?"#22C55E":"var(--text-3)",padding:"3px 10px",borderRadius:20,
+                background:m.aberto?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.04)",
+                border:`0.5px solid ${m.aberto?"rgba(34,197,94,0.3)":"var(--border)"}` }}>
+                <span style={{ width:5,height:5,borderRadius:"50%",background:m.aberto?"#22C55E":"var(--text-muted)",display:"inline-block",animation:m.aberto?"pulso 2s ease infinite":"none" }} />
+                {m.label}
+              </span>
+            ))}
+            {alertas.some(a=>a.urgencia==="critico") && (
+              <span className="native-home-status" data-home-status="critical" style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,
+                color:"#EF4444",padding:"3px 10px",borderRadius:20,
+                background:"rgba(239,68,68,0.1)",border:"0.5px solid rgba(239,68,68,0.3)" }}>
+                <span style={{ width:5,height:5,borderRadius:"50%",background:"#EF4444",display:"inline-block",animation:"pulso 1s ease infinite" }} />
+                {alertas.filter(a=>a.urgencia==="critico").length} crítico{alertas.filter(a=>a.urgencia==="critico").length>1?"s":""}
+              </span>
+            )}
+            {anoSafraVigenteDesc && (
+              <span className="native-home-status" data-home-status="season" style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,
+                color:"#4ADE80",padding:"3px 10px",borderRadius:20,
+                background:"rgba(22,163,74,0.12)",border:"0.5px solid rgba(22,163,74,0.3)",
+                whiteSpace:"nowrap" }}>
+                {anoSafraVigenteDesc}
+              </span>
+            )}
+            {/* Busca global */}
+            <div className="native-home-search" ref={buscaRef} style={{ marginLeft:"auto",position:"relative",width:300 }}>
+              <span style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--text-muted)",pointerEvents:"none" }}>🔍</span>
+              <input aria-label="Buscar registros"
+                type="text"
+                placeholder="Buscar lançamentos, contratos, insumos…"
+                value={buscaGlobal}
+                onChange={e => { setBuscaGlobal(e.target.value); setBuscaAberta(true); }}
+                onFocus={() => setBuscaAberta(true)}
+                style={{ width:"100%",boxSizing:"border-box",padding:"6px 10px 6px 30px",
+                  border:"0.5px solid rgba(255,255,255,0.12)",borderRadius:8,fontSize:12,
+                  background:"rgba(255,255,255,0.06)",outline:"none",color:"rgba(255,255,255,0.85)" }}
+              />
+              {buscaGlobal && !buscandoGlobal && (
+                <OperationalButton aria-label="Limpar busca de registros" data-arato-button="icon" onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</OperationalButton>
+              )}
+              {buscaAberta && buscaGlobal.trim().length >= 2 && (
+                <div className="native-home-results" style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:300,overflowY:"auto" }}>
+                  {resultadosBusca.length === 0 && !buscandoGlobal && (
+                    <div style={{ padding:"14px",fontSize:12,color:"var(--text-3)",textAlign:"center" }}>Nenhum resultado para "{buscaGlobal}"</div>
+                  )}
+                  {resultadosBusca.map(r => (
+                    <a key={r.id} href={r.link} onClick={() => setBuscaAberta(false)}
+                      style={{ display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:"0.5px solid var(--border-table)",textDecoration:"none",background:"transparent" }}
+                      onMouseEnter={e=>(e.currentTarget.style.background="var(--bg-input)")}
+                      onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+                      <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:5,background:r.cor+"22",color:r.cor,flexShrink:0 }}>{r.categoria}</span>
+                      <span style={{ flex:1,fontSize:13,color:"var(--text-1)",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{r.titulo}</span>
+                      {r.subtitulo && <span style={{ fontSize:11,color:"var(--text-3)",flexShrink:0 }}>{r.subtitulo}</span>}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </OperationalFilters>
+
+
+          {/* Linha 3: cotações inline */}
+          
+        </div>
+
+        {/* Alertas & Pendências — fora do hero, no conteúdo principal */}
+        <div className="native-home-columns"><div className="native-home-priorities"><div className="native-home-alerts" style={{ padding:"20px 28px 0" }}>
+          <div className="native-home-panel" style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
+            <div className="native-home-section-heading" style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+              <span role="heading" aria-level={2} style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Alertas &amp; Pendências</span>
+              {!loadAl && (
+                <span style={{ fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,
+                  background:alertas.some(a=>a.urgencia==="critico")?"rgba(239,68,68,0.1)":alertas.some(a=>a.urgencia==="alto")?"#F0F0F0":"rgba(22,163,74,0.08)",
+                  color:alertas.some(a=>a.urgencia==="critico")?"#E24B4A":alertas.some(a=>a.urgencia==="alto")?"#EF9F27":"#16A34A",
+                  border:`0.5px solid ${alertas.some(a=>a.urgencia==="critico")?"rgba(226,75,74,0.3)":alertas.some(a=>a.urgencia==="alto")?"rgba(239,159,39,0.3)":"rgba(22,163,74,0.2)"}` }}>
+                  {alertas.length === 0 ? "Tudo em dia" : `${alertas.length} ${alertas.length===1?"item":"itens"}`}
+                </span>
+              )}
+            </div>
+            {loadAl ? (
+              <div style={{ padding:"16px 20px",fontSize:12,color:"var(--text-3)" }}>Verificando alertas…</div>
+            ) : alertas.length === 0 ? (
+              <div style={{ display:"flex",alignItems:"center",gap:10,padding:"14px 20px" }}>
+                <span style={{ color:"#16A34A",fontSize:16 }}>✓</span>
+                <span style={{ fontSize:13,fontWeight:600,color:"#16A34A" }}>Nenhuma pendência no momento</span>
+              </div>
+            ) : (
+              alertas.map(a => {
+                const cor = COR[a.urgencia];
+                return (
+                  <a className="native-home-alert" data-urgency={a.urgencia} key={a.id} href={a.link} style={{ display:"flex",alignItems:"center",gap:12,
+                    padding:"10px 20px",borderBottom:"0.5px solid var(--border-table)",
+                    borderLeft:`3px solid ${cor.badge}`,textDecoration:"none",
+                    background:"var(--bg-card)" }}>
+                    <span style={{ fontSize:10,fontWeight:700,color:cor.badge,letterSpacing:".05em",textTransform:"uppercase",
+                      flexShrink:0,padding:"2px 7px",borderRadius:5,background:cor.badge+"14",whiteSpace:"nowrap" }}>
+                      {TIPO_LABEL[a.tipo] ?? a.tipo}
+                    </span>
+                    <span style={{ flex:1,fontSize:12,color:"var(--text-2)",lineHeight:1.4,
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                      {a.desc}
+                    </span>
+                    <span style={{ fontSize:11,color:"var(--text-3)",flexShrink:0 }}>ver →</span>
+                  </a>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Conciliação (apenas se houver pendências) */}
+        {conciliPend.length > 0 && (
+          <div className="native-home-conciliation" style={{ padding:"20px 28px 0" }}>
+            <div className="native-home-panel" style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
+              <div className="native-home-section-heading" style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                <span role="heading" aria-level={2} style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Inconsistências de Conciliação</span>
+                <span style={{ fontSize:11,fontWeight:700,color:"#555555",background:"#F0F0F0",padding:"2px 8px",borderRadius:10,border:"0.5px solid #D8D8D8" }}>
+                  {conciliPend.length} sem lançamento
+                </span>
+              </div>
+              {conciliPend.slice(0,5).map(p => (
+                <div className="native-home-concil-row" key={p.id} style={{ padding:"11px 20px",borderBottom:"0.5px solid rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:12 }}>
+                  <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,background:p.tipo==="debito"?"rgba(239,68,68,0.12)":"rgba(34,197,94,0.12)",color:p.tipo==="debito"?"#EF4444":"#22C55E",flexShrink:0 }}>
+                    {p.tipo==="debito"?"DÉBITO":"CRÉDITO"}
+                  </span>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:12,fontWeight:600,color:"var(--text-1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.descricao}</div>
+                    <div style={{ fontSize:11,color:"var(--text-3)" }}>{p.data.split("-").reverse().join("/")} · {p.conta_nome ?? "—"}</div>
+                  </div>
+                  <span style={{ fontSize:13,fontWeight:700,color:p.tipo==="debito"?"#EF4444":"#22C55E",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums" }}>
+                    {p.tipo==="debito"?"−":"+"}R$ {p.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
+                  </span>
+                  <a href="/financeiro/conciliacao?pendentes=true"
+                    style={{ padding:"4px 10px",background:"rgba(59,130,246,0.15)",color:"#60A5FA",border:"0.5px solid rgba(59,130,246,0.3)",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,textDecoration:"none" }}>
+                    Conciliar
+                  </a>
+                  <OperationalButton data-arato-button="secondary" onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"4px 9px",background:"rgba(255,255,255,0.04)",color:"var(--text-3)",border:"0.5px solid var(--border)",borderRadius:6,fontSize:11,cursor:"pointer",flexShrink:0 }}>
+                    Ignorar
+                  </OperationalButton>
+                </div>
+              ))}
+              {conciliPend.length > 5 && (
+                <div style={{ padding:"10px 20px",textAlign:"center" }}>
+                  <a href="/financeiro/conciliacao?pendentes=true" style={{ fontSize:12,color:"#60A5FA",fontWeight:600,textDecoration:"none" }}>Ver todas ({conciliPend.length}) →</a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}</div><aside className="native-home-market" aria-label="Mercado"><div className="native-home-market-heading"><span className="native-home-market-symbol" aria-hidden="true">↗</span><div><h2>Mercado</h2><p>Commodities e câmbio</p></div></div>{loadPr&&<p className="native-home-market-state">Carregando cotações…</p>}{!loadPr&&!precos&&<p className="native-home-market-state">Cotações indisponíveis no momento.</p>}{!loadPr && precos && (
+            <div className="native-home-quotes" style={{ display:"flex",alignItems:"center",flexWrap:"wrap",gap:24,borderTop:"0.5px solid rgba(255,255,255,0.06)",paddingTop:14 }}>
+              {[
+                { nome:"SOJA CBOT", v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
+                { nome:"MILHO",    v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"",                                 d:precos.milho.variacao },
+                { nome:"ALGODÃO",  v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, d:precos.algodao.variacao },
+                { nome:"USD SPOT", v:`R$ ${fmtBrl(precos.usdBrl)}`,       brl:"",                                 d:0 },
+                { nome:"PTAX",     v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"",                 d:0 },
+              ].map((m,i) => (
+                <div className="native-home-quote" key={i} style={{ display:"flex",alignItems:"center",gap:7,flexShrink:0 }}>
+                  <span className="native-home-quote-label" style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:".06em" }}>{m.nome}</span>
+                  <span className="native-home-quote-value" style={{ fontSize:13,fontWeight:700,color:"#ffffff",fontVariantNumeric:"tabular-nums" }}>{m.v}</span>
+                  {m.brl && <span className="native-home-quote-reference" style={{ fontSize:11,color:"rgba(255,255,255,0.55)" }}>{m.brl}</span>}
+                  {m.d !== 0 && <span className="native-home-quote-variation" style={{ fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:4,
+                    background:m.d>0?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
+                    color:m.d>0?"#22C55E":"#EF4444" }}>{fmtPct(m.d)}</span>}
+                  {i < 4 && <div style={{ width:1,height:12,background:"rgba(255,255,255,0.08)",marginLeft:4 }} />}
+                </div>
+              ))}
+              <span className="native-home-quote-updated" style={{ fontSize:9,color:"rgba(255,255,255,0.18)",marginLeft:"auto" }}>
+                {precos.erro ? "⚠ dados aprox." : new Date(precos.atualizadoEm).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+              </span>
+            </div>
+          )}</aside></div>
+
+      </main>
+    </div>
+  ):(
     <div data-arato-page="true" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg-page)", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" }}>
       {/* eslint-disable-next-line react/no-danger */}
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
