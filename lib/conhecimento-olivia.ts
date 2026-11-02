@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Nova Recomendação Agronômica (02/11/2026)**: escolha o Tipo de Operação no topo e avance com Próximo por Geral, Talhões, Produtos e Condições. Salvar Recomendação fica na aba Condições. Ao editar uma recomendação existente, o botão de salvar aparece em todas as abas.
+
 **Apólice: produtor e parcelas vencidas (02/11/2026)**: a apólice tem o campo Produtor, que define o produtor e a fazenda dos títulos do prêmio. Ao lançar apólice em andamento, parcelas já vencidas entram em aberto no Contas a Pagar e o usuário faz a baixa manual.
 
 **Seguradora como fornecedor (02/11/2026)**: na apólice, a seguradora é escolhida no cadastro de Pessoas (+ Cadastrar cria uma nova). Ela é o fornecedor dos títulos do prêmio no Contas a Pagar. Título de seguro sem fornecedor no grid: abra a apólice em Editar, escolha a seguradora e salve.

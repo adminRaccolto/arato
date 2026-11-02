@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.02-c",
+    data: "02/11/2026",
+    titulo: "Nova Recomendação Agronômica em passo a passo",
+    modulos: ["Lavoura", "Recomendações"],
+    itens: [
+      { tipo: "melhoria", texto: "O Tipo de Operação fica acima das abas. O botão Próximo avança entre Geral, Talhões, Produtos e Condições, conferindo o que é obrigatório em cada uma, e o Voltar retorna. O Salvar aparece na última aba; ao editar uma recomendação já salva, aparece em todas. As abas continuam clicáveis." },
+    ],
+  },
+  {
     versao: "2026.11.02-b",
     data: "02/11/2026",
     titulo: "Seguros: apólice com produtor e parcelas vencidas em aberto",

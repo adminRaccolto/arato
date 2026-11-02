@@ -283,6 +283,33 @@ function ModalNova({
     { id: "condicoes",  label: "4 · Condições" },
   ] as const;
 
+  const idxAba = abas.findIndex(a => a.id === aba);
+  const ultimaAba = idxAba === abas.length - 1;
+
+  // Trocar o tipo com produtos já preenchidos pode deixar produto incompatível com a nova operação
+  async function trocarTipo(t: TipoOp) {
+    if (t === f.tipo) return;
+    if (produtosForm.some(p => p.nome || p.dose)) {
+      const ok = await confirmarAcao({ titulo: "Trocar o tipo de operação?", mensagem: `Os produtos já preenchidos serão mantidos. Confira se servem para ${TIPOS_OP[t].label}.`, perigo: false });
+      if (!ok) return;
+    }
+    setF(v => ({ ...v, tipo: t }));
+  }
+
+  function proximaAba() {
+    if (aba === "geral" && !f.data_recomendacao) { alert("Informe a data da recomendação."); return; }
+    if (aba === "talhoes" && !talhoesForm.some(t => t.talhao_id && t.area)) { alert("Inclua pelo menos 1 talhão com área."); return; }
+    if (aba === "produtos" && !produtosForm.some(p => p.nome && p.dose)) { alert("Inclua pelo menos 1 produto com dose."); return; }
+    setAba(abas[idxAba + 1].id);
+  }
+
+  const botaoSalvar = (
+    <OperationalButton data-arato-button="primary" onClick={salvar} disabled={saving}
+      style={{ padding:"9px 24px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
+      {saving ? "Salvando..." : isEditing ? "Salvar Alterações" : "Salvar Recomendação"}
+    </OperationalButton>
+  );
+
   return (
     <div data-arato-overlay="true" style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div data-arato-dialog="page" style={{ background:"var(--bg-card)", borderRadius:12, width:760, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
@@ -291,6 +318,21 @@ function ModalNova({
           <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
             <div data-arato-dialog-body="true" style={{ fontSize:17, fontWeight:700 }}>{isEditing ? "Editar Recomendação" : "Nova Recomendação Agronômica"}</div>
             <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</OperationalButton>
+          </div>
+          {/* O tipo define a recomendação; as abas abaixo compõem a operação escolhida */}
+          <div style={{ marginBottom:14 }}>
+            <label data-arato-label="true" style={lbl}>Tipo de Operação *</label>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {(Object.keys(TIPOS_OP) as TipoOp[]).map(t => (
+                <OperationalButton data-arato-button="toggle" key={t} onClick={() => trocarTipo(t)}
+                  style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${f.tipo === t ? TIPOS_OP[t].cor : "var(--border)"}`,
+                    background: f.tipo === t ? TIPOS_OP[t].bg : "var(--bg-card)",
+                    color: f.tipo === t ? TIPOS_OP[t].cor : "var(--text-2)",
+                    fontWeight: f.tipo === t ? 700 : 400, fontSize:12, cursor:"pointer" }}>
+                  {TIPOS_OP[t].label}
+                </OperationalButton>
+              ))}
+            </div>
           </div>
           <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display:"flex", gap:0 }}>
             {abas.map(a => (
@@ -310,20 +352,6 @@ function ModalNova({
           {/* ABA GERAL */}
           {aba === "geral" && (
             <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-              <div style={{ gridColumn:"span 2" }}>
-                <label data-arato-label="true" style={lbl}>Tipo de Operação *</label>
-                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                  {(Object.keys(TIPOS_OP) as TipoOp[]).map(t => (
-                    <OperationalButton data-arato-button="toggle" key={t} onClick={() => setF(v => ({...v, tipo: t}))}
-                      style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${f.tipo === t ? TIPOS_OP[t].cor : "var(--border)"}`,
-                        background: f.tipo === t ? TIPOS_OP[t].bg : "var(--bg-card)",
-                        color: f.tipo === t ? TIPOS_OP[t].cor : "var(--text-2)",
-                        fontWeight: f.tipo === t ? 700 : 400, fontSize:12, cursor:"pointer" }}>
-                      {TIPOS_OP[t].label}
-                    </OperationalButton>
-                  ))}
-                </div>
-              </div>
               <div>
                 <label data-arato-label="true" style={lbl}>Ano Safra</label>
                 <SelectField value={f.ano_safra_id} onChange={e => setF(v => ({...v, ano_safra_id: e.target.value, ciclo_id:""}))} style={inp}>
@@ -591,10 +619,21 @@ function ModalNova({
             <OperationalButton data-arato-button="secondary" onClick={onClose} style={{ padding:"9px 20px", background:"var(--bg-card)", border:"0.5px solid var(--border)", borderRadius:8, fontSize:13, cursor:"pointer" }}>
               Cancelar
             </OperationalButton>
-            <OperationalButton data-arato-button="primary" onClick={salvar} disabled={saving}
-              style={{ padding:"9px 24px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
-              {saving ? "Salvando..." : isEditing ? "Salvar Alterações" : "Salvar Recomendação"}
-            </OperationalButton>
+            {idxAba > 0 && (
+              <OperationalButton data-arato-button="secondary" onClick={() => setAba(abas[idxAba - 1].id)} style={{ padding:"9px 20px", background:"var(--bg-card)", border:"0.5px solid var(--border)", borderRadius:8, fontSize:13, cursor:"pointer" }}>
+                ← Voltar
+              </OperationalButton>
+            )}
+            {/* Recomendação nova segue o passo a passo; ao editar, dá para salvar de qualquer aba */}
+            {isEditing && !ultimaAba && botaoSalvar}
+            {ultimaAba ? botaoSalvar : (
+              <OperationalButton data-arato-button={isEditing ? "secondary" : "primary"} onClick={proximaAba}
+                style={isEditing
+                  ? { padding:"9px 20px", background:"var(--bg-card)", border:"0.5px solid var(--border)", borderRadius:8, fontSize:13, cursor:"pointer" }
+                  : { padding:"9px 24px", background:"#111111", color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                Próximo →
+              </OperationalButton>
+            )}
           </div>
         </div>
       </div>
