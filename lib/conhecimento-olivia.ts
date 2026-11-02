@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Seguradora como fornecedor (02/11/2026)**: na apólice, a seguradora é escolhida no cadastro de Pessoas (+ Cadastrar cria uma nova). Ela é o fornecedor dos títulos do prêmio no Contas a Pagar. Título de seguro sem fornecedor no grid: abra a apólice em Editar, escolha a seguradora e salve.
+
 **Seguros (01/11/2026)**: as apólices são do cliente e aparecem para todos os usuários dele e para a equipe Raccolto. Se a lista não carregar, a tela mostra o motivo em vermelho; peça o texto dessa mensagem ao usuário.
 
 **SIEG por cliente (31/10/2026)**: a configuração do SIEG é uma só por cliente. NF-e/NFS-e importadas entram na fazenda do destinatário (produtor dono da fazenda ou empresa do CNPJ). Se uma nota cair numa fazenda inesperada, conferir se o CPF/CNPJ do destinatário está cadastrado no produtor/empresa certo.

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.02-a",
+    data: "02/11/2026",
+    titulo: "Seguros: seguradora aparece como fornecedor no Contas a Pagar",
+    modulos: ["Seguros", "Contas a Pagar"],
+    itens: [
+      { tipo: "correcao", texto: "Os títulos de prêmio de seguro ficavam sem fornecedor no grid do Contas a Pagar, porque a seguradora era só um texto digitado na apólice. Agora a seguradora é escolhida no cadastro de Pessoas (com botão + Cadastrar), e os títulos saem com ela como fornecedor. Ao salvar uma apólice antiga com a seguradora escolhida, os títulos dela passam a mostrar o fornecedor." },
+      { tipo: "melhoria", texto: "Na leitura da apólice por IA, a seguradora é localizada no cadastro pelo CNPJ ou pelo nome exato. Se não achar, a tela pede para escolher ou cadastrar, já com os dados lidos do PDF." },
+    ],
+  },
+  {
     versao: "2026.11.01-b",
     data: "01/11/2026",
     titulo: "Segurança: cada cliente acessa só os próprios dados",

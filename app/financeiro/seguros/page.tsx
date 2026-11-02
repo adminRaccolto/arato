@@ -8,9 +8,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import {
-  listarMaquinas, listarProdutoresDaConta, listarFuncionarios, listarFazendasDaConta,
+  listarMaquinas, listarProdutoresDaConta, listarFuncionarios, listarFazendasDaConta, listarPessoasDaConta,
 } from "../../../lib/db";
-import type { Maquina, Produtor, Funcionario, Fazenda } from "../../../lib/supabase";
+import SelectBusca from "../../../components/SelectBusca";
+import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
+import type { Maquina, Produtor, Funcionario, Fazenda, Pessoa } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -52,6 +54,7 @@ interface Apolice {
   conta_id?: string;
   numero_apolice: string;
   seguradora: string;
+  seguradora_pessoa_id?: string | null; // cadastro da seguradora: é o fornecedor dos títulos do prêmio no CP
   ramo: RamoSeguro;
   objeto_segurado: string;
   importancia_segurada: number;
@@ -186,7 +189,7 @@ export default function SegurosPage() {
   const [apoliceEdit,  setApoliceEdit]  = useState<Apolice | null>(null);
   const [tabModal,     setTabModal]     = useState<"dados" | "cobertura" | "financeiro" | "anexo">("dados");
   const FORM_VAZIO = (): Omit<Apolice, "id" | "fazenda_id" | "conta_id" | "created_at"> => ({
-    numero_apolice: "", seguradora: "", ramo: "maquinas",
+    numero_apolice: "", seguradora: "", seguradora_pessoa_id: null, ramo: "maquinas",
     objeto_segurado: "", importancia_segurada: 0, premio_anual: 0,
     forma_pagamento_premio: "avista", data_inicio_vigencia: hoje(),
     data_fim_vigencia: "", status: "vigente",
@@ -197,6 +200,9 @@ export default function SegurosPage() {
     coberturas_vida: [],
   });
   const [aForm,   setAForm]   = useState(FORM_VAZIO());
+  const [pessoasCad, setPessoasCad] = useState<Pessoa[]>([]);
+  const [cadSeguradora, setCadSeguradora] = useState<{ nome: string; documento: string } | null>(null);
+  const [iaSeguradoraCnpj, setIaSeguradoraCnpj] = useState("");
   const [aSaving, setASaving] = useState(false);
   const [aErr,    setAErr]    = useState("");
 
@@ -227,6 +233,16 @@ export default function SegurosPage() {
   const [premioData,    setPremioData]    = useState(hoje());
   const [premioSaving,  setPremioSaving]  = useState(false);
 
+  // Seguradora lida do PDF → cadastro do cliente: pelo CNPJ, senão pelo nome exato. Sem certeza, o usuário escolhe.
+  const acharSeguradora = (nome?: string | null, cnpj?: string | null): string | null => {
+    const doc = (cnpj ?? "").replace(/\D/g, "");
+    const porDoc = doc ? pessoasCad.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === doc) : undefined;
+    if (porDoc) return porDoc.id;
+    const n = (nome ?? "").trim().toLowerCase();
+    const porNome = n ? pessoasCad.filter(p => p.nome.trim().toLowerCase() === n) : [];
+    return porNome.length === 1 ? porNome[0].id : null;
+  };
+
   // ── Carregar dados ─────────────────────────────────────────────────────────
   // Apólices são do CLIENTE (conta), nunca da fazenda. Leitura pelo servidor, com a mesma checagem de acesso do salvamento
   // (o servidor descobre o cliente a partir da fazenda); erro de leitura aparece na tela, não vira "nenhuma apólice".
@@ -247,6 +263,7 @@ export default function SegurosPage() {
 
   const carregarCatalogos = useCallback(async () => {
     if (!fazendaId || !contaId) return;
+    listarPessoasDaConta(fazendaId).then(setPessoasCad).catch(() => {});
     const [maq, prod, func, faz] = await Promise.all([
       listarMaquinas(fazendaId),
       listarProdutoresDaConta(contaId),
@@ -275,7 +292,7 @@ export default function SegurosPage() {
       setApoliceEdit(a);
       setQtdParcelasExistentes(premios.filter(p => p.apolice_id === a.id).length);
       setAForm({
-        numero_apolice: a.numero_apolice, seguradora: a.seguradora,
+        numero_apolice: a.numero_apolice, seguradora: a.seguradora, seguradora_pessoa_id: a.seguradora_pessoa_id ?? null,
         ramo: a.ramo, objeto_segurado: a.objeto_segurado,
         importancia_segurada: a.importancia_segurada ?? 0,
         premio_anual: a.premio_anual ?? 0,
@@ -311,7 +328,7 @@ export default function SegurosPage() {
       const fd = new FormData(); fd.append("file", file);
       const res = await fetch("/api/ai/extrair-apolice", { method: "POST", body: fd });
       const d = await res.json() as {
-        error?: string; numero_apolice?: string | null; seguradora_nome?: string | null; corretora_nome?: string | null; corretor_contato?: string | null;
+        error?: string; numero_apolice?: string | null; seguradora_nome?: string | null; seguradora_cnpj?: string | null; corretora_nome?: string | null; corretor_contato?: string | null;
         segurado_nome?: string | null; segurado_cpf_cnpj?: string | null; ramo?: string | null; objeto_segurado?: string | null;
         bem_tipo?: string | null; bem_marca_modelo?: string | null; bem_ano?: string | null; bem_chassi?: string | null; bem_placa?: string | null; bem_serie?: string | null; bem_local?: string | null;
         importancia_segurada?: number | null; premio_total?: number | null; premio_liquido?: number | null; iof?: number | null; franquia?: string | null;
@@ -351,9 +368,10 @@ export default function SegurosPage() {
         "Lida por IA — confira antes de salvar.",
       ].filter(Boolean).join("\n");
       setApoliceEdit(null); setQtdParcelasExistentes(0); setParcelasAlteradas(true);
+      setIaSeguradoraCnpj(d.seguradora_cnpj ?? "");
       setAForm({
         ...FORM_VAZIO(),
-        numero_apolice: d.numero_apolice ?? "", seguradora: d.seguradora_nome ?? "", ramo,
+        numero_apolice: d.numero_apolice ?? "", seguradora: d.seguradora_nome ?? "", seguradora_pessoa_id: acharSeguradora(d.seguradora_nome, d.seguradora_cnpj), ramo,
         objeto_segurado: d.objeto_segurado || bemDesc, importancia_segurada: Number(d.importancia_segurada) || 0, premio_anual: Number(premio) || 0,
         forma_pagamento_premio: parcelado ? "parcelado" : "avista", data_inicio_vigencia: inicio, data_fim_vigencia: d.data_fim_vigencia ?? "",
         status: d.data_fim_vigencia && d.data_fim_vigencia < hoje() ? "vencida" : "vigente",
@@ -377,7 +395,7 @@ export default function SegurosPage() {
   async function salvarApolice() {
     if (!fazendaId) return;
     if (!aForm.numero_apolice.trim()) { setAErr("Informe o número da apólice."); return; }
-    if (!aForm.seguradora.trim())     { setAErr("Informe a seguradora."); return; }
+    if (!aForm.seguradora_pessoa_id)  { setAErr("Escolha a seguradora no cadastro de Pessoas (ou clique em + Cadastrar). Ela é o fornecedor dos títulos no Contas a Pagar."); return; }
     if (!aForm.data_fim_vigencia)     { setAErr("Informe a data de fim de vigência."); return; }
     if (aForm.premio_anual <= 0)      { setAErr("Informe o prêmio anual."); return; }
     const gerarParcelas = !apoliceEdit || parcelasAlteradas;
@@ -397,7 +415,7 @@ export default function SegurosPage() {
       const payload = {
         fazenda_id: fazendaApolice, conta_id: contaId,
         numero_apolice: aForm.numero_apolice.trim(),
-        seguradora: aForm.seguradora.trim(),
+        seguradora: aForm.seguradora.trim(), seguradora_pessoa_id: aForm.seguradora_pessoa_id,
         ramo: aForm.ramo, objeto_segurado: objeto,
         importancia_segurada: aForm.importancia_segurada || 0,
         premio_anual: aForm.premio_anual,
@@ -756,6 +774,17 @@ export default function SegurosPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           MODAL APÓLICE
       ══════════════════════════════════════════════════════════════════════ */}
+      {cadSeguradora && fazendaId && (
+        <ModalCadastroFornecedor
+          fazendaId={fazendaId} documento={cadSeguradora.documento} nome={cadSeguradora.nome} papel="fornecedor"
+          onClose={() => setCadSeguradora(null)}
+          onSaved={nova => {
+            setPessoasCad(prev => prev.some(x => x.id === nova.id) ? prev : [...prev, nova]);
+            setAForm(f => ({ ...f, seguradora_pessoa_id: nova.id, seguradora: nova.nome }));
+            setCadSeguradora(null);
+          }}
+        />
+      )}
       {modalApolice && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.12)" }}>
@@ -780,7 +809,19 @@ export default function SegurosPage() {
               {tabModal === "dados" && (
                 <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div><label data-arato-label="true" style={lbl}>Nº da Apólice *</label><input value={aForm.numero_apolice} onChange={e => setAForm(f => ({ ...f, numero_apolice: e.target.value }))} style={inp} placeholder="000.000.000-0" /></div>
-                  <div><label data-arato-label="true" style={lbl}>Seguradora *</label><input value={aForm.seguradora} onChange={e => setAForm(f => ({ ...f, seguradora: e.target.value }))} style={inp} /></div>
+                  <div>
+                    <label data-arato-label="true" style={lbl}>Seguradora *</label>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <SelectBusca value={aForm.seguradora_pessoa_id ?? ""} options={pessoasCad.map(p => ({ value: p.id, label: p.nome }))}
+                          onChange={id => setAForm(f => ({ ...f, seguradora_pessoa_id: id || null, seguradora: pessoasCad.find(p => p.id === id)?.nome ?? f.seguradora }))} />
+                      </div>
+                      <button type="button" onClick={() => setCadSeguradora({ nome: aForm.seguradora, documento: iaSeguradoraCnpj })} style={{ background: "transparent", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "0 10px", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", color: "var(--text-1)" }}>+ Cadastrar</button>
+                    </div>
+                    {!aForm.seguradora_pessoa_id && aForm.seguradora && (
+                      <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>Na apólice: {aForm.seguradora}. Escolha o cadastro dela ou cadastre.</div>
+                    )}
+                  </div>
                   <div>
                     <label data-arato-label="true" style={lbl}>Ramo *</label>
                     <SelectField value={aForm.ramo} onChange={e => setAForm(f => ({ ...f, ramo: e.target.value as RamoSeguro, bem_id: undefined, bem_tipo: undefined }))} style={inp}>

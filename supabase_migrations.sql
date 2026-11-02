@@ -19135,3 +19135,10 @@ NOTIFY pgrst, 'reload schema';
 --   END $$;
 --   DROP POLICY IF EXISTS "emergencial_autenticado" ON taxas_variaveis_historico;
 --   CREATE POLICY "emergencial_autenticado" ON taxas_variaveis_historico FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 404 — Seguros: seguradora ligada ao cadastro de Pessoas (fornecedor dos títulos do prêmio no Contas a Pagar)
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+ALTER TABLE apolices_seguro ADD COLUMN IF NOT EXISTS seguradora_pessoa_id uuid REFERENCES pessoas(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_apolices_seguradora_pessoa ON apolices_seguro(seguradora_pessoa_id) WHERE seguradora_pessoa_id IS NOT NULL;
+NOTIFY pgrst, 'reload schema';

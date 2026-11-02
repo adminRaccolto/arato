@@ -97,6 +97,7 @@ async function gerarParcelasEDespesas(
     descricao: `Prêmio Seguro ${seguradora} — ${ramoLabel} — Parcela ${i + 1}/${parcelas.length}`,
     categoria: `Prêmio de Seguro (${ramoLabel})`,
     operacao_gerencial_id: ogId,
+    pessoa_id: (payload.seguradora_pessoa_id as string | null | undefined) ?? null, // fornecedor no grid do CP
     data_lancamento: parc.data_vencimento,
     data_vencimento: parc.data_vencimento,
     valor: parc.valor,
@@ -191,6 +192,7 @@ async function pagarPremio(req: NextRequest, sb: SbAdmin, premioId: string | und
       status: "baixado", data_baixa: dataPagamento,
       auto: false, origem_lancamento: "seguro",
       numero_documento: apolice?.numero_apolice,
+      pessoa_id: apolice?.seguradora_pessoa_id ?? null,
     }).select("id").single();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     const { error: eVinc } = await sb.from("pagamentos_premio_seguro").update({ lancamento_id: lanc.id }).eq("id", premioId);
@@ -224,14 +226,32 @@ export async function POST(req: NextRequest) {
     const negado = (body.apolice_id ? await exigirAcessoRegistro(req, "apolices_seguro", body.apolice_id) : null)
       ?? (fazPayload || !body.apolice_id ? await exigirAcessoFazenda(req, fazPayload) : null);
     if (negado) return negado;
+    // A seguradora escolhida tem de ser cadastro de quem está pedindo
+    const pessoaSeguradora = body.payload?.seguradora_pessoa_id as string | null | undefined;
+    if (pessoaSeguradora) {
+      const negadoPessoa = await exigirAcessoRegistro(req, "pessoas", pessoaSeguradora);
+      if (negadoPessoa) return negadoPessoa;
+    }
+    // Seção 404 ainda não rodada: grava a apólice sem a coluna nova em vez de falhar
+    const semColuna = (e: { code?: string; message?: string } | null) => e?.code === "PGRST204" || !!e?.message?.includes("seguradora_pessoa_id");
+    const { seguradora_pessoa_id: _sp, ...payloadSemColuna } = body.payload ?? {};
+    void _sp;
 
     let apoliceId: string;
 
     if (body.apolice_id) {
       // Edição
-      const { error } = await sb.from("apolices_seguro").update(body.payload).eq("id", body.apolice_id);
+      let { error } = await sb.from("apolices_seguro").update(body.payload).eq("id", body.apolice_id);
+      if (error && semColuna(error)) ({ error } = await sb.from("apolices_seguro").update(payloadSemColuna).eq("id", body.apolice_id));
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
       apoliceId = body.apolice_id;
+
+      // Títulos já gerados (inclusive pagos) passam a mostrar a seguradora como fornecedor; só muda o vínculo, nunca valor ou baixa
+      if (pessoaSeguradora) {
+        const { data: premiosApolice } = await sb.from("pagamentos_premio_seguro").select("lancamento_id").eq("apolice_id", apoliceId);
+        const idsLanc = (premiosApolice ?? []).map(p => p.lancamento_id).filter((id): id is string => !!id);
+        if (idsLanc.length) await falharSeErro(sb.from("lancamentos").update({ pessoa_id: pessoaSeguradora }).in("id", idsLanc), "vincular fornecedor");
+      }
 
       if (body.gerar_parcelas) {
         // Regenerar cronograma: apaga só o que ainda NÃO foi pago (parcelas
@@ -255,8 +275,9 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Inserção
-      const { data, error } = await sb.from("apolices_seguro").insert(body.payload).select("id").single();
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      let { data, error } = await sb.from("apolices_seguro").insert(body.payload).select("id").single();
+      if (error && semColuna(error)) ({ data, error } = await sb.from("apolices_seguro").insert(payloadSemColuna).select("id").single());
+      if (error || !data) return NextResponse.json({ ok: false, error: error?.message ?? "Erro ao salvar." }, { status: 500 });
       apoliceId = data.id;
 
       if (body.gerar_parcelas) {
