@@ -1,6 +1,7 @@
 "use client";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
+import NativeRecordPanel from '../../../components/arato-layout/NativeRecordPanel';
 import NativeFocusPicker from '../../../components/arato-layout/NativeFocusPicker';
 import EntryOutline from '../../../components/arato-layout/EntryOutline';
 
@@ -1946,8 +1947,8 @@ export default function ContasAPagarPage() {
         return (
           <>
             
-            <div className="native-title-focus" role="region" aria-label="Título em foco">
-              <details className="native-focus-details"><summary>Ver detalhes de {nome} · {fmtNaMoeda(l.valor,l.moeda)}</summary><div>
+            <NativeRecordPanel key={l.origem_tabela+':'+l.id} label="Título em foco" routine="Contas a Pagar" onClose={()=>setPopover(null)}>
+              <div className="native-record-details"><div>
               {/* Header */}
               <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -1963,7 +1964,6 @@ export default function ContasAPagarPage() {
                       ? <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: "#2A2A2A", color: "#fff" }}>Previsão — não é título real</span>
                       : <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>}
                     <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cp" zIndex={1500} />
-                    <OperationalButton data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</OperationalButton>
                   </div>
                 </div>
               </div>
@@ -2040,9 +2040,9 @@ export default function ContasAPagarPage() {
                 )}
               </div>
 
-              </div></details>
+              </div></div>
               {/* Comandos preservados, agora no núcleo superior */}
-              <NativeActionOrbit label={nome}>
+              <NativeActionOrbit inline label={nome}>
                 {aberto && ehPrevisao(l) && (
                   <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); efetivarPrevisao(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#E8F5EC", color: "#166534", border: "0.5px solid #16A34A", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>⚡ Efetivar</OperationalButton>
                 )}
@@ -2062,7 +2062,7 @@ export default function ContasAPagarPage() {
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</OperationalButton>
                 )}
               </NativeActionOrbit>
-            </div>
+            </NativeRecordPanel>
           </>
         );
       })()}
@@ -2079,8 +2079,8 @@ export default function ContasAPagarPage() {
         return (
           <>
             
-            <div className="native-title-focus" role="region" aria-label="Borderô em foco">
-              <details className="native-focus-details"><summary>Ver detalhes de {b.descricao||"Borderô"} · {fmtBRL(resumo.saldo)}</summary><div>
+            <NativeRecordPanel key={b.id} label="Borderô em foco" routine="Contas a Pagar" onClose={()=>setPopBordero(null)}>
+              <div className="native-record-details"><div>
                 <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ PAGO" : parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}{b.numero_titulo ? ` · Nº ${b.numero_titulo}` : ""}</div>
@@ -2105,8 +2105,8 @@ export default function ContasAPagarPage() {
                     </>
                   )}
                 </div>
-              </div></details>
-              <NativeActionOrbit label={b.descricao||"Borderô"}>
+              </div></div>
+              <NativeActionOrbit inline label={b.descricao||"Borderô"}>
                 <OperationalButton data-arato-button="secondary" onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver NFs</OperationalButton>
                 {(pago || parcial) && (
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↩ Estornar pagamento</OperationalButton>
@@ -2118,7 +2118,7 @@ export default function ContasAPagarPage() {
                   </>
                 )}
               </NativeActionOrbit>
-            </div>
+            </NativeRecordPanel>
           </>
         );
       })()}
@@ -2253,7 +2253,7 @@ export default function ContasAPagarPage() {
                 const celulasGrid: Record<string, ReactNode> = {
                   checkbox: (
                     <td style={{ padding: "7px 8px", textAlign: "center" }}>
-                      {podeSelecionar(l) && <input type="checkbox" style={{ cursor: "pointer" }} checked={selecionados.has(l.id)} aria-label={`Selecionar título ${l.numero??l.pessoa_nome??l.id}`} onChange={() => { toggleSel(l.id); if(nativePresentation){setPopBordero(null);setPopover({l,x:0,y:0});} }} />}
+                      {podeSelecionar(l) && <input type="checkbox" style={{ cursor: "pointer" }} checked={selecionados.has(l.id)} aria-label={`Selecionar título ${l.numero??l.pessoa_nome??l.id}`} onChange={() => toggleSel(l.id)} />}
                     </td>
                   ),
                   origem: (

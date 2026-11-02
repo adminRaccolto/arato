@@ -1,6 +1,7 @@
 "use client";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
+import NativeRecordPanel from '../../../components/arato-layout/NativeRecordPanel';
 import NativeFocusPicker from '../../../components/arato-layout/NativeFocusPicker';
 import EntryOutline from '../../../components/arato-layout/EntryOutline';
 
@@ -1493,8 +1494,8 @@ export default function ContasAReceberPage() {
         return (
           <>
             
-            <div className="native-title-focus" role="region" aria-label="Título em foco">
-              <details className="native-focus-details"><summary>Ver detalhes de {nome} · {fmtNaMoeda(l.valor,l.moeda)}</summary><div>
+            <NativeRecordPanel key={l.origem_tabela+':'+l.id} label="Título em foco" routine="Contas a Receber" onClose={()=>setPopover(null)}>
+              <div className="native-record-details"><div>
               {/* Header */}
               <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -1508,7 +1509,6 @@ export default function ContasAReceberPage() {
                     </span>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
                     <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cr" zIndex={1500} />
-                    <OperationalButton data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</OperationalButton>
                   </div>
                 </div>
               </div>
@@ -1585,9 +1585,9 @@ export default function ContasAReceberPage() {
                 )}
               </div>
 
-              </div></details>
+              </div></div>
               {/* Comandos preservados, agora no núcleo superior */}
-              <NativeActionOrbit label={nome}>
+              <NativeActionOrbit inline label={nome}>
                 {aberto && (
                   <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</OperationalButton>
                 )}
@@ -1604,12 +1604,12 @@ export default function ContasAReceberPage() {
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</OperationalButton>
                 )}
               </NativeActionOrbit>
-            </div>
+            </NativeRecordPanel>
           </>
         );
       })()}
 
-      {nativePresentation && !carregando && nativeBorderoFocus && (()=>{const entry=linhasComBordero.find(row=>row.kind==='bordero'&&row.b.id===nativeBorderoFocus);if(!entry||entry.kind!=='bordero')return null;const b=entry.b,pago=entry.pago,qtdItens=(b.itens??[]).length;return <div className="native-title-focus" role="region" aria-label="Borderô em foco"><details className="native-focus-details"><summary>Ver detalhes de {b.descricao||'Borderô'} · {fmtBRL(pago?(b.valor_pago??b.valor_total):b.valor_total)}</summary><div><div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      {nativePresentation && !carregando && nativeBorderoFocus && (()=>{const entry=linhasComBordero.find(row=>row.kind==='bordero'&&row.b.id===nativeBorderoFocus);if(!entry||entry.kind!=='bordero')return null;const b=entry.b,pago=entry.pago,qtdItens=(b.itens??[]).length;return <NativeRecordPanel key={b.id} label="Borderô em foco" routine="Contas a Receber" onClose={()=>setNativeBorderoFocus('')}><div className="native-record-details"><div><div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                             {pago
                               ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
                               : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>}
@@ -1618,7 +1618,7 @@ export default function ContasAReceberPage() {
                             <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(pago ? (b.valor_pago ?? b.valor_total) : b.valor_total)}</strong></span>
                             {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
                             {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>recebido em {fmtData(b.data_pagamento)}</span>}
-                          </div></div></details><NativeActionOrbit label={b.descricao||'Borderô'}>
+                          </div></div></div><NativeActionOrbit inline label={b.descricao||'Borderô'}>
                             <OperationalButton data-arato-button="secondary" onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver NFs</OperationalButton>
                             {pago ? (
                               <OperationalButton data-arato-button="secondary" onClick={() => estornarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>↩ Estornar</OperationalButton>
@@ -1628,7 +1628,7 @@ export default function ContasAReceberPage() {
                                 <OperationalButton data-arato-button="secondary" onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</OperationalButton>
                               </>
                             )}
-                          </NativeActionOrbit></div>;})()}
+                          </NativeActionOrbit></NativeRecordPanel>;})()}
       {nativePresentation && !carregando && selecionados.size > 0 && (
         <div className="op-bulk-actions native-bulk-actions" style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
@@ -1747,7 +1747,7 @@ export default function ContasAReceberPage() {
                 const celulasGrid: Record<string, ReactNode> = {
                   checkbox: (
                     <td style={{ padding: "7px 10px" }}>
-                      {aberto && <input type="checkbox" checked={selecionados.has(l.id)} aria-label={`Selecionar título ${l.numero??l.pessoa_nome??l.id}`} onChange={() => { toggleSel(l.id); if(nativePresentation){setNativeBorderoFocus('');setPopover({l,x:0,y:0});} }} />}
+                      {aberto && <input type="checkbox" checked={selecionados.has(l.id)} aria-label={`Selecionar título ${l.numero??l.pessoa_nome??l.id}`} onChange={() => toggleSel(l.id)} />}
                     </td>
                   ),
                   origem: (
