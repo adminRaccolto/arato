@@ -11,6 +11,8 @@ import {
   listarMaquinas, listarProdutoresDaConta, listarFuncionarios, listarFazendasDaConta, listarPessoasDaConta,
 } from "../../../lib/db";
 import SelectBusca from "../../../components/SelectBusca";
+import ProdutorCombo from "../../../components/ProdutorCombo";
+import { fazendaDoProdutor } from "../../../lib/fazenda-de";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import type { Maquina, Produtor, Funcionario, Fazenda, Pessoa } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
@@ -55,6 +57,7 @@ interface Apolice {
   numero_apolice: string;
   seguradora: string;
   seguradora_pessoa_id?: string | null; // cadastro da seguradora: é o fornecedor dos títulos do prêmio no CP
+  produtor_id?: string | null;          // de quem é a apólice: define a fazenda e o produtor dos títulos (filtros do CP, LCDPR)
   ramo: RamoSeguro;
   objeto_segurado: string;
   importancia_segurada: number;
@@ -189,7 +192,7 @@ export default function SegurosPage() {
   const [apoliceEdit,  setApoliceEdit]  = useState<Apolice | null>(null);
   const [tabModal,     setTabModal]     = useState<"dados" | "cobertura" | "financeiro" | "anexo">("dados");
   const FORM_VAZIO = (): Omit<Apolice, "id" | "fazenda_id" | "conta_id" | "created_at"> => ({
-    numero_apolice: "", seguradora: "", seguradora_pessoa_id: null, ramo: "maquinas",
+    produtor_id: null, numero_apolice: "", seguradora: "", seguradora_pessoa_id: null, ramo: "maquinas",
     objeto_segurado: "", importancia_segurada: 0, premio_anual: 0,
     forma_pagamento_premio: "avista", data_inicio_vigencia: hoje(),
     data_fim_vigencia: "", status: "vigente",
@@ -292,6 +295,7 @@ export default function SegurosPage() {
       setApoliceEdit(a);
       setQtdParcelasExistentes(premios.filter(p => p.apolice_id === a.id).length);
       setAForm({
+        produtor_id: a.produtor_id ?? null,
         numero_apolice: a.numero_apolice, seguradora: a.seguradora, seguradora_pessoa_id: a.seguradora_pessoa_id ?? null,
         ramo: a.ramo, objeto_segurado: a.objeto_segurado,
         importancia_segurada: a.importancia_segurada ?? 0,
@@ -371,6 +375,7 @@ export default function SegurosPage() {
       setIaSeguradoraCnpj(d.seguradora_cnpj ?? "");
       setAForm({
         ...FORM_VAZIO(),
+        produtor_id: produtores.find(x => so(x.cpf_cnpj) && so(x.cpf_cnpj) === so(d.segurado_cpf_cnpj))?.id ?? (produtores.length === 1 ? produtores[0].id : null),
         numero_apolice: d.numero_apolice ?? "", seguradora: d.seguradora_nome ?? "", seguradora_pessoa_id: acharSeguradora(d.seguradora_nome, d.seguradora_cnpj), ramo,
         objeto_segurado: d.objeto_segurado || bemDesc, importancia_segurada: Number(d.importancia_segurada) || 0, premio_anual: Number(premio) || 0,
         forma_pagamento_premio: parcelado ? "parcelado" : "avista", data_inicio_vigencia: inicio, data_fim_vigencia: d.data_fim_vigencia ?? "",
@@ -395,6 +400,7 @@ export default function SegurosPage() {
   async function salvarApolice() {
     if (!fazendaId) return;
     if (!aForm.numero_apolice.trim()) { setAErr("Informe o número da apólice."); return; }
+    if (produtores.length > 0 && !aForm.produtor_id) { setAErr("Selecione o produtor da apólice."); return; }
     if (!aForm.seguradora_pessoa_id)  { setAErr("Escolha a seguradora no cadastro de Pessoas (ou clique em + Cadastrar). Ela é o fornecedor dos títulos no Contas a Pagar."); return; }
     if (!aForm.data_fim_vigencia)     { setAErr("Informe a data de fim de vigência."); return; }
     if (aForm.premio_anual <= 0)      { setAErr("Informe o prêmio anual."); return; }
@@ -409,11 +415,11 @@ export default function SegurosPage() {
     setASaving(true); setAErr("");
     try {
       const objeto = aForm.objeto_segurado.trim() || derivarObjeto();
-      // Quando o bem segurado é a própria fazenda, usa o id dela — não a
-      // fazenda ativa no seletor, que pode ser outra da mesma conta.
-      const fazendaApolice = (aForm.bem_tipo === "fazenda" && aForm.bem_id) ? aForm.bem_id : fazendaId;
+      // Fazenda interna = a do produtor. Edição sem troca de produtor mantém a já gravada.
+      const mesmoProdutor = !!apoliceEdit && (apoliceEdit.produtor_id ?? "") === (aForm.produtor_id ?? "");
+      const fazendaApolice = (mesmoProdutor && apoliceEdit?.fazenda_id) || (await fazendaDoProdutor(aForm.produtor_id)) || apoliceEdit?.fazenda_id || fazendaId;
       const payload = {
-        fazenda_id: fazendaApolice, conta_id: contaId,
+        fazenda_id: fazendaApolice, conta_id: contaId, produtor_id: aForm.produtor_id ?? null,
         numero_apolice: aForm.numero_apolice.trim(),
         seguradora: aForm.seguradora.trim(), seguradora_pessoa_id: aForm.seguradora_pessoa_id,
         ramo: aForm.ramo, objeto_segurado: objeto,
@@ -808,6 +814,10 @@ export default function SegurosPage() {
               {/* ── ABA DADOS ─────────────────────────────────────────────── */}
               {tabModal === "dados" && (
                 <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label data-arato-label="true" style={lbl}>Produtor *</label>
+                    <ProdutorCombo produtores={produtores} value={aForm.produtor_id ?? ""} onChange={id => setAForm(f => ({ ...f, produtor_id: id || null }))} placeholder="— Selecionar —" />
+                  </div>
                   <div><label data-arato-label="true" style={lbl}>Nº da Apólice *</label><input value={aForm.numero_apolice} onChange={e => setAForm(f => ({ ...f, numero_apolice: e.target.value }))} style={inp} placeholder="000.000.000-0" /></div>
                   <div>
                     <label data-arato-label="true" style={lbl}>Seguradora *</label>

@@ -98,10 +98,12 @@ async function gerarParcelasEDespesas(
     categoria: `Prêmio de Seguro (${ramoLabel})`,
     operacao_gerencial_id: ogId,
     pessoa_id: (payload.seguradora_pessoa_id as string | null | undefined) ?? null, // fornecedor no grid do CP
+    produtor_id: (payload.produtor_id as string | null | undefined) ?? null,
     data_lancamento: parc.data_vencimento,
     data_vencimento: parc.data_vencimento,
     valor: parc.valor,
-    status: parc.data_vencimento < today ? "baixado" : "em_aberto",
+    // Parcela vencida entra em aberto (aparece vencida no CP): quem baixa é o usuário, com a conta e a data reais
+    status: "em_aberto",
     auto: true,
     origem_lancamento: "seguro",
     numero_documento: numeroApolice,
@@ -119,7 +121,7 @@ async function gerarParcelasEDespesas(
       fazenda_id: fazendaId,
       data_vencimento: parc.data_vencimento,
       valor: parc.valor,
-      pago: parc.data_vencimento < today,
+      pago: false,
       lancamento_id: lancs[i]?.id ?? null,
     }));
     const { error: premioError } = await sb.from("pagamentos_premio_seguro").insert(premioRows);
@@ -193,6 +195,7 @@ async function pagarPremio(req: NextRequest, sb: SbAdmin, premioId: string | und
       auto: false, origem_lancamento: "seguro",
       numero_documento: apolice?.numero_apolice,
       pessoa_id: apolice?.seguradora_pessoa_id ?? null,
+      produtor_id: apolice?.produtor_id ?? null,
     }).select("id").single();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     const { error: eVinc } = await sb.from("pagamentos_premio_seguro").update({ lancamento_id: lanc.id }).eq("id", premioId);
@@ -232,10 +235,15 @@ export async function POST(req: NextRequest) {
       const negadoPessoa = await exigirAcessoRegistro(req, "pessoas", pessoaSeguradora);
       if (negadoPessoa) return negadoPessoa;
     }
-    // Seção 404 ainda não rodada: grava a apólice sem a coluna nova em vez de falhar
-    const semColuna = (e: { code?: string; message?: string } | null) => e?.code === "PGRST204" || !!e?.message?.includes("seguradora_pessoa_id");
-    const { seguradora_pessoa_id: _sp, ...payloadSemColuna } = body.payload ?? {};
-    void _sp;
+    const produtorApolice = body.payload?.produtor_id as string | null | undefined;
+    if (produtorApolice) {
+      const negadoProdutor = await exigirAcessoRegistro(req, "produtores", produtorApolice);
+      if (negadoProdutor) return negadoProdutor;
+    }
+    // Seções 404/405 ainda não rodadas: grava a apólice sem as colunas novas em vez de falhar
+    const semColuna = (e: { code?: string; message?: string } | null) => e?.code === "PGRST204" || !!e?.message?.includes("seguradora_pessoa_id") || !!e?.message?.includes("produtor_id");
+    const { seguradora_pessoa_id: _sp, produtor_id: _pr, ...payloadSemColuna } = body.payload ?? {};
+    void _sp; void _pr;
 
     let apoliceId: string;
 
@@ -246,11 +254,12 @@ export async function POST(req: NextRequest) {
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
       apoliceId = body.apolice_id;
 
-      // Títulos já gerados (inclusive pagos) passam a mostrar a seguradora como fornecedor; só muda o vínculo, nunca valor ou baixa
-      if (pessoaSeguradora) {
+      // Títulos já gerados (inclusive pagos) recebem a seguradora como fornecedor e o produtor; só muda o vínculo, nunca valor ou baixa
+      if (pessoaSeguradora || produtorApolice) {
         const { data: premiosApolice } = await sb.from("pagamentos_premio_seguro").select("lancamento_id").eq("apolice_id", apoliceId);
         const idsLanc = (premiosApolice ?? []).map(p => p.lancamento_id).filter((id): id is string => !!id);
-        if (idsLanc.length) await falharSeErro(sb.from("lancamentos").update({ pessoa_id: pessoaSeguradora }).in("id", idsLanc), "vincular fornecedor");
+        const vinculos = { ...(pessoaSeguradora ? { pessoa_id: pessoaSeguradora } : {}), ...(produtorApolice ? { produtor_id: produtorApolice } : {}) };
+        if (idsLanc.length) await falharSeErro(sb.from("lancamentos").update(vinculos).in("id", idsLanc), "vincular fornecedor e produtor");
       }
 
       if (body.gerar_parcelas) {

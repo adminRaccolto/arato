@@ -19142,3 +19142,10 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE apolices_seguro ADD COLUMN IF NOT EXISTS seguradora_pessoa_id uuid REFERENCES pessoas(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_apolices_seguradora_pessoa ON apolices_seguro(seguradora_pessoa_id) WHERE seguradora_pessoa_id IS NOT NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 405 — Seguros: apólice ligada ao produtor (define a fazenda e o produtor dos títulos do prêmio)
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+ALTER TABLE apolices_seguro ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_apolices_produtor ON apolices_seguro(produtor_id) WHERE produtor_id IS NOT NULL;
+NOTIFY pgrst, 'reload schema';

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.02-b",
+    data: "02/11/2026",
+    titulo: "Seguros: apólice com produtor e parcelas vencidas em aberto",
+    modulos: ["Seguros", "Contas a Pagar"],
+    itens: [
+      { tipo: "melhoria", texto: "A apólice ganhou o campo Produtor, o primeiro da tela. Os títulos do prêmio saem com esse produtor e na fazenda dele. A IA preenche o campo pelo CPF/CNPJ do segurado. Ao salvar uma apólice antiga com o produtor escolhido, os títulos dela recebem o produtor." },
+      { tipo: "correcao", texto: "Parcelas de prêmio com vencimento passado não entram mais baixadas no Contas a Pagar: entram em aberto, aparecendo como vencidas, para o usuário baixar com a conta e a data reais." },
+    ],
+  },
+  {
     versao: "2026.11.02-a",
     data: "02/11/2026",
     titulo: "Seguros: seguradora aparece como fornecedor no Contas a Pagar",

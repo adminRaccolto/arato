@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Apólice: produtor e parcelas vencidas (02/11/2026)**: a apólice tem o campo Produtor, que define o produtor e a fazenda dos títulos do prêmio. Ao lançar apólice em andamento, parcelas já vencidas entram em aberto no Contas a Pagar e o usuário faz a baixa manual.
+
 **Seguradora como fornecedor (02/11/2026)**: na apólice, a seguradora é escolhida no cadastro de Pessoas (+ Cadastrar cria uma nova). Ela é o fornecedor dos títulos do prêmio no Contas a Pagar. Título de seguro sem fornecedor no grid: abra a apólice em Editar, escolha a seguradora e salve.
 
 **Seguros (01/11/2026)**: as apólices são do cliente e aparecem para todos os usuários dele e para a equipe Raccolto. Se a lista não carregar, a tela mostra o motivo em vermelho; peça o texto dessa mensagem ao usuário.
