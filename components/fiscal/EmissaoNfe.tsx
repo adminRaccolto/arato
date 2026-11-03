@@ -12,7 +12,7 @@ type TransportadoraOp = { id: string; razao_social: string | null; nome_fantasia
 type VeiculoOp = { id: string; placa: string; uf_placa: string | null; uf: string | null; rntrc: string | null; transportadora_id: string | null; motorista_habitual_id: string | null; modelo: string | null };
 type MotoristaOp = { id: string; nome: string; cpf?: string };
 /** Inscrição estadual (estabelecimento) de um emitente PF/PJ, com a série NF-e configurada para ela em Parâmetros → Fiscal. */
-export type InscricaoEmissao = { id: string; cpf: string; ie: string; municipio: string; fazenda_id: string | null; serie: string };
+export type InscricaoEmissao = { id: string; cpf: string; ie: string; municipio: string; uf: string; fazenda_id: string | null; serie: string };
 export type DadosEmissao = { emitentes: EmitenteFiscal[]; transportadoras: TransportadoraOp[]; veiculos: VeiculoOp[]; motoristas: MotoristaOp[]; inscricoes: InscricaoEmissao[] };
 
 /** Emitentes fiscais (módulos fiscal_pf_/fiscal_emp_, sem repetir CPF/CNPJ+IE) e cadastros de transporte do cliente. */
@@ -27,7 +27,7 @@ export function useDadosEmissao(fazendaIds: string[], contaId: string | null | u
       supabase.from("transportadoras").select("id, razao_social, nome_fantasia, cnpj, cpf, ie, rntrc, logradouro, numero, municipio, uf").or(doCliente).neq("ativa", false).order("razao_social"),
       supabase.from("veiculos").select("id, placa, uf_placa, uf, rntrc, transportadora_id, motorista_habitual_id, modelo").or(doCliente).neq("ativo", false).order("placa"),
       supabase.from("motoristas").select("id, nome, cpf").or(doCliente).eq("ativo", true).order("nome"),
-      supabase.from("produtor_inscricoes_estaduais").select("id, inscricao_estadual, fazenda_id, municipio, produtores!inner(cpf_cnpj, fazenda_id)").eq("ativa", true),
+      supabase.from("produtor_inscricoes_estaduais").select("id, inscricao_estadual, fazenda_id, municipio, estado, produtores!inner(cpf_cnpj, fazenda_id)").eq("ativa", true),
     ]).then(([em, tr, ve, mo, ins]) => {
       // Série por IE: módulos "<emitente>__ie_<id>" (config por estabelecimento)
       const seriePorIe = new Map<string, string>();
@@ -35,7 +35,7 @@ export function useDadosEmissao(fazendaIds: string[], contaId: string | null | u
         const ieId = r.modulo.split("__ie_")[1];
         if (ieId && r.config?.serie_nfe && !seriePorIe.has(ieId)) seriePorIe.set(ieId, String(r.config.serie_nfe));
       }
-      type InsRow = { id: string; inscricao_estadual: string; fazenda_id: string | null; municipio: string | null; produtores: { cpf_cnpj: string | null; fazenda_id: string | null } | { cpf_cnpj: string | null; fazenda_id: string | null }[] | null };
+      type InsRow = { id: string; inscricao_estadual: string; fazenda_id: string | null; municipio: string | null; estado: string | null; produtores: { cpf_cnpj: string | null; fazenda_id: string | null } | { cpf_cnpj: string | null; fazenda_id: string | null }[] | null };
       const vistosIe = new Set<string>();
       const inscricoes: InscricaoEmissao[] = [];
       for (const r of (ins.data ?? []) as InsRow[]) {
@@ -44,7 +44,7 @@ export function useDadosEmissao(fazendaIds: string[], contaId: string | null | u
         const k = `${(pr.cpf_cnpj ?? "").replace(/\D/g, "")}|${r.inscricao_estadual.replace(/\D/g, "")}`;
         if (vistosIe.has(k)) continue;
         vistosIe.add(k);
-        inscricoes.push({ id: r.id, cpf: (pr.cpf_cnpj ?? "").replace(/\D/g, ""), ie: r.inscricao_estadual, municipio: r.municipio ?? "", fazenda_id: r.fazenda_id, serie: seriePorIe.get(r.id) ?? "" });
+        inscricoes.push({ id: r.id, cpf: (pr.cpf_cnpj ?? "").replace(/\D/g, ""), ie: r.inscricao_estadual, municipio: r.municipio ?? "", uf: r.estado ?? "", fazenda_id: r.fazenda_id, serie: seriePorIe.get(r.id) ?? "" });
       }
       const lista = ((em.data ?? []) as { modulo: string; fazenda_id: string; config: Record<string, string> | null }[])
         .filter(r => r.config?.cpf_cnpj_emitente)

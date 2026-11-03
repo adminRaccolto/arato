@@ -7,6 +7,7 @@ import InputData from "../InputData";
 import { confirmarAcao } from "../ConfirmarAcao";
 import { useState, useEffect } from "react";
 import SelectBusca from "../SelectBusca";
+import { SeletorIE, ieSugerida, useDadosEmissao } from "./EmissaoNfe";
 import { useAuth } from "../AuthProvider";
 import { supabase } from "../../lib/supabase";
 import {
@@ -153,6 +154,25 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
   const [modalRet, setModalRet] = useState<TransferenciaMaquina | null>(null);
   const [retSalvando, setRetSalvando] = useState(false);
   const [retErro, setRetErro] = useState("");
+
+  // IE (estabelecimento) que emite, sugerida pela fazenda da máquina. Sem ela o servidor deduz pela fazenda do emitente
+  // e pode cair numa IE sem série (achado real 03/11/2026: Dirceu Ogliari, IE do Armazém Oásis, erro "Série """).
+  const { inscricoes } = useDadosEmissao(fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [], contaId);
+  const iesDoEmitente = (cpf?: string | null) => { const dig = (cpf ?? "").replace(/\D/g, ""); return dig ? inscricoes.filter(i => i.cpf === dig) : inscricoes; };
+  const emitenteAtual = resolverEmitente();
+  const cpfEmitenteNova = "erro" in emitenteAtual ? "" : emitenteAtual.cpf;
+  const cpfEmitenteRet = modalRet?.emitente_cpf_cnpj || cpfEmitenteNova;
+  const [ieEmissaoId, setIeEmissaoId] = useState("");
+  const [ieRetornoId, setIeRetornoId] = useState("");
+  const ieEmissao = inscricoes.find(i => i.id === ieEmissaoId);
+  useEffect(() => {
+    setIeEmissaoId(ieSugerida(iesDoEmitente(cpfEmitenteNova), maquinas.find(m => m.id === f.maquina_id)?.fazenda_id, cpfEmitenteNova)?.id ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.maquina_id, cpfEmitenteNova, inscricoes.length]);
+  useEffect(() => {
+    if (modalRet) setIeRetornoId(ieSugerida(iesDoEmitente(cpfEmitenteRet), modalRet.fazenda_id, cpfEmitenteRet)?.id ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalRet?.id, cpfEmitenteRet, inscricoes.length]);
 
   useEffect(() => {
     if (!contaId || !fazendaId) return;
@@ -394,14 +414,15 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       // certificado configurado, sem precisar escolher módulo manualmente).
       const em = resolverEmitente();
       if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
-      if (f.motivo === "transferencia_fazenda" && mesmoEstabelecimento(em.ie, f.dest_ie)) {
+      if (!ieEmissao && iesDoEmitente(em.cpf).length > 1) { setErro("Escolha a IE emitente."); setSalvando(false); return; }
+      if (f.motivo === "transferencia_fazenda" && mesmoEstabelecimento(ieEmissao?.ie ?? em.ie, f.dest_ie)) {
         setErro("A Inscrição Estadual de destino é a mesma do emitente. Escolha a IE da fazenda que vai receber a máquina.");
         setSalvando(false);
         return;
       }
       const moduloKey = em.modulo;
       const cpfCnpjHint = em.cpf;
-      const cfopSaida = cfopPorDestino(motivoCfg.cfopEtapa1 ?? "", em.uf, dest.estado);
+      const cfopSaida = cfopPorDestino(motivoCfg.cfopEtapa1 ?? "", ieEmissao?.uf || em.uf, dest.estado);
       const { transporte, motorista } = montarTransporte(trNova, f.motorista_nome, f.motorista_cpf);
 
       const resp = await fetch("/api/fiscal/emitir-nfe", {
@@ -410,6 +431,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
           fazenda_id: em.fazenda_id,
           modulo_key: moduloKey,
           cpf_cnpj_hint: cpfCnpjHint,
+          emit_ie_override: ieEmissao?.ie || undefined,
           destinatario: {
             nome: dest.nome,
             cpf_cnpj: (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined,
@@ -513,6 +535,8 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
     try {
       const emR = resolverEmitente(modalRet.emitente_cpf_cnpj);
       if ("erro" in emR) { setRetErro(emR.erro); setRetSalvando(false); return; }
+      const ieRetorno = inscricoes.find(i => i.id === ieRetornoId);
+      if (!ieRetorno && iesDoEmitente(emR.cpf).length > 1) { setRetErro("Escolha a IE emitente."); setRetSalvando(false); return; }
       const moduloKey = emR.modulo;
       const { transporte, motorista } = montarTransporte(trRet, trRet.motorista_nome, trRet.motorista_cpf);
 
@@ -522,6 +546,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
           fazenda_id: emR.fazenda_id,
           modulo_key: moduloKey,
           cpf_cnpj_hint: modalRet.emitente_cpf_cnpj,
+          emit_ie_override: ieRetorno?.ie || undefined,
           // A contraparte do documento é sempre quem participou da remessa original —
           // devolução recebida (entra) ou devolvida por nós (sai), mesmo destinatário.
           destinatario: {
@@ -700,6 +725,11 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
                   {emitentes.length > 1 && emitentes.map(e => <option key={`${e.modulo}|${e.fazenda_id}`} value={`${e.modulo}|${e.fazenda_id}`}>{e.nome} — {e.cpf}{e.ie ? ` · IE ${e.ie}` : ""}</option>)}
                 </SelectField>
               </div>
+              {MOTIVOS[f.motivo].emiteNfEtapa1 && (
+                <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                  <SeletorIE ies={iesDoEmitente(cpfEmitenteNova)} value={ieEmissaoId} onChange={setIeEmissaoId} inp={inp} lbl={lbl} />
+                </div>
+              )}
 
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>Motivo</label>
@@ -708,7 +738,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
                 </SelectField>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                   {MOTIVOS[f.motivo].cfopEtapa1
-                    ? <>CFOP {MOTIVOS[f.motivo].direcao === "entrada" ? "de entrada (referência)" : "de saída"}: <strong>{MOTIVOS[f.motivo].direcao === "entrada" ? MOTIVOS[f.motivo].cfopEtapa1 : cfopPorDestino(MOTIVOS[f.motivo].cfopEtapa1 ?? "", (() => { const em = resolverEmitente(); return "erro" in em ? null : em.uf; })(), destinoSelecionado()?.estado)}</strong></>
+                    ? <>CFOP {MOTIVOS[f.motivo].direcao === "entrada" ? "de entrada (referência)" : "de saída"}: <strong>{MOTIVOS[f.motivo].direcao === "entrada" ? MOTIVOS[f.motivo].cfopEtapa1 : cfopPorDestino(MOTIVOS[f.motivo].cfopEtapa1 ?? "", ieEmissao?.uf || ("erro" in emitenteAtual ? null : emitenteAtual.uf), destinoSelecionado()?.estado)}</strong></>
                     : <>Sem NF nesta etapa — só registro de controle</>}
                   {MOTIVOS[f.motivo].cfopEtapa2 ? <> · Devolução: <strong>{MOTIVOS[f.motivo].cfopEtapa2}</strong></> : (MOTIVOS[f.motivo].temEtapa2 ? <> · devolução sem NF</> : <> · sem devolução (movimento definitivo)</>)}
                 </div>
@@ -843,6 +873,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
               {motivoCfgRet.emiteNfEtapa2
                 ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>CFOP {modalRet.direcao === "entrada" ? "de devolução (nossa NF de saída)" : "de retorno"}: <strong>{modalRet.cfop_retorno}</strong></div>
                 : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Sem NF nesta etapa — só fecha o registro de controle.</div>}
+              {motivoCfgRet.emiteNfEtapa2 && <div style={{ marginTop: 12 }}><SeletorIE ies={iesDoEmitente(cpfEmitenteRet)} value={ieRetornoId} onChange={setIeRetornoId} inp={inp} lbl={lbl} /></div>}
               {motivoCfgRet.emiteNfEtapa2 && <div style={{ marginTop: 12, display: "grid" }}>{blocoTransporte(trRet, setTrRet, true)}</div>}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>

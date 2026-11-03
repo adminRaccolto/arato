@@ -1,5 +1,9 @@
 export const somenteDigitos = (valor?: string | null) => (valor ?? "").replace(/\D/g, "");
 
+const nomeMunicipio = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+// Sem um dos nomes não há o que comparar: vale como o mesmo município.
+export const mesmoMunicipio = (a?: string | null, b?: string | null) => !a || !b || nomeMunicipio(a) === nomeMunicipio(b);
+
 export interface InscricaoFiscal {
   id: string;
   produtor_id: string;

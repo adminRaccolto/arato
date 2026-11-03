@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cfopPorDestino, destinatarioDaInscricao, mesmoEstabelecimento } from "./transferencia-maquina.ts";
+import { mesmoMunicipio } from "../nfe/identidade-fiscal.ts";
 
 test("CFOP muda só quando o destino é em outro estado", () => {
   assert.equal(cfopPorDestino("5552", "MT", "MT"), "5552");
@@ -37,4 +38,13 @@ test("mesma IE é o mesmo estabelecimento, sem contar pontuação", () => {
   assert.equal(mesmoEstabelecimento("13.123.456-7", "131234567"), true);
   assert.equal(mesmoEstabelecimento("131234567", "131234568"), false);
   assert.equal(mesmoEstabelecimento("", ""), false);
+});
+
+test("IBGE da Pessoa só vale para o mesmo município", () => {
+  assert.equal(mesmoMunicipio("TAPURAH", "Tapurah"), true);
+  assert.equal(mesmoMunicipio("Lucas do Rio Verde", "LUCAS DO RIO VERDE "), true);
+  assert.equal(mesmoMunicipio("São José", "Sao Jose"), true);
+  assert.equal(mesmoMunicipio("TAPURAH", "Nova Mutum"), false);
+  assert.equal(mesmoMunicipio(undefined, "Nova Mutum"), true);
+  assert.equal(mesmoMunicipio("Tapurah", null), true);
 });

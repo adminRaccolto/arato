@@ -13,7 +13,7 @@ import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";
 import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
-import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal } from "./identidade-fiscal";
+import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesmoMunicipio } from "./identidade-fiscal";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
 
 export type { NFeInput, EmitenteCfg };
@@ -424,7 +424,8 @@ export async function emitirNFe(
     // Cadastro achado mas sem IBGE gravado: guarda o id pra tentar resolver via CEP (fallback 3) e
     // já corrigir o cadastro, em vez de só falhar a emissão com "cMun do destinatário inválido".
     if (pess && !pess.municipio_ibge && pess.cep) pessoaSemIbgeId = pess.id;
-    if (pess?.municipio_ibge) {
+    // O mesmo CPF pode ter estabelecimentos em municípios diferentes: o IBGE da Pessoa não vale para outro município.
+    if (pess?.municipio_ibge && mesmoMunicipio(input.destinatario.municipio_nome, pess.municipio)) {
       input = {
         ...input,
         destinatario: {

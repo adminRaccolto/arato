@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-l",
+    data: "03/11/2026",
+    titulo: "Transferência de máquina: escolha da IE emitente",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A remessa e o retorno de máquina agora têm o campo IE emitente, com a série de cada IE e a sugestão pela fazenda da máquina. Antes o sistema deduzia a IE e podia cair em uma sem série, com o erro \"Série inválida\"." },
+      { tipo: "correcao", texto: "NF-e para destinatário com mais de um estabelecimento: o código IBGE de outro município do mesmo CPF não é mais usado na nota." },
+    ],
+  },
+  {
     versao: "2026.11.03-k",
     data: "03/11/2026",
     titulo: "Transferência de máquina entre fazendas: destino pelo produtor e pela IE",
