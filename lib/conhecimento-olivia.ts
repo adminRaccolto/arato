@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Folha e Contas a Pagar (03/11/2026)**: cada linha de folha fechada fica ligada ao título do salário no CP. A lista de folhas mostra "Fechado · X de Y pagos" e vira "Pago" quando todos os salários estão baixados. Ao abrir a folha, a coluna de situação mostra Pago, Parcial, Aberto no CP ou Previsão por funcionário. Excluir o título no CP deixa a linha sem título; reprocessar a folha cria um novo. Se um cliente relatar salário pago que não aparece como pago na folha, encaminhe à equipe Raccolto informando a competência e o funcionário.
+
 **CNH do motorista (03/11/2026)**: até esta data, salvar um motorista com o número da CNH preenchido não gravava o cadastro, sem aviso. Se um cliente relatar motorista ou CNH que "não salvou" antes disso, peça para preencher de novo em Transporte → Motoristas.
 
 **Série por IE sem divergência (03/11/2026)**: a série e a numeração de cada IE ficam em Parâmetros → Fiscal, no cartão do produtor dono da IE. Um mesmo CPF pode ter mais de um cartão, como "FULANO" e "FULANO E OUTROS", e cada IE aparece só no cartão do seu produtor. Se o cliente disser que a série está configurada e o erro continuar, confira se foi salva no cartão certo.

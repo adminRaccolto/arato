@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-o",
+    data: "03/11/2026",
+    titulo: "Folha de pagamento ligada de verdade ao Contas a Pagar",
+    modulos: ["Folha de Pagamento", "Contas a Pagar"],
+    itens: [
+      { tipo: "correcao", texto: "Reprocessar uma folha cujo título tinha sido excluído no CP criava outro título, sem ligação com a folha, e cada novo reprocessamento criava mais um. Agora o título novo fica ligado à linha do funcionário." },
+      { tipo: "melhoria", texto: "A lista de folhas mostra quantos salários já foram pagos (\"Fechado · 8 de 12 pagos\") e passa a \"Pago\" quando todos estão baixados." },
+    ],
+  },
+  {
     versao: "2026.11.03-n",
     data: "03/11/2026",
     titulo: "Cadastro de motorista grava a CNH",

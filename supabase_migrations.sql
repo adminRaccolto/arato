@@ -19323,3 +19323,17 @@ NOTIFY pgrst, 'reload schema';
 -- Conferência depois de rodar:
 --   SELECT count(*) AS funcionarios_com_texto_sem_ligacao FROM funcionarios WHERE btrim(COALESCE(funcao, '')) <> '' AND funcao_id IS NULL;
 --   SELECT count(*) AS pre_cadastros FROM motoristas WHERE funcionario_id IS NOT NULL;
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 407 — Folha: a linha nunca aponta para título apagado
+--   Título do salário excluído no CP deixava o id antigo na linha. O reprocessamento criava outro título, que ficava
+--   solto, e a folha deixava de ver o pagamento.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+UPDATE folha_funcionarios ff SET cp_lancamento_id = NULL
+ WHERE cp_lancamento_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM lancamentos l WHERE l.id = ff.cp_lancamento_id);
+ALTER TABLE folha_funcionarios DROP CONSTRAINT IF EXISTS folha_funcionarios_cp_lancamento_fk;
+ALTER TABLE folha_funcionarios ADD CONSTRAINT folha_funcionarios_cp_lancamento_fk
+  FOREIGN KEY (cp_lancamento_id) REFERENCES lancamentos(id) ON DELETE SET NULL;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

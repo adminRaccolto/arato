@@ -1,5 +1,6 @@
 "use client";
 import { planilhaFormatada } from "../../../lib/relatorios/xlsx-estilo";
+import { rotuloPagamentoFolha } from "../../../lib/folha/titulo-linha";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -1142,9 +1143,11 @@ export default function FolhaPagamentoPage() {
                         <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_liquido)}</td>
                         <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>
                         <td style={S.td}>
-                          <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[f.status], background:ST_COLOR[f.status]+"18", borderRadius:4, padding:"2px 8px" }}>
-                            {ST_LABEL[f.status]}
-                          </span>
+                          {(() => {
+                            const pg = f.status === "fechado" ? rotuloPagamentoFolha(Number((f as any).num_funcionarios ?? 0), Number((f as any).num_pagos ?? 0)) : null;
+                            const cor = pg?.quitada ? ST_COLOR.pago : ST_COLOR[f.status];
+                            return <span style={{ fontSize:11, fontWeight:700, color:cor, background:cor+"18", borderRadius:4, padding:"2px 8px" }}>{pg?.txt ?? ST_LABEL[f.status]}</span>;
+                          })()}
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
                           <OperationalButton data-arato-button="secondary" onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</OperationalButton>
@@ -1274,9 +1277,14 @@ export default function FolhaPagamentoPage() {
                           <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(soma("valor_liquido"))}</td>
                           <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(soma("inss_patronal"))}</td>
                           <td style={S.td}>
-                            <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[stMes], background:ST_COLOR[stMes]+"18", borderRadius:4, padding:"2px 8px" }}>
-                              {ST_LABEL[stMes]}{rascunhos.length && rascunhos.length < lista.length ? ` (${rascunhos.length} de ${lista.length})` : ""}
-                            </span>
+                            {(() => {
+                              const fechadas = lista.filter(f => f.status === "fechado");
+                              const pg = stMes === "fechado" ? rotuloPagamentoFolha(fechadas.reduce((t, f) => t + Number((f as any).num_funcionarios ?? 0), 0), fechadas.reduce((t, f) => t + Number((f as any).num_pagos ?? 0), 0)) : null;
+                              const cor = pg?.quitada ? ST_COLOR.pago : ST_COLOR[stMes];
+                              return <span style={{ fontSize:11, fontWeight:700, color:cor, background:cor+"18", borderRadius:4, padding:"2px 8px" }}>
+                                {pg?.txt ?? ST_LABEL[stMes]}{rascunhos.length && rascunhos.length < lista.length ? ` (${rascunhos.length} de ${lista.length})` : ""}
+                              </span>;
+                            })()}
                           </td>
                           <td style={{ ...S.td, whiteSpace:"nowrap" }}>
                             <OperationalButton data-arato-button="secondary" onClick={() => setMesesAbertos(prev => { const n = new Set(prev); if (n.has(comp)) n.delete(comp); else n.add(comp); return n; })} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>{aberto ? "▾ Fechar lista" : "▸ Abrir"}</OperationalButton>

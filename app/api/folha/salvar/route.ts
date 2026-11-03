@@ -1,4 +1,6 @@
 import { falharSeErro } from "../../../../lib/db-util";
+import { buscarPaginado } from "../../../../lib/buscar-paginado";
+import { tituloDaLinha } from "../../../../lib/folha/titulo-linha";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
@@ -368,16 +370,28 @@ export async function POST(req: Request) {
       // Conta funcionários por folha em uma única query
       const folhaIds = (data ?? []).map((f: any) => f.id);
       let countMap: Record<string, number> = {};
+      const pagosMap: Record<string, number> = {};
       if (folhaIds.length > 0) {
-        const { data: counts } = await sb
+        const counts = await buscarPaginado<any>((de, ate) => sb
           .from("folha_funcionarios")
-          .select("folha_id, cp_lancamento_id")
-          .in("folha_id", folhaIds);
+          .select("id, folha_id, cp_lancamento_id")
+          .in("folha_id", folhaIds)
+          .order("id")
+          .range(de, ate));
         const semPrevisao = new Set<string>();
         (counts ?? []).forEach((row: any) => {
           countMap[row.folha_id] = (countMap[row.folha_id] ?? 0) + 1;
           if (!row.cp_lancamento_id) semPrevisao.add(row.folha_id);
         });
+        // Salários já baixados no CP, por folha fechada
+        const fechadas = new Set((data ?? []).filter((f: any) => f.status === "fechado").map((f: any) => f.id));
+        const linhasFechadas = counts.filter((row: any) => row.cp_lancamento_id && fechadas.has(row.folha_id));
+        const baixados = new Set<string>();
+        for (let i = 0; i < linhasFechadas.length; i += 200) {
+          const { data: ls } = await sb.from("lancamentos").select("id").eq("status", "baixado").in("id", linhasFechadas.slice(i, i + 200).map((row: any) => row.cp_lancamento_id));
+          for (const l of ls ?? []) baixados.add(l.id);
+        }
+        for (const row of linhasFechadas) if (baixados.has(row.cp_lancamento_id)) pagosMap[row.folha_id] = (pagosMap[row.folha_id] ?? 0) + 1;
         // Folha em rascunho gerada antes da previsão no CP: lança as previsões na primeira listagem (uma vez só,
         // depois as linhas já ficam ligadas aos títulos). Falha aqui nunca derruba a listagem.
         // Rascunhos lançados antes da Previsão de Gastos (Seção 352): títulos de previsão sem linha no módulo
@@ -407,6 +421,7 @@ export async function POST(req: Request) {
       const result = (data ?? []).map((f: any) => ({
         ...f,
         num_funcionarios: countMap[f.id] ?? 0,
+        num_pagos: pagosMap[f.id] ?? 0,
       }));
       return NextResponse.json({ ok: true, data: result });
     }
@@ -567,7 +582,7 @@ export async function POST(req: Request) {
       // Títulos atuais
       const idsTitulos = [...(antigas ?? []).map((r: any) => r.cp_lancamento_id), folha.cp_fgts_id, folha.cp_inss_patronal_id].filter(Boolean) as string[];
       const { data: titulos } = idsTitulos.length
-        ? await sb.from("lancamentos").select("id, valor, valor_pago, status, natureza, lote_id, conciliado, observacao, descricao").in("id", idsTitulos)
+        ? await sb.from("lancamentos").select("id, valor, valor_pago, status, natureza, lote_id, conciliado, observacao, descricao").in("id", idsTitulos).neq("status", "cancelado")
         : { data: [] as any[] };
       const tituloPor = new Map<string, any>((titulos ?? []).map((t: any) => [t.id, t]));
       const pago = (t: any) => !!t && (t.status === "baixado" || t.status === "parcial" || !!t.lote_id || !!t.conciliado || Number(t.valor_pago ?? 0) > 0);
@@ -691,7 +706,7 @@ export async function POST(req: Request) {
 
       // Linhas da folha: substitui mantendo o título de cada funcionário
       await falharSeErro(sb.from("folha_funcionarios").delete().eq("folha_id", id), "regravar linhas da folha");
-      const linhas = novas.map(r => ({ ...r, cp_lancamento_id: antigaPor.get(chave(r))?.cp_lancamento_id ?? novoTituloPor[chave(r)] ?? null }));
+      const linhas = novas.map(r => ({ ...r, cp_lancamento_id: tituloDaLinha(antigaPor.get(chave(r))?.cp_lancamento_id, novoTituloPor[chave(r)], tituloPor) }));
       if (linhas.length) await falharSeErro(sb.from("folha_funcionarios").insert(linhas), "regravar linhas da folha");
       const totais = {
         valor_bruto: r2(novas.reduce((t, r) => t + Number(r.salario_bruto ?? 0), 0)),
