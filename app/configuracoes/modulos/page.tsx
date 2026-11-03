@@ -759,9 +759,10 @@ function ParametrosSistemaContent() {
     if (!fazAlvo) return;
     setSalvando(modulo);
     // Sem fazenda específica, o parâmetro é do cliente: grava em todas as cópias já existentes dele
-    // (nunca cria uma cópia nova e desencontrada na fazenda de referência).
+    // (nunca cria uma cópia nova e desencontrada na fazenda de referência). A config por IE segue a mesma regra:
+    // gravar só na fazenda da IE criava outra cópia, e a IE ficava com duas séries (achado real 03/11/2026).
     let fazendas = [fazAlvo];
-    if (!fazendaIdAlvo && contaFazendaIds.length > 0) {
+    if ((!fazendaIdAlvo || modulo.includes("__ie_")) && contaFazendaIds.length > 0) {
       const { data: existentes } = await supabase.from("configuracoes_modulo").select("fazenda_id")
         .in("fazenda_id", contaFazendaIds).eq("modulo", modulo);
       if (existentes && existentes.length > 0) fazendas = existentes.map(e => e.fazenda_id as string);

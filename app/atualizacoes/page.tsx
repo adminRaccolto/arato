@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-m",
+    data: "03/11/2026",
+    titulo: "Série da NF-e por IE sem cópias divergentes",
+    modulos: ["Fiscal", "Parâmetros"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar a série ou a numeração de uma IE em Parâmetros → Fiscal não cria mais outra cópia da configuração: atualiza a que já existe." },
+      { tipo: "correcao", texto: "Se uma IE tiver mais de uma cópia de configuração, a emissão de NF-e usa sempre a mais recente, a mesma mostrada em Parâmetros → Fiscal." },
+    ],
+  },
+  {
     versao: "2026.11.03-l",
     data: "03/11/2026",
     titulo: "Transferência de máquina: escolha da IE emitente",

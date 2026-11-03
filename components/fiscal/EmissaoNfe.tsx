@@ -23,17 +23,20 @@ export function useDadosEmissao(fazendaIds: string[], contaId: string | null | u
     if (!fazendaIds.length) return;
     const doCliente = [...(contaId ? [`conta_id.eq.${contaId}`] : []), `fazenda_id.in.(${fazendaIds.join(",")})`].join(",");
     Promise.all([
-      supabase.from("configuracoes_modulo").select("modulo, fazenda_id, config").in("fazenda_id", fazendaIds).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
+      supabase.from("configuracoes_modulo").select("modulo, fazenda_id, config, updated_at").in("fazenda_id", fazendaIds).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%"),
       supabase.from("transportadoras").select("id, razao_social, nome_fantasia, cnpj, cpf, ie, rntrc, logradouro, numero, municipio, uf").or(doCliente).neq("ativa", false).order("razao_social"),
       supabase.from("veiculos").select("id, placa, uf_placa, uf, rntrc, transportadora_id, motorista_habitual_id, modelo").or(doCliente).neq("ativo", false).order("placa"),
       supabase.from("motoristas").select("id, nome, cpf").or(doCliente).eq("ativo", true).order("nome"),
       supabase.from("produtor_inscricoes_estaduais").select("id, inscricao_estadual, fazenda_id, municipio, estado, produtores!inner(cpf_cnpj, fazenda_id)").eq("ativa", true),
     ]).then(([em, tr, ve, mo, ins]) => {
       // Série por IE: módulos "<emitente>__ie_<id>" (config por estabelecimento)
+      // Havendo cópias, vale a mais recente, a mesma que a emissão usa.
       const seriePorIe = new Map<string, string>();
-      for (const r of (em.data ?? []) as { modulo: string; config: Record<string, string> | null }[]) {
+      const seriesEmOrdem = [...(em.data ?? []) as { modulo: string; config: Record<string, string> | null; updated_at: string | null }[]]
+        .sort((a, b) => (a.updated_at ?? "").localeCompare(b.updated_at ?? ""));
+      for (const r of seriesEmOrdem) {
         const ieId = r.modulo.split("__ie_")[1];
-        if (ieId && r.config?.serie_nfe && !seriePorIe.has(ieId)) seriePorIe.set(ieId, String(r.config.serie_nfe));
+        if (ieId && r.config?.serie_nfe) seriePorIe.set(ieId, String(r.config.serie_nfe));
       }
       type InsRow = { id: string; inscricao_estadual: string; fazenda_id: string | null; municipio: string | null; estado: string | null; produtores: { cpf_cnpj: string | null; fazenda_id: string | null } | { cpf_cnpj: string | null; fazenda_id: string | null }[] | null };
       const vistosIe = new Set<string>();

@@ -150,7 +150,8 @@ export async function buscarConfEmitente(
         const { data: cfgsIe } = await sb()
           .from("configuracoes_modulo")
           .select("modulo, config")
-          .in("modulo", iesAtivas.map(i => `${moduloKey}__ie_${i.id}`));
+          .in("modulo", iesAtivas.map(i => `${moduloKey}__ie_${i.id}`))
+          .order("updated_at", { ascending: true }); // havendo cópias, vale a mais recente, como em Parâmetros → Fiscal
         for (const row of cfgsIe ?? []) {
           const ieId = (row.modulo as string).split("__ie_")[1];
           if (ieId) configsPorIe.set(ieId, row.config as Record<string, string>);

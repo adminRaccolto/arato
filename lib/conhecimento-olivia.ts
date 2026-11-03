@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Série por IE sem divergência (03/11/2026)**: a série e a numeração de cada IE ficam em Parâmetros → Fiscal, no cartão do produtor dono da IE. Um mesmo CPF pode ter mais de um cartão, como "FULANO" e "FULANO E OUTROS", e cada IE aparece só no cartão do seu produtor. Se o cliente disser que a série está configurada e o erro continuar, confira se foi salva no cartão certo.
+
 **IE emitente na transferência de máquina (03/11/2026)**: quando o emitente tem mais de uma Inscrição Estadual, a remessa e o retorno de máquina mostram o campo "IE emitente", com a série de cada uma, e a tela sugere a IE da fazenda onde a máquina está. Se aparecer o erro de série inválida, a IE escolhida está sem série: escolha outra ou configure a série em Parâmetros → Fiscal → Inscrições Estaduais.
 
 **Transferência de máquina entre fazendas (03/11/2026)**: com o motivo "Transferência entre fazendas", o destino é escolhido entre os produtores do cliente e, depois, entre as Inscrições Estaduais ativas daquele produtor. Com uma IE só, ela já vem marcada. O endereço da nota vem da IE. Se o produtor não tiver IE ativa, cadastre em Cadastros → Produtores. Não é possível emitir para a mesma IE do emitente. Nos outros motivos, como conserto e comodato, o destinatário continua vindo de Pessoas. O CFOP de saída muda de 5xxx para 6xxx quando o destino fica em outro estado, e a tela mostra o CFOP que será usado.
