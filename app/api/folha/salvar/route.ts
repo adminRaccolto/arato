@@ -372,7 +372,7 @@ export async function POST(req: Request) {
       let countMap: Record<string, number> = {};
       const pagosMap: Record<string, number> = {};
       if (folhaIds.length > 0) {
-        const counts = await buscarPaginado<any>((de, ate) => sb
+        const counts = await buscarPaginado<{ id: string; folha_id: string; cp_lancamento_id: string | null }>((de, ate) => sb
           .from("folha_funcionarios")
           .select("id, folha_id, cp_lancamento_id")
           .in("folha_id", folhaIds)
@@ -384,14 +384,14 @@ export async function POST(req: Request) {
           if (!row.cp_lancamento_id) semPrevisao.add(row.folha_id);
         });
         // Salários já baixados no CP, por folha fechada
-        const fechadas = new Set((data ?? []).filter((f: any) => f.status === "fechado").map((f: any) => f.id));
-        const linhasFechadas = counts.filter((row: any) => row.cp_lancamento_id && fechadas.has(row.folha_id));
+        const fechadas = new Set((data ?? []).filter((f: { status: string }) => f.status === "fechado").map((f: { id: string }) => f.id));
+        const linhasFechadas = counts.filter(row => row.cp_lancamento_id && fechadas.has(row.folha_id));
         const baixados = new Set<string>();
         for (let i = 0; i < linhasFechadas.length; i += 200) {
-          const { data: ls } = await sb.from("lancamentos").select("id").eq("status", "baixado").in("id", linhasFechadas.slice(i, i + 200).map((row: any) => row.cp_lancamento_id));
+          const { data: ls } = await sb.from("lancamentos").select("id").eq("status", "baixado").in("id", linhasFechadas.slice(i, i + 200).map(row => row.cp_lancamento_id as string));
           for (const l of ls ?? []) baixados.add(l.id);
         }
-        for (const row of linhasFechadas) if (baixados.has(row.cp_lancamento_id)) pagosMap[row.folha_id] = (pagosMap[row.folha_id] ?? 0) + 1;
+        for (const row of linhasFechadas) if (baixados.has(row.cp_lancamento_id as string)) pagosMap[row.folha_id] = (pagosMap[row.folha_id] ?? 0) + 1;
         // Folha em rascunho gerada antes da previsão no CP: lança as previsões na primeira listagem (uma vez só,
         // depois as linhas já ficam ligadas aos títulos). Falha aqui nunca derruba a listagem.
         // Rascunhos lançados antes da Previsão de Gastos (Seção 352): títulos de previsão sem linha no módulo

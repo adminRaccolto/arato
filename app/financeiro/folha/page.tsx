@@ -91,6 +91,8 @@ interface Folha {
   fgts_total?: number;
   obs?: string;
   data_vencimento?: string | null;   // data de pagamento (vencimento do CP de salário) escolhida ao gerar a folha
+  num_funcionarios?: number;
+  num_pagos?: number;
   funcionarios?: FolhaFunc[];
 }
 interface Adiantamento {
@@ -1144,7 +1146,7 @@ export default function FolhaPagamentoPage() {
                         <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>
                         <td style={S.td}>
                           {(() => {
-                            const pg = f.status === "fechado" ? rotuloPagamentoFolha(Number((f as any).num_funcionarios ?? 0), Number((f as any).num_pagos ?? 0)) : null;
+                            const pg = f.status === "fechado" ? rotuloPagamentoFolha(f.num_funcionarios ?? 0, f.num_pagos ?? 0) : null;
                             const cor = pg?.quitada ? ST_COLOR.pago : ST_COLOR[f.status];
                             return <span style={{ fontSize:11, fontWeight:700, color:cor, background:cor+"18", borderRadius:4, padding:"2px 8px" }}>{pg?.txt ?? ST_LABEL[f.status]}</span>;
                           })()}
@@ -1279,7 +1281,7 @@ export default function FolhaPagamentoPage() {
                           <td style={S.td}>
                             {(() => {
                               const fechadas = lista.filter(f => f.status === "fechado");
-                              const pg = stMes === "fechado" ? rotuloPagamentoFolha(fechadas.reduce((t, f) => t + Number((f as any).num_funcionarios ?? 0), 0), fechadas.reduce((t, f) => t + Number((f as any).num_pagos ?? 0), 0)) : null;
+                              const pg = stMes === "fechado" ? rotuloPagamentoFolha(fechadas.reduce((t, f) => t + (f.num_funcionarios ?? 0), 0), fechadas.reduce((t, f) => t + (f.num_pagos ?? 0), 0)) : null;
                               const cor = pg?.quitada ? ST_COLOR.pago : ST_COLOR[stMes];
                               return <span style={{ fontSize:11, fontWeight:700, color:cor, background:cor+"18", borderRadius:4, padding:"2px 8px" }}>
                                 {pg?.txt ?? ST_LABEL[stMes]}{rascunhos.length && rascunhos.length < lista.length ? ` (${rascunhos.length} de ${lista.length})` : ""}
