@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-q",
+    data: "03/11/2026",
+    titulo: "Baixa de título em dólar pela cotação do pagamento",
+    modulos: ["Contas a Pagar", "Contas a Receber"],
+    itens: [
+      { tipo: "correcao", texto: "Título em dólar sem cotação gravada era calculado a R$ 5,12 na baixa, e pagar por uma cotação maior podia ser recusado. Agora a baixa tem o campo Cotação do pagamento, que calcula o valor em reais e fica gravado no título." },
+    ],
+  },
+  {
     versao: "2026.11.03-p",
     data: "03/11/2026",
     titulo: "Contratos financeiros: liquidação interna e liberação em dólar",

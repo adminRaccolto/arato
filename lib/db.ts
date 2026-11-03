@@ -1106,6 +1106,7 @@ export async function baixarLancamento(
     salvar_classificacao?: boolean;
     nova_data_vencimento?: string;
     forma_pagamento?: string;
+    cotacao_usd?: number;
   }
 ): Promise<void> {
   // Usa API route com service_role_key — imune a JWT expirado e RLS silenciosa
@@ -1128,6 +1129,7 @@ export async function baixarLancamento(
       desconto_valor:        extras?.desconto_valor,
       nova_data_vencimento:  extras?.nova_data_vencimento,
       forma_pagamento:       extras?.forma_pagamento,
+      cotacao_usd:           extras?.cotacao_usd,
     }),
   });
   const json = await res.json() as { ok: boolean; error?: string };

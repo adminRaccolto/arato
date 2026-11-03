@@ -544,15 +544,27 @@ export default function ContasAReceberPage() {
   const [erroAcao,     setErroAcao]     = useState("");
 
   const saldoBase = (l: RelLancamento) => saldoBRL(l);
+  // Título em dólar: o valor em reais sai da cotação do dia do pagamento, informada na baixa
+  const [bCotacao, setBCotacao] = useState("");
+  const saldoModal = (l: RelLancamento) => ehUSD(l.moeda)
+    ? Math.max(0, Math.round((Number(l.valor ?? 0) * numBR(bCotacao) - Number(l.valor_pago ?? 0)) * 100) / 100)
+    : saldoBase(l);
+  const mudarCotacaoBaixa = (v: string) => {
+    setBCotacao(v);
+    if (!modalBaixa) return;
+    const saldo = Math.max(0, Math.round((Number(modalBaixa.valor ?? 0) * numBR(v) - Number(modalBaixa.valor_pago ?? 0)) * 100) / 100);
+    setBValor(Math.max(0, saldo + numBR(bMulta) + numBR(bJuros) - numBR(bDesc)).toFixed(2).replace(".", ","));
+  };
   const recalcValor = (multa: string, juros: string, desc: string) => {
     if (!modalBaixa) return;
-    setBValor(Math.max(0, saldoBase(modalBaixa) + numBR(multa) + numBR(juros) - numBR(desc)).toFixed(2).replace(".", ","));
+    setBValor(Math.max(0, saldoModal(modalBaixa) + numBR(multa) + numBR(juros) - numBR(desc)).toFixed(2).replace(".", ","));
   };
 
   async function abrirBaixa(l: RelLancamento) {
     setErroAcao("");
     setModalBaixa(l);
     setBValor(saldoBase(l).toFixed(2).replace(".", ","));
+    setBCotacao(ehUSD(l.moeda) ? (cotDe(l) ?? 0).toFixed(4).replace(".", ",") : "");
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
     setBNovaData("");
@@ -574,11 +586,13 @@ export default function ContasAReceberPage() {
   async function confirmarBaixa() {
     if (!(await confirmarAcao({ titulo: "Confirmar baixa", mensagem: "Confira valor, data e conta antes de confirmar. A baixa movimenta o saldo bancário.", perigo: false }))) return;
     if (!modalBaixa || (!bConta && modalBaixa.moeda !== "barter") || !bValor) { setErroAcao(modalBaixa?.moeda === "barter" ? "Informe o valor." : "Preencha valor e conta bancária."); return; }
+    if (ehUSD(modalBaixa.moeda) && !(numBR(bCotacao) > 0)) { setErroAcao("Informe a cotação do pagamento."); return; }
     setSalvandoAcao(true);
     setErroAcao("");
     try {
       if (modalBaixa.origem_tabela === "lancamentos") {
         await baixarLancamento(modalBaixa.id, numBR(bValor), bData, bConta, {
+          cotacao_usd: ehUSD(modalBaixa.moeda) ? numBR(bCotacao) : undefined,
           multa_valor: numBR(bMulta), juros_valor: numBR(bJuros), desconto_valor: numBR(bDesc), // 0 explícito: zera o que ficou gravado
           pessoa_id: bClass.pessoa_id || undefined, operacao_gerencial_id: bClass.og_id || undefined,
           ano_safra_id: bClass.ano_safra_id || undefined, ciclo_id: bClass.ciclo_id || undefined,
@@ -589,7 +603,7 @@ export default function ContasAReceberPage() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             acao: "baixar", lancamento_id: modalBaixa.id,
-            valor_pago_agora: numBR(bValor), data_baixa: bData, conta_bancaria: bConta,
+            valor_pago_agora: numBR(bValor), data_baixa: bData, conta_bancaria: bConta, cotacao_usd: ehUSD(modalBaixa.moeda) ? numBR(bCotacao) : undefined,
             multa_valor: numBR(bMulta), juros_valor: numBR(bJuros), desconto_valor: numBR(bDesc),
           }),
         });
@@ -2404,6 +2418,13 @@ export default function ContasAReceberPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gap: 12 }}>
+              {ehUSD(modalBaixa.moeda) && (
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Cotação do pagamento (R$ por US$)</label>
+                  <input value={bCotacao} onChange={e => mudarCotacaoBaixa(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="5,7000" />
+                  <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{fmtNaMoeda(modalBaixa.valor, modalBaixa.moeda)} × cotação = {fmtBRL(saldoModal(modalBaixa) + Number(modalBaixa.valor_pago ?? 0))}</div>
+                </div>
+              )}
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Valor pago agora</label>
                 <input value={bValor} onChange={e => setBValor(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box", fontWeight: 700 }} />
@@ -2466,7 +2487,7 @@ export default function ContasAReceberPage() {
                 )}
               </div>
             )}
-            {modalBaixa.origem_tabela === "lancamentos" && numBR(bValor) > 0 && numBR(bValor) + 0.01 < saldoBase(modalBaixa) + numBR(bMulta) + numBR(bJuros) - numBR(bDesc) && (
+            {modalBaixa.origem_tabela === "lancamentos" && numBR(bValor) > 0 && numBR(bValor) + 0.01 < saldoModal(modalBaixa) + numBR(bMulta) + numBR(bJuros) - numBR(bDesc) && (
               <div data-arato-dialog-body="true" style={{ marginTop: 12, background: "#FBF3E0", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 14px" }}>
                 <label data-arato-label="true" style={lbl}>Recebimento parcial — nova data de vencimento do saldo restante (opcional)</label>
                 <InputData type="date" value={bNovaData} onChange={e => setBNovaData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />

@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Baixa de título em dólar (03/11/2026)**: na baixa de um título em dólar aparece "Cotação do pagamento". O sistema sugere a cotação do título ou a PTAX atual. Troque pela cotação real do dia: o valor em reais é recalculado e a cotação fica gravada no título.
+
 **Cédula que liquida contrato (03/11/2026)**: em Contratos Financeiros → aba Principal → "Esta cédula liquida os contratos", há duas formas. "Passa pela conta": o banco libera e debita, então lance a liberação total em Liberação e informe o débito e a conta; os títulos são baixados nessa conta e o que sobrar fica disponível. "Interna no banco": informe só o valor e a data da quitação; os títulos são baixados sem conta, e essa parte da cédula aparece em Liberação como "Liquidação interna (sem caixa)". Se a cédula for maior que a quitação, o saldo aparece em "Saldo a liberar" e deve ser lançado em Liberação. Para desfazer, use Desvincular.
 
 **Liberação de contrato em dólar (03/11/2026)**: o banco deposita em reais, então a entrada no Contas a Receber fica em R$, pela cotação do contrato. Sem cotação, o sistema pede para informar na aba Principal.

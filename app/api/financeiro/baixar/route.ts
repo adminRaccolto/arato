@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
       desconto_valor?:   number;
       nova_data_vencimento?: string;
       forma_pagamento?: string;   // troca da forma de pagamento na baixa (ex.: NF dizia boleto, pagou por PIX)
+      cotacao_usd?: number;       // título em dólar: cotação do dia do pagamento
       // aplicar_adiantamento
       adiantamento_id?:  string;
       adiantamento_salario_id?: string;   // aplicar_adiantamento_funcionario
@@ -244,7 +245,8 @@ export async function POST(req: NextRequest) {
       .select("valor, cotacao_usd, moeda, valor_pago, contrato_financeiro_id, data_vencimento, valor_multa, valor_juros, valor_desconto")
       .eq("id", id).single();
 
-    const cotacao    = (atual?.cotacao_usd as number | null) ?? 5.12;
+    const cotacaoPagamento = atual?.moeda === "USD" && Number(body.cotacao_usd) > 0 ? Number(body.cotacao_usd) : null;
+    const cotacao    = cotacaoPagamento ?? (atual?.cotacao_usd as number | null) ?? 5.12;
     const valorTotal = atual?.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual?.valor ?? 0);
     const jaRPago    = (atual?.valor_pago as number | null) ?? 0;
     const agora      = body.valor_pago_agora ?? 0;
@@ -254,7 +256,7 @@ export async function POST(req: NextRequest) {
 
     // Ninguém paga/recebe mais do que o título vale (juros e multa só contam se informados na baixa)
     const tetoTitulo = {
-      valor: atual?.valor, moeda: atual?.moeda, cotacao_usd: atual?.cotacao_usd,
+      valor: atual?.valor, moeda: atual?.moeda, cotacao_usd: cotacaoPagamento ?? atual?.cotacao_usd,
       valor_multa: body.multa_valor ?? (atual?.valor_multa as number | null),
       valor_juros: body.juros_valor ?? (atual?.valor_juros as number | null),
       valor_desconto: body.desconto_valor ?? (atual?.valor_desconto as number | null),
@@ -269,6 +271,7 @@ export async function POST(req: NextRequest) {
       data_baixa:     body.data_baixa,
       conta_bancaria: body.conta_bancaria ?? null,
     };
+    if (cotacaoPagamento)            patch.cotacao_usd            = cotacaoPagamento;
     if (body.pessoa_id)              patch.pessoa_id              = body.pessoa_id;
     if (body.operacao_gerencial_id)  patch.operacao_gerencial_id  = body.operacao_gerencial_id;
     if (body.ano_safra_id)           patch.ano_safra_id           = body.ano_safra_id;

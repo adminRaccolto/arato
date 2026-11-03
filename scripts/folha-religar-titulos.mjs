@@ -1,10 +1,12 @@
 // Religa as linhas de folha FECHADA que perderam o título do salário (sem título ou título apagado), quando existe um
 // único título real solto do mesmo funcionário e competência. Os casos com mais de um título só são listados.
-// Uso: node --env-file=.env.local scripts/folha-religar-titulos.mjs [--aplicar]
+// Com --mais-antigo, os casos com mais de um título ligam ao criado primeiro; os demais títulos ficam como estão.
+// Uso: node --env-file=.env.local scripts/folha-religar-titulos.mjs [--mais-antigo] [--aplicar]
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync } from "fs";
 
 const aplicar = process.argv.includes("--aplicar");
+const maisAntigo = process.argv.includes("--mais-antigo");
 const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 async function todos(montar) {
   let r = [];
@@ -20,7 +22,7 @@ const folhas = (await todos(() => s.from("folha_pagamento").select("id, fazenda_
 const folhaPor = new Map(folhas.map(f => [f.id, f]));
 const linhas = await todos(() => s.from("folha_funcionarios").select("id, folha_id, funcionario_id, nome_funcionario, cp_lancamento_id").order("id"));
 const ligados = new Set(linhas.map(l => l.cp_lancamento_id).filter(Boolean));
-const titulos = await todos(() => s.from("lancamentos").select("id, fazenda_id, funcionario_id, descricao, status, natureza, valor, data_vencimento").ilike("descricao", "Sal_rio %").not("funcionario_id", "is", null).order("id"));
+const titulos = await todos(() => s.from("lancamentos").select("id, fazenda_id, funcionario_id, descricao, status, natureza, valor, data_vencimento, created_at").ilike("descricao", "Sal_rio %").not("funcionario_id", "is", null).order("id"));
 const idsTitulo = new Set(titulos.map(t => t.id));
 const apontados = [...ligados].filter(id => !idsTitulo.has(id));
 const existentes = new Set(idsTitulo);
@@ -40,7 +42,11 @@ for (const l of linhas) {
   const c = soltos.filter(t => t.funcionario_id === l.funcionario_id && t.fazenda_id === f.fazenda_id && t.descricao.includes(rotulo));
   const nome = `${f.competencia} ${l.nome_funcionario}`;
   if (c.length === 1) religar.push({ linha: l.id, anterior: l.cp_lancamento_id, titulo: c[0].id, nome, valor: c[0].valor, status: c[0].status });
-  else if (c.length > 1) ambiguos.push(`${nome}: ${c.map(t => `${t.status} R$ ${t.valor} venc ${t.data_vencimento}`).join(" | ")}`);
+  else if (c.length > 1 && maisAntigo) {
+    const t = [...c].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+    religar.push({ linha: l.id, anterior: l.cp_lancamento_id, titulo: t.id, nome, valor: t.valor, status: t.status });
+    console.log(`Fora da folha: ${nome}: ${c.filter(x => x.id !== t.id).map(x => `${x.status} R$ ${x.valor}, criado em ${x.created_at.slice(0, 10)}`).join(" | ")}`);
+  } else if (c.length > 1) ambiguos.push(`${nome}: ${c.map(t => `${t.status} R$ ${t.valor} venc ${t.data_vencimento}`).join(" | ")}`);
   else semTitulo.push(nome);
 }
 console.log(`Religar (${religar.length}):`);

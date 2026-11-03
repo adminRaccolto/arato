@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       novo_valor?: number;
       lancamento_id: string;
       valor_pago_agora?: number;
+      cotacao_usd?: number;   // título em dólar: cotação do dia do pagamento
       data_baixa?: string;
       conta_bancaria?: string;
       observacao?: string;
@@ -69,7 +70,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, novo_status: "pendente" });
     }
 
-    const cotacao    = (atual.cotacao_usd as number | null) ?? 5.12;
+    const cotacaoPagamento = atual.moeda === "USD" && Number(body.cotacao_usd) > 0 ? Number(body.cotacao_usd) : null;
+    const cotacao    = cotacaoPagamento ?? (atual.cotacao_usd as number | null) ?? 5.12;
     const valorTotal = atual.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual.valor ?? 0);
     const agora      = body.valor_pago_agora ?? 0;
     if (agora <= 0 && !(body.desconto_valor ?? 0)) {
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
     const descAcum   = ((atual.valor_desconto as number | null) ?? 0) + (body.desconto_valor ?? 0);
     const novoStatus = novoTotal + descAcum >= valorTotal - 0.01 ? "pago" : "parcial";
     const tetoEmp = {
-      valor: atual.valor, moeda: atual.moeda, cotacao_usd: atual.cotacao_usd,
+      valor: atual.valor, moeda: atual.moeda, cotacao_usd: cotacaoPagamento ?? atual.cotacao_usd,
       valor_multa: body.multa_valor ?? (atual.valor_multa as number | null),
       valor_juros: body.juros_valor ?? (atual.valor_juros as number | null),
       valor_desconto: descAcum,
@@ -94,6 +96,7 @@ export async function POST(req: NextRequest) {
       data_pagamento: body.data_baixa,
       conta_bancaria: body.conta_bancaria || null,
     };
+    if (cotacaoPagamento)     patch.cotacao_usd = cotacaoPagamento;
     if (body.observacao)      patch.observacao = body.observacao;
     if (body.forma_pagamento?.trim()) patch.forma_pagamento = body.forma_pagamento.trim();
     if (body.multa_valor)     patch.valor_multa = body.multa_valor;
