@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-w",
+    data: "03/11/2026",
+    titulo: "Devolução de compra com IE emitente",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "A devolução de compra agora tem o campo IE emitente, preenchido com a IE da NF de origem. Antes, quem tem mais de uma IE na mesma fazenda não conseguia emitir." },
+      { tipo: "correcao", texto: "Erros de configuração na emissão de NF-e agora mostram o motivo real, em vez de \"SEFAZ undefined: undefined\"." },
+    ],
+  },
+  {
     versao: "2026.11.03-v",
     data: "03/11/2026",
     titulo: "Devolução da entrega de compra para entrega futura",

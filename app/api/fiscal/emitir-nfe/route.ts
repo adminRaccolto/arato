@@ -120,6 +120,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
   } catch (err) {
     console.error("[emitir-nfe]", err);
-    return NextResponse.json({ erro: String(err) }, { status: 500 });
+    // Mesmo formato do resultado da emissão: sem isso, as telas mostravam "SEFAZ undefined: undefined" no lugar do motivo
+    const motivo = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ sucesso: false, cStat: "CFG", xMotivo: motivo, erro: motivo }, { status: 422 });
   }
 }

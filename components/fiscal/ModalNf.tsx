@@ -49,7 +49,8 @@ import {
   
   processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
-import { itemDevolvivel, podeDevolverNf } from "../../lib/fiscal/devolucao-compra";
+import { ieDaDevolucao, ieDoDestinatarioNoXml, itemDevolvivel, municipioDoDestinatarioNoXml, podeDevolverNf } from "../../lib/fiscal/devolucao-compra";
+import { SeletorIE, useDadosEmissao } from "./EmissaoNfe";
 import { useAuth } from "../AuthProvider";
 import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
@@ -577,6 +578,10 @@ export default function ModalNf({
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
   const [devCpfHint, setDevCpfHint] = useState<string | undefined>(undefined);
+  // IE emitente da devolução: a de quem comprou, lida do XML da NF de origem
+  const [devIeOrigem, setDevIeOrigem] = useState<string | null>(null);
+  const [devMunicipioOrigem, setDevMunicipioOrigem] = useState<string | null>(null);
+  const [devIeId, setDevIeId] = useState("");
   const [devFatorDesconto, setDevFatorDesconto] = useState(1);
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
   const [devCfop,    setDevCfop]    = useState("5201");
@@ -1923,9 +1928,31 @@ export default function ModalNf({
     }
   }
 
+  const { inscricoes: inscricoesEmissao } = useDadosEmissao(fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [], contaId);
+  const iesDaDevolucao = inscricoesEmissao.filter(i => i.cpf === (devCpfHint ?? "").replace(/\D/g, ""));
+  useEffect(() => {
+    if (!devModal || devIeId) return;
+    const ie = ieDaDevolucao(iesDaDevolucao, devIeOrigem, devMunicipioOrigem);
+    if (ie) setDevIeId(ie.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devModal, devIeOrigem, devMunicipioOrigem, devCpfHint, inscricoesEmissao.length]);
+
   // ── Abrir modal de devolução ──────────────────────────────
   async function abrirDevolucao(nf: NfEntrada) {
     setDevNfOrig(nf);
+    setDevIeOrigem(nf.ie_produtor ?? null);
+    setDevMunicipioOrigem(null);
+    setDevIeId("");
+    if (!nf.ie_produtor && nf.xml_storage_path) {
+      supabase.storage.from("arquivos").download(nf.xml_storage_path)
+        .then(async ({ data }) => {
+          if (!data) return;
+          const xml = await data.text();
+          setDevIeOrigem(ieDoDestinatarioNoXml(xml));
+          setDevMunicipioOrigem(municipioDoDestinatarioNoXml(xml));
+        })
+        .catch(() => {});
+    }
     setDevErr("");
     setDevObs("");
     setDevData(hojeLocal());
@@ -2075,6 +2102,8 @@ export default function ModalNf({
     setDevSaving(true);
     setDevErr("");
     try {
+      const ieDevolucao = inscricoesEmissao.find(i => i.id === devIeId);
+      if (!ieDevolucao && iesDaDevolucao.length > 1) { setDevErr("Escolha a IE emitente da devolução."); return; }
       const itensNfe = itensParaDevolver.map(i => ({
         descricao:      i.descricao_produto,
         ncm:             i.ncm!,
@@ -2116,9 +2145,10 @@ export default function ModalNf({
           // A NF de origem pode ser de qualquer fazenda do cliente — nunca a "fazendaId" ativa da
           // sessão, senão o emissor busca config e cadastro de Pessoas na fazenda errada e falha.
           fazenda_id:   devNfOrig.fazenda_id,
-          modulo_key:      fiscalModulos[0].modulo,
+          modulo_key:      fiscalModulos[0].modulo.split("__ie_")[0],
           produtor_id_hint: devNfOrig.produtor_id,
           cpf_cnpj_hint:   devCpfHint,
+          emit_ie_override: ieDevolucao?.ie || undefined,
           destinatario: {
             nome:           devNfOrig.emitente_nome,
             cpf_cnpj:       (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
@@ -4544,6 +4574,7 @@ export default function ModalNf({
                 </div>
               ) : (
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+                  {!devExterna && <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--border-table)", maxWidth: 420 }}><SeletorIE ies={iesDaDevolucao} value={devIeId} onChange={setDevIeId} inp={{ ...inp, width: "100%" }} lbl={lbl} /></div>}
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 70px 90px 100px 110px 250px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
                     {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução", "CFOP deste produto"].map((h, i) => (
                       <div key={i} style={{ padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</div>

@@ -27,7 +27,7 @@ export function useDadosEmissao(fazendaIds: string[], contaId: string | null | u
       supabase.from("transportadoras").select("id, razao_social, nome_fantasia, cnpj, cpf, ie, rntrc, logradouro, numero, municipio, uf").or(doCliente).neq("ativa", false).order("razao_social"),
       supabase.from("veiculos").select("id, placa, uf_placa, uf, rntrc, transportadora_id, motorista_habitual_id, modelo").or(doCliente).neq("ativo", false).order("placa"),
       supabase.from("motoristas").select("id, nome, cpf").or(doCliente).eq("ativo", true).order("nome"),
-      supabase.from("produtor_inscricoes_estaduais").select("id, inscricao_estadual, fazenda_id, municipio, estado, produtores!inner(cpf_cnpj, fazenda_id)").eq("ativa", true),
+      supabase.from("produtor_inscricoes_estaduais").select("id, inscricao_estadual, fazenda_id, municipio, estado, produtores!inner(cpf_cnpj, fazenda_id, conta_id)").eq("ativa", true),
     ]).then(([em, tr, ve, mo, ins]) => {
       // Série por IE: módulos "<emitente>__ie_<id>" (config por estabelecimento)
       // Havendo cópias, vale a mais recente, a mesma que a emissão usa.
@@ -38,12 +38,13 @@ export function useDadosEmissao(fazendaIds: string[], contaId: string | null | u
         const ieId = r.modulo.split("__ie_")[1];
         if (ieId && r.config?.serie_nfe) seriePorIe.set(ieId, String(r.config.serie_nfe));
       }
-      type InsRow = { id: string; inscricao_estadual: string; fazenda_id: string | null; municipio: string | null; estado: string | null; produtores: { cpf_cnpj: string | null; fazenda_id: string | null } | { cpf_cnpj: string | null; fazenda_id: string | null }[] | null };
+      type InsRow = { id: string; inscricao_estadual: string; fazenda_id: string | null; municipio: string | null; estado: string | null; produtores: { cpf_cnpj: string | null; fazenda_id: string | null; conta_id: string | null } | { cpf_cnpj: string | null; fazenda_id: string | null; conta_id: string | null }[] | null };
       const vistosIe = new Set<string>();
       const inscricoes: InscricaoEmissao[] = [];
       for (const r of (ins.data ?? []) as InsRow[]) {
         const pr = Array.isArray(r.produtores) ? r.produtores[0] : r.produtores;
-        if (!pr || (pr.fazenda_id && !fazendaIds.includes(pr.fazenda_id))) continue;
+        // O cliente é o filtro: o cadastro pode ter o carimbo de uma fazenda que nem é mais dele
+        if (!pr || !((!!contaId && pr.conta_id === contaId) || (!!pr.fazenda_id && fazendaIds.includes(pr.fazenda_id)))) continue;
         const k = `${(pr.cpf_cnpj ?? "").replace(/\D/g, "")}|${r.inscricao_estadual.replace(/\D/g, "")}`;
         if (vistosIe.has(k)) continue;
         vistosIe.add(k);
