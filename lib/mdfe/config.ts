@@ -5,6 +5,7 @@
  * inteira, não de uma fazenda específica.
  */
 import { createClient } from "../supabase-servidor";
+import { configComIdentidade } from "../nfe/titular-cadastro";
 
 export interface ConfigMDFeResolvida {
   mdfeConfig: Record<string, string>;
@@ -169,7 +170,7 @@ export async function resolverConfigMDFe(
     (await buscarConfigContaWide(idsConta, fazendaId, fiscalModulo))?.config
     ?? {};
 
-  const fiscalConfig = await resolverCertificadoPorMeta(idsConta, fiscalConfigBase, emitenteDigits);
+  const fiscalConfig = await configComIdentidade(sb(), idsConta, fiscalModulo, await resolverCertificadoPorMeta(idsConta, fiscalConfigBase, emitenteDigits));
 
   return {
     mdfeConfig,

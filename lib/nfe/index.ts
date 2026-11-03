@@ -13,7 +13,8 @@ import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";
 import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
-import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesmoMunicipio } from "./identidade-fiscal";
+import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesmoMunicipio, documentoDoModulo } from "./identidade-fiscal";
+import { configComIdentidade, buscarTitularCadastro, produtoresDoDocumento } from "./titular-cadastro";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
 
 export type { NFeInput, EmitenteCfg };
@@ -34,8 +35,6 @@ export async function buscarConfEmitente(
                         // sem isso, o endereço mesclado abaixo podia vir de uma IE DIFERENTE da
                         // impressa na nota (achado real 23/09/2026: NF saiu com a IE certa mas
                         // endereço de outro estabelecimento do mesmo produtor).
-  soCertificado = false, // consulta que só precisa do certificado A1 (ex.: Sintegra): não escolhe IE,
-                         // então um titular com várias IEs não bloqueia a busca
 ): Promise<Record<string, string> | null> {
   // certificado_a1_* precisa ser buscado na conta inteira, não só na fazenda
   // recebida — o upload (Fiscal → Certificado Digital ou o card de emitente
@@ -87,10 +86,11 @@ export async function buscarConfEmitente(
 
   // Um módulo explícito nunca pode ser substituído pelo de outro titular.
   if (!emitData?.config) return null;
-  const cfg = { ...emitData.config } as Record<string, string>;
-  const documentoModulo = moduloKey.match(/^fiscal_(?:pf|emp)_(\d{11}|\d{14})$/)?.[1];
-  if (documentoModulo && somenteDigitos(cfg.cpf_cnpj_emitente) !== documentoModulo) {
-    throw new Error("O CPF/CNPJ da configuração fiscal não corresponde ao titular selecionado. Confira Parâmetros → Fiscal.");
+  // CPF/CNPJ, nome e endereço vêm do cadastro; a configuração guarda certificado, série, numeração e tributação.
+  const documentoModulo = documentoDoModulo(moduloKey);
+  const cfg = await configComIdentidade(sb(), fazendaIdsConta, moduloKey, { ...emitData.config } as Record<string, string>);
+  if (documentoModulo && !cfg.razao_social) {
+    throw new Error(`O titular ${documentoModulo} não está em Cadastros → Produtores nem em Cadastros → Empresas. Cadastre antes de emitir.`);
   }
 
   // Resolve cert_a1_path: corrige URL inválida ou tenta achar em certificado_a1_*
@@ -119,18 +119,11 @@ export async function buscarConfEmitente(
   // existir, sobrepondo os valores da config base.
   if ((moduloKey.startsWith("fiscal_pf_") || moduloKey.startsWith("fiscal_emp_")) && cfg.cpf_cnpj_emitente) {
     const digits = cfg.cpf_cnpj_emitente.replace(/\D/g, "");
-    const digitsFmt = digits.length === 11
-      ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
-      : digits.length === 14 ? digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : digits;
     // TODOS os cadastros de produtor com esse CPF — não só o primeiro. O mesmo CPF pode ter mais
     // de um registro em "produtores" (ex.: "FULANO" e "FULANO E OUTROS — CONDOMÍNIO X", mesma
     // pessoa em arranjos de propriedade diferentes), cada um com suas próprias IEs — pegar só o
     // primeiro cadastro escondia as IEs (e a série/número configurados) do(s) outro(s).
-    const { data: prodRows } = await sb()
-      .from("produtores")
-      .select("id, nome, cpf_cnpj")
-      .in("fazenda_id", fazendaIdsConta)
-      .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`);
+    const prodRows = await produtoresDoDocumento(sb(), fazendaIdsConta, digits, "id, nome, cpf_cnpj");
     const produtorIds = (prodRows ?? []).map(p => p.id as string);
     if (produtorIds.length > 0) {
       const { data: ies } = await sb()
@@ -158,7 +151,7 @@ export async function buscarConfEmitente(
         }
       }
       const ieAlvo = ieOverride || cfg.ie_emitente || "";
-      const ieEscolhida = soCertificado ? null : selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
+      const ieEscolhida = selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
       if (ieEscolhida) {
         const titular = prodRows?.find(p => p.id === ieEscolhida.produtor_id);
         if (!titular?.nome) throw new Error("Nome do titular da IE não encontrado no cadastro do produtor.");
@@ -167,6 +160,12 @@ export async function buscarConfEmitente(
         if (cfgIeConfig) cfg.__ie_modulo = `${moduloKey}__ie_${ieEscolhida.id}`;
       }
     }
+  }
+
+  // Produtor sem inscrição cadastrada na lista: usa a IE do cadastro dele
+  if (documentoModulo && !cfg.ie_emitente) {
+    const titular = await buscarTitularCadastro(sb(), fazendaIdsConta, documentoModulo);
+    if (titular?.inscricao_est) cfg.ie_emitente = titular.inscricao_est;
   }
 
   if (ieOverride && somenteDigitos(ieOverride) !== somenteDigitos(cfg.ie_emitente)) {
@@ -359,7 +358,7 @@ export async function emitirNFe(
 
   // 1. Configuração do emitente
   const confg = await buscarConfEmitente(fazendaId, moduloKey, emitIeOverride);
-  if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal não encontrada para ${moduloKey}` };
+  if (!confg) return { sucesso: false, cStat: "500", xMotivo: moduloKey ? `Configuração fiscal não encontrada para ${moduloKey}` : "Este cliente tem mais de um emitente. Escolha o emitente da nota." };
 
   // Fallback 1: destinatário é um PRODUTOR (não uma Pessoa/fornecedor) — típico
   // de transferência entre fazendas/produtores da mesma conta, que nunca chega

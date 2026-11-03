@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-u",
+    data: "03/11/2026",
+    titulo: "Emitente fiscal lido do cadastro",
+    modulos: ["Fiscal", "Parâmetros", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "CPF/CNPJ, nome e endereço do emitente de NF-e, CT-e e MDF-e agora vêm do cadastro do produtor ou da empresa. A configuração fiscal só completa o que estiver em branco lá. Isso elimina o erro \"CPF/CNPJ não corresponde ao titular\" quando o emitente só tinha certificado enviado." },
+      { tipo: "correcao", texto: "A busca de IE no Sintegra usa qualquer certificado válido do cliente e não depende mais do emitente." },
+      { tipo: "melhoria", texto: "Quando o cliente tem mais de um emitente e nenhum foi indicado, o sistema pede para escolher, em vez de usar o primeiro que encontrar." },
+    ],
+  },
+  {
     versao: "2026.11.03-t",
     data: "03/11/2026",
     titulo: "Relatório CP / CR: período por vencimento ou por data da baixa",

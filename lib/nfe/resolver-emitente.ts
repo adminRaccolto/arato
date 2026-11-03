@@ -10,6 +10,7 @@
  */
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../supabase-servidor";
+import { escolherModuloUnico } from "./identidade-fiscal";
 
 function sb(): SupabaseClient {
   return createClient(
@@ -92,7 +93,7 @@ export async function resolverModuloKeyFiscal(
     if (cfgConta) return key;
   }
 
-  // "Qualquer módulo fiscal válido" — nunca uma chave por-IE (__ie_): essa é um detalhe interno
+  // Módulo fiscal do cliente — nunca uma chave por-IE (__ie_): essa é um detalhe interno
   // que buscarConfEmitente() mescla sozinho a partir da chave BASE; devolvida direto, fica sem
   // CPF/CNPJ/certificado nenhum (todos esses campos só existem na config base).
   const { data: cfgs } = await adm
@@ -101,12 +102,8 @@ export async function resolverModuloKeyFiscal(
     .in("fazenda_id", fazendaIdsConta)
     .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
     .not("modulo", "like", "%__ie_%");
-  if (cfgs && cfgs.length > 0) {
-    // Prefere um módulo cadastrado na própria fazenda pedida; senão qualquer um da conta.
-    const local = cfgs.find((c: { fazenda_id: string }) => c.fazenda_id === fazendaId);
-    return (local ?? cfgs[0]).modulo;
-  }
-  return "";
+  // Vários titulares: devolver "o primeiro" dependia da ordem do banco. Sem um único possível, quem chama precisa indicar.
+  return escolherModuloUnico((cfgs ?? []) as { modulo: string; fazenda_id: string }[], fazendaId);
 }
 
 // Combina os três, nessa ordem de preferência: ID do produtor (mais confiável — não depende de uma

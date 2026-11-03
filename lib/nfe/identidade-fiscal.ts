@@ -4,6 +4,58 @@ const nomeMunicipio = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]
 // Sem um dos nomes não há o que comparar: vale como o mesmo município.
 export const mesmoMunicipio = (a?: string | null, b?: string | null) => !a || !b || nomeMunicipio(a) === nomeMunicipio(b);
 
+export interface TitularCadastro {
+  nome: string;
+  cpf_cnpj?: string | null;
+  inscricao_est?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  municipio?: string | null;
+  municipio_ibge?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+  telefone?: string | null;
+}
+
+/** CPF/CNPJ do titular na chave do módulo fiscal; chaves antigas, sem documento, devolvem null. */
+export const documentoDoModulo = (modulo: string): string | null => modulo.match(/^fiscal_(?:pf|emp)_(\d{11}|\d{14})$/)?.[1] ?? null;
+
+/**
+ * Identidade do emitente: o cadastro é a origem, e a configuração fiscal só completa o que estiver em branco nele.
+ * CPF/CNPJ vazio na configuração não é divergência; só bloqueia quando está preenchido e é de outra pessoa.
+ * A IE de produtor é escolhida depois, entre as inscrições dele. Município e IBGE vêm sempre do mesmo lugar.
+ */
+export function aplicarIdentidadeTitular(config: Record<string, string>, documento: string, titular: TitularCadastro | null): Record<string, string> {
+  const preenchido = somenteDigitos(config.cpf_cnpj_emitente);
+  if (preenchido && preenchido !== documento) throw new Error("O CPF/CNPJ da configuração fiscal não corresponde ao titular selecionado. Confira Parâmetros → Fiscal.");
+  const municipioDoCadastro = !!titular?.municipio_ibge || !config.municipio_ibge;
+  const campo = (doCadastro: string | null | undefined, chave: string) => doCadastro || config[chave] || "";
+  return {
+    ...config,
+    cpf_cnpj_emitente: config.cpf_cnpj_emitente || titular?.cpf_cnpj || documento,
+    razao_social: campo(titular?.nome, "razao_social"),
+    ie_emitente: documento.length === 14 ? campo(titular?.inscricao_est, "ie_emitente") : (config.ie_emitente ?? ""),
+    logradouro: campo(titular?.logradouro, "logradouro"),
+    numero: campo(titular?.numero, "numero"),
+    complemento: campo(titular?.complemento, "complemento"),
+    bairro: campo(titular?.bairro, "bairro"),
+    municipio_nome: municipioDoCadastro ? campo(titular?.municipio, "municipio_nome") : config.municipio_nome ?? "",
+    municipio_ibge: municipioDoCadastro ? campo(titular?.municipio_ibge, "municipio_ibge") : config.municipio_ibge,
+    uf_emitente: campo(titular?.estado, "uf_emitente"),
+    cep: campo(somenteDigitos(titular?.cep), "cep"),
+    fone: campo(titular?.telefone, "fone"),
+  };
+}
+
+/** Emitente padrão só existe quando é único, na fazenda ou no cliente. Entre titulares diferentes, quem chama precisa escolher. */
+export function escolherModuloUnico(linhas: { modulo: string; fazenda_id: string }[], fazendaId: string): string {
+  const unico = (l: { modulo: string }[]) => { const m = [...new Set(l.map(x => x.modulo))]; return m.length === 1 ? m[0] : ""; };
+  const locais = linhas.filter(l => l.fazenda_id === fazendaId);
+  return locais.length ? unico(locais) : unico(linhas);
+}
+
 export interface InscricaoFiscal {
   id: string;
   produtor_id: string;

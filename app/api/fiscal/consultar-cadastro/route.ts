@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { buscarConfEmitente, carregarPfx } from "@/lib/nfe";
-import { selecionarCertificadoA1ParaConsulta, type CandidatoCertificadoA1 } from "@/lib/nfe/certificado-a1";
+import { carregarPfx } from "@/lib/nfe";
+import { candidatosParaConsulta, selecionarCertificadoA1ParaConsulta } from "@/lib/nfe/certificado-a1";
 import { consultarCadastroContribuinte } from "@/lib/nfe/consulta-cadastro";
-import { resolverModuloKeyFiscal } from "@/lib/nfe/resolver-emitente";
 import { validateFazendaAccess } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
@@ -41,17 +40,8 @@ async function consultar(req: NextRequest) {
 
   const ufFinal = (uf || "MT").toUpperCase();
 
-  // Prefere o certificado do emitente padrão, incluindo a resolução de caminhos legados.
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  const moduloKeyReal = await resolverModuloKeyFiscal(fazenda_id, admin);
-  const confg = moduloKeyReal ? await buscarConfEmitente(fazenda_id, moduloKeyReal, undefined, true) : null;
-  const candidatos: CandidatoCertificadoA1[] = [];
-  if (confg?.cert_a1_path && confg?.cert_a1_senha) {
-    candidatos.push({ fazendaId: fazenda_id, caminho: confg.cert_a1_path, senha: confg.cert_a1_senha });
-  }
-
-  // Uma configuração preenchida pode conter senha incorreta ou um arquivo antigo. Busca
-  // alternativas da mesma conta mesmo quando o emitente padrão tem caminho e senha.
+  // A consulta não depende de quem é o emitente: serve qualquer certificado válido do cliente.
   const { data: faz, error: erroFazenda } = await admin.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
   if (erroFazenda) throw new Error("Não foi possível buscar a conta da fazenda.");
   let fazendasDaConta = [fazenda_id];
@@ -60,18 +50,20 @@ async function consultar(req: NextRequest) {
     if (error) throw new Error("Não foi possível buscar as fazendas da conta.");
     fazendasDaConta = (data ?? []).map(f => f.id as string);
   }
-  const { data: modulosFiscais, error } = await admin.from("configuracoes_modulo").select("fazenda_id, modulo, config")
-    .in("fazenda_id", fazendasDaConta)
-    .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
-    .not("modulo", "like", "%__ie_%")
-    .order("updated_at", { ascending: false });
-  if (error) throw new Error("Não foi possível buscar os certificados da conta.");
-  for (const m of modulosFiscais ?? []) {
-    const cfg = m.config as Record<string, string> | null;
-    if (cfg?.cert_a1_path && cfg.cert_a1_senha) {
-      candidatos.push({ fazendaId: m.fazenda_id as string, caminho: cfg.cert_a1_path, senha: cfg.cert_a1_senha });
-    }
-  }
+  const [{ data: modulosFiscais, error }, { data: envios, error: erroEnvios }] = await Promise.all([
+    admin.from("configuracoes_modulo").select("fazenda_id, modulo, config")
+      .in("fazenda_id", fazendasDaConta)
+      .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
+      .not("modulo", "like", "%__ie_%")
+      .order("updated_at", { ascending: false }),
+    admin.from("configuracoes_modulo").select("config").in("fazenda_id", fazendasDaConta).like("modulo", "certificado_a1_%"),
+  ]);
+  if (error || erroEnvios) throw new Error("Não foi possível buscar os certificados da conta.");
+  const candidatos = candidatosParaConsulta(
+    (modulosFiscais ?? []) as { fazenda_id: string; modulo: string; config: Record<string, string> | null }[],
+    (envios ?? []) as { config: Record<string, string> | null }[],
+    fazenda_id,
+  );
 
   if (candidatos.length === 0) {
     return NextResponse.json({

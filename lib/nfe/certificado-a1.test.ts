@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import forge from "node-forge";
-import { ERRO_CERTIFICADO_A1, ERRO_CERTIFICADOS_CONSULTA, selecionarCertificadoA1ParaConsulta, validarCertificadoA1 } from "./certificado-a1";
+import { ERRO_CERTIFICADO_A1, ERRO_CERTIFICADOS_CONSULTA, selecionarCertificadoA1ParaConsulta, validarCertificadoA1, candidatosParaConsulta } from "./certificado-a1";
 
 const senha = " senha de teste ";
 const chaves = forge.pki.rsa.generateKeyPair(1024);
@@ -61,4 +61,20 @@ test("duplicatas não são reprocessadas; erro final orienta a correção sem ex
   }), { message: ERRO_CERTIFICADOS_CONSULTA });
   assert.equal(leituras, 1);
   assert.equal(ERRO_CERTIFICADOS_CONSULTA.includes(candidato.senha), false);
+});
+
+test("consulta usa qualquer certificado do cliente, mesmo em configuração sem CPF, a fazenda pedida primeiro", () => {
+  const c = candidatosParaConsulta([
+    { fazenda_id: "b", modulo: "fiscal_pf_11111111111", config: { cert_a1_path: "b.pfx", cert_a1_senha: "s" } },
+    { fazenda_id: "a", modulo: "fiscal_pf_22222222222", config: { cert_a1_path: "a.pfx", cert_a1_senha: "s" } },
+    { fazenda_id: "a", modulo: "fiscal_pf_33333333333", config: { cert_a1_path: "c.pfx" } },
+  ], [], "a");
+  assert.deepEqual(c.map(x => x.caminho), ["a.pfx", "b.pfx"]);
+});
+
+test("consulta troca caminho antigo pelo do envio do certificado", () => {
+  const c = candidatosParaConsulta(
+    [{ fazenda_id: "a", modulo: "fiscal_pf_22222222222", config: { cert_a1_path: "https://x/y", cert_a1_senha: "s" } }],
+    [{ config: { cpf_cnpj: "222.222.222-22", storage_path: "ok.pfx" } }], "a");
+  assert.equal(c[0].caminho, "ok.pfx");
 });

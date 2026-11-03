@@ -1,4 +1,5 @@
 import { createClient } from "../supabase-servidor";
+import { configComIdentidade } from "../nfe/titular-cadastro";
 
 export interface ConfigCTeResolvida {
   cteConfig: Record<string, string>;
@@ -177,7 +178,7 @@ export async function resolverConfigCTe(
     ?? (await buscarConfigContaWide(idsConta, fazendaId, cteConfig.modulo_fiscal_ref ?? "fiscal"))?.config
     ?? {};
 
-  const fiscalConfig = await resolverCertificadoPorMeta(idsConta, fiscalConfigBase, emitenteDigits);
+  const fiscalConfig = await configComIdentidade(sb(), idsConta, fiscalModulo, await resolverCertificadoPorMeta(idsConta, fiscalConfigBase, emitenteDigits));
 
   return {
     cteConfig,

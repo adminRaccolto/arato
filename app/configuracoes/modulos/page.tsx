@@ -1039,7 +1039,8 @@ function ParametrosSistemaContent() {
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  const renderFieldsGrid = (modulo: string, fields: FieldDef[]) => (
+  // `doCadastro`: campos que vêm do cadastro do titular; aparecem travados e não são editados aqui
+  const renderFieldsGrid = (modulo: string, fields: FieldDef[], doCadastro: Record<string, string> = {}) => (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px" }}>
       {fields.map(f => (
         <div key={f.key}>
@@ -1057,7 +1058,9 @@ function ParametrosSistemaContent() {
               inp({
                 type: f.type === "password" ? "password" : f.type === "number" ? "number" : "text",
                 placeholder: f.placeholder,
-                value: String(cfgs[modulo]?.[f.key] ?? ""),
+                value: doCadastro[f.key] || String(cfgs[modulo]?.[f.key] ?? ""),
+                disabled: !!doCadastro[f.key],
+                title: doCadastro[f.key] ? "Vem do cadastro. Altere em Cadastros." : undefined,
                 onChange: e => setCfg(modulo, f.key, e.target.value),
               })
             )
@@ -1297,7 +1300,7 @@ function ParametrosSistemaContent() {
                     {/* Banner de preenchimento automático */}
                     <div style={{ marginBottom: 18, padding: "9px 14px", background: "#F2F2F2", border: "0.5px solid #BFDBFE", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                       <span style={{ fontSize: 12, color: "var(--text-1)" }}>
-                        Os dados de identificação e endereço podem ser preenchidos automaticamente a partir do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
+                        CPF/CNPJ, nome e endereço vêm do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
                       </span>
                       <OperationalButton data-arato-button="toggle"
                         onClick={() => autoPreencherDoCadastro(emitter, true)}
@@ -1310,7 +1313,11 @@ function ParametrosSistemaContent() {
                     {/* Identificação */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Identificação do Emitente")}
-                      {renderFieldsGrid(emitter.moduloKey, emitter.type === "produtor" ? FISCAL_IDENT_PF : FISCAL_IDENT)}
+                      {renderFieldsGrid(emitter.moduloKey, emitter.type === "produtor" ? FISCAL_IDENT_PF : FISCAL_IDENT, (() => {
+                        const t = emitter.type === "produtor" ? produtores.find(x => x.id === emitter.id) : empresas.find(x => x.id === emitter.id);
+                        const nome = emitter.type === "produtor" ? (t as ProdutorMin | undefined)?.nome : (t as EmpresaMin | undefined)?.razao_social || (t as EmpresaMin | undefined)?.nome;
+                        return { cpf_cnpj_emitente: t?.cpf_cnpj ?? "", razao_social: nome ?? "", ...(emitter.type === "empresa" ? { ie_emitente: t?.inscricao_est ?? "" } : {}) };
+                      })())}
                     </div>
 
                     {/* Inscrições Estaduais — por produtor (PF): uma config completa por IE.
