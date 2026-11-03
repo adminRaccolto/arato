@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Cobrança da mensalidade (03/11/2026)**: gerar cobrança exige estar logado no cliente. O valor é o da assinatura, e só a equipe Raccolto informa outro valor. Se um usuário receber "Acesso negado" em tela que usava normalmente, encaminhe à equipe Raccolto informando a tela e o usuário.
+
 **Corrigir adiantamento descontado (03/11/2026)**: em Folha → Adiantamentos, o botão Corrigir aparece para quem tem a rotina Reprocessar Folha. Informe os dados certos e o motivo, e confira a prévia antes de confirmar. Salário pago não é alterado: a diferença vira título a pagar ou desconto em outra competência. Se o CP do adiantamento estiver baixado, estorne a baixa no Contas a Pagar, corrija e baixe de novo.
 
 **Borderô no Contas a Receber (03/11/2026)**: funciona como no Contas a Pagar. A linha do borderô preenche as colunas do grid, obedece aos filtros e as ações (Ver NFs, Confirmar Recebimento, Cancelar, Estornar) abrem ao clicar na linha. Títulos de um borderô não aparecem soltos no grid.

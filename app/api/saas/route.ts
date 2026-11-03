@@ -33,7 +33,7 @@ function cors(req: NextRequest) {
 function autorizado(req: NextRequest) {
   const key    = process.env.RACCOLTO_PUBLIC_API_KEY;
   const header = req.headers.get("x-raccolto-key");
-  if (!key) return true; // dev local sem key configurada
+  if (!key) return process.env.NODE_ENV !== "production"; // sem chave: só em desenvolvimento local
   return header === key;
 }
 

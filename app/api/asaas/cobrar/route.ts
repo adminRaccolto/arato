@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { criarCobranca, buscarPixQrCode } from "../../../../lib/asaas";
+import { acessoDoUsuario, getRequestUser } from "../../../../lib/api-auth";
 
 function sb() {
   return createClient(
@@ -26,6 +27,14 @@ export async function POST(req: NextRequest) {
 
   const conta_id = String(body.conta_id ?? "").trim();
   if (!conta_id) return NextResponse.json({ ok: false, error: "conta_id obrigatório" }, { status: 400 });
+
+  // Cobrança só por quem é do cliente ou da equipe Raccolto; valor e descrição livres só para a Raccolto
+  const user = await getRequestUser(req.headers.get("authorization"));
+  if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  const acesso = await acessoDoUsuario(user.id, user.email);
+  if (!acesso.raccolto && !acesso.contas.includes(conta_id)) {
+    return NextResponse.json({ ok: false, error: "Acesso negado a esta conta" }, { status: 403 });
+  }
 
   const supabase = sb();
 
@@ -51,9 +60,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Integração Asaas não configurada (ASAAS_API_KEY ausente)" }, { status: 503 });
   }
 
-  const valor   = typeof body.valor === "number" ? body.valor : ass.preco;
-  const metodo  = (body.metodo === "BOLETO" ? "BOLETO" : "PIX") as "PIX" | "BOLETO";
-  const descricao = String(body.descricao ?? "Arato — Mensalidade");
+  const valor   = acesso.raccolto && typeof body.valor === "number" ? body.valor : ass.preco;
+  const metodo  = (body.metodo === "BOLETO" || body.billingType === "BOLETO" ? "BOLETO" : "PIX") as "PIX" | "BOLETO";
+  const descricao = acesso.raccolto && body.descricao ? String(body.descricao) : "Arato — Mensalidade";
   const venc    = addDias(3);
 
   try {

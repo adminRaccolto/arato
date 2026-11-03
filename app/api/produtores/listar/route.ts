@@ -3,6 +3,8 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { acessoDoUsuario, fazendasDoAcesso } from "../../../../lib/api-auth";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -32,6 +34,12 @@ export async function GET(req: NextRequest) {
 
   if (!conta_id && allFazIds.length === 0) {
     return NextResponse.json({ error: "conta_id ou fazenda_id obrigatório" }, { status: 400 });
+  }
+
+  // Só produtores de quem pede (chave de serviço não passa pelas regras do banco)
+  const acesso = await acessoDoUsuario(user.id, user.email);
+  if (!acesso.raccolto && ((conta_id && !acesso.contas.includes(conta_id)) || !(await fazendasDoAcesso(acesso, allFazIds)))) {
+    return NextResponse.json({ error: "Acesso negado a este cliente" }, { status: 403 });
   }
 
   const apenas_com_ie = req.nextUrl.searchParams.get("apenas_com_ie") === "true";

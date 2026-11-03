@@ -20,6 +20,10 @@ export async function POST(req: Request) {
     if (received !== webhookToken) {
       return NextResponse.json({ ok: false, error: "Token inválido" }, { status: 401 });
     }
+  } else if (process.env.NODE_ENV === "production") {
+    // Sem token configurado, qualquer um poderia avisar pagamento falso
+    console.error("[asaas/webhook] ASAAS_WEBHOOK_TOKEN ausente: aviso recusado");
+    return NextResponse.json({ ok: false, error: "Webhook não configurado" }, { status: 503 });
   }
 
   try {

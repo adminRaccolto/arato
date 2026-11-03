@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { acessoDoUsuario } from "../../../../lib/api-auth";
 
 // Retorna todas as fazendas da conta do cliente ativo (identificado via fazenda_id)
 export async function POST(req: Request) {
@@ -46,9 +47,19 @@ export async function POST(req: Request) {
       }
     }
 
+    // Só as fazendas de quem pede (chave de serviço não passa pelas regras do banco)
+    const acesso = await acessoDoUsuario(user.id, user.email);
+    if (!acesso.raccolto && contaId && !acesso.contas.includes(contaId)) {
+      return NextResponse.json({ ok: false, error: "Acesso negado a este cliente" }, { status: 403 });
+    }
+
     if (!contaId) {
       // Sem conta identificada — retorna só a fazenda específica
       if (!body.fazenda_id) return NextResponse.json({ ok: true, fazendas: [] });
+      if (!acesso.raccolto) {
+        const { data: fz } = await admin.from("fazendas").select("owner_user_id").eq("id", body.fazenda_id).maybeSingle();
+        if (fz?.owner_user_id !== user.id && acesso.fazendaLegado !== body.fazenda_id) return NextResponse.json({ ok: true, fazendas: [] });
+      }
       const { data } = await admin.from("fazendas").select("*").eq("id", body.fazenda_id);
       return NextResponse.json({ ok: true, fazendas: data ?? [] });
     }
@@ -67,7 +78,7 @@ export async function POST(req: Request) {
     // mesmo que ainda não tenha conta_id atualizado no banco
     if (body.fazenda_id && !fazendas.find(f => f.id === body.fazenda_id)) {
       const { data: fzExtra } = await admin.from("fazendas").select("*").eq("id", body.fazenda_id).maybeSingle();
-      if (fzExtra) {
+      if (fzExtra && (acesso.raccolto || !fzExtra.conta_id || acesso.contas.includes(fzExtra.conta_id))) {
         // SEGURANÇA: se a fazenda âncora pertence a uma conta DIFERENTE da solicitada,
         // não retornar dados da conta errada — retornar apenas a âncora isolada.
         if (fzExtra.conta_id && fzExtra.conta_id !== contaId) {

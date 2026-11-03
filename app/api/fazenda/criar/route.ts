@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { acessoDoUsuario } from "../../../../lib/api-auth";
 
 // Cria uma fazenda usando service role (ignora RLS) — necessário quando raccotlo
 // cria fazenda para um cliente (owner_user_id ≠ auth.uid() bloqueia INSERT).
@@ -19,6 +20,17 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json() as Record<string, unknown>;
+    // Fazenda nasce em conta de quem pede; só a equipe Raccolto cria para outro cliente
+    const acesso = await acessoDoUsuario(user.id, user.email);
+    if (!acesso.raccolto) {
+      const conta = body.conta_id as string | undefined;
+      if (!acesso.contas.length || (conta && !acesso.contas.includes(conta))) {
+        return NextResponse.json({ ok: false, error: "Acesso negado a este cliente" }, { status: 403 });
+      }
+      body.conta_id = conta ?? acesso.contas[0];
+      body.owner_user_id = user.id;
+      delete body.id;
+    }
 
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

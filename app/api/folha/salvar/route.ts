@@ -5,6 +5,8 @@ import { vencimentoSalario } from "../../../../lib/folha-calculo";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { consumirPrevisao, tabelaPrevisoesAusente } from "../../../../lib/financeiro/previsoes-server";
 import { acaoSalario, efeitosCorrecao } from "../../../../lib/financeiro/correcao-adiantamento";
+import { alvosFolha } from "../../../../lib/folha/alvos-acesso";
+import { acessoDoUsuario, fazendasDoAcesso } from "../../../../lib/api-auth";
 
 // Usa a fazenda candidata só se for do mesmo cliente da fazenda que a requisição validou; senão a da requisição.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -326,6 +328,27 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { operacao, ...payload } = body as { operacao: string } & Record<string, unknown>;
+
+    // Tudo aqui usa a chave de serviço: cada operação confere se os registros são do cliente de quem pede
+    const alvos = alvosFolha(operacao, payload);
+    if (!alvos) return NextResponse.json({ error: "Operação inválida." }, { status: 400 });
+    const fazendaDe = async (tabela: string, lista: string[]) => {
+      if (!lista.length) return [] as string[];
+      const { data } = await sb.from(tabela).select("fazenda_id").in("id", lista);
+      return (data ?? []).map((r: { fazenda_id: string | null }) => r.fazenda_id).filter((f): f is string => !!f);
+    };
+    const fazendasAlvo = [
+      ...alvos.fazendas,
+      ...(await fazendaDe("folha_pagamento", alvos.folhas)),
+      ...(await fazendaDe("adiantamentos_salario", alvos.adiantamentos)),
+      ...(await fazendaDe("funcionarios_premiacoes", alvos.premiacoes)),
+      ...(await fazendaDe("funcionarios", alvos.funcionarios)),
+      ...(await fazendaDe("empresas", alvos.empresas)),
+      ...(await fazendaDe("produtores", alvos.produtores)),
+    ];
+    if (!(await fazendasDoAcesso(await acessoDoUsuario(user.id, user.email), fazendasAlvo))) {
+      return NextResponse.json({ error: "Acesso negado a este registro." }, { status: 403 });
+    }
 
     // ─── listar_folhas — inclui contagem de funcionários por folha ───────────
     // Escopo por CONTA (todas as fazendas), não só a fazenda ativa no

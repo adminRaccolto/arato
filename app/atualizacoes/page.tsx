@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-g",
+    data: "03/11/2026",
+    titulo: "Segurança: rotas do servidor conferem o cliente",
+    modulos: ["Segurança", "Folha de Pagamento", "Pagamentos"],
+    itens: [
+      { tipo: "correcao", texto: "Folha de pagamento, lista de produtores, lista e criação de fazendas e carga de CFOPs agora conferem se o registro é do cliente de quem pede, e não só se a pessoa está logada. A consulta de login por e-mail só responde sobre o próprio cliente e agora encontra todos os usuários." },
+      { tipo: "correcao", texto: "Gerar cobrança da mensalidade agora exige login do cliente ou da equipe Raccolto, e só a equipe Raccolto informa valor e descrição. A escolha de boleto no portal de pagamento passa a valer: antes saía sempre PIX." },
+    ],
+  },
+  {
     versao: "2026.11.03-f",
     data: "03/11/2026",
     titulo: "Folha: corrigir adiantamento já descontado e buscar funcionário",

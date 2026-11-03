@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { acessoDoUsuario, fazendasDoAcesso } from "../../../lib/api-auth";
 import { seedCfopsFiscais } from "../../../lib/seedOperacoesGerenciais";
 
 export async function POST(req: Request) {
@@ -21,6 +22,10 @@ export async function POST(req: Request) {
     const body = await req.json() as { fazenda_id: string };
     if (!body.fazenda_id) {
       return NextResponse.json({ ok: false, error: "fazenda_id é obrigatório" }, { status: 400 });
+    }
+
+    if (!(await fazendasDoAcesso(await acessoDoUsuario(user.id, user.email), [body.fazenda_id]))) {
+      return NextResponse.json({ ok: false, error: "Acesso negado a esta fazenda" }, { status: 403 });
     }
 
     // ── 2. Usa service role para contornar RLS ────────────────────────────────

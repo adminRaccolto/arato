@@ -215,6 +215,29 @@ export async function exigirAcessoRegistros(req: Request, tabela: string | strin
   return exigirAcessoFazendas(req, data.map(d => d.fazenda_id));
 }
 
+/** Contas que o usuário acessa: a própria, as do parceiro (BPO) ou todas (Raccolto). Para rotas que já têm o usuário. */
+export async function acessoDoUsuario(userId: string, email?: string | null): Promise<{ raccolto: boolean; contas: string[]; fazendaLegado: string | null }> {
+  const db = adminClient();
+  const { data: perfil } = await db.from("perfis").select("conta_id, role, parceiro_id, fazenda_id").eq("user_id", userId).maybeSingle();
+  if (perfil?.role?.startsWith("raccotlo") || isRaccotloAdmin(perfil?.role, email ?? undefined)) return { raccolto: true, contas: [], fazendaLegado: null };
+  const contas = perfil?.conta_id ? [perfil.conta_id as string] : [];
+  if (perfil?.role === "bpo" && perfil.parceiro_id) {
+    const { data } = await db.from("contas").select("id").eq("parceiro_id", perfil.parceiro_id);
+    contas.push(...(data ?? []).map(c => c.id as string));
+  }
+  return { raccolto: false, contas, fazendaLegado: !perfil?.conta_id ? (perfil?.fazenda_id as string | null) ?? null : null };
+}
+
+/** True se todas as fazendas são de contas que o usuário acessa. */
+export async function fazendasDoAcesso(acesso: { raccolto: boolean; contas: string[]; fazendaLegado: string | null }, fazendaIds: (string | null | undefined)[]): Promise<boolean> {
+  if (acesso.raccolto) return true;
+  const ids = Array.from(new Set(fazendaIds.filter((x): x is string => !!x)));
+  if (!ids.length) return true;
+  const { data } = await adminClient().from("fazendas").select("id, conta_id").in("id", ids);
+  const permitidas = new Set((data ?? []).filter(f => acesso.contas.includes(f.conta_id as string) || f.id === acesso.fazendaLegado).map(f => f.id as string));
+  return ids.every(id => permitidas.has(id));
+}
+
 /** Exige acesso à fazenda de origem da transferência de estoque (e às fazendas informadas no corpo). */
 export async function exigirAcessoTransferencia(req: Request, transferenciaId: string | null | undefined, fazendasDoCorpo: (string | null | undefined)[] = []): Promise<NextResponse | null> {
   const fazendas = [...fazendasDoCorpo];
