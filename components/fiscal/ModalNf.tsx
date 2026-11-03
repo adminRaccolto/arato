@@ -49,6 +49,7 @@ import {
   
   processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
+import { itemDevolvivel, podeDevolverNf } from "../../lib/fiscal/devolucao-compra";
 import { useAuth } from "../AuthProvider";
 import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
@@ -1937,6 +1938,8 @@ export default function ModalNf({
       // CFOP de SAÍDA do fornecedor (como vem no XML recebido): 5xxx/6xxx → devolução de compra correspondente
       "5101": "5201", "5102": "5202", "5103": "5201", "5105": "5201", "5401": "5410", "5403": "5411", "5405": "5411",
       "6101": "6201", "6102": "6202", "6103": "6201", "6105": "6201", "6401": "6410", "6403": "6411", "6405": "6411",
+      // Entrega de compra para entrega futura
+      "5116": "5201", "5117": "5202", "6116": "6201", "6117": "6202", "1116": "5201", "1117": "5202", "2116": "6201", "2117": "6202",
     };
     const cfopPadrao = CFOP_DEV[(nf.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? "5201";
     setDevCfop(cfopPadrao);
@@ -1966,13 +1969,13 @@ export default function ModalNf({
       const fatorDesconto = somaItensGross > 0 && nf.valor_total > 0 ? nf.valor_total / somaItensGross : 1;
       setDevFatorDesconto(fatorDesconto);
       // Estoque (com insumo) e Apropriação Direta entram; o que já foi devolvido antes sai do disponível
-      const elegiveis = itensDB.filter(i => (i.insumo_id && i.tipo_apropiacao === "estoque") || i.tipo_apropiacao === "direto");
+      const elegiveis = itensDB.filter(itemDevolvivel);
       const jaDevolvido = await devolvidoPorItem(elegiveis.map(i => i.id));
       const devs: DevItem[] = elegiveis
         .filter(i => i.quantidade - (jaDevolvido[i.id] ?? 0) > 0.0005)
         .map(i => ({
           key:                 i.id,
-          insumo_id:           i.tipo_apropiacao === "estoque" ? i.insumo_id! : undefined,
+          insumo_id:           i.tipo_apropiacao === "direto" ? undefined : i.insumo_id!,
           // CFOP de cada produto: sugerido pelo CFOP que o PRÓPRIO item tinha na NF de compra; sem ele, o do cabeçalho
           cfop:                CFOP_DEV[(i.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? cfopPadrao,
           pRedBC:              "",
@@ -4250,7 +4253,7 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && (
                         <button data-arato-button="secondary" onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
-                      {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas" || nfEdit.tipo_entrada === "custo_direto" || nfEdit.tipo_entrada === "imobilizado") && (
+                      {nfEdit && nfEdit.status === "processada" && podeDevolverNf(nfEdit.tipo_entrada) && (
                         <button data-arato-button="secondary" onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (

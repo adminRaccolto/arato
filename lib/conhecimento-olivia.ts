@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Devolução da entrega futura (03/11/2026)**: a NF de entrega (5116/5117) precisa estar processada para mostrar ↩ Devolver. O CFOP sugerido é 5201/5202 (6201/6202 fora do estado), e pode ser trocado. O produto sai do estoque, e o valor abate o Contas a Pagar do simples faturamento ligado à entrega; o que não der para abater fica a receber do fornecedor. O saldo a entregar do simples faturamento não muda. A NF de simples faturamento (5922/6922) não tem Devolver, porque não movimentou produto.
+
 **Emitente fiscal (03/11/2026)**: CPF/CNPJ, nome e endereço do emitente vêm do cadastro do produtor ou da empresa. Em Parâmetros → Fiscal ficam certificado, série, numeração e tributação, e os campos vindos do cadastro aparecem travados. Para corrigir nome ou endereço na nota, altere em Cadastros. O endereço da IE escolhida vale antes do endereço geral do cadastro. Se a nota disser que o titular não está cadastrado, cadastre-o em Produtores ou Empresas. Se pedir para escolher o emitente, é porque o cliente tem mais de um.
 
 **Relatório CP / CR, período por (03/11/2026)**: o período pode ser por Vencimento (padrão) ou por Data da baixa. Se um cliente disser que uma conta paga não aparece no relatório, confira se ela vence em outra data e peça para escolher Data da baixa. Nessa opção, só entra o que tem baixa no período.

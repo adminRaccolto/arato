@@ -5,6 +5,7 @@
 // compensado e só o que sobrar (CP já pago) continua a receber. Tudo o que foi abatido fica gravado na NF de devolução
 // (nf_entradas.compensacoes — Seção 393) para o cancelamento/estorno da devolução devolver os CPs como estavam.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { nfsDosTitulos } from "./devolucao-compra";
 
 type Compensacao = { lancamento_id: string; valor: number; valor_pago_antes: number | null; status_antes: string; data_baixa_antes: string | null;
   conciliado_antes: boolean | null; observacao_antes: string | null; forma_antes: string | null };
@@ -16,9 +17,11 @@ const ABERTOS = ["em_aberto", "vencido", "vencendo", "parcial"];
 export async function compensarDevolucao(sb: SupabaseClient, p: { nfDevId: string; nfOrigemId: string; numeroDev: string; valor: number; data: string; crId?: string | null }): Promise<{ compensado: number; titulos: number }> {
   const { error: eCol } = await sb.from("nf_entradas").select("compensacoes").eq("id", p.nfDevId).maybeSingle();
   if (eCol) return { compensado: 0, titulos: 0 };
+  // Entrega de compra para entrega futura: o CP está nos simples faturamentos que ela baixou (sem a Seção 387, a lista vem vazia)
+  const { data: baixas } = await sb.from("estoque_terceiros_baixas").select("vef_nf_entrada_id").eq("remessa_nf_entrada_id", p.nfOrigemId);
   const { data: cps } = await sb.from("lancamentos")
     .select("id, valor, valor_pago, status, data_baixa, conciliado, observacao, forma_pagamento, natureza, moeda, data_vencimento, lote_id")
-    .eq("nf_entrada_id", p.nfOrigemId).eq("tipo", "pagar").in("status", ABERTOS)
+    .in("nf_entrada_id", nfsDosTitulos(p.nfOrigemId, baixas ?? [])).eq("tipo", "pagar").in("status", ABERTOS)
     .order("data_vencimento", { ascending: false });
   let resta = r2(p.valor);
   const feitas: Compensacao[] = [];

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-v",
+    data: "03/11/2026",
+    titulo: "Devolução da entrega de compra para entrega futura",
+    modulos: ["Documentos Fiscais", "Contas a Pagar"],
+    itens: [
+      { tipo: "correcao", texto: "A NF de entrega de compra para entrega futura (CFOP 5116/5117) processada como Entrega VEF agora tem o botão Devolver. O produto sai do estoque e o valor abate o Contas a Pagar do simples faturamento ligado a ela; o que não puder ser abatido fica a receber do fornecedor." },
+    ],
+  },
+  {
     versao: "2026.11.03-u",
     data: "03/11/2026",
     titulo: "Emitente fiscal lido do cadastro",
