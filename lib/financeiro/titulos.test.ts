@@ -69,3 +69,11 @@ test("selo da linha: em aberto com data passada vira vencido; baixado/parcial/ca
   assert.equal(statusExibido("vencido", "2026-12-01", HOJE), "vencido");
   assert.equal(statusExibido(null, null, HOJE), "");
 });
+
+test("período por baixa: acha o que foi pago no período, mesmo vencendo depois", () => {
+  const pago = { id: "p", tipo: "pagar", status: "baixado", data_vencimento: "2026-11-03", data_baixa: "2026-10-30" };
+  const aberto = { id: "a", tipo: "pagar", status: "em_aberto", data_vencimento: "2026-10-30" };
+  const dia = { inicio: "2026-10-30", fim: "2026-10-30" };
+  assert.deepEqual(filtrarTitulos([pago, aberto], dia, undefined, HOJE).map(x => x.id), ["a"]);
+  assert.deepEqual(filtrarTitulos([pago, aberto], { ...dia, periodoPor: "baixa" }, undefined, HOJE).map(x => x.id), ["p"]);
+});

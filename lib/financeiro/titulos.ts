@@ -16,6 +16,7 @@ export type TituloBase = {
   moeda?: string | null;
   data_vencimento?: string | null;
   data_lancamento?: string | null;
+  data_baixa?: string | null;
   categoria?: string | null;
   produtor_id?: string | null;
   pessoa_id?: string | null;
@@ -42,6 +43,7 @@ export function statusEfetivo(l: { status: string; natureza?: string | null; dat
 export type FiltroTitulos = {
   inicio?: string;
   fim?: string;
+  periodoPor?: "vencimento" | "baixa"; // padrão: vencimento. Por baixa, só entra o que tem baixa no período
   tipo?: "todos" | "pagar" | "receber";
   status?: ReadonlySet<string>;      // vazio = todos
   categorias?: ReadonlySet<string>;  // vazio = todas
@@ -60,7 +62,8 @@ export function filtrarTitulos<T extends TituloBase>(
   const busca = (f.fornecedor ?? "").trim().toLowerCase();
   return titulos.filter(t => {
     if (t.moeda === "barter" && !f.incluirBarter) return false;
-    const dt = t.data_vencimento ?? t.data_lancamento ?? "";
+    const dt = f.periodoPor === "baixa" ? (t.data_baixa ?? "") : (t.data_vencimento ?? t.data_lancamento ?? "");
+    if (f.periodoPor === "baixa" && !dt) return false;
     if (f.inicio && dt < f.inicio) return false;
     if (f.fim && dt > f.fim) return false;
     if (f.tipo && f.tipo !== "todos" && t.tipo !== f.tipo) return false;

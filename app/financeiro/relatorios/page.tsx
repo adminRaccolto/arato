@@ -238,6 +238,7 @@ function FinanceiroRelatoriosInner() {
   const [prodDDOpen,   setProdDDOpen]   = useState(false);
   const [inicioCPCR,  setInicioCPCR]  = useState(`${anoAtual}-01-01`);
   const [fimCPCR,     setFimCPCR]     = useState(`${anoAtual}-12-31`);
+  const [periodoPorCPCR, setPeriodoPorCPCR] = useState<"vencimento"|"baixa">("vencimento");
   // Agrupamentos — lista ordenada de dimensões ativas
   type GrupoKey = "produtor" | "og" | "data" | "categoria" | "status" | "tipo";
   const [agrupAtivos, setAgrupAtivos] = useState<GrupoKey[]>([]);
@@ -2042,7 +2043,7 @@ function FinanceiroRelatoriosInner() {
                 // ── filtrar ───────────────────────────────────────────
                 const lancsCPCR = filtrarTitulos(
                   lancamentos,
-                  { inicio: inicioCPCR, fim: fimCPCR, tipo: tipoCPCR, status: statusCPCR, categorias: catCPCR, produtores: prodCPCR, fornecedor: fornCPCR },
+                  { inicio: inicioCPCR, fim: fimCPCR, periodoPor: periodoPorCPCR, tipo: tipoCPCR, status: statusCPCR, categorias: catCPCR, produtores: prodCPCR, fornecedor: fornCPCR },
                   l => ((l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? ""),
                 ).filter(l => (pessoasCPCR.size === 0 || pessoasCPCR.has(l.pessoa_id ?? "")) && (contasCPCR.size === 0 || contasCPCR.has(l.conta_bancaria ?? "")));
 
@@ -2059,7 +2060,7 @@ function FinanceiroRelatoriosInner() {
                 const GRUPOS_CONF: GrupoConf[] = [
                   { key: "produtor",  label: "Produtor",           getKey: l => l.produtor_id ?? "__",   getLabel: k => k === "__" ? "Sem Produtor" : (prodMap[k] ?? k)       },
                   { key: "og",        label: "Operação Gerencial",  getKey: l => l.operacao_gerencial_id ?? "__", getLabel: k => k === "__" ? "Sem OG" : (ogMap[k] ?? k)    },
-                  { key: "data",      label: "Mês",                getKey: l => (l.data_vencimento ?? l.data_lancamento ?? "").slice(0,7), getLabel: k => k ? new Date(k+"-01T12:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) : "Sem data" },
+                  { key: "data",      label: "Mês",                getKey: l => (periodoPorCPCR === "baixa" ? (l.data_baixa ?? "") : (l.data_vencimento ?? l.data_lancamento ?? "")).slice(0,7), getLabel: k => k ? new Date(k+"-01T12:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) : "Sem data" },
                   { key: "categoria", label: "Categoria",           getKey: l => l.categoria ?? "Sem categoria", getLabel: k => k                                              },
                   { key: "tipo",      label: "Tipo (CP/CR)",        getKey: l => l.tipo,                  getLabel: k => k === "receber" ? "↓ CR — Contas a Receber" : "↑ CP — Contas a Pagar" },
                   { key: "status",    label: "Status",              getKey: l => statusEfetivo(l),        getLabel: k => corStatusCPCR[k]?.label ?? k                          },
@@ -2230,7 +2231,7 @@ function FinanceiroRelatoriosInner() {
                   const dt = (iso: string) => iso ? new Date(iso + "T12:00:00").toLocaleDateString("pt-BR") : "—";
                   const escopo = prodCPCR.size > 0 ? [...prodCPCR].map(id => prodMap[id] ?? id).join(", ") : "Todos os produtores";
                   const resumo = [
-                    ["Período", `${dt(inicioCPCR)} a ${dt(fimCPCR)}`],
+                    [periodoPorCPCR === "baixa" ? "Período (data da baixa)" : "Período (vencimento)", `${dt(inicioCPCR)} a ${dt(fimCPCR)}`],
                     ["Tipo", tipoCPCR === "todos" ? "Todos (CR + CP)" : tipoCPCR === "receber" ? "Contas a Receber" : "Contas a Pagar"],
                     ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].map(k => statusLabel[k] ?? k).join(", ")],
                     ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
@@ -2294,7 +2295,7 @@ function FinanceiroRelatoriosInner() {
                   const XLSX = await import("xlsx");
                   const resumo = [
                     ["Relatório CP / CR Analítico"],
-                    ["Período", `${inicioCPCR} a ${fimCPCR}`],
+                    [periodoPorCPCR === "baixa" ? "Período (data da baixa)" : "Período (vencimento)", `${inicioCPCR} a ${fimCPCR}`],
                     ["Tipo", tipoCPCR === "todos" ? "Todos (CR + CP)" : tipoCPCR === "receber" ? "Contas a Receber" : "Contas a Pagar"],
                     ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].join(", ")],
                     ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
