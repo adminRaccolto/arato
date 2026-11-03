@@ -3,6 +3,7 @@ import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
+import CampoMotorista from "../../../components/transporte/CampoMotorista";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -105,7 +106,7 @@ export default function TransferenciasEstoquePage() {
   // ── Cadastros de transporte ────────────────────────────────────────────────
   // TrRow unifica registros da tabela transportadoras + empresas com finalidade "transportadora"
   type TrRow = { id: string; razao_social?: string; nome?: string; nome_fantasia?: string; cnpj?: string; rntrc?: string; _origem?: "tabela" | "empresa" };
-  type VeRow = { id: string; placa: string; tipo?: string; rntrc?: string };
+  type VeRow = { id: string; placa: string; tipo?: string; rntrc?: string; uf_placa?: string | null; uf?: string | null };
   type MoRow = { id: string; nome: string; cpf?: string };
   const [transportadoras, setTransportadoras] = useState<TrRow[]>([]);
   const [veiculos, setVeiculos]               = useState<VeRow[]>([]);
@@ -273,7 +274,7 @@ export default function TransferenciasEstoquePage() {
       // Transportadoras: tabela transportadoras + empresas com finalidade "transportadora"
       const [trRes2, veRes, moRes, empRes] = await Promise.all([
         supabase.from("transportadoras").select("id,razao_social,nome_fantasia,cnpj,rntrc").in("fazenda_id", fazIds).order("razao_social"),
-        supabase.from("veiculos").select("id,placa,tipo,rntrc").in("fazenda_id", fazIds).order("placa"),
+        supabase.from("veiculos").select("id,placa,tipo,rntrc,uf_placa,uf").in("fazenda_id", fazIds).order("placa"),
         supabase.from("motoristas").select("id,nome,cpf").in("fazenda_id", fazIds).order("nome"),
         supabase.from("empresas").select("id,razao_social,nome,cpf_cnpj,rntrc,finalidades").in("fazenda_id", fazIds).order("nome"),
       ]);
@@ -1307,7 +1308,7 @@ export default function TransferenciasEstoquePage() {
               <div data-arato-dialog-body="true" style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6, marginBottom: 14 }}>
                 Transporte (opcional)
               </div>
-              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px", gap: "0 16px" }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 70px 150px", gap: "10px 16px" }}>
                 <div>
                   <label data-arato-label="true" style={lbl}>Transportadora</label>
                   <SelectField value={form.transportadoraId} onChange={e => setForm(f => ({ ...f, transportadoraId: e.target.value }))} style={inp}>
@@ -1318,34 +1319,27 @@ export default function TransferenciasEstoquePage() {
                   </SelectField>
                 </div>
                 <div>
-                  <label data-arato-label="true" style={lbl}>Veículo / Placa</label>
+                  <label data-arato-label="true" style={lbl}>Placa</label>
                   {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
-                  <input list="transf-est-veiculos" value={form.veiculoPlaca}
+                  <input list="transf-est-veiculos" value={form.veiculoPlaca} maxLength={8}
                     onChange={e => {
-                      const placa = e.target.value;
-                      const achado = veiculos.find(v => v.placa === placa);
-                      setForm(f => ({ ...f, veiculoPlaca: placa, veiculoId: achado?.id ?? "" }));
+                      const placa = e.target.value.toUpperCase();
+                      const achado = veiculos.find(v => v.placa.toUpperCase() === placa.trim());
+                      setForm(f => ({
+                        ...f, veiculoPlaca: placa, veiculoId: achado?.id ?? "",
+                        veiculoUfPlaca: achado?.uf_placa || achado?.uf || (f.veiculoId ? "" : f.veiculoUfPlaca),
+                        // Com placa informada há transporte: "sem frete" deixa de valer
+                        freteConta: placa.trim() && f.freteConta === "9" ? "0" : f.freteConta,
+                      }));
                     }}
-                    style={inp} placeholder="Placa do veículo" />
+                    style={inp} placeholder="Escolha ou digite" />
                   <datalist id="transf-est-veiculos">
                     {veiculos.map(v => <option key={v.id} value={v.placa} />)}
                   </datalist>
                 </div>
                 <div>
-                  <label data-arato-label="true" style={lbl}>Motorista</label>
-                  {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
-                  <input list="transf-est-motoristas" value={form.motoristaNome}
-                    onChange={e => {
-                      const nome = e.target.value;
-                      const achado = motoristas.find(m => m.nome === nome);
-                      setForm(f => ({ ...f, motoristaNome: nome, motoristaId: achado?.id ?? "", motoristaCpf: achado?.cpf ?? f.motoristaCpf }));
-                    }}
-                    style={inp} placeholder="Nome do motorista" />
-                  <datalist id="transf-est-motoristas">
-                    {motoristas.map(m => (
-                      <option key={m.id} value={m.nome} />
-                    ))}
-                  </datalist>
+                  <label data-arato-label="true" style={lbl}>UF</label>
+                  <input value={form.veiculoUfPlaca} maxLength={2} onChange={e => setForm(f => ({ ...f, veiculoUfPlaca: e.target.value.toUpperCase() }))} style={inp} placeholder="MT" />
                 </div>
                 <div>
                   <label data-arato-label="true" style={lbl}>Frete por conta</label>
@@ -1355,6 +1349,12 @@ export default function TransferenciasEstoquePage() {
                     <option value="2">2 - Terceiros</option>
                     <option value="9">9 - Sem frete</option>
                   </SelectField>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label data-arato-label="true" style={lbl}>Motorista</label>
+                  <CampoMotorista id="transf-est-motoristas" motoristas={motoristas} style={inp}
+                    valor={{ motorista_id: form.motoristaId, motorista_nome: form.motoristaNome, motorista_cpf: form.motoristaCpf }}
+                    onChange={v => setForm(f => ({ ...f, motoristaId: v.motorista_id, motoristaNome: v.motorista_nome, motoristaCpf: v.motorista_cpf }))} />
                 </div>
               </div>
             </div>
@@ -1591,11 +1591,11 @@ export default function TransferenciasEstoquePage() {
                     {box("RAZÃO SOCIAL", transp ? (transp.razao_social || transp.nome || "—") : "—")}
                     {box("FRETE POR CONTA", freteLabel[tData.frete_conta ?? "9"] ?? "9 - SEM FRETE")}
                     {box("CÓDIGO ANTT / RNTRC", transp?.rntrc ?? "—")}
-                    {box("PLACA DO VEÍCULO", veiculo?.placa ?? "—", { borderRight: "none" })}
+                    {box("PLACA DO VEÍCULO", veiculo?.placa ?? tData.veiculo_placa ?? "—", { borderRight: "none" })}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr" }}>
-                    {box("MOTORISTA", motor?.nome ?? "—")}
-                    {box("CPF MOTORISTA", motor?.cpf ?? "—")}
+                    {box("MOTORISTA", motor?.nome ?? tData.motorista_nome ?? "—")}
+                    {box("CPF MOTORISTA", motor?.cpf ?? tData.motorista_cpf ?? "—")}
                     {box("TIPO VEÍCULO", veiculo?.tipo ?? "—")}
                     {box("RNTRC VEÍCULO", veiculo?.rntrc ?? "—", { borderRight: "none" })}
                   </div>

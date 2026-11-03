@@ -345,6 +345,16 @@ export async function POST(request: NextRequest) {
         };
       }
 
+      // A NF-e não tem campo próprio de motorista: vai nas informações complementares, cadastrado ou digitado na emissão.
+      let motoristaNome = (t.motorista_nome as string | null | undefined)?.trim() || "";
+      let motoristaCpf = (t.motorista_cpf as string | null | undefined)?.trim() || "";
+      if (t.motorista_id && (!motoristaNome || !motoristaCpf)) {
+        const { data: mot } = await adm.from("motoristas").select("nome, cpf").eq("id", t.motorista_id).maybeSingle();
+        motoristaNome = motoristaNome || mot?.nome || "";
+        motoristaCpf = motoristaCpf || mot?.cpf || "";
+      }
+      const motoristaInfCpl = motoristaNome ? `Motorista: ${motoristaNome}${motoristaCpf ? ` - CPF ${motoristaCpf}` : ""}` : "";
+
       // Lote e peso de cada item nas informações complementares (infCpl) — a pedido do dono:
       // o destinatário precisa saber de qual lote de semente é a carga e quanto pesa.
       // Peso em kg: kg direto, t/ton ×1000, g ÷1000; outras unidades ficam como vieram.
@@ -378,7 +388,7 @@ export async function POST(request: NextRequest) {
         destinatario: destinatarioDados,
         itens: itenNfe,
         natureza: naturezaTransf,
-        infCpl:   [`${textoLegalDiferido} | Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`, blocoLoteInfCpl].filter(Boolean).join(" | "),
+        infCpl:   [`${textoLegalDiferido} | Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`, motoristaInfCpl, blocoLoteInfCpl].filter(Boolean).join(" | "),
         frete:    (t.frete_conta as "0"|"1"|"2"|"9" | null) ?? "9",
         tipo:     "1",
         transportadora: transportadoraNfe,

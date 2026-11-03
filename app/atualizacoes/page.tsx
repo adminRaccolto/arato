@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-j",
+    data: "03/11/2026",
+    titulo: "Placa e motorista sem cadastro nas transferências",
+    modulos: ["Estoque", "Fiscal", "Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Transferência entre Fazendas: dá para digitar direto na emissão a placa, a UF da placa, o nome e o CPF do motorista, sem cadastro prévio." },
+      { tipo: "correcao", texto: "A NF-e de transferência de produtos agora leva o motorista nas informações complementares, e a pré-visualização mostra a placa e o motorista digitados." },
+      { tipo: "melhoria", texto: "Transferência de Máquinas usa o mesmo campo de motorista, e o CPF pode ser preenchido quando o motorista cadastrado não tem CPF." },
+    ],
+  },
+  {
     versao: "2026.11.03-i",
     data: "03/11/2026",
     titulo: "Funções da fazenda e motorista vindo do funcionário",

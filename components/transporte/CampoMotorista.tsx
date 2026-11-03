@@ -26,8 +26,8 @@ export default function CampoMotorista({ id, motoristas, valor, onChange, style 
         <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{cadastrado ? "Do cadastro de motoristas" : valor.motorista_nome.trim() ? "Sem cadastro — informe o CPF ao lado" : ""}</div>
       </div>
       <div>
-        <input value={fmtCpf(valor.motorista_cpf ?? "")} readOnly={!!cadastrado} placeholder="CPF *"
-          style={{ ...style, fontFamily: "monospace", ...(cadastrado ? { background: "var(--bg-page)", color: "var(--text-2)" } : {}), ...(!cadastrado && valor.motorista_nome.trim() && (valor.motorista_cpf ?? "").replace(/\D/g, "").length !== 11 ? { borderColor: "#C9921B" } : {}) }}
+        <input value={fmtCpf(valor.motorista_cpf ?? "")} readOnly={!!cadastrado?.cpf} placeholder="CPF *"
+          style={{ ...style, fontFamily: "monospace", ...(cadastrado?.cpf ? { background: "var(--bg-page)", color: "var(--text-2)" } : {}), ...(!cadastrado?.cpf && valor.motorista_nome.trim() && (valor.motorista_cpf ?? "").replace(/\D/g, "").length !== 11 ? { borderColor: "#C9921B" } : {}) }}
           onChange={e => onChange({ ...valor, motorista_cpf: e.target.value.replace(/\D/g, "").slice(0, 11) })} />
       </div>
     </div>

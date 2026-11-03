@@ -1,5 +1,6 @@
 "use client";
 import { hojeLocal } from "../../lib/data-local";
+import CampoMotorista from "../transporte/CampoMotorista";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../OperationalUI";
 import SelectField from "../SelectField";
 import InputData from "../InputData";
@@ -258,18 +259,12 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
           </div>
         </div>
         {comMotorista && (
-          <>
-            <div>
-              <label data-arato-label="true" style={lbl}>Motorista</label>
-              <input list="transf-maq-motoristas" value={t.motorista_nome}
-                onChange={e => { const nome = e.target.value; const m = motoristas.find(x => x.nome === nome); set(p => ({ ...p, motorista_nome: nome, motorista_cpf: m?.cpf ?? p.motorista_cpf })); }}
-                style={inp} placeholder="Nome do motorista" />
-            </div>
-            <div>
-              <label data-arato-label="true" style={lbl}>CPF do motorista</label>
-              <input value={t.motorista_cpf} onChange={e => set(p => ({ ...p, motorista_cpf: e.target.value }))} style={inp} />
-            </div>
-          </>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label data-arato-label="true" style={lbl}>Motorista</label>
+            <CampoMotorista id="transf-maq-motoristas-ret" motoristas={motoristas} style={inp}
+              valor={{ motorista_id: motoristas.find(m => m.nome === t.motorista_nome)?.id ?? "", motorista_nome: t.motorista_nome, motorista_cpf: t.motorista_cpf }}
+              onChange={v => set(p => ({ ...p, motorista_nome: v.motorista_nome, motorista_cpf: v.motorista_cpf }))} />
+          </div>
         )}
         <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--text-3)" }}>Transportadora e veículo saem no XML e no DANFE; o motorista vai nas informações complementares da NF-e.</div>
       </div>
@@ -734,24 +729,10 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
 
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>Motorista (opcional)</label>
-                {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
-                <input list="transf-maq-motoristas" value={f.motorista_nome}
-                  onChange={e => {
-                    const nome = e.target.value;
-                    const achado = motoristas.find(m => m.nome === nome);
-                    setF(p => ({ ...p, motorista_nome: nome, motorista_id: achado?.id ?? "", motorista_cpf: achado?.cpf ?? p.motorista_cpf }));
-                  }}
-                  style={inp} placeholder="Nome do motorista que vai transportar" />
-                <datalist id="transf-maq-motoristas">
-                  {motoristas.map(m => <option key={m.id} value={m.nome} />)}
-                </datalist>
+                <CampoMotorista id="transf-maq-motoristas" motoristas={motoristas} style={inp}
+                  valor={{ motorista_id: f.motorista_id, motorista_nome: f.motorista_nome, motorista_cpf: f.motorista_cpf }}
+                  onChange={v => setF(p => ({ ...p, ...v }))} />
               </div>
-              {MOTIVOS[f.motivo].emiteNfEtapa1 && (
-                <div data-arato-dialog-body="true">
-                  <label data-arato-label="true" style={lbl}>CPF do motorista</label>
-                  <input value={f.motorista_cpf} onChange={e => setF(p => ({ ...p, motorista_cpf: e.target.value }))} style={inp} />
-                </div>
-              )}
               {MOTIVOS[f.motivo].emiteNfEtapa1 && blocoTransporte(trNova, setTrNova, false)}
 
               {MOTIVOS[f.motivo].temEtapa2 && (
