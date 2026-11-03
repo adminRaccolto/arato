@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Parcelas de contrato no CP (03/11/2026)**: em Contratos Financeiros, Calcular só monta o cronograma. As parcelas vão para o Contas a Pagar em Salvar Parcelas e Lançar no CP. A lista marca os contratos pendentes com "Parcelas não lançadas no CP", e ao sair de um deles o sistema oferece lançar. Parcela já vencida entra em aberto e precisa de baixa manual.
+
 **Recorrência na Previsão de Gastos (03/11/2026)**: marque Repetir, informe a quantidade e o vencimento (Mensal, Bimestral, Trimestral, Semestral ou Anual). O grid mostra cada parcela, e a data pode ser alterada. Mudar o 1º vencimento, a quantidade ou a periodicidade refaz o grid e descarta as datas alteradas. As previsões só vão para o Contas a Pagar ao salvar.
 
 **Painel Mercado (03/11/2026)**: o dólar spot vem de cotação ao vivo, com fontes de reserva. A PTAX é a última publicada pelo Banco Central (a do dia sai por volta das 13h; fim de semana e feriado mantêm a anterior). "dados aprox." significa que o spot não veio da fonte ao vivo: é a PTAX ou a última cotação guardada.

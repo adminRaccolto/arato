@@ -31,6 +31,7 @@ import {
   buscarOgsCf,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
+import { buscarPaginado } from "../../../lib/buscar-paginado";
 import { useAuth } from "../../../components/AuthProvider";
 import PlanoGate from "../../../components/PlanoGate";
 import type {
@@ -354,6 +355,29 @@ export default function ContratosFinanceiros() {
       });
   }, [contratos]);
 
+  // Contrato com cronograma e nenhuma parcela no Contas a Pagar: "Calcular" só monta o cronograma, e sem o aviso o contrato
+  // parecia pronto (achado 03/11/2026: 4 contratos, R$ 19,8 milhões). Títulos de liberação (IOF/tarifas) não contam.
+  const [semCpIds, setSemCpIds] = useState<Set<string>>(new Set());
+  const [versaoCp, setVersaoCp] = useState(0);
+  const [soSemCp, setSoSemCp] = useState(false);
+  async function contratosSemCp(ids: string[]): Promise<Set<string>> {
+    if (!ids.length) return new Set();
+    const [parcelas, titulos, libs] = await Promise.all([
+      buscarPaginado<{ contrato_id: string; valor_parcela: number | null }>((de, ate) => supabase.from("parcelas_pagamento").select("id, contrato_id, valor_parcela").in("contrato_id", ids).order("id").range(de, ate)),
+      buscarPaginado<{ id: string; contrato_financeiro_id: string }>((de, ate) => supabase.from("lancamentos").select("id, contrato_financeiro_id").in("contrato_financeiro_id", ids).eq("tipo", "pagar").neq("status", "cancelado").order("id").range(de, ate)),
+      buscarPaginado<{ lancamento_id: string | null; despesa_lancamento_id: string | null }>((de, ate) => supabase.from("parcelas_liberacao").select("id, lancamento_id, despesa_lancamento_id").in("contrato_id", ids).order("id").range(de, ate)),
+    ]);
+    const daLiberacao = new Set(libs.flatMap(l => [l.lancamento_id, l.despesa_lancamento_id]));
+    const comTitulo = new Set(titulos.filter(t => !daLiberacao.has(t.id)).map(t => t.contrato_financeiro_id));
+    return new Set(parcelas.filter(p => Number(p.valor_parcela ?? 0) > 0 && !comTitulo.has(p.contrato_id)).map(p => p.contrato_id));
+  }
+  useEffect(() => {
+    const ativos = contratos.filter(c => c.status === "ativo").map(c => c.id);
+    let vivo = true;
+    contratosSemCp(ativos).then(s => { if (vivo) setSemCpIds(s); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [contratos, versaoCp]);
+
   // ── Busca taxa variável de referência da tabela taxas_variaveis_historico ──
   // Indexador sem histórico no sistema (TFB, TFBD, Outro…): a taxa é digitada ou vem do PDF e não é apagada aqui
   const buscarTaxaVariavelRef = async (indexador: string) => {
@@ -545,6 +569,30 @@ export default function ContratosFinanceiros() {
     setParcelasLiberacao([]); setParcelasPagamento([]); setParcelasEditadas({}); setGarantias([]); setCentrosCusto([]); setAditivos([]); setOrigensRefin([]); setFRefin(REFIN_VAZIO); setRefinPendentes([]); setRefinPrevia(null);
     setCnpjBusca(""); setCnpjBuscaStatus("idle");
     setModalAberto(true);
+  };
+
+  // Ao sair de um contrato com cronograma que não foi para o CP, oferece lançar na hora
+  const pedirFechar = async () => {
+    const c = contratoModal;
+    const comValor = parcelasPagamento.filter(p => Number(p.valor_parcela ?? 0) > 0);
+    if (c?.id && c.status === "ativo" && comValor.length > 0) {
+      const pendente = await contratosSemCp([c.id]).then(s => s.has(c.id)).catch(() => false);
+      if (pendente) {
+        const total = comValor.reduce((t, p) => t + Number(p.valor_parcela ?? 0), 0);
+        const lancar = await confirmarAcao({
+          titulo: "Parcelas não lançadas no Contas a Pagar",
+          mensagem: `Este contrato tem ${comValor.length} parcela(s), somando ${c.moeda === "USD" ? "US$" : "R$"} ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, que ainda não foram para o Contas a Pagar.\n\nConfirmar lança agora. Cancelar fecha sem lançar.`,
+          perigo: false,
+        });
+        if (lancar) {
+          await salvarParcelasELancarCP(true);
+          // Se o lançamento falhou, fica no contrato para mostrar o erro
+          if (await contratosSemCp([c.id]).then(s => s.has(c.id)).catch(() => true)) return;
+        }
+      }
+    }
+    setVersaoCp(v => v + 1);
+    fecharModal();
   };
 
   const fecharModal = () => {
@@ -1045,9 +1093,9 @@ export default function ContratosFinanceiros() {
   // instante do cálculo, sem chance de revisar/ajustar antes de virar título
   // de verdade — recalcular/reprocessar aqui é seguro porque só afeta CP não
   // baixado (nunca reabre nem altera o que já foi pago).
-  const salvarParcelasELancarCP = async () => salvar(async () => {
+  const salvarParcelasELancarCP = async (jaConfirmado?: unknown) => salvar(async () => {
     if (contratoModal?.status === "refinanciado") { setErroModal(MSG_REFINANCIADO); return; }
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar parcelas elancar cp)", perigo: false }))) return;
+    if (jaConfirmado !== true && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar parcelas elancar cp)", perigo: false }))) return;
     if (!contratoModal || !fazendaId) return;
     // Valor = Amortização + Juros + Encargos: o que o usuário editou fica, o restante é calculado (mesma regra da tela)
     const comErro = parcelasPagamento.map(p => ({ p, r: resolverParcela(p, parcelasEditadas[p.id]) })).find(x => x.r.erro);
@@ -1254,6 +1302,7 @@ export default function ContratosFinanceiros() {
 
   // ── Filtros + Totais ──
   const contratosFiltrados = contratos.filter(c => {
+    if (soSemCp && !semCpIds.has(c.id)) return false;
     if (produtorFiltro && c.produtor_id !== produtorFiltro) return false;
     if (colTipo && c.tipo !== colTipo) return false;
     if (colMoeda && c.moeda !== colMoeda) return false;
@@ -1474,6 +1523,12 @@ export default function ContratosFinanceiros() {
           </OperationalFilters>
 
           {/* Tabela */}
+          {semCpIds.size > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 16px", marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#7A4300" }}>⚠ {semCpIds.size} contrato(s) com parcelas não lançadas no Contas a Pagar. Abra o contrato, confira e clique em Salvar Parcelas e Lançar no CP.</span>
+              <OperationalButton data-arato-button="secondary" style={{ fontSize: 11, color: "#7A4300", background: "#FDE9BB", border: "0.5px solid #C9921B", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }} onClick={() => setSoSemCp(v => !v)}>{soSemCp ? "Ver todos" : "Ver só estes"}</OperationalButton>
+            </div>
+          )}
           {erroCarregamento ? (
             <div style={{ background: "#FCEBEB", borderRadius: 14, border: "0.5px solid #E24B4A50", padding: "32px 24px", textAlign: "center" }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#791F1F", marginBottom: 6 }}>Erro ao carregar contratos</div>
@@ -1514,6 +1569,7 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px", maxWidth: 340 }}>
                           <div style={{ color: "var(--text-1)" }}>{c.descricao}</div>
                           {c.linha_credito && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.linha_credito}</div>}
+                          {semCpIds.has(c.id) && <div style={{ marginTop: 3 }}><span style={{ fontSize: 10, fontWeight: 700, color: "#7A4300", background: "#FBF3E0", borderRadius: 4, padding: "2px 6px" }}>⚠ Parcelas não lançadas no CP</span></div>}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
@@ -1600,7 +1656,7 @@ export default function ContratosFinanceiros() {
                     </div>
                   )}
                 </div>
-                <OperationalButton data-arato-button="icon" onClick={fecharModal} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</OperationalButton>
+                <OperationalButton data-arato-button="icon" onClick={pedirFechar} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</OperationalButton>
               </div>
 
               {/* Abas */}
@@ -2177,7 +2233,7 @@ export default function ContratosFinanceiros() {
                     {erroModal && (
                       <span style={{ fontSize: 12, color: "#E24B4A", maxWidth: 360, lineHeight: 1.4 }}>{erroModal}</span>
                     )}
-                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { fecharModal(); setErroModal(null); }}>Fechar</OperationalButton>
+                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { void pedirFechar(); setErroModal(null); }}>Fechar</OperationalButton>
                     <OperationalButton data-arato-button="primary"
                       style={{ ...btnV, background: "#111111" }}
                       disabled={salvando}

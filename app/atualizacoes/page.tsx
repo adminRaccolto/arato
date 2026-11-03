@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-c",
+    data: "03/11/2026",
+    titulo: "Contratos Financeiros avisam parcelas que não foram para o CP",
+    modulos: ["Contratos Financeiros", "Contas a Pagar"],
+    itens: [
+      { tipo: "melhoria", texto: "Calcular só monta o cronograma; as parcelas vão para o Contas a Pagar ao clicar em Salvar Parcelas e Lançar no CP. Agora a lista avisa quais contratos estão com esse passo pendente, com filtro Ver só estes. Ao sair de um contrato pendente, o sistema oferece lançar na hora." },
+    ],
+  },
+  {
     versao: "2026.11.03-b",
     data: "03/11/2026",
     titulo: "Previsão de Gastos: periodicidade e vencimentos editáveis na recorrência",
