@@ -103,7 +103,7 @@ export function CapacidadePagamentoPainel() {
           else if (Number(a.valor_previsto) > 0) outs.push({ grupo: "Arrendamento em R$", data_vencimento: a.data_vencimento, valor: Number(a.valor_previsto), pago: a.status === "pago" });
         }
         setOutros(outs); setGraos(grs);
-        setMercado({ usd: Number(pr?.dolar?.valor ?? pr?.usd ?? pr?.dolar ?? 0) || 0, soja: Number(pr?.soja?.brl) || 0, milho: Number(pr?.milho?.brl) || 0, algodao: Number(pr?.algodao?.brl) || 0 });
+        setMercado({ usd: Number(pr?.usdBrl) || 0, soja: Number(pr?.soja?.brl) || 0, milho: Number(pr?.milho?.brl) || 0, algodao: Number(pr?.algodao?.brl) || 0 });
         setRefs(Object.fromEntries(((rf.data ?? []) as { cultura: string; custo_ha: number }[]).map(r => [r.cultura, Number(r.custo_ha) || 0])));
         if (rf.error) setAviso("Rode a Seção 408 no Supabase para usar a tabela de custos e salvar cenários.");
         const cs = await listarContratosFinanceirosDaConta(contaId, fazendaId, fazendaIds);
