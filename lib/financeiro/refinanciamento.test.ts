@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cotacaoDoContrato } from "./moeda.ts";
-import { planejarLiquidacao, podeRestaurar, saldoDevedorOrigem, type TituloOrigem } from "./refinanciamento.ts";
+import { planejarLiquidacao, podeRestaurar, saldoDevedorOrigem, statusDoContrato, type TituloOrigem } from "./refinanciamento.ts";
 
 const t = (o: Partial<TituloOrigem>): TituloOrigem => ({ id: "x", tipo: "pagar", status: "em_aberto", valor: 100, valor_pago: null,
   data_vencimento: "2027-01-10", descricao: "Cédula — Parcela 1 — Amortização", ...o });
@@ -58,4 +58,12 @@ test("cotação do contrato: a da tela; senão a dos contratos importados", () =
   assert.equal(cotacaoDoContrato({ valor_cotacao: 5.4, cotacao_usd: 5.1 }), 5.4);
   assert.equal(cotacaoDoContrato({ valor_cotacao: null, cotacao_usd: 5.46 }), 5.46);
   assert.equal(cotacaoDoContrato({ valor_cotacao: null, cotacao_usd: null }), null);
+});
+
+test("contrato refinanciado continua refinanciado ao carregar", () => {
+  assert.equal(statusDoContrato("refinanciado"), "refinanciado");
+  assert.equal(statusDoContrato("quitado"), "quitado");
+  assert.equal(statusDoContrato("cancelado"), "cancelado");
+  assert.equal(statusDoContrato("ativo"), "ativo");
+  assert.equal(statusDoContrato(undefined), "ativo");
 });

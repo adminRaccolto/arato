@@ -11,6 +11,11 @@
  * cédula usada na quitação entra como liberação sem caixa. O que sobrar da cédula é liberado na conta normalmente.
  */
 
+/** Status do contrato vindo do banco. Refinanciado precisa continuar refinanciado: as telas o tiram da dívida atual. */
+export function statusDoContrato(status: string | null | undefined): "ativo" | "quitado" | "cancelado" | "refinanciado" {
+  return status === "quitado" || status === "cancelado" || status === "refinanciado" ? status : "ativo";
+}
+
 export type TituloOrigem = {
   id: string;
   tipo: string | null;

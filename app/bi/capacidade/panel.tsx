@@ -95,7 +95,8 @@ export function CapacidadePagamentoPainel() {
         const outs: OutroCompromisso[] = [];
         const grs: Grao[] = [];
         for (const c of (cct.data ?? []) as { data_vencimento: string; valor: number | null; status: string; moeda_parcela: string | null; quantidade_sacas: number | null }[]) {
-          if (c.moeda_parcela && c.moeda_parcela !== "BRL") grs.push({ data_vencimento: c.data_vencimento, cultura: familia(c.moeda_parcela), sacas: c.status === "pago" ? 0 : Number(c.quantidade_sacas) || 0 });
+          // Com valor em reais, a parcela em sacas conta como dívida, como no relatório de Endividamento
+          if (c.moeda_parcela && c.moeda_parcela !== "BRL" && !(Number(c.valor) > 0)) grs.push({ data_vencimento: c.data_vencimento, cultura: familia(c.moeda_parcela), sacas: c.status === "pago" ? 0 : Number(c.quantidade_sacas) || 0 });
           else outs.push({ grupo: "Compra de terra", data_vencimento: c.data_vencimento, valor: Number(c.valor) || 0, pago: c.status === "pago" });
         }
         for (const a of (arr.data ?? []) as { data_vencimento: string; valor_previsto: number | null; sacas_previstas: number | null; commodity: string | null; status: string }[]) {
@@ -103,7 +104,7 @@ export function CapacidadePagamentoPainel() {
           else if (Number(a.valor_previsto) > 0) outs.push({ grupo: "Arrendamento em R$", data_vencimento: a.data_vencimento, valor: Number(a.valor_previsto), pago: a.status === "pago" });
         }
         setOutros(outs); setGraos(grs);
-        setMercado({ usd: Number(pr?.usdBrl) || 0, soja: Number(pr?.soja?.brl) || 0, milho: Number(pr?.milho?.brl) || 0, algodao: Number(pr?.algodao?.brl) || 0 });
+        setMercado({ usd: Number(pr?.usdPtax ?? pr?.usdBrl) || 0, soja: Number(pr?.soja?.brl) || 0, milho: Number(pr?.milho?.brl) || 0, algodao: Number(pr?.algodao?.brl) || 0 });
         setRefs(Object.fromEntries(((rf.data ?? []) as { cultura: string; custo_ha: number }[]).map(r => [r.cultura, Number(r.custo_ha) || 0])));
         if (rf.error) setAviso("Rode a Seção 408 no Supabase para usar a tabela de custos e salvar cenários.");
         const cs = await listarContratosFinanceirosDaConta(contaId, fazendaId, fazendaIds);
@@ -174,6 +175,7 @@ export function CapacidadePagamentoPainel() {
 
   const divida = useMemo(() => compromissosDoPeriodo(parcelas, contratos, outros, periodo, cotacao), [parcelas, contratos, outros, periodo, cotacao]);
   const totalDivida = divida.reduce((s, l) => s + l.total, 0);
+  const totalArrendamento = divida.find(l => l.grupo === "Arrendamento em R$")?.total ?? 0;
   const compromissos = totalDivida + outrasSaidas;
   const r = useMemo(() => calcularCapacidade(linhasCiclo.filter(l => !l.fora).map(l => l.dados), compromissos), [linhasCiclo, compromissos]);
   const sit = SITUACAO[r.situacao];
@@ -342,6 +344,13 @@ export function CapacidadePagamentoPainel() {
                 <td style={{ ...td, fontWeight: 600 }}>{brl(l.total)}</td><td style={td}>{brl(l.pago)}</td><td style={td}>{brl(l.total - l.pago)}</td>
               </tr>
             ))}
+            {divida.length > 0 && (
+              <tr>
+                <td colSpan={7} style={{ ...td, textAlign: "left", fontSize: 11, color: "#666" }}>
+                  No relatório de Endividamento, no mesmo período: {brl(totalDivida - totalArrendamento)}. O arrendamento em reais não consta nele.
+                </td>
+              </tr>
+            )}
             {outrasSaidas > 0 && <tr><td style={{ ...td, textAlign: "left" }}>Outras saídas (informado)</td><td style={td} colSpan={3} /><td style={{ ...td, fontWeight: 600 }}>{brl(outrasSaidas)}</td><td style={td}>—</td><td style={td}>{brl(outrasSaidas)}</td></tr>}
           </tbody>
         </OperationalGrid>

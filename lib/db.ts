@@ -5,6 +5,7 @@
  */
 
 import { motivoBloqueioExclusao, notaDoTitulo } from "./financeiro/bloqueio-exclusao";
+import { statusDoContrato } from "./financeiro/refinanciamento";
 import { cotacaoDoContrato } from "./financeiro/moeda";
 import { itemDoCliente } from "./estoque/duplicados";
 import { falharSeErro } from "./db-util";
@@ -3979,9 +3980,7 @@ function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
     : "sac";
   const tipoRaw = (row.tipo as string | undefined ?? "outros").toLowerCase();
   const tipo: ContratoFinanceiro["tipo"] = TIPO_CF_MAP[tipoRaw] ?? "outros";
-  const status = (row.status as string | undefined) ?? "ativo";
-  const statusNorm: ContratoFinanceiro["status"] =
-    status === "quitado" ? "quitado" : status === "cancelado" ? "cancelado" : "ativo";
+  const statusNorm: ContratoFinanceiro["status"] = statusDoContrato(row.status as string | undefined);
   // Deriva taxa a.a. da taxa a.m. se só a mensal estiver no banco (dados migrados)
   const taxaAm  = (row.taxa_juros_am as number | undefined);
   const taxaAa  = (row.taxa_juros_aa as number | undefined)

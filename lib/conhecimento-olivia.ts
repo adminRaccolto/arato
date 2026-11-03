@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Contrato refinanciado (03/11/2026)**: o contrato liquidado por uma cédula nova aparece com o status Refinanciado e sai do Endividamento e do BI, para a dívida não contar em dobro. A dívida passa a ser só a da cédula nova. Por isso, o total do Endividamento de um cliente com refinanciamento pode cair depois desta data, sem que nenhum título tenha mudado.
+
 **Capacidade de Pagamento (03/11/2026)**: aba do BI, exclusiva da equipe Raccolto. Se um cliente perguntar sobre ela, explique que é uma análise feita pela consultoria. É uma visão de caixa, não gerencial: todos os compromissos que vencem no período, inclusive o principal do custeio, são comparados com o caixa operacional projetado (receita menos custo).
 
 **Baixa de título em dólar (03/11/2026)**: na baixa de um título em dólar aparece "Cotação do pagamento". O sistema sugere a cotação do título ou a PTAX atual. Troque pela cotação real do dia: o valor em reais é recalculado e a cotação fica gravada no título.

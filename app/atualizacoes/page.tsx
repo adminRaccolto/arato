@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-s",
+    data: "03/11/2026",
+    titulo: "Contrato refinanciado não conta mais em dobro",
+    modulos: ["Contratos Financeiros", "Endividamento", "BI Raccolto"],
+    itens: [
+      { tipo: "correcao", texto: "Contrato refinanciado aparecia como ativo ao ser carregado, e o saldo dele era somado ao da cédula nova no Endividamento e no BI. Agora aparece como Refinanciado e sai da dívida atual." },
+      { tipo: "melhoria", texto: "Capacidade de Pagamento usa a mesma cotação e os mesmos compromissos do Endividamento e mostra o total desse relatório para conferência." },
+    ],
+  },
+  {
     versao: "2026.11.03-r",
     data: "03/11/2026",
     titulo: "BI: Capacidade de Pagamento",
