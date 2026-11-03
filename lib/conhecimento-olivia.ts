@@ -336,7 +336,7 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
-**Borderô no Contas a Receber (03/11/2026)**: funciona como no Contas a Pagar. A linha do borderô preenche as colunas do grid, obedece aos filtros e as ações (Ver NFs, Confirmar Recebimento, Cancelar, Estornar) ficam no botão Ver. Títulos de um borderô não aparecem soltos no grid.
+**Borderô no Contas a Receber (03/11/2026)**: funciona como no Contas a Pagar. A linha do borderô preenche as colunas do grid, obedece aos filtros e as ações (Ver NFs, Confirmar Recebimento, Cancelar, Estornar) abrem ao clicar na linha. Títulos de um borderô não aparecem soltos no grid.
 
 **Data de parcela paga (03/11/2026)**: mudar a data de uma parcela já paga e salvar o cronograma mantém o título pago como está, sem criar outro. Se o valor da parcela também mudar, o sistema não reconhece o pagamento: confira o Contas a Pagar depois de salvar.
 

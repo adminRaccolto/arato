@@ -12,7 +12,7 @@ const RELEASES = [
     titulo: "Contas a Receber: borderô igual ao do Contas a Pagar",
     modulos: ["Contas a Receber"],
     itens: [
-      { tipo: "melhoria", texto: "No Contas a Receber, o borderô agora aparece no grid como no Contas a Pagar: cada informação na sua coluna (cliente, produtor, operação, valor, recebido, saldo, conta, status) e as ações no botão Ver." },
+      { tipo: "melhoria", texto: "No Contas a Receber, o borderô agora aparece no grid como no Contas a Pagar: cada informação na sua coluna (cliente, produtor, operação, valor, recebido, saldo, conta, status) e as ações abrem ao clicar na linha." },
       { tipo: "correcao", texto: "O borderô respeita os filtros de status, período, origem, moeda, produtor e colunas: com o filtro Aberto, borderô já recebido não aparece mais. Títulos de um borderô pendente não aparecem soltos, e os totais do topo incluem os borderôs." },
     ],
   },
