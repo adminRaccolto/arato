@@ -14,8 +14,8 @@ export async function produtoresDoDocumento<T extends string>(db: SupabaseClient
   const { data, error } = await db.from("produtores").select(`${colunas}, conta_id, fazenda_id`)
     .or(`cpf_cnpj.eq.${documento},cpf_cnpj.eq.${formatarDocumento(documento)}`);
   if (error) throw error;
-  type Linha = { conta_id: string | null; fazenda_id: string | null };
-  return ((data ?? []) as unknown as (Record<string, string | null> & Linha)[])
+  type Linha = { id: string; nome: string; cpf_cnpj: string | null; conta_id: string | null; fazenda_id: string | null };
+  return ((data ?? []) as unknown as Linha[])
     .filter(p => (!!p.conta_id && p.conta_id === fazenda?.conta_id) || (!!p.fazenda_id && fazendaIds.includes(p.fazenda_id)));
 }
 
@@ -30,8 +30,7 @@ export async function buscarTitularCadastro(db: SupabaseClient, fazendaIds: stri
   }
   const produtores = await produtoresDoDocumento(db, fazendaIds, documento, "nome, cpf_cnpj, inscricao_est, logradouro, numero, complemento, bairro, municipio, municipio_ibge, estado, cep, telefone");
   // O mesmo CPF pode ter cadastros como "FULANO" e "FULANO E OUTROS": o nome base é o do titular sozinho
-  const titular = [...produtores].sort((a, b) => (a.nome ?? "").length - (b.nome ?? "").length)[0];
-  return titular ? (titular as unknown as TitularCadastro) : null;
+  return ([...produtores].sort((a, b) => (a.nome ?? "").length - (b.nome ?? "").length)[0] as TitularCadastro | undefined) ?? null;
 }
 
 // Sem documento na chave (configurações antigas), a configuração fica como está.
