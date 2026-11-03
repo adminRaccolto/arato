@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-k",
+    data: "03/11/2026",
+    titulo: "Transferência de máquina entre fazendas: destino pelo produtor e pela IE",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Na Transferência entre fazendas, o destino agora é um produtor do cliente e uma das Inscrições Estaduais cadastradas nele. O endereço da nota vem dessa IE." },
+      { tipo: "melhoria", texto: "A emissão é barrada quando a IE de destino é a mesma do emitente." },
+      { tipo: "correcao", texto: "O CFOP de saída das remessas de máquina agora muda para 6xxx quando o destino fica em outro estado. Antes saía sempre como 5xxx." },
+    ],
+  },
+  {
     versao: "2026.11.03-j",
     data: "03/11/2026",
     titulo: "Placa e motorista sem cadastro nas transferências",

@@ -11,9 +11,10 @@ import { useAuth } from "../AuthProvider";
 import { supabase } from "../../lib/supabase";
 import {
   listarTransferenciasMaquinas, criarTransferenciaMaquina, atualizarTransferenciaMaquina,
-  listarMaquinas, listarPessoasDaConta, criarNotaFiscal,
+  listarMaquinas, listarPessoasDaConta, criarNotaFiscal, listarProdutoresDaConta, listarIEsDeMultiplosProdutores,
 } from "../../lib/db";
-import type { TransferenciaMaquina, MotivoTransferenciaMaquina, Maquina, Pessoa } from "../../lib/supabase";
+import { cfopPorDestino, destinatarioDaInscricao, mesmoEstabelecimento } from "../../lib/fiscal/transferencia-maquina";
+import type { TransferenciaMaquina, MotivoTransferenciaMaquina, Maquina, Pessoa, Produtor, ProdutorIE } from "../../lib/supabase";
 
 // Transporte da NF-e (modalidade do frete, transportadora, veículo e motorista) — mesmos dados da NF-e de produto
 type Transp = { frete: "0" | "1" | "2" | "9"; transportadora_id: string; veiculo_id: string; placa: string; uf_placa: string; motorista_nome: string; motorista_cpf: string };
@@ -95,6 +96,8 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
   const [itens,     setItens]     = useState<TransferenciaMaquina[]>([]);
   const [maquinas,  setMaquinas]  = useState<Maquina[]>([]);
   const [pessoas,   setPessoas]   = useState<Pessoa[]>([]);
+  const [produtores, setProdutores] = useState<Produtor[]>([]);
+  const [iesProdutores, setIesProdutores] = useState<ProdutorIE[]>([]);
   const [motoristas, setMotoristas] = useState<{ id: string; nome: string; cpf?: string }[]>([]);
   const [transportadoras, setTransportadoras] = useState<TransportadoraOp[]>([]);
   const [veiculos, setVeiculos] = useState<VeiculoOp[]>([]);
@@ -110,7 +113,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
   const [erro,      setErro]      = useState("");
   const [f, setF] = useState({
     maquina_id: "", maquina_nome_livre: "", motivo: "conserto" as MotivoTransferenciaMaquina,
-    destinatario_pessoa_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
+    destinatario_pessoa_id: "", dest_produtor_id: "", dest_ie_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
     data_retorno_prevista: "", observacao: "",
     motorista_id: "", motorista_nome: "", motorista_cpf: "",
     // Etapa 1 quando NÃO emitimos NF-e nossa (comodato recebido) — dados opcionais
@@ -120,7 +123,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
 
   // Emitentes fiscais da conta (módulos fiscal_pf_/fiscal_emp_) — seletor "Emitente da NF". Antes o
   // sistema usava sempre o primeiro módulo da fazenda, sem saber de quem era a máquina.
-  type EmitenteFiscal = { modulo: string; fazenda_id: string; cpf: string; nome: string; ie: string };
+  type EmitenteFiscal = { modulo: string; fazenda_id: string; cpf: string; nome: string; ie: string; uf: string };
   const [emitentes, setEmitentes] = useState<EmitenteFiscal[]>([]);
   const [emitenteSel, setEmitenteSel] = useState("");
   useEffect(() => {
@@ -130,7 +133,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%").then(({ data }) => {
         const lista = ((data ?? []) as { modulo: string; fazenda_id: string; config: Record<string, string> | null }[])
           .filter(r => r.config?.cpf_cnpj_emitente)
-          .map(r => ({ modulo: r.modulo, fazenda_id: r.fazenda_id, cpf: r.config!.cpf_cnpj_emitente, nome: r.config!.razao_social || r.modulo, ie: r.config!.ie_emitente || "" }));
+          .map(r => ({ modulo: r.modulo, fazenda_id: r.fazenda_id, cpf: r.config!.cpf_cnpj_emitente, nome: r.config!.razao_social || r.modulo, ie: r.config!.ie_emitente || "", uf: r.config!.uf_emitente || "MT" }));
         // dedupe por CPF/CNPJ + IE
         const vistos = new Set<string>();
         setEmitentes(lista.filter(e => { const k = `${e.cpf.replace(/\D/g, "")}|${e.ie.replace(/\D/g, "")}`; if (vistos.has(k)) return false; vistos.add(k); return true; }));
@@ -170,6 +173,9 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       setMaquinas(m);
       setPessoas(p);
       setMotoristas(mot ?? []);
+      const prods = await listarProdutoresDaConta(contaId, fazendaId).catch(() => [] as Produtor[]);
+      setProdutores(prods);
+      setIesProdutores((await listarIEsDeMultiplosProdutores(prods.map(x => x.id))).filter(ie => ie.ativa));
       setLoading(false);
     })();
   }, [contaId, fazendaId]);
@@ -182,10 +188,25 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retornoId, itens.length]);
 
+  // Transferência entre fazendas: o destino é um produtor do cliente e uma das IEs dele. Nos demais motivos, um terceiro de Pessoas.
+  function destinoSelecionado() {
+    if (f.motivo === "transferencia_fazenda") {
+      const prod = produtores.find(x => x.id === f.dest_produtor_id);
+      const ie = iesProdutores.find(x => x.id === f.dest_ie_id);
+      return prod && ie ? { id: undefined, inscricao_est: undefined, ...destinatarioDaInscricao(prod, ie) } : undefined;
+    }
+    return pessoas.find(p => p.id === f.destinatario_pessoa_id);
+  }
+  function escolherProdutorDestino(id: string) {
+    const ies = iesProdutores.filter(ie => ie.produtor_id === id);
+    const unica = ies.length === 1 ? ies[0] : undefined;
+    setF(p => ({ ...p, dest_produtor_id: id, dest_ie_id: unica?.id ?? "", dest_ie: unica?.inscricao_estadual ?? "" }));
+  }
+
   function abrirNova() {
     setTrNova(TRANSP_VAZIO);
     setF({
-      maquina_id: "", maquina_nome_livre: "", motivo: "conserto", destinatario_pessoa_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
+      maquina_id: "", maquina_nome_livre: "", motivo: "conserto", destinatario_pessoa_id: "", dest_produtor_id: "", dest_ie_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
       data_retorno_prevista: "", observacao: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
       nf_terceiro_numero: "", nf_terceiro_chave: "", nf_terceiro_data: "",
     });
@@ -315,10 +336,10 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
     const ehEntrada = motivoCfg.direcao === "entrada";
     const maquina = ehEntrada ? null : maquinas.find(m => m.id === f.maquina_id);
     const nomeBem = ehEntrada ? f.maquina_nome_livre.trim() : (maquina?.nome ?? "");
-    const dest = pessoas.find(p => p.id === f.destinatario_pessoa_id);
+    const dest = destinoSelecionado();
     if (ehEntrada && !nomeBem) { setErro("Descreva a máquina/equipamento."); return; }
     if (!ehEntrada && !maquina) { setErro("Selecione a máquina/equipamento."); return; }
-    if (!dest) { setErro(ehEntrada ? "Selecione o proprietário/prestador." : "Selecione o destinatário."); return; }
+    if (!dest) { setErro(ehEntrada ? "Selecione o proprietário/prestador." : f.motivo === "transferencia_fazenda" ? "Selecione o produtor e a Inscrição Estadual de destino." : "Selecione o destinatário."); return; }
     const valor = parseFloat(f.valor_bem.replace(/\./g, "").replace(",", ".")) || 0;
     if (valor <= 0) { setErro("Informe o valor estimado do bem."); return; }
 
@@ -373,8 +394,14 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       // certificado configurado, sem precisar escolher módulo manualmente).
       const em = resolverEmitente();
       if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
+      if (f.motivo === "transferencia_fazenda" && mesmoEstabelecimento(em.ie, f.dest_ie)) {
+        setErro("A Inscrição Estadual de destino é a mesma do emitente. Escolha a IE da fazenda que vai receber a máquina.");
+        setSalvando(false);
+        return;
+      }
       const moduloKey = em.modulo;
       const cpfCnpjHint = em.cpf;
+      const cfopSaida = cfopPorDestino(motivoCfg.cfopEtapa1 ?? "", em.uf, dest.estado);
       const { transporte, motorista } = montarTransporte(trNova, f.motorista_nome, f.motorista_cpf);
 
       const resp = await fetch("/api/fiscal/emitir-nfe", {
@@ -396,7 +423,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
             cep: (dest.cep ?? "").replace(/\D/g, "") || undefined,
           },
           itens: [{
-            descricao: nomeBem, ncm: f.ncm, cfop: motivoCfg.cfopEtapa1,
+            descricao: nomeBem, ncm: f.ncm, cfop: cfopSaida,
             unidade: "UN", quantidade: 1, valor_unitario: valor,
           }],
           natureza: motivoCfg.naturezaEtapa1,
@@ -410,7 +437,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
       if (!maquina) throw new Error("Máquina não selecionada."); // guarda pro TS — já validado acima
       await registrarNoMonitor(res, em.fazenda_id ?? fazendaId, moduloKey, {
-        natureza: motivoCfg.naturezaEtapa1, tipo: "saida", cfop: motivoCfg.cfopEtapa1 ?? "", descricao: nomeBem, ncm: f.ncm, valor,
+        natureza: motivoCfg.naturezaEtapa1, tipo: "saida", cfop: cfopSaida, descricao: nomeBem, ncm: f.ncm, valor,
         destinatario: dest.nome, cnpj: dest.cpf_cnpj, ie: f.dest_ie, uf: dest.estado, cidade: dest.municipio, endereco: dest.logradouro, numero: dest.numero,
         observacao: f.observacao,
       });
@@ -422,7 +449,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
         maquina_nome: maquina.nome,
         motivo: f.motivo,
         direcao: "saida",
-        cfop_saida: motivoCfg.cfopEtapa1 ?? "",
+        cfop_saida: cfopSaida,
         cfop_retorno: motivoCfg.cfopEtapa2 ?? undefined,
         destinatario_pessoa_id: dest.id,
         destinatario_nome: dest.nome,
@@ -653,7 +680,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
                 <div style={{ display: "flex", gap: 8 }}>
                   {([["saida", "Própria (sai da fazenda)"], ["entrada", "De terceiro (entra na fazenda)"]] as const).map(([dir, label]) => (
                     <OperationalButton data-arato-button="toggle" key={dir} type="button"
-                      onClick={() => setF(p => ({ ...p, motivo: (dir === "saida" ? "conserto" : "comodato_recebido") as MotivoTransferenciaMaquina, maquina_id: "", maquina_nome_livre: "" }))}
+                      onClick={() => setF(p => ({ ...p, motivo: (dir === "saida" ? "conserto" : "comodato_recebido") as MotivoTransferenciaMaquina, maquina_id: "", maquina_nome_livre: "", destinatario_pessoa_id: "", dest_produtor_id: "", dest_ie_id: "", dest_ie: "" }))}
                       style={{
                         flex: 1, padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
                         border: MOTIVOS[f.motivo].direcao === dir ? "1px solid #1A4870" : "0.5px solid var(--border-table)",
@@ -676,12 +703,12 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
 
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>Motivo</label>
-                <SelectField value={f.motivo} onChange={e => setF(p => ({ ...p, motivo: e.target.value as MotivoTransferenciaMaquina }))} style={inp}>
+                <SelectField value={f.motivo} onChange={e => setF(p => ({ ...p, motivo: e.target.value as MotivoTransferenciaMaquina, destinatario_pessoa_id: "", dest_produtor_id: "", dest_ie_id: "", dest_ie: "" }))} style={inp}>
                   {Object.entries(MOTIVOS).filter(([, v]) => v.direcao === MOTIVOS[f.motivo].direcao).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </SelectField>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                   {MOTIVOS[f.motivo].cfopEtapa1
-                    ? <>CFOP {MOTIVOS[f.motivo].direcao === "entrada" ? "de entrada (referência)" : "de saída"}: <strong>{MOTIVOS[f.motivo].cfopEtapa1}</strong></>
+                    ? <>CFOP {MOTIVOS[f.motivo].direcao === "entrada" ? "de entrada (referência)" : "de saída"}: <strong>{MOTIVOS[f.motivo].direcao === "entrada" ? MOTIVOS[f.motivo].cfopEtapa1 : cfopPorDestino(MOTIVOS[f.motivo].cfopEtapa1 ?? "", (() => { const em = resolverEmitente(); return "erro" in em ? null : em.uf; })(), destinoSelecionado()?.estado)}</strong></>
                     : <>Sem NF nesta etapa — só registro de controle</>}
                   {MOTIVOS[f.motivo].cfopEtapa2 ? <> · Devolução: <strong>{MOTIVOS[f.motivo].cfopEtapa2}</strong></> : (MOTIVOS[f.motivo].temEtapa2 ? <> · devolução sem NF</> : <> · sem devolução (movimento definitivo)</>)}
                 </div>
@@ -699,10 +726,28 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
                 )}
               </div>
 
+              {f.motivo === "transferencia_fazenda" ? (
+                <>
+                  <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                    <label data-arato-label="true" style={lbl}>Produtor de destino</label>
+                    <SelectBusca value={f.dest_produtor_id} onChange={escolherProdutorDestino} placeholder="— Selecionar —" style={inp}
+                      options={produtores.map(x => ({ value: x.id, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}` }))} />
+                  </div>
+                  <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                    <label data-arato-label="true" style={lbl}>Inscrição Estadual de destino</label>
+                    <SelectBusca value={f.dest_ie_id} disabled={!f.dest_produtor_id} placeholder={f.dest_produtor_id ? "— Selecionar —" : "Escolha o produtor primeiro"} style={inp}
+                      onChange={v => setF(p => ({ ...p, dest_ie_id: v, dest_ie: iesProdutores.find(ie => ie.id === v)?.inscricao_estadual ?? "" }))}
+                      options={iesProdutores.filter(ie => ie.produtor_id === f.dest_produtor_id).map(ie => ({ value: ie.id, label: `${ie.inscricao_estadual}${ie.municipio ? ` · ${ie.municipio}` : ""}${ie.estado ? `/${ie.estado}` : ""}` }))} />
+                    {f.dest_produtor_id && !iesProdutores.some(ie => ie.produtor_id === f.dest_produtor_id) && (
+                      <span style={{ fontSize: 11, color: "#B45309" }}>Este produtor não tem Inscrição Estadual ativa. Cadastre em Cadastros → Produtores.</span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>
                   {MOTIVOS[f.motivo].direcao === "entrada" ? "Proprietário / Prestador de serviço" : "Destinatário"}
-                  {f.motivo === "transferencia_fazenda" ? " (empresa/produtor da fazenda de destino)" : ""}
                 </label>
                 <SelectBusca value={f.destinatario_pessoa_id} onChange={v => setF(p => ({ ...p, destinatario_pessoa_id: v, dest_ie: pessoas.find(ps => ps.id === v)?.inscricao_est ?? "" }))}
                   placeholder="— Selecionar —" style={inp}
@@ -710,12 +755,14 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
               </div>
               {MOTIVOS[f.motivo].emiteNfEtapa1 && (
                 <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
-                  <label data-arato-label="true" style={lbl}>Inscrição Estadual do destinatário{f.motivo === "transferencia_fazenda" ? " (IE da fazenda de destino)" : ""}</label>
+                  <label data-arato-label="true" style={lbl}>Inscrição Estadual do destinatário</label>
                   <input value={f.dest_ie} onChange={e => setF(p => ({ ...p, dest_ie: e.target.value }))} style={inp} placeholder="Somente números — vazio = destinatário não contribuinte" />
                   {f.destinatario_pessoa_id && !f.dest_ie.replace(/\D/g, "") && (
                     <span style={{ fontSize: 11, color: "#B45309" }}>Sem IE a NF-e sai com o destinatário como não contribuinte. Produtor rural e empresa com IE: informe a IE.</span>
                   )}
                 </div>
+              )}
+                </>
               )}
 
               <div data-arato-dialog-body="true">
