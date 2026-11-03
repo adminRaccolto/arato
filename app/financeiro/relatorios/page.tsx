@@ -2786,7 +2786,7 @@ function FinanceiroRelatoriosInner() {
                           <option value="baixa">Data da baixa</option>
                         </SelectField>
                       </div>
-                      <div><label data-arato-label="true" style={labelStyle}>Vencimento de (vazio = tudo)</label><InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                      <div><label data-arato-label="true" style={labelStyle}>{periodoPorCPCR === "baixa" ? "Baixa de" : "Vencimento de"} (vazio = tudo)</label><InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
                             <div><label data-arato-label="true" style={labelStyle}>até (vazio = tudo)</label><InputData type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
                             <div><label data-arato-label="true" style={labelStyle}>Tipo</label>
                               <SelectField value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }}>
