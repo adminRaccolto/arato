@@ -336,7 +336,7 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
-**Contas a Receber igual ao Contas a Pagar (03/11/2026)**: indicadores, busca de título, filtros e painel de borderô seguem o mesmo formato do Contas a Pagar. Origem, Status e Moeda são filtros em lista, e "Limpar filtros" tira todos de uma vez. Ao clicar em um borderô, o painel mostra saldo em aberto, vencimento do saldo e as ações de ver NFs, confirmar recebimento, receber saldo restante, estornar e cancelar.
+**Contas a Receber igual ao Contas a Pagar (03/11/2026)**: indicadores, busca de título, filtros e painel de borderô seguem o mesmo formato do Contas a Pagar. Origem, Status e Moeda são filtros em lista, e "Limpar filtros" tira todos de uma vez. Ao clicar em um borderô, o painel mostra saldo em aberto, vencimento do saldo e as ações de ver NFs, confirmar recebimento, receber saldo restante, estornar e cancelar. O botão Atualizar recarrega títulos e borderôs.
 
 **Cobrança da mensalidade (03/11/2026)**: gerar cobrança exige estar logado no cliente. O valor é o da assinatura, e só a equipe Raccolto informa outro valor. Se um usuário receber "Acesso negado" em tela que usava normalmente, encaminhe à equipe Raccolto informando a tela e o usuário.
 

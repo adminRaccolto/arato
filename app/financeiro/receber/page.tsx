@@ -1463,7 +1463,7 @@ export default function ContasAReceberPage() {
             <InputData type="date" value={semDataTela ? "" : fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFDataDe(""); setFDataAte(""); setPeriodoManual(false); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); setFProdutor(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
-          <OperationalButton data-arato-button="primary" onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+          <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
         </OperationalFilters>

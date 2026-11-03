@@ -14,6 +14,7 @@ const RELEASES = [
     itens: [
       { tipo: "melhoria", texto: "Os indicadores, a busca de título e os filtros (Origem, Status e Moeda em lista, e o novo Limpar filtros) ficaram iguais aos do Contas a Pagar." },
       { tipo: "melhoria", texto: "O painel do borderô mostra os mesmos dados e ações do Contas a Pagar, incluindo saldo em aberto, recebimento parcial e receber saldo restante." },
+      { tipo: "correcao", texto: "O botão Atualizar do Contas a Receber agora também recarrega os borderôs." },
     ],
   },
   {
