@@ -45,7 +45,7 @@ interface Veiculo {
 interface Motorista {
   id: string; fazenda_id: string;
   nome: string; cpf?: string;
-  cnh_numero?: string; cnh_categoria?: string; cnh_uf?: string; cnh_validade?: string;
+  cnh?: string; cnh_categoria?: string; cnh_uf?: string; cnh_validade?: string;
   transportadora_id?: string;
   tipo?: "clt" | "tac";
   rntrc?: string;
@@ -244,15 +244,14 @@ export default function TransporteCadastrosPage() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar m)", perigo: false }))) return;
     if (!fazendaId || !modalM?.nome?.trim()) { alert("Nome é obrigatório."); return; }
     setSalvando(true);
-    const pay = { ...modalM, fazenda_id: fazendaId, ativo: modalM.ativo ?? true, tipo: modalM.transportadora_id || modalM.funcionario_id ? "clt" as const : "tac" as const };
-    if (pay.id) {
-      await supabase.from("motoristas").update(pay).eq("id", pay.id);
-    } else {
-      await supabase.from("motoristas").insert(pay);
-    }
+    const pay = { ...modalM, fazenda_id: modalM.fazenda_id ?? fazendaId, ativo: modalM.ativo ?? true, tipo: modalM.transportadora_id || modalM.funcionario_id ? "clt" as const : "tac" as const, cnh_validade: modalM.cnh_validade || null };
+    const { error } = pay.id
+      ? await supabase.from("motoristas").update(pay).eq("id", pay.id)
+      : await supabase.from("motoristas").insert(pay);
+    setSalvando(false);
+    if (error) { alert("Não foi possível salvar o motorista: " + error.message); return; }
     await carregar();
     setModalM(null);
-    setSalvando(false);
   };
 
   // ── Sincronizar transportadoras a partir de Empresas ───────────────────────
@@ -301,7 +300,7 @@ export default function TransporteCadastrosPage() {
     .filter(c => !buscaL || placasDoConjunto(c, veiculos).toLowerCase().includes(buscaL) || (c.nome ?? "").toLowerCase().includes(buscaL));
   const motorFilt = motoristas
     .filter(m => !soAtivos || m.ativo)
-    .filter(m => !buscaL || m.nome.toLowerCase().includes(buscaL) || (m.cnh_numero ?? "").includes(buscaL));
+    .filter(m => !buscaL || m.nome.toLowerCase().includes(buscaL) || (m.cnh ?? "").includes(buscaL));
 
   // ── Helpers UI ───────────────────────────────────────────────────────────────
   const transNome = (id?: string) => transportadoras.find(t => t.id === id)?.razao_social ?? "—";
@@ -550,14 +549,14 @@ export default function TransporteCadastrosPage() {
                           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.nome}</div>
                           {m.email && <div style={{ fontSize: 11, color: "#666" }}>{m.email}</div>}
                           {m.funcionario_id && (
-                            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, fontWeight: 600, background: m.cnh_numero ? "#EBF3FF" : "#FBF3E0", color: m.cnh_numero ? "#2A2A2A" : "#7A5A12" }}>
-                              {m.cnh_numero ? "Funcionário" : "Pré-cadastro · falta CNH"}
+                            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, fontWeight: 600, background: m.cnh ? "#EBF3FF" : "#FBF3E0", color: m.cnh ? "#2A2A2A" : "#7A5A12" }}>
+                              {m.cnh ? "Funcionário" : "Pré-cadastro · falta CNH"}
                             </span>
                           )}
                         </td>
                         <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{m.cpf ?? "—"}</td>
                         <td style={{ padding: "10px 12px", fontSize: 12 }}>
-                          <span style={{ fontFamily: "monospace" }}>{m.cnh_numero ?? "—"}</span>
+                          <span style={{ fontFamily: "monospace" }}>{m.cnh ?? "—"}</span>
                           {m.cnh_categoria && <span style={{ marginLeft: 6, background: "#EBF3FF", color: "#2A2A2A", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700 }}>{m.cnh_categoria}</span>}
                           {m.cnh_uf && <span style={{ marginLeft: 4, fontSize: 10, color: "#666" }}>{m.cnh_uf}</span>}
                         </td>
@@ -893,7 +892,7 @@ export default function TransporteCadastrosPage() {
               <div style={{ fontSize: 11, fontWeight: 700, color: "#7A5A12", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>CNH — Carteira Nacional de Habilitação</div>
               <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
                 <Campo label="Nº da CNH">
-                  <input style={inp} value={modalM.cnh_numero ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_numero: e.target.value }))} placeholder="00000000000" maxLength={11} />
+                  <input style={inp} value={modalM.cnh ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh: e.target.value }))} placeholder="00000000000" maxLength={11} />
                 </Campo>
                 <Campo label="Categoria">
                   <SelectField style={inp} value={modalM.cnh_categoria ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_categoria: e.target.value }))}>

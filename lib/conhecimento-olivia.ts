@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**CNH do motorista (03/11/2026)**: até esta data, salvar um motorista com o número da CNH preenchido não gravava o cadastro, sem aviso. Se um cliente relatar motorista ou CNH que "não salvou" antes disso, peça para preencher de novo em Transporte → Motoristas.
+
 **Série por IE sem divergência (03/11/2026)**: a série e a numeração de cada IE ficam em Parâmetros → Fiscal, no cartão do produtor dono da IE. Um mesmo CPF pode ter mais de um cartão, como "FULANO" e "FULANO E OUTROS", e cada IE aparece só no cartão do seu produtor. Se o cliente disser que a série está configurada e o erro continuar, confira se foi salva no cartão certo.
 
 **IE emitente na transferência de máquina (03/11/2026)**: quando o emitente tem mais de uma Inscrição Estadual, a remessa e o retorno de máquina mostram o campo "IE emitente", com a série de cada uma, e a tela sugere a IE da fazenda onde a máquina está. Se aparecer o erro de série inválida, a IE escolhida está sem série: escolha outra ou configure a série em Parâmetros → Fiscal → Inscrições Estaduais.

@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-n",
+    data: "03/11/2026",
+    titulo: "Cadastro de motorista grava a CNH",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar um motorista com o número da CNH não gravava nada, e a tela não avisava. Agora a CNH é gravada e, se a gravação falhar, a tela mostra o erro." },
+    ],
+  },
+  {
     versao: "2026.11.03-m",
     data: "03/11/2026",
     titulo: "Série da NF-e por IE sem cópias divergentes",
