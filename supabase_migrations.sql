@@ -19337,3 +19337,33 @@ ALTER TABLE folha_funcionarios ADD CONSTRAINT folha_funcionarios_cp_lancamento_f
   FOREIGN KEY (cp_lancamento_id) REFERENCES lancamentos(id) ON DELETE SET NULL;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 408 — BI Raccolto: Capacidade de Pagamento
+--   custos_referencia: custo de produção por hectare e por cultura, tabela da Raccolto usada quando o cliente não tem custo.
+--   capacidade_cenarios: premissas editadas pelo consultor, uma linha por cliente e período. Só a equipe Raccolto acessa.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+CREATE TABLE IF NOT EXISTS custos_referencia (
+  cultura    text PRIMARY KEY,
+  custo_ha   numeric(14,2) NOT NULL DEFAULT 0,
+  updated_at timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS capacidade_cenarios (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id   uuid NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  periodo    text NOT NULL,
+  dados      jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (conta_id, periodo)
+);
+ALTER TABLE custos_referencia ENABLE ROW LEVEL SECURITY;
+ALTER TABLE capacidade_cenarios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "custos_referencia_raccolto" ON custos_referencia;
+CREATE POLICY "custos_referencia_raccolto" ON custos_referencia FOR ALL TO authenticated
+  USING ((SELECT public.rls_sou_raccotlo())) WITH CHECK ((SELECT public.rls_sou_raccotlo()));
+DROP POLICY IF EXISTS "capacidade_cenarios_raccolto" ON capacidade_cenarios;
+CREATE POLICY "capacidade_cenarios_raccolto" ON capacidade_cenarios FOR ALL TO authenticated
+  USING ((SELECT public.rls_sou_raccotlo())) WITH CHECK ((SELECT public.rls_sou_raccotlo()));
+COMMIT;
+NOTIFY pgrst, 'reload schema';

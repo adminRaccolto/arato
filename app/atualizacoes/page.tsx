@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-r",
+    data: "03/11/2026",
+    titulo: "BI: Capacidade de Pagamento",
+    modulos: ["BI Raccolto"],
+    itens: [
+      { tipo: "novo", texto: "Nova aba no BI da Raccolto: mostra quanto cada hectare precisa gerar de caixa para honrar os compromissos do ano safra ou do ano civil, em reais e na unidade de cada cultura, com área, produtividade, preço e custo editáveis." },
+    ],
+  },
+  {
     versao: "2026.11.03-q",
     data: "03/11/2026",
     titulo: "Baixa de título em dólar pela cotação do pagamento",

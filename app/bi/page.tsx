@@ -14,6 +14,7 @@ import { listarAlertasController, reconhecerAlerta, resolverAlerta, listarContra
 import { rodarChecksController } from "../../lib/controller-checks";
 import type { ControllerAlerta } from "../../lib/supabase";
 import { HedgePainel } from "../comercial/hedge/panel";
+import { CapacidadePagamentoPainel } from "./capacidade/panel";
 import { AuditoriaClassificacaoPainel } from "../auditoria/classificacao/panel";
 import { AuditoriaSafraCicloPainel } from "../auditoria/safra-ciclo/panel";
 
@@ -291,7 +292,7 @@ function BarraHorizontal({ value, max, color, label, sub }: { value: number; max
   );
 }
 
-type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "controller" | "hedge" | "auditoria_classif" | "auditoria_safra";
+type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "capacidade" | "controller" | "hedge" | "auditoria_classif" | "auditoria_safra";
 
 // ── Controller: constantes ────────────────────────────────────
 type Severidade = ControllerAlerta["severidade"];
@@ -1042,6 +1043,7 @@ export default function BI() {
     { key: "cambio",          label: "Câmbio / USD", badge: usdDescasados > 0 ? usdDescasados : undefined },
     { key: "terceiros",       label: "Recursos de Terceiros" },
     { key: "evolucao",        label: "Evolução de Endividamento" },
+    { key: "capacidade",      label: "Capacidade de Pagamento" },
     { key: "sensibilidade",   label: "Sensibilidade" },
     { key: "controller",      label: "Auditoria", badge: alertasCriticos > 0 ? alertasCriticos : (alertasAtivos > 0 ? alertasAtivos : undefined) },
     { key: "hedge",           label: "Proteção de Margem" },
@@ -5323,6 +5325,9 @@ export default function BI() {
 
         {/* ── ABA PROTEÇÃO DE MARGEM ─────────────────────────── */}
         {aba === "hedge" && <HedgePainel embedded />}
+
+        {/* ── ABA CAPACIDADE DE PAGAMENTO ───────────────────── */}
+        {aba === "capacidade" && <CapacidadePagamentoPainel />}
 
         {/* ── ABA AUDITORIA DE CLASSIFICAÇÃO ────────────────── */}
         {aba === "auditoria_classif" && <AuditoriaClassificacaoPainel embedded />}
