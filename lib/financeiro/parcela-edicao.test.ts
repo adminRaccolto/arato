@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { numeroDigitado, registrarEdicao, resolverParcela } from "./parcela-edicao.ts";
+import { numeroDigitado, parcelaJaPaga, registrarEdicao, resolverParcela } from "./parcela-edicao.ts";
 
 const P = { valor_parcela: 1100, amortizacao: 1000, juros: 100, despesas_acessorios: 0 };
 
@@ -49,4 +49,12 @@ test("combinação que dá valor negativo vira erro", () => {
   let ed = registrarEdicao(undefined, "valor_parcela", "100");
   ed = registrarEdicao(ed, "amortizacao", "500");
   assert.ok(resolverParcela(P, ed).erro);
+});
+
+test("parcelaJaPaga: mesma data, data alterada depois do pagamento e cronograma renumerado", () => {
+  const pagos = [{ data_vencimento: "2026-09-15", descricao: "Custeio — Parcela 3 — Juros", valor: 60000 }];
+  assert.equal(parcelaJaPaga({ num_parcela: 3, data_vencimento: "2026-09-15", valor_parcela: 60000 }, pagos), true);
+  assert.equal(parcelaJaPaga({ num_parcela: 3, data_vencimento: "2026-09-22", valor_parcela: 60000 }, pagos), true);
+  assert.equal(parcelaJaPaga({ num_parcela: 3, data_vencimento: "2027-04-30", valor_parcela: 291304.81 }, pagos), false);
+  assert.equal(parcelaJaPaga({ num_parcela: 4, data_vencimento: "2027-04-30", valor_parcela: 60000 }, pagos), false);
 });

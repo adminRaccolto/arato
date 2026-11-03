@@ -1,7 +1,7 @@
 "use client";
 import { intercalarJuros, repartirCronograma, separarCapitalizado } from "../../../lib/financeiro/cronograma";
 import LiberacaoFornecedor from "../../../components/financeiro/LiberacaoFornecedor";
-import { registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
+import { parcelaJaPaga, registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -1136,12 +1136,12 @@ export default function ContratosFinanceiros() {
     const { data: libs } = await supabase.from("parcelas_liberacao").select("lancamento_id, despesa_lancamento_id").eq("contrato_id", contratoModal.id);
     const idsLiberacao = new Set((libs ?? []).flatMap(l => [(l as { lancamento_id?: string }).lancamento_id, (l as { despesa_lancamento_id?: string }).despesa_lancamento_id]).filter(Boolean) as string[]);
     const { data: lancsAtuais, error: errL } = await supabase.from("lancamentos")
-      .select("id, data_vencimento, status, conta_bancaria, conciliado, lote_id, descricao")
+      .select("id, data_vencimento, status, conta_bancaria, conciliado, lote_id, descricao, valor")
       .eq("contrato_financeiro_id", contratoModal.id).eq("tipo", "pagar").eq("auto", true).ilike("descricao", "%— Parcela %");
     if (errL) throw errL;
     const pagoDeVerdade = (l: { status: string; conta_bancaria?: string | null; conciliado?: boolean | null; lote_id?: string | null }) =>
       l.status === "baixado" && (!!l.conta_bancaria || !!l.conciliado || !!l.lote_id);
-    const datasPagas = new Set((lancsAtuais ?? []).filter(pagoDeVerdade).map(l => l.data_vencimento as string));
+    const titulosPagos = (lancsAtuais ?? []).filter(pagoDeVerdade).map(l => ({ data_vencimento: l.data_vencimento as string, descricao: l.descricao as string | null, valor: Number(l.valor ?? 0) }));
     const apagar = (lancsAtuais ?? []).filter(l => !idsLiberacao.has(l.id) && !pagoDeVerdade(l)).map(l => l.id as string);
     for (let i = 0; i < apagar.length; i += 200) {
       const { error } = await supabase.from("lancamentos").delete().in("id", apagar.slice(i, i + 200));
@@ -1167,7 +1167,7 @@ export default function ContratosFinanceiros() {
     const parcelasJaPagas: number[] = [];
     for (const p of salvas) {
       // Parcela com pagamento real no CP não é relançada (o título pago fica como está)
-      if (datasPagas.has(p.data_vencimento)) { parcelasJaPagas.push(p.num_parcela); continue; }
+      if (parcelaJaPaga(p, titulosPagos)) { parcelasJaPagas.push(p.num_parcela); continue; }
       // Parcela vencida entra EM ABERTO (aparece como vencida no CP) e o usuário baixa à mão, com a conta e a data reais —
       // antes entrava já "baixada" sem conta nem data de pagamento (decisão do dono 31/10/2026)
       const statusLanc = "em_aberto";

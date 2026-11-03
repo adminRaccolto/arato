@@ -62,3 +62,19 @@ export function resolverParcela(p: ParcelaValores, ed: EdicaoParcela | undefined
   if (out.juros < 0) return { ...out, erro: "Os juros ficariam negativos: o valor da parcela é menor que amortização + encargos." };
   return out;
 }
+
+/**
+ * Parcela já paga no CP não é relançada ao salvar o cronograma. Vale a data, ou o número da parcela quando o valor pago
+ * fecha com o valor dela: a data da parcela pode ter mudado depois do pagamento (achado 03/11/2026: Banco DLL duplicou a
+ * parcela de R$ 60.000 ao passar de 15/09 para 22/09). Só o número não basta: recalcular o contrato renumera as parcelas,
+ * e um pagamento antigo da "Parcela 4" não quita a nova parcela 4.
+ */
+export function parcelaJaPaga(
+  parcela: { num_parcela: number; data_vencimento: string; valor_parcela: number },
+  titulosPagos: { data_vencimento: string; descricao?: string | null; valor: number }[],
+): boolean {
+  if (titulosPagos.some(t => t.data_vencimento === parcela.data_vencimento)) return true;
+  const dela = titulosPagos.filter(t => Number(/— Parcela (\d+)/.exec(t.descricao ?? "")?.[1]) === parcela.num_parcela);
+  if (!dela.length) return false;
+  return Math.abs(dela.reduce((soma, t) => soma + Number(t.valor), 0) - Number(parcela.valor_parcela)) < 0.05;
+}

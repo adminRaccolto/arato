@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-d",
+    data: "03/11/2026",
+    titulo: "Contratos Financeiros: mudar a data de parcela paga não duplica mais o título",
+    modulos: ["Contratos Financeiros", "Contas a Pagar"],
+    itens: [
+      { tipo: "correcao", texto: "Ao mudar a data de uma parcela já paga e salvar o cronograma, o sistema criava outro título da mesma parcela no Contas a Pagar. Agora reconhece o pagamento também pelo número da parcela, quando o valor pago fecha com ela." },
+    ],
+  },
+  {
     versao: "2026.11.03-c",
     data: "03/11/2026",
     titulo: "Contratos Financeiros avisam parcelas que não foram para o CP",
