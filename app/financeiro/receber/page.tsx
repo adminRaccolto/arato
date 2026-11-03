@@ -68,6 +68,8 @@ import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancam
 import { statusExibido } from "../../../lib/financeiro/titulos";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
 import { casaFiltroNumero, casaFiltroTexto } from "../../../lib/financeiro/filtro-colunas";
+import { filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
+import { resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -398,6 +400,8 @@ export default function ContasAReceberPage() {
   // quitado) ───────────────────────────────────────────────────────
   const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
   const [borderosPagos, setBorderosPagos] = useState<PagamentoLote[]>([]);
+  const [infoBordero, setInfoBordero] = useState<Map<string, { cliente: string | null; produtor: string | null; origem: string | null; operacao: string | null; conta: string | null }>>(new Map());
+  const [popBordero, setPopBordero] = useState<{ b: PagamentoLote; x: number; y: number } | null>(null);
   const carregarBorderos = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length) return;
@@ -408,15 +412,36 @@ export default function ContasAReceberPage() {
       ]);
       setBorderosPendentes(pend);
       setBorderosPagos(pagos);
-    } catch { /* silencioso — painel só não aparece */ }
+      // Cliente, produtor e origem do borderô vêm dos títulos dele (o cabeçalho do borderô não guarda cliente)
+      const ids = [...new Set([...pend, ...pagos].flatMap(b => (b.itens ?? []).map(i => i.lancamento_id)))];
+      const titulos: { id: string; pessoa_nome: string | null; produtor_nome: string | null; empresa_nome: string | null; origem_tabela: string; operacao_gerencial_nome: string | null }[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await supabase.from("rel_lancamentos").select("id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 200));
+        titulos.push(...((data ?? []) as typeof titulos));
+      }
+      const porId = new Map(titulos.map(t => [t.id, t]));
+      const idsContas = [...new Set([...pend, ...pagos].map(b => b.conta_bancaria).filter(Boolean))] as string[];
+      const { data: contasB } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [] };
+      const nomeConta = new Map((contasB ?? []).map(c => [c.id as string, c.nome as string]));
+      const unicoOuVarios = (vals: (string | null)[]) => { const u = [...new Set(vals.filter(Boolean))] as string[]; return u.length <= 1 ? (u[0] ?? null) : `Vários (${u.length})`; };
+      setInfoBordero(new Map([...pend, ...pagos].map(b => {
+        const ts = (b.itens ?? []).map(i => porId.get(i.lancamento_id)).filter((t): t is typeof titulos[number] => !!t);
+        return [b.id, {
+          cliente: unicoOuVarios(ts.map(t => t.pessoa_nome)),
+          produtor: unicoOuVarios(ts.map(t => t.produtor_nome ?? t.empresa_nome)),
+          origem: unicoOuVarios(ts.map(t => t.origem_tabela === "lancamentos" ? "PF" : "PJ")),
+          operacao: unicoOuVarios(ts.map(t => t.operacao_gerencial_nome)),
+          conta: b.conta_bancaria ? nomeConta.get(b.conta_bancaria) ?? null : null,
+        }];
+      })));
+    } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, fazendaIds?.join(",")]);
   useEffect(() => { carregarBorderos(); }, [carregarBorderos]);
 
-  // NFs/lançamentos que já pertencem a um borderô pago não aparecem soltos
-  // na grid — o título (o borderô) é a unidade que foi paga, não cada NF
-  // individual.
-  const loteIdsPagos = new Set(borderosPagos.map(b => b.id));
+  // Título que pertence a um borderô (pendente ou pago) não aparece solto no grid: o borderô é a unidade, como no CP.
+  const todosBorderos = [...borderosPendentes, ...borderosPagos];
+  const vinculos = vinculosBorderos(todosBorderos);
 
   // Filtro client-side de Origem/Status (instantâneo, sem nova consulta) —
   // período e busca exigem nova consulta porque mudam o WHERE no banco.
@@ -447,14 +472,8 @@ export default function ContasAReceberPage() {
     return casaFiltroTexto(textoColuna(l, k), f);
   });
   const semDataTela = !periodoManual && (!!fBusca.trim() || !!(filtrosCol.nf ?? "").trim() || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho));
-  const linhas = (resultado ?? []).filter(l => {
-    if (l.lote_id && loteIdsPagos.has(l.lote_id)) return false;
-    if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
-    if (fStatus.size > 0) {
-      const st = l.status_normalizado ?? "";
-      const vencidoAgora = (st === "em_aberto" || st === "vencido" || st === "vencendo" || st === "parcial") && !!l.data_vencimento && l.data_vencimento < hojeISO();
-      if (!fStatus.has(st) && !(fStatus.has("vencido") && vencidoAgora) && !(fStatus.has("em_aberto") && (st === "vencido" || st === "vencendo" || st === "parcial"))) return false;
-    }
+  // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
+  const passaExtras = (l: RelLancamento) => {
     if (!passaColunas(l)) return false;
     if (fMoeda.size > 0 && !fMoeda.has(l.moeda ?? "BRL")) return false;
     if (fProdutor.size > 0 && !fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")) return false;
@@ -466,6 +485,20 @@ export default function ContasAReceberPage() {
       if (fAtalho !== "vencendo" && fAtalho !== "barter" && l.origem_lancamento !== fAtalho) return false;
     }
     return true;
+  };
+  const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
+  const filtrosCR = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: semDataTela ? "" : fDataDe, ate: semDataTela ? "" : fDataAte, hoje: hojeISO() };
+  const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCR)
+    && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
+  const linhas = (resultado ?? []).filter(l => {
+    if (tituloVinculado(l, vinculos)) return false;
+    if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
+    if (fStatus.size > 0) {
+      const st = l.status_normalizado ?? "";
+      const vencidoAgora = (st === "em_aberto" || st === "vencido" || st === "vencendo" || st === "parcial") && !!l.data_vencimento && l.data_vencimento < hojeISO();
+      if (!fStatus.has(st) && !(fStatus.has("vencido") && vencidoAgora) && !(fStatus.has("em_aberto") && (st === "vencido" || st === "vencendo" || st === "parcial"))) return false;
+    }
+    return passaExtras(l);
   }).sort((a, b) => {
     const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
     const da = a[campo] ?? "";
@@ -481,19 +514,8 @@ export default function ContasAReceberPage() {
   const quemBaixou = useQuemBaixou(linhas.filter(l => l.status_normalizado === "baixado" || l.status_normalizado === "parcial").slice(0, 1500).map(l => l.id));
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
-    ...borderosPendentes.map((b): LinhaOuBordero => {
-      // Data própria do borderô tem prioridade pra ordenar por vencimento —
-      // antes disso existir, a única opção era adivinhar pelos itens dentro.
-      if (ordenarPor !== "lancamento" && b.data_vencimento) {
-        return { kind: "bordero", b, data: b.data_vencimento };
-      }
-      const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
-      const itensDoLote = (resultado ?? []).filter(l => l.lote_id === b.id);
-      const datas = itensDoLote.map(l => l[campo]).filter((d): d is string => !!d);
-      const data = datas.length ? datas.sort().slice(-1)[0] : (b.created_at ?? "");
-      return { kind: "bordero", b, data };
-    }),
-    ...borderosPagos.map((b): LinhaOuBordero => ({ kind: "bordero", b, data: b.data_pagamento ?? b.created_at ?? "", pago: true })),
+    ...borderosVisiveis.map((b): LinhaOuBordero => ({ kind: "bordero", b, pago: resumoBordero(b).status === "baixado",
+      data: ordenarPor === "lancamento" ? b.created_at ?? "" : vencimentoBordero(b, resultado ?? []) ?? "" })),
   ].sort((x, y) => {
     const dx = x.kind === "lanc" ? (x.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : x.data;
     const dy = y.kind === "lanc" ? (y.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : y.data;
@@ -1063,8 +1085,9 @@ export default function ContasAReceberPage() {
     }
   }
 
-  const totalPagar = linhas.reduce((s, l) => s + (emReais(l, l.valor) ?? 0), 0);
-  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0);
+  const totalPagar = linhas.reduce((s, l) => s + (emReais(l, l.valor) ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
+  const totalRecebido = linhas.reduce((s, l) => s + (l.valor_pago ?? (l.status_normalizado === "baixado" ? emReais(l, l.valor) ?? 0 : 0)), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).liquidado, 0);
+  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -1473,9 +1496,11 @@ export default function ContasAReceberPage() {
         )}
 
         <div className={nativePresentation?"native-finance-indicators native-finance-receivables":undefined} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
-          <span><strong>{linhas.length}</strong> lançamento(s)</span>
+          <span><strong>{linhasComBordero.length}</strong> título(s) · {borderosVisiveis.length} borderô(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
+          <span>·</span>
+          <span>Recebido: <strong style={{ color: "#166534" }}>{fmtBRL(totalRecebido)}</strong></span>
           <span>·</span>
           <span>Saldo a receber: <strong style={{ color: "#16A34A" }}>{fmtBRL(totalAberto)}</strong></span>
         </div>
@@ -1709,33 +1734,39 @@ export default function ContasAReceberPage() {
                   const b = entry.b;
                   const pago = entry.pago;
                   const qtdItens = (b.itens ?? []).length;
+                  // Borderô no grid como qualquer título: cada informação na sua coluna (cor da linha continua diferente)
+                  const info = infoBordero.get(b.id);
+                  const res = resumoBordero(b);
+                  const cel = (conteudo: ReactNode, extra: React.CSSProperties = {}) => <td style={{ padding: "7px 10px", ...extra }}>{conteudo}</td>;
+                  const corTexto = pago ? "#15803D" : "#7A5200";
+                  const celulasBordero: Record<string, ReactNode> = {
+                    checkbox: cel(null),
+                    origem: cel(<span style={{ fontSize: 10, fontWeight: 700, background: info?.origem === "PJ" ? "#F5F3FF" : "#E6F1FB", color: info?.origem === "PJ" ? "#5B21B6" : "#0C447C", padding: "2px 7px", borderRadius: 6 }}>{info?.origem ?? "PF"}</span>),
+                    produtor: cel(info?.produtor ?? "—"),
+                    numero: cel(b.numero_titulo ?? "—", { color: "#888", fontVariantNumeric: "tabular-nums" }),
+                    pessoa: cel(info?.cliente ?? "—", { fontWeight: 600 }),
+                    descricao: cel(<><span style={{ fontWeight: 700, color: corTexto }}>Borderô</span> · {qtdItens} NF{qtdItens !== 1 ? "s" : ""}</>),
+                    operacao: cel(info?.operacao ?? "—"),
+                    safra: cel("—"), ciclo: cel("—"), cc: cel("—"),
+                    lancamento: cel(fmtData(b.created_at), { color: "#888" }),
+                    vencimento: cel(fmtData(b.data_vencimento)),
+                    dias: cel("—", { textAlign: "center" }),
+                    venc_orig: cel("—", { color: "#888" }),
+                    baixa: cel(fmtData(b.data_pagamento)),
+                    valor: cel(fmtBRL(b.valor_total), { fontWeight: 600, textAlign: "right", color: "#16A34A" }),
+                    pago: cel(fmtBRL(res.liquidado), { textAlign: "right", color: res.liquidado > 0 ? "#166534" : undefined }),
+                    saldo: cel(fmtBRL(res.saldo), { textAlign: "right", fontWeight: 600 }),
+                    moeda: cel("BRL", { textAlign: "center" }),
+                    conta: cel(info?.conta ?? "—"),
+                    nf: cel("—"),
+                    lancado: cel("Borderô", { color: "#888" }),
+                    observacao: cel(b.descricao ?? "—", { color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }),
+                    acoes: <td style={{ textAlign: "right" }}><OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopBordero({ b, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton></td>,
+                    status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? "Borderô recebido" : res.status === "parcial" ? "Borderô parcial" : "Borderô pendente"}</span>),
+                  };
                   return (
                     <tr key={`bdr-${b.id}`} data-native-record="true" tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar borderô ${b.numero_titulo??b.descricao??b.id}`:undefined} onClick={nativePresentation?()=>{setPopover(null);setNativeBorderoFocus(b.id);}:undefined} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setPopover(null);setNativeBorderoFocus(b.id);}}} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60" }}>
-                      <td colSpan={colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").length} style={{ padding: "10px 14px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            {pago
-                              ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
-                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>}
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
-                            {b.numero_titulo && <span style={{ fontSize: 11, color: "#888" }}>Nº {b.numero_titulo}</span>}
-                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(pago ? (b.valor_pago ?? b.valor_total) : b.valor_total)}</strong></span>
-                            {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
-                            {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>recebido em {fmtData(b.data_pagamento)}</span>}
-                          </div>
-                          {!nativePresentation&&<><div style={{ display: "flex", gap: 6 }}>
-                            <OperationalButton data-arato-button="secondary" onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver NFs</OperationalButton>
-                            {pago ? (
-                              <OperationalButton data-arato-button="secondary" onClick={() => estornarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>↩ Estornar</OperationalButton>
-                            ) : (
-                              <>
-                                <OperationalButton data-arato-button="primary" onClick={() => abrirConfirmarBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>✅ Confirmar Recebimento</OperationalButton>
-                                <OperationalButton data-arato-button="secondary" onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</OperationalButton>
-                              </>
-                            )}
-                          </div></>}
-                        </div>
-                      </td>
+                      {colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").map(c => <Fragment key={c.key}>{celulasBordero[c.key] ?? <td />}</Fragment>)}
                     </tr>
                   );
                 }
@@ -2017,6 +2048,64 @@ export default function ContasAReceberPage() {
       )}
 
 </>}
+      {!nativePresentation && popBordero && (() => {
+        const b = popBordero.b;
+        const resumo = resumoBordero(b);
+        const pago = resumo.status === "baixado";
+        const parcial = resumo.status === "parcial";
+        const W = 560, H = pago ? 420 : 360;
+        const top  = Math.min(popBordero.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popBordero.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+        const qtd = (b.itens ?? []).length;
+        const rot: React.CSSProperties = { color: "#888", fontSize: 10 };
+        const btn: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 11 };
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopBordero(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
+                <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ RECEBIDO" : parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}{b.numero_titulo ? ` · Nº ${b.numero_titulo}` : ""}</div>
+                  {infoBordero.get(b.id)?.cliente && <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>Cliente: <strong style={{ color: "#1a1a1a" }}>{infoBordero.get(b.id)?.cliente}</strong></div>}
+                </div>
+                <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
+                  <div><div style={rot}>NFs</div><div style={{ color: "#1a1a1a" }}>{qtd} NF{qtd !== 1 ? "s" : ""}</div></div>
+                  <div><div style={rot}>Saldo em aberto</div><div style={{ color: parcial ? "#7A5200" : "#1a1a1a", fontWeight: 700 }}>{fmtBRL(resumo.saldo)}</div></div>
+                  {!pago && <div><div style={rot}>Vencimento do saldo</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_vencimento)}</div></div>}
+                  <div><div style={rot}>Total das NFs</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
+                  {(pago || parcial) ? (
+                    <>
+                      <div><div style={rot}>Principal recebido</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_pago ?? b.valor_total)}</div></div>
+                      <div><div style={rot}>Data do recebimento</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_pagamento)}</div></div>
+                      {!!(b.valor_juros || b.valor_multa) && <div><div style={rot}>Juros + Multa</div><div style={{ color: "#1a1a1a" }}>{fmtBRL((b.valor_juros ?? 0) + (b.valor_multa ?? 0))}</div></div>}
+                      {!!b.valor_desconto && <div><div style={rot}>Desconto</div><div style={{ color: "#1a1a1a" }}>{fmtBRL(b.valor_desconto)}</div></div>}
+                    </>
+                  ) : (
+                    <>
+                      <div><div style={rot}>Criado em</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.created_at)}</div></div>
+                      <div><div style={rot}>Situação</div><div style={{ color: "#1a1a1a" }}>Aguardando confirmação</div></div>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6 }}>
+                <OperationalButton data-arato-button="secondary" onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ ...btn, background: "#fff", color: "#1a1a1a", border: "0.5px solid #DDE2EE" }}>Ver NFs</OperationalButton>
+                {(pago || parcial) && (
+                  <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ ...btn, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5" }}>↩ Estornar recebimento</OperationalButton>
+                )}
+                {!pago && (
+                  <>
+                    <OperationalButton data-arato-button="primary" onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ ...btn, background: "#16A34A", color: "#fff", border: "none", fontWeight: 700 }}>{parcial ? "Receber saldo restante" : "✅ Confirmar Recebimento"}</OperationalButton>
+                    {!parcial && <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ ...btn, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5" }}>✕ Cancelar borderô</OperationalButton>}
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
       {/* ══ MODAL — Criar Borderô ══ */}
       {modalCriarBordero && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
