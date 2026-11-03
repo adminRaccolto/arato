@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.02-d",
+    data: "02/11/2026",
+    titulo: "Folha de Pagamento: uma folha por mês na tela",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "A folha aparece como uma só por mês, com os totais de todos os empregadores. Fechar Folha e Excluir valem para o mês inteiro. Em Abrir, a lista mostra cada empregador do mês. FGTS e INSS Patronal continuam em títulos separados por empregador. Ao processar, a confirmação aparece uma vez só." },
+    ],
+  },
+  {
     versao: "2026.11.02-c",
     data: "02/11/2026",
     titulo: "Nova Recomendação Agronômica em passo a passo",

@@ -227,6 +227,7 @@ export default function FolhaPagamentoPage() {
   // dados
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [folhas,       setFolhas]       = useState<Folha[]>([]);
+  const [mesesAbertos, setMesesAbertos] = useState<Set<string>>(new Set());
   const [empresasMap,  setEmpresasMap]  = useState<Record<string, string>>({});
   const [produtoresMap, setProdutoresMap] = useState<Record<string, string>>({});
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
@@ -584,16 +585,12 @@ export default function FolhaPagamentoPage() {
           g.fazendaIdGrupo = [...cont.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? g.fazendaIdGrupo;
         }
         const meses = monthsInRange(modalCompDe, modalCompAte);
-        let total = 0;
         for (const comp of meses) {
           for (const { empresaId, produtorId, fazendaIdGrupo, itens } of grupos.values()) {
             await salvarFolhaMes(comp, itens, empresaId, produtorId, fazendaIdGrupo);
-            total++;
           }
         }
-        const quantGrupos = grupos.size;
-        if (total > 1) setMsg(`${total} folhas geradas — ${meses.length} mês(es) × ${quantGrupos} empregador(es)/produtor(es).`);
-        else setMsg("Folha salva.");
+        setMsg(meses.length > 1 ? `Folha gerada em ${meses.length} meses.` : "Folha salva.");
       }
       setModalFolha(false);
       carregar();
@@ -630,7 +627,6 @@ export default function FolhaPagamentoPage() {
   }
 
   async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string) {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar folha mes)", perigo: false }))) return;
     const fazendaAlvo = fazendaIdGrupo ?? funcs[0]?.fazenda_id ?? fazendaId!;
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
     const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
@@ -701,7 +697,8 @@ export default function FolhaPagamentoPage() {
     }
   }
 
-  async function fecharFolha(folha: Folha) {
+  async function fecharFolhas(lista: Folha[]) {
+    const folha = lista[0];
     // Verifica adiantamentos pendentes para esta competência que podem não estar na folha
     const adisPendentesComp = adiantamentos.filter(
       a => (!a.competencia_ref || a.competencia_ref === folha.competencia) && a.status === "pendente"
@@ -717,14 +714,16 @@ export default function FolhaPagamentoPage() {
     }
     setSaving(true);
     try {
-      // Tudo via API route com service_role_key para evitar RLS 42501
-      await apiFolha({
-        operacao: "fechar_folha",
-        id: folha.id,
-        fazenda_id: folha.fazenda_id,
-        empresa_id: folha.empresa_id ?? null,
-        competencia: folha.competencia,
-      });
+      // Tudo via API route com service_role_key para evitar RLS 42501. Uma chamada por empregador do mês.
+      for (const item of lista) {
+        await apiFolha({
+          operacao: "fechar_folha",
+          id: item.id,
+          fazenda_id: item.fazenda_id,
+          empresa_id: item.empresa_id ?? null,
+          competencia: item.competencia,
+        });
+      }
       setMsg("Folha fechada e CPs gerados.");
       carregar();
     } catch (e: any) {
@@ -800,6 +799,23 @@ export default function FolhaPagamentoPage() {
       if (simular) setMsg("Erro: " + e.message); else setRepErro(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function excluirMes(lista: Folha[]) {
+    const fechadas = lista.filter(f => f.status === "fechado").length;
+    const aviso = `Excluir a folha de ${nomeMes(lista[0].competencia)}, com ${lista.length} empregadores?`
+      + (fechadas ? `\n\n${fechadas} já fechada(s): isso exclui os CPs gerados e reverte os adiantamentos descontados. Se algum CP já foi baixado, a exclusão é bloqueada.` : "\n\nAs previsões no Contas a Pagar e no fluxo de caixa serão apagadas.");
+    if (!confirm(aviso)) return;
+    setSaving(true);
+    try {
+      for (const f of lista) await apiFolha({ operacao: "delete_folha", id: f.id, fazenda_id: f.fazenda_id, competencia: f.competencia });
+      setMsg("Folha excluída.");
+    } catch (e: unknown) {
+      setMsg("Erro: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSaving(false);
+      carregar();
     }
   }
 
@@ -1067,6 +1083,46 @@ export default function FolhaPagamentoPage() {
   // ─── Derived ─────────────────────────────────────────────────
   const folhasFiltradas   = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte);
   const folhasForaPeriodo = folhas.filter(f => f.competencia < fComp || f.competencia > fCompAte);
+  // A folha aparece como UMA por mês. Por dentro segue uma por empregador: FGTS e INSS Patronal são recolhidos por
+  // empregador, e cada folha gera os títulos de encargo dele. Empregadores do mês ficam a um clique, em "Abrir".
+  const mesesFolha: [string, Folha[]][] = [];
+  for (const f of folhasFiltradas) {
+    const m = mesesFolha.find(([c]) => c === f.competencia);
+    if (m) m[1].push(f); else mesesFolha.push([f.competencia, [f]]);
+  }
+  const linhaFolha = (f: Folha, sub: boolean) => (
+                      <tr key={f.id}>
+                        <td style={S.td}>{sub
+                          ? <span style={{ paddingLeft:18, fontSize:12, color:"#666" }}>└ {nomeMes(f.competencia)}</span>
+                          : <span style={{ fontWeight:700, color:"#0B2D50" }}>{nomeMes(f.competencia)}</span>}</td>
+                        <td style={S.td}>
+                          {f.empresa_nome
+                            ? <>
+                                <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
+                                {f.produtor_nome && <div style={{ marginTop:3 }}><span style={{ fontSize:11, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"1px 6px" }}>{f.produtor_nome}</span></div>}
+                              </>
+                            : f.produtor_nome
+                            ? <span style={{ fontSize:12, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"2px 8px" }}>{f.produtor_nome}</span>
+                            : <span style={{ fontSize:11, color:"#888" }}>Sem vínculo</span>}
+                        </td>
+                        <td style={S.td}>{(f as any).num_funcionarios ?? "—"}</td>
+                        <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_bruto)}</td>
+                        <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_liquido)}</td>
+                        <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>
+                        <td style={S.td}>
+                          <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[f.status], background:ST_COLOR[f.status]+"18", borderRadius:4, padding:"2px 8px" }}>
+                            {ST_LABEL[f.status]}
+                          </span>
+                        </td>
+                        <td style={{ ...S.td, whiteSpace:"nowrap" }}>
+                          <OperationalButton data-arato-button="secondary" onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</OperationalButton>
+                          {f.status === "rascunho" && (
+                            <OperationalButton data-arato-button="secondary" onClick={()=>fecharFolhas([f])} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</OperationalButton>
+                          )}
+                          <OperationalButton data-arato-button="secondary" onClick={()=>excluirFolha(f)} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5", fontSize:12, marginLeft:6 }} disabled={saving}>Excluir</OperationalButton>
+                        </td>
+                      </tr>
+  );
   const totalBrutoFolhaEdit   = folhaEdit.funcionarios?.reduce((s,f)=>s+f.salario_bruto,0)??0;
   const totalLiqFolhaEdit     = folhaEdit.funcionarios?.reduce((s,f)=>s+liquido(f),0)??0;
   const totalINSSPatFolhaEdit  = folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_patronal,0)??0;
@@ -1139,8 +1195,8 @@ export default function FolhaPagamentoPage() {
             {folhasForaPeriodo.length > 0 && (
               <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 16px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <span style={{ fontSize: 12, color: "#92400E", fontWeight: 600 }}>
-                  ⚠ {folhasForaPeriodo.length} folha{folhasForaPeriodo.length > 1 ? "s" : ""} fora do período filtrado:
-                  {" "}{folhasForaPeriodo.map(f => nomeMes(f.competencia)).join(", ")}
+                  ⚠ {new Set(folhasForaPeriodo.map(f => f.competencia)).size} folha{new Set(folhasForaPeriodo.map(f => f.competencia)).size > 1 ? "s" : ""} fora do período filtrado:
+                  {" "}{[...new Set(folhasForaPeriodo.map(f => f.competencia))].map(nomeMes).join(", ")}
                 </span>
                 <OperationalButton data-arato-button="secondary" onClick={() => {
                   const todas = folhas.map(f => f.competencia).sort();
@@ -1171,37 +1227,36 @@ export default function FolhaPagamentoPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {folhasFiltradas.map(f => (
-                      <tr key={f.id}>
-                        <td style={S.td}><span style={{ fontWeight:700, color:"#0B2D50" }}>{nomeMes(f.competencia)}</span></td>
-                        <td style={S.td}>
-                          {f.empresa_nome
-                            ? <>
-                                <span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{f.empresa_nome}</span>
-                                {f.produtor_nome && <div style={{ marginTop:3 }}><span style={{ fontSize:11, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"1px 6px" }}>{f.produtor_nome}</span></div>}
-                              </>
-                            : f.produtor_nome
-                            ? <span style={{ fontSize:12, fontWeight:600, color:"#166534", background:"#DCFCE7", borderRadius:4, padding:"2px 8px" }}>{f.produtor_nome}</span>
-                            : <span style={{ fontSize:11, color:"#888" }}>Sem vínculo</span>}
-                        </td>
-                        <td style={S.td}>{(f as any).num_funcionarios ?? "—"}</td>
-                        <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_bruto)}</td>
-                        <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(f.valor_liquido)}</td>
-                        <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>
-                        <td style={S.td}>
-                          <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[f.status], background:ST_COLOR[f.status]+"18", borderRadius:4, padding:"2px 8px" }}>
-                            {ST_LABEL[f.status]}
-                          </span>
-                        </td>
-                        <td style={{ ...S.td, whiteSpace:"nowrap" }}>
-                          <OperationalButton data-arato-button="secondary" onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</OperationalButton>
-                          {f.status === "rascunho" && (
-                            <OperationalButton data-arato-button="secondary" onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</OperationalButton>
-                          )}
-                          <OperationalButton data-arato-button="secondary" onClick={()=>excluirFolha(f)} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5", fontSize:12, marginLeft:6 }} disabled={saving}>Excluir</OperationalButton>
-                        </td>
-                      </tr>
-                    ))}
+                    {mesesFolha.flatMap(([comp, lista]) => {
+                      if (lista.length === 1) return [linhaFolha(lista[0], false)];
+                      const aberto = mesesAbertos.has(comp);
+                      const soma = (c: "valor_bruto" | "valor_liquido" | "inss_patronal") => lista.reduce((t, f) => t + Number(f[c] ?? 0), 0);
+                      const rascunhos = lista.filter(f => f.status === "rascunho");
+                      const stMes = rascunhos.length ? "rascunho" : "fechado";
+                      return [
+                        <tr key={comp}>
+                          <td style={S.td}><span style={{ fontWeight:700, color:"#0B2D50" }}>{nomeMes(comp)}</span></td>
+                          <td style={S.td}><span style={{ fontSize:12, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 8px" }}>{lista.length} empregadores</span></td>
+                          <td style={S.td}>{lista.reduce((t, f) => t + Number((f as unknown as { num_funcionarios?: number }).num_funcionarios ?? 0), 0)}</td>
+                          <td style={{ ...S.td, fontWeight:700, color:"#0B2D50", fontVariantNumeric:"tabular-nums" }}>{moeda(soma("valor_bruto"))}</td>
+                          <td style={{ ...S.td, fontWeight:700, color:"#16A34A", fontVariantNumeric:"tabular-nums" }}>{moeda(soma("valor_liquido"))}</td>
+                          <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(soma("inss_patronal"))}</td>
+                          <td style={S.td}>
+                            <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[stMes], background:ST_COLOR[stMes]+"18", borderRadius:4, padding:"2px 8px" }}>
+                              {ST_LABEL[stMes]}{rascunhos.length && rascunhos.length < lista.length ? ` (${rascunhos.length} de ${lista.length})` : ""}
+                            </span>
+                          </td>
+                          <td style={{ ...S.td, whiteSpace:"nowrap" }}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => setMesesAbertos(prev => { const n = new Set(prev); if (n.has(comp)) n.delete(comp); else n.add(comp); return n; })} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>{aberto ? "▾ Fechar lista" : "▸ Abrir"}</OperationalButton>
+                            {rascunhos.length > 0 && (
+                              <OperationalButton data-arato-button="secondary" onClick={() => fecharFolhas(rascunhos)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</OperationalButton>
+                            )}
+                            <OperationalButton data-arato-button="secondary" onClick={() => excluirMes(lista)} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5", fontSize:12, marginLeft:6 }} disabled={saving}>Excluir</OperationalButton>
+                          </td>
+                        </tr>,
+                        ...(aberto ? lista.map(f => linhaFolha(f, true)) : []),
+                      ];
+                    })}
                   </tbody>
                 </OperationalGrid>
               </div>
