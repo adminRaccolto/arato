@@ -2376,6 +2376,13 @@ function FinanceiroRelatoriosInner() {
                     <OperationalFilters data-arato-filters="true" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}
                       onClick={() => { setStatusDDOpen(false); setCatDDOpen(false); setProdDDOpen(false); setCpcrColDDOpen(false); }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label data-arato-label="true" style={labelStyle}>Período por</label>
+                        <SelectField value={periodoPorCPCR} onChange={e => setPeriodoPorCPCR(e.target.value as typeof periodoPorCPCR)} style={{ ...inputStyle, width: 130 }} onClick={e=>e.stopPropagation()}>
+                          <option value="vencimento">Vencimento</option>
+                          <option value="baixa">Data da baixa</option>
+                        </SelectField>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label data-arato-label="true" style={labelStyle}>Início</label>
                         <InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
@@ -2772,7 +2779,14 @@ function FinanceiroRelatoriosInner() {
                             <button type="button" aria-label="Fechar" onClick={() => setCpcrPopup(false)} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-                            <div><label data-arato-label="true" style={labelStyle}>Vencimento de (vazio = tudo)</label><InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label data-arato-label="true" style={labelStyle}>Período por</label>
+                        <SelectField value={periodoPorCPCR} onChange={e => setPeriodoPorCPCR(e.target.value as typeof periodoPorCPCR)} style={{ ...inputStyle, width: 130 }} onClick={e=>e.stopPropagation()}>
+                          <option value="vencimento">Vencimento</option>
+                          <option value="baixa">Data da baixa</option>
+                        </SelectField>
+                      </div>
+                      <div><label data-arato-label="true" style={labelStyle}>Vencimento de (vazio = tudo)</label><InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
                             <div><label data-arato-label="true" style={labelStyle}>até (vazio = tudo)</label><InputData type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
                             <div><label data-arato-label="true" style={labelStyle}>Tipo</label>
                               <SelectField value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }}>

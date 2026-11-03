@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-t",
+    data: "03/11/2026",
+    titulo: "Relatório CP / CR: período por vencimento ou por data da baixa",
+    modulos: ["Relatórios Financeiros"],
+    itens: [
+      { tipo: "melhoria", texto: "O relatório CP / CR agora permite filtrar o período pela data da baixa. Assim aparecem as contas pagas no período, mesmo que vençam em outra data." },
+    ],
+  },
+  {
     versao: "2026.11.03-s",
     data: "03/11/2026",
     titulo: "Contrato refinanciado não conta mais em dobro",
