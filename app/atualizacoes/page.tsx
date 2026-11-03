@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-x",
+    data: "03/11/2026",
+    titulo: "NF-e: número de nota já usado",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Quando a SEFAZ recusa a NF-e porque o número já existe em outra nota, o sistema tenta o número seguinte. Se não encontrar um número livre, avisa que a nota não foi emitida e pede para ajustar o próximo número da IE." },
+    ],
+  },
+  {
     versao: "2026.11.03-w",
     data: "03/11/2026",
     titulo: "Devolução de compra com IE emitente",

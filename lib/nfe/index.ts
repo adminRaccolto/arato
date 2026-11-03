@@ -15,6 +15,7 @@ import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
 import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesmoMunicipio, documentoDoModulo } from "./identidade-fiscal";
 import { configComIdentidade, buscarTitularCadastro, produtoresDoDocumento } from "./titular-cadastro";
+import { mensagemNumeroEmUso, numeroJaEmUso } from "./numero-em-uso";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
 
 export type { NFeInput, EmitenteCfg };
@@ -720,12 +721,15 @@ export async function emitirNFe(
     return { sucesso: false, cStat: "504", xMotivo: `Falha na comunicação SEFAZ: ${e}`, xmlAssinado };
   }
 
-  // SEFAZ 539 = esse número/série já existe autorizado com OUTRA chave (ex.: nota emitida por outro
-  // sistema ou por contador antes do Arato). Rejeição não consome o número, então avança o contador e
-  // tenta o próximo, até achar um livre (limite de 30 para não ficar em laço).
-  if (resposta.cStat === "539" && tentativa < 30) {
-    console.warn(`[NF-e] 539 no número ${numero} (série ${serie}) — tentando o próximo (tentativa ${tentativa + 1})`);
-    return emitirNFe(fazendaId, moduloKey, input, emitIeOverride, tentativa + 1);
+  // Esse número/série já existe autorizado com OUTRA chave (ex.: nota emitida por outro sistema ou por contador antes do
+  // Arato). Rejeição não consome o número, então avança o contador e tenta o próximo, até achar um livre (limite de 30
+  // para não ficar em laço). Ao esgotar, a mensagem diz que nada foi emitido: a chave citada pela SEFAZ é da nota antiga.
+  if (numeroJaEmUso(resposta.cStat, resposta.xMotivo, built.chave)) {
+    if (tentativa < 30) {
+      console.warn(`[NF-e] ${resposta.cStat} no número ${numero} (série ${serie}) — tentando o próximo (tentativa ${tentativa + 1})`);
+      return emitirNFe(fazendaId, moduloKey, input, emitIeOverride, tentativa + 1);
+    }
+    return { sucesso: false, cStat: resposta.cStat, xMotivo: mensagemNumeroEmUso(serie, numero, resposta.xMotivo) };
   }
 
   const autorizada = resposta.cStat === "100";

@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Recusa por número já usado (03/11/2026)**: se a SEFAZ responde que o número já existe, a nota não foi emitida. A chave citada na mensagem é da nota antiga, e não deve ser registrada como nota nova. O sistema tenta os números seguintes. Se continuar recusando, ajuste o próximo número da IE em Parâmetros → Fiscal para depois do último usado.
+
 **IE na devolução de compra (03/11/2026)**: a tela mostra "IE emitente" quando o produtor tem mais de uma IE, e já traz a IE de destino que consta no XML da NF de origem. Se a nota não trouxer IE, usa a IE do município do comprador. Sem isso, é preciso escolher. Confira a IE antes de emitir, porque ela define o estabelecimento e a série da nota.
 
 **Devolução da entrega futura (03/11/2026)**: a NF de entrega (5116/5117) precisa estar processada para mostrar ↩ Devolver. O CFOP sugerido é 5201/5202 (6201/6202 fora do estado), e pode ser trocado. O produto sai do estoque, e o valor abate o Contas a Pagar do simples faturamento ligado à entrega; o que não der para abater fica a receber do fornecedor. O saldo a entregar do simples faturamento não muda. A NF de simples faturamento (5922/6922) não tem Devolver, porque não movimentou produto.
