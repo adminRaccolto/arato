@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-f",
+    data: "03/11/2026",
+    titulo: "Folha: corrigir adiantamento já descontado e buscar funcionário",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "Adiantamento descontado agora tem o botão Corrigir (funcionário, data, valor e competência), com motivo obrigatório e prévia do que vai mudar. Salário em aberto é atualizado. Salário já pago não muda: se recebeu a menos, gera um título da diferença; se recebeu a mais, gera um desconto na competência escolhida. Se o CP do adiantamento estiver baixado e o valor ou o funcionário mudar, é preciso estornar a baixa antes. A rotina usa a mesma permissão do Reprocessar Folha." },
+      { tipo: "melhoria", texto: "A aba Adiantamentos ganhou a busca por funcionário." },
+    ],
+  },
+  {
     versao: "2026.11.03-e",
     data: "03/11/2026",
     titulo: "Contas a Receber: borderô igual ao do Contas a Pagar",

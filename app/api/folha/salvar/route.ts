@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { consumirPrevisao, tabelaPrevisoesAusente } from "../../../../lib/financeiro/previsoes-server";
+import { acaoSalario, efeitosCorrecao } from "../../../../lib/financeiro/correcao-adiantamento";
 
 // Usa a fazenda candidata só se for do mesmo cliente da fazenda que a requisição validou; senão a da requisição.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1129,6 +1130,154 @@ export async function POST(req: Request) {
       await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
       return NextResponse.json({ ok: true });
     }
+
+    // ─── corrigir_adiantamento ────────────────────────────────────────────────
+    // Adiantamento já descontado em folha fechada. Com `simular`, só devolve o que vai mudar. Salário em aberto é
+    // atualizado; salário pago fica como está (a linha da folha mostra o que foi pago) e a diferença vira título a pagar
+    // ou desconto em outra competência. Sem folha fechada no destino, o adiantamento volta a pendente.
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    if (operacao === "corrigir_adiantamento") {
+      const { id, funcionario_id, data, valor, competencia_ref, descricao, motivo, simular, vencimento_diferenca, competencia_desconto } = payload as {
+        id: string; funcionario_id: string; data: string; valor: number; competencia_ref: string; descricao?: string | null;
+        motivo: string; simular?: boolean; vencimento_diferenca?: string; competencia_desconto?: string;
+      };
+      const negado = await semPermissaoReprocessar(sb, user.id);
+      if (negado) return NextResponse.json({ error: negado }, { status: 403 });
+      const valorNovo = Math.round(Number(valor) * 100) / 100;
+      if (!String(motivo ?? "").trim()) return NextResponse.json({ error: "Informe o motivo da correção." }, { status: 422 });
+      if (!(valorNovo > 0) || !funcionario_id || !data || !/^\d{4}-\d{2}/.test(String(competencia_ref ?? ""))) {
+        return NextResponse.json({ error: "Informe funcionário, data, valor e competência." }, { status: 422 });
+      }
+      const { data: adi } = await sb.from("adiantamentos_salario").select("*").eq("id", id).maybeSingle();
+      if (!adi) return NextResponse.json({ error: "Adiantamento não encontrado." }, { status: 404 });
+      if (adi.status !== "descontado" || adi.tipo === "devolucao") {
+        return NextResponse.json({ error: "Só adiantamento descontado em folha pode ser corrigido por aqui." }, { status: 422 });
+      }
+      // Quem corrige precisa ter acesso ao cliente, e o funcionário de destino precisa ser do mesmo cliente
+      const { data: fazAdi } = await sb.from("fazendas").select("conta_id").eq("id", adi.fazenda_id).maybeSingle();
+      const { data: perfilQuem } = await sb.from("perfis").select("conta_id, role, nome").eq("user_id", user.id).maybeSingle();
+      if (!String(perfilQuem?.role ?? "").startsWith("raccotlo") && perfilQuem?.role !== "bpo" && perfilQuem?.conta_id !== fazAdi?.conta_id) {
+        return NextResponse.json({ error: "Acesso negado a este adiantamento." }, { status: 403 });
+      }
+      const { data: funcNovo } = await sb.from("funcionarios").select("id, nome, fazenda_id, produtor_id, empresa_id").eq("id", funcionario_id).maybeSingle();
+      const { data: fazFunc } = funcNovo ? await sb.from("fazendas").select("conta_id").eq("id", funcNovo.fazenda_id).maybeSingle() : { data: null };
+      if (!funcNovo || fazFunc?.conta_id !== fazAdi?.conta_id) return NextResponse.json({ error: "Funcionário não encontrado neste cliente." }, { status: 422 });
+      if (adi.tipo === "gratificacao") {
+        const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor: valorNovo, ignorarId: id });
+        if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
+      }
+
+      const pago = (t: any) => !!t && (t.status === "baixado" || t.status === "parcial" || !!t.lote_id || !!t.conciliado || Number(t.valor_pago ?? 0) > 0);
+      const compNova = String(competencia_ref).slice(0, 7);
+      const mudouDinheiro = valorNovo !== Number(adi.valor) || funcionario_id !== adi.funcionario_id;
+      const { data: tituloAdi } = adi.lancamento_id
+        ? await sb.from("lancamentos").select("id, status, lote_id, conciliado, valor_pago").eq("id", adi.lancamento_id).maybeSingle()
+        : { data: null };
+      if (mudouDinheiro && pago(tituloAdi)) {
+        return NextResponse.json({ error: "O CP deste adiantamento está baixado: esse dinheiro já saiu da conta. Estorne a baixa no Contas a Pagar, faça a correção e baixe de novo com o valor certo." }, { status: 422 });
+      }
+
+      // Linha da folha fechada do funcionário naquela competência
+      const linhaDa = async (funcId: string, comp: string | null) => {
+        const { data: linhas } = await sb.from("folha_funcionarios").select("*").eq("funcionario_id", funcId);
+        if (!linhas?.length) return null;
+        const { data: folhas } = await sb.from("folha_pagamento").select("id, fazenda_id, competencia, status").in("id", [...new Set(linhas.map((l: any) => l.folha_id as string))]).eq("status", "fechado").order("competencia");
+        const folha = (folhas ?? []).find((f: any) => comp ? f.competencia === comp
+          : f.competencia >= String(adi.data).slice(0, 7) && linhas.some((l: any) => l.folha_id === f.id && Number(l.adiantamento ?? 0) > 0));
+        const linha = folha ? linhas.find((l: any) => l.folha_id === folha.id) : null;
+        return folha && linha ? { folha, linha } : null;
+      };
+      const compRegistrada = adi.competencia_ref ? String(adi.competencia_ref).slice(0, 7) : null;
+      const origem = await linhaDa(adi.funcionario_id, compRegistrada);
+      const compAntes = compRegistrada ?? (origem?.folha.competencia as string | undefined) ?? compNova;
+      const efeitos = efeitosCorrecao(
+        { funcionario_id: adi.funcionario_id, competencia: compAntes, valor: Number(adi.valor) },
+        { funcionario_id, competencia: compNova, valor: valorNovo },
+      );
+
+      const { data: funcsPlano } = await sb.from("funcionarios").select("id, nome, produtor_id, empresa_id").in("id", [adi.funcionario_id, funcionario_id]);
+      const funcPor = new Map<string, any>((funcsPlano ?? []).map((f: any) => [f.id, f]));
+      type ItemCorrecao = { tipo: "atualizar" | "pagar_diferenca" | "descontar" | "pendente"; delta: number; funcionario_id: string; nome: string; competencia: string; diferenca: number; antes: number; depois: number; folha_id?: string; fazenda_id?: string; linha?: any; titulo_id?: string | null };
+      const plano: ItemCorrecao[] = [];
+      for (const e of efeitos) {
+        const nome = (funcPor.get(e.funcionario_id)?.nome as string | undefined) ?? "—";
+        const achou = await linhaDa(e.funcionario_id, e.competencia);
+        if (!achou) { if (e.delta > 0) plano.push({ tipo: "pendente", delta: e.delta, funcionario_id: e.funcionario_id, nome, competencia: e.competencia, diferenca: e.delta, antes: 0, depois: e.delta }); continue; }
+        const { folha, linha } = achou;
+        const { data: titulo } = linha.cp_lancamento_id
+          ? await sb.from("lancamentos").select("id, valor, status, lote_id, conciliado, valor_pago, observacao").eq("id", linha.cp_lancamento_id).maybeSingle()
+          : { data: null };
+        const acao = acaoSalario(e.delta, pago(titulo));
+        if (acao === "nada") continue;
+        const liqAntes = liquidoItem(linha);
+        const liqDepois = liquidoItem({ ...linha, adiantamento: Math.round((Number(linha.adiantamento ?? 0) + e.delta) * 100) / 100 });
+        plano.push({ tipo: acao, delta: e.delta, funcionario_id: e.funcionario_id, nome, competencia: e.competencia, diferenca: Math.abs(e.delta), antes: liqAntes, depois: liqDepois, folha_id: folha.id, fazenda_id: folha.fazenda_id, linha, titulo_id: titulo?.id ?? null });
+      }
+      const resumoPlano = plano.map(({ linha: _l, ...p }) => { void _l; return p; });
+      if (simular) return NextResponse.json({ ok: true, plano: resumoPlano });
+
+      if (plano.some(p => p.tipo === "descontar") && !/^\d{4}-\d{2}$/.test(String(competencia_desconto ?? ""))) {
+        return NextResponse.json({ error: "Informe a competência em que a diferença será descontada." }, { status: 422 });
+      }
+      const hojeStr = hojeLocal();
+      const quem = (perfilQuem?.nome as string | undefined) ?? user.email ?? "usuário";
+      const dataBR = hojeStr.split("-").reverse().join("/");
+      const marca = `Corrigido em ${dataBR} por ${quem}: ${String(motivo).trim()}`;
+      const nomeNovo = funcNovo.nome as string;
+
+      await falharSeErro(sb.from("adiantamentos_salario").update({
+        funcionario_id, data, valor: valorNovo, competencia_ref: compNova, descricao: descricao || null,
+        status: plano.some(p => p.tipo === "pendente") ? "pendente" : "descontado",
+      }).eq("id", id), "corrigir adiantamento");
+      if (tituloAdi && !pago(tituloAdi)) {
+        await falharSeErro(sb.from("lancamentos").update({
+          valor: valorNovo, data_vencimento: data, data_lancamento: data,
+          descricao: `Adiantamento — ${nomeNovo}${descricao ? ` — ${descricao}` : ""}`,
+          funcionario_id, produtor_id: funcNovo.produtor_id ?? null, empresa_id: funcNovo.empresa_id ?? null,
+        }).eq("id", tituloAdi.id), "atualizar CP do adiantamento");
+      }
+      for (const it of plano) {
+        if (it.tipo === "atualizar") {
+          await falharSeErro(sb.from("folha_funcionarios").update({ adiantamento: Math.round((Number(it.linha.adiantamento ?? 0) + it.delta) * 100) / 100 }).eq("id", it.linha.id), "atualizar linha da folha");
+          if (it.titulo_id) {
+            const { data: t } = await sb.from("lancamentos").select("observacao").eq("id", it.titulo_id).maybeSingle();
+            await falharSeErro(sb.from("lancamentos").update({ valor: it.depois, observacao: [t?.observacao, marca].filter(Boolean).join(" · ") }).eq("id", it.titulo_id), "atualizar salário");
+            await consumirPrevisaoDoTitulo(sb, it.titulo_id, it.depois);
+          }
+          const { data: linhasF } = await sb.from("folha_funcionarios").select("*").eq("folha_id", it.folha_id);
+          await falharSeErro(sb.from("folha_pagamento").update({ valor_liquido: Math.round((linhasF ?? []).reduce((s: number, l: any) => s + liquidoItem(l), 0) * 100) / 100 }).eq("id", it.folha_id), "atualizar total da folha");
+        } else if (it.tipo === "pagar_diferenca") {
+          const f = funcPor.get(it.funcionario_id);
+          const { error } = await inserirLancamentoFolha(sb, {
+            fazenda_id: it.fazenda_id, empresa_id: f?.empresa_id ?? null, produtor_id: f?.produtor_id ?? null, funcionario_id: it.funcionario_id,
+            natureza: "real", tipo: "pagar", moeda: "BRL", status: "em_aberto",
+            descricao: `Diferença de salário ${rotuloCompetencia(it.competencia)} — ${it.nome}`,
+            valor: it.diferenca, categoria: "Pessoal / Salários", origem_lancamento: "folha",
+            operacao_gerencial_id: await resolverOgPorClassificacao(sb, String(it.fazenda_id), "2.01.01.10.001"),
+            data_vencimento: vencimento_diferenca || hojeStr, data_lancamento: hojeStr, observacao: marca,
+          });
+          if (error) throw new Error(`Diferença de ${it.nome}: ${error.message}`);
+        } else if (it.tipo === "descontar") {
+          const { error } = await sb.from("adiantamentos_salario").insert({
+            fazenda_id: it.fazenda_id, funcionario_id: it.funcionario_id, data: hojeStr, valor: it.diferenca,
+            competencia_ref: competencia_desconto, status: "pendente", tipo: "devolucao",
+            descricao: `Devolução — recebeu a mais na folha de ${rotuloCompetencia(it.competencia)} (${marca})`,
+          });
+          if (error) throw new Error(`Desconto de ${it.nome}: ${error.message}`);
+        }
+        if (it.folha_id) {
+          const { error: eh } = await sb.from("folha_historico").insert({
+            folha_id: it.folha_id, usuario_id: user.id, usuario_nome: quem, acao: "corrigir_adiantamento",
+            alteracoes: [{ adiantamento_id: id, motivo: String(motivo).trim(), tipo: it.tipo, funcionario: it.nome, competencia: it.competencia, diferenca: it.diferenca, antes: { funcionario_id: adi.funcionario_id, valor: adi.valor, competencia: compAntes }, depois: { funcionario_id, valor: valorNovo, competencia: compNova } }],
+          });
+          if (eh && !/folha_historico/.test(eh.message ?? "")) console.error("[folha] histórico:", eh.message);
+        }
+      }
+      await ressincronizarFolhasDoFuncionario(sb, adi.funcionario_id);
+      if (funcionario_id !== adi.funcionario_id) await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
+      return NextResponse.json({ ok: true, plano: resumoPlano });
+    }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     // ─── cancelar_adiantamento ────────────────────────────────────────────────
     if (operacao === "cancelar_adiantamento") {

@@ -106,6 +106,7 @@ interface Adiantamento {
   tipo?: "salario" | "gratificacao" | "devolucao";
   created_at?: string;
 }
+type PlanoCorrecao = { tipo: "atualizar" | "pagar_diferenca" | "descontar" | "pendente"; nome: string; competencia: string; diferenca: number; antes: number; depois: number };
 interface Premiacao {
   id: string;
   funcionario_id: string;
@@ -176,6 +177,8 @@ function nomeMes(comp: string) {
   const n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return `${n[parseInt(mes)-1]}/${ano}`;
 }
+const semAcento = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 function compAtual() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
@@ -247,6 +250,11 @@ export default function FolhaPagamentoPage() {
 
   // modal adiantamento
   const [modalAdi,   setModalAdi]   = useState(false);
+  const [buscaAdi,   setBuscaAdi]   = useState("");
+  // Correção de adiantamento já descontado na folha: 1º mostra a prévia, 2º grava
+  const [corrAdi, setCorrAdi] = useState<{ id: string; tipo?: string; funcionario_id: string; data: string; valor: string; competencia_ref: string; descricao: string; motivo: string; vencimento: string; competencia_desconto: string } | null>(null);
+  const [corrPlano, setCorrPlano] = useState<PlanoCorrecao[] | null>(null);
+  const [corrErro, setCorrErro] = useState("");
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
   const [vencCp,     setVencCp]     = useState<Record<string, string>>({});
   // Situação do salário no Contas a Pagar (folha fechada): soma o título e as partes de pagamento parcial (Seção 375)
@@ -927,6 +935,30 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Premiação — salvar ───────────────────────────────────────
+  function abrirCorrecaoAdi(a: Adiantamento) {
+    setCorrAdi({ id: a.id, tipo: a.tipo, funcionario_id: a.funcionario_id, data: a.data, valor: a.valor.toFixed(2).replace(".", ","), competencia_ref: String(a.competencia_ref ?? compAtual()).slice(0, 7), descricao: a.descricao ?? "", motivo: "", vencimento: hojeLocal(), competencia_desconto: compAtual() });
+    setCorrPlano(null); setCorrErro("");
+  }
+  async function enviarCorrecaoAdi(simular: boolean) {
+    if (!corrAdi) return;
+    setSaving(true); setCorrErro("");
+    try {
+      const res = await apiFolha({
+        operacao: "corrigir_adiantamento", simular, id: corrAdi.id, funcionario_id: corrAdi.funcionario_id, data: corrAdi.data,
+        valor: parseFloat(corrAdi.valor.replace(/\./g, "").replace(",", ".")) || 0, competencia_ref: corrAdi.competencia_ref,
+        descricao: corrAdi.descricao, motivo: corrAdi.motivo, vencimento_diferenca: corrAdi.vencimento, competencia_desconto: corrAdi.competencia_desconto,
+      });
+      if (simular) { setCorrPlano(res.plano as PlanoCorrecao[]); return; }
+      setCorrAdi(null); setCorrPlano(null);
+      setMsg("Adiantamento corrigido.");
+      await carregar();
+    } catch (e: unknown) {
+      setCorrErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function salvarPremiacao() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar premiacao)", perigo: false }))) return;
     if (!fazendaId || !premEdit.funcionario_id || !premEdit.valor || !premEdit.descricao || !premEdit.mes_referencia) {
@@ -1269,6 +1301,7 @@ export default function FolhaPagamentoPage() {
           <>
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
+              <input value={buscaAdi} onChange={e=>setBuscaAdi(e.target.value)} placeholder="Buscar funcionário" aria-label="Buscar funcionário" style={{ ...S.inp, width: 240 }} />
               <div style={{ marginLeft:"auto" }}>
                 <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data: hojeLocal(), competencia_ref: compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>
                   + Novo Adiantamento
@@ -1292,7 +1325,7 @@ export default function FolhaPagamentoPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {adiantamentos.map(a => (
+                    {adiantamentos.filter(a => semAcento(a.funcionario_nome ?? "").includes(semAcento(buscaAdi.trim()))).map(a => (
                       <tr key={a.id}>
                         <td style={{ ...S.td, fontWeight:600 }}>{a.funcionario_nome ?? "—"}{a.tipo === "gratificacao" && <div style={{ fontSize:10, fontWeight:600, color:"#7B4A00" }}>Gratificação</div>}{a.tipo === "devolucao" && <div style={{ fontSize:10, fontWeight:600, color:"#1A4870" }}>Desconto de devolução (reprocessamento)</div>}</td>
                         <td style={S.td}>{dataFmt(a.data)}</td>
@@ -1309,6 +1342,9 @@ export default function FolhaPagamentoPage() {
                             <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ id: a.id, tipo: a.tipo ?? "salario", funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</OperationalButton>
                             <OperationalButton data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</OperationalButton>
                           </>)}
+                          {a.status === "descontado" && a.tipo !== "devolucao" && podeReprocessar && (
+                            <OperationalButton data-arato-button="secondary" onClick={()=>abrirCorrecaoAdi(a)} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12 }}>Corrigir</OperationalButton>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1911,6 +1947,58 @@ export default function FolhaPagamentoPage() {
       )}
 
       {/* ══════════════ MODAL ADIANTAMENTO ══════════════ */}
+      {corrAdi && (() => {
+        const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        const mudar = (p: Partial<NonNullable<typeof corrAdi>>) => { setCorrAdi(c => c && ({ ...c, ...p })); setCorrPlano(null); };
+        const texto: Record<PlanoCorrecao["tipo"], (i: PlanoCorrecao) => string> = {
+          atualizar: i => `Salário em aberto: de ${fmt(i.antes)} para ${fmt(i.depois)}`,
+          pagar_diferenca: i => `Salário já pago: recebeu a menos. Gera título de ${fmt(i.diferenca)} a pagar`,
+          descontar: i => `Salário já pago: recebeu a mais. Desconta ${fmt(i.diferenca)} na competência escolhida`,
+          pendente: i => `Sem folha fechada: ${fmt(i.diferenca)} volta a pendente e será descontado ao fechar a folha`,
+        };
+        return (
+          <div style={S.overlay}>
+            <div style={{ ...S.modal, width: "min(96vw,560px)" }} onClick={e=>e.stopPropagation()}>
+              <h2 data-arato-h2="true" style={{ margin:"0 0 4px", fontSize:16, color:"#0B2D50" }}>Corrigir adiantamento descontado</h2>
+              <p style={{ fontSize:12, color:"#888", margin:"0 0 16px" }}>Salário já pago não muda: a diferença vira um título ou um desconto novo. A correção fica no histórico da folha.</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div style={{ gridColumn:"1 / -1" }}>
+                  <label data-arato-label="true" style={S.label}>Funcionário *</label>
+                  <SelectField value={corrAdi.funcionario_id} onChange={e=>mudar({ funcionario_id: e.target.value })} style={{ ...S.inp, width:"100%" }}>
+                    {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                  </SelectField>
+                </div>
+                <div><label data-arato-label="true" style={S.label}>Data *</label><InputData type="date" value={corrAdi.data} onChange={e=>mudar({ data: e.target.value })} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label data-arato-label="true" style={S.label}>Valor (R$) *</label><input value={corrAdi.valor} onChange={e=>mudar({ valor: e.target.value })} style={{ ...S.inp, width:"100%", textAlign:"right" }} /></div>
+                <div><label data-arato-label="true" style={S.label}>Descontar em *</label><InputData type="month" value={corrAdi.competencia_ref} onChange={e=>mudar({ competencia_ref: e.target.value })} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label data-arato-label="true" style={S.label}>Descrição</label><input value={corrAdi.descricao} onChange={e=>setCorrAdi(c => c && ({ ...c, descricao: e.target.value }))} style={{ ...S.inp, width:"100%" }} /></div>
+                <div style={{ gridColumn:"1 / -1" }}><label data-arato-label="true" style={S.label}>Motivo da correção *</label><input value={corrAdi.motivo} onChange={e=>setCorrAdi(c => c && ({ ...c, motivo: e.target.value }))} placeholder="Ex.: valor digitado errado" style={{ ...S.inp, width:"100%" }} /></div>
+              </div>
+              {corrPlano && (
+                <div style={{ marginTop:14, background:"#F4F6FA", borderRadius:8, padding:12, fontSize:12 }}>
+                  <div style={{ fontWeight:700, color:"#0B2D50", marginBottom:6 }}>O que vai mudar</div>
+                  {corrPlano.length === 0 && <div style={{ color:"#555" }}>Nenhum salário muda. Só os dados do adiantamento serão atualizados.</div>}
+                  {corrPlano.map((i, k) => <div key={k} style={{ marginBottom:4, color:"#1a1a1a" }}><strong>{i.nome}</strong> · {nomeMes(i.competencia)}: {texto[i.tipo](i)}</div>)}
+                  {corrPlano.some(i => i.tipo === "pagar_diferenca") && (
+                    <div style={{ marginTop:8 }}><label data-arato-label="true" style={S.label}>Vencimento do título da diferença</label><InputData type="date" value={corrAdi.vencimento} onChange={e=>setCorrAdi(c => c && ({ ...c, vencimento: e.target.value }))} style={{ ...S.inp, width:180 }} /></div>
+                  )}
+                  {corrPlano.some(i => i.tipo === "descontar") && (
+                    <div style={{ marginTop:8 }}><label data-arato-label="true" style={S.label}>Competência do desconto</label><InputData type="month" value={corrAdi.competencia_desconto} onChange={e=>setCorrAdi(c => c && ({ ...c, competencia_desconto: e.target.value }))} style={{ ...S.inp, width:180 }} /></div>
+                  )}
+                </div>
+              )}
+              {corrErro && <div style={{ marginTop:12, background:"#FCEBEB", color:"#791F1F", borderRadius:8, padding:"8px 12px", fontSize:12 }}>{corrErro}</div>}
+              <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:18 }}>
+                <OperationalButton data-arato-button="secondary" onClick={()=>setCorrAdi(null)} style={S.btn("#F4F6FA","#555")} disabled={saving}>Cancelar</OperationalButton>
+                {corrPlano
+                  ? <OperationalButton data-arato-button="primary" onClick={()=>enviarCorrecaoAdi(false)} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Gravando…" : "Confirmar correção"}</OperationalButton>
+                  : <OperationalButton data-arato-button="primary" onClick={()=>enviarCorrecaoAdi(true)} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Calculando…" : "Ver o que vai mudar"}</OperationalButton>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {modalAdi && (
         <div style={S.overlay} onClick={()=>setModalAdi(false)}>
           <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
