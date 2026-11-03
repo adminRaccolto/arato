@@ -19,7 +19,7 @@ import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
 import { vencimentoSalario } from "./folha-calculo";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
+import type { Funcao, Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 import { alocarEntregaPorLinha, linhasSemConversao, statusPorEntrega } from "./compras/entrega-pedido";
 
 // ————————————————————————————————————————
@@ -2117,6 +2117,27 @@ export async function excluirFuncionario(id: string): Promise<void> {
 }
 
 // — Premiações —
+// Funções da fazenda — por cliente. Os gatilhos da Seção 406 mantêm o texto do funcionário e o motorista em dia.
+export async function listarFuncoes(conta_id: string): Promise<Funcao[]> {
+  const { data, error } = await supabase.from("funcoes").select("*").eq("conta_id", conta_id).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function salvarFuncao(f: Pick<Funcao, "conta_id" | "nome" | "descricao" | "eh_motorista">, id?: string): Promise<Funcao> {
+  const query = id ? supabase.from("funcoes").update(f).eq("id", id) : supabase.from("funcoes").insert(f);
+  const { data, error } = await query.select().single();
+  if (error) throw new Error(error.code === "23505" ? `Já existe a função "${f.nome}".` : error.message);
+  return data;
+}
+export async function excluirFuncao(id: string): Promise<void> {
+  const { count, error: erroUso } = await supabase.from("funcionarios").select("id", { count: "exact", head: true })
+    .or(`funcao_id.eq.${id},funcoes_secundarias.cs.{${id}}`);
+  if (erroUso) throw erroUso;
+  if (count) throw new Error(`Esta função está em ${count} funcionário(s). Troque a função deles antes de excluir.`);
+  const { error } = await supabase.from("funcoes").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function listarPremiacoesFuncionario(funcionario_id: string): Promise<FuncionarioPremiacao[]> {
   const { data, error } = await supabase.from("funcionario_premiacoes").select("*").eq("funcionario_id", funcionario_id).order("mes_referencia", { ascending: false });
   if (error) throw error;

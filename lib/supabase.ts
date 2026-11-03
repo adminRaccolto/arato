@@ -1068,7 +1068,9 @@ export type Funcionario = {
   ctps_uf?: string;
   tipo: "clt" | "diarista" | "empreiteiro" | "outro";
   area_trabalho?: "operacional" | "administrativo";
-  funcao?: string;
+  funcao?: string;              // função de contratação (lida pela folha e pelo eSocial)
+  funcao_id?: string | null;
+  funcoes_secundarias?: string[]; // uso interno; não entram na folha
   data_admissao?: string;
   data_demissao?: string;
   ativo: boolean;
@@ -1098,6 +1100,15 @@ export type Funcionario = {
   centro_custo_id?: string;
   produtor_id?: string;
   empresa_id?: string;
+  created_at?: string;
+};
+
+export type Funcao = {
+  id: string;
+  conta_id: string;
+  nome: string;
+  descricao?: string | null;
+  eh_motorista: boolean;        // quem tem a função aparece em Transporte → Motoristas
   created_at?: string;
 };
 

@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-i",
+    data: "03/11/2026",
+    titulo: "Funções da fazenda e motorista vindo do funcionário",
+    modulos: ["Cadastros", "Funcionários", "Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Cadastros → Funcionários ganhou a aba Funções, com a lista das funções da fazenda. A função de contratação agora é escolhida dessa lista." },
+      { tipo: "novo", texto: "O funcionário pode ter funções secundárias, só para uso interno. Elas não entram na folha de pagamento." },
+      { tipo: "novo", texto: "Funcionário com função de motorista, principal ou secundária, aparece sozinho em Transporte → Motoristas como pré-cadastro, mesmo contratado pelo produtor. A CNH é preenchida lá." },
+    ],
+  },
+  {
     versao: "2026.11.03-h",
     data: "03/11/2026",
     titulo: "Contas a Receber com a mesma tela do Contas a Pagar",

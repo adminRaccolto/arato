@@ -26,7 +26,7 @@ import {
   listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina, excluirMaquinas,
   listarContratosFinanceiros,
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
-  listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario,
+  listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario, listarFuncoes, salvarFuncao, excluirFuncao,
   listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao, criarLancamento,
   listarFeriasFuncionario, salvarFeriasGozo, sincronizarPeriodosFerias, processarFolhaMensal,
   listarGrupos, criarGrupo, atualizarGrupo, excluirGrupo,
@@ -71,7 +71,7 @@ import type {
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
   AnoSafra, Ciclo, CicloTalhao, Maquina, BombaCombustivel,
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
-  GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
+  GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento, Funcao,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria, Banco,
   PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida, Cultura as CulturaItem,
   ImovelUrbano, Benfeitoria, Bem, TipoBem,
@@ -447,12 +447,17 @@ function CadastrosInner() {
   const [modalFunc, setModalFunc]           = useState(false);
   const [editFunc, setEditFunc]             = useState<Funcionario | null>(null);
   const [abaFunc, setAbaFunc]               = useState<"dados"|"remuneracao"|"premiacoes"|"ferias"|"rescisao">("dados");
+  const [subAbaFunc, setSubAbaFunc]         = useState<"funcionarios"|"funcoes">("funcionarios");
+  const [funcoes, setFuncoes]               = useState<Funcao[]>([]);
+  const [modalFuncao, setModalFuncao]       = useState(false);
+  const [editFuncao, setEditFuncao]         = useState<Funcao | null>(null);
+  const [fFuncao, setFFuncao]               = useState({ nome: "", descricao: "", eh_motorista: false });
   const [fFunc, setFFunc]                   = useState({
     nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
     ctps_numero: "", ctps_serie: "", ctps_uf: "",
     tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
     area_trabalho: "operacional" as Funcionario["area_trabalho"],
-    funcao: "", data_admissao: "", data_demissao: "", ativo: true,
+    funcao: "", funcao_id: "", funcoes_secundarias: [] as string[], data_admissao: "", data_demissao: "", ativo: true,
     salario_base: "", salario_liquido: "", valor_em_maos: "", complemento_salarial: "", piso_categoria: "",
     vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
     fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
@@ -780,6 +785,7 @@ function CadastrosInner() {
     }
     if (aba === "funcionarios") {
       listarFuncionarios(fazendaIds?.length ? fazendaIds : [fazendaId]).then(setFuncs).catch(e => setErro(e.message));
+      if (contaId) listarFuncoes(contaId).then(setFuncoes).catch(e => setErro(e.message));
       if (produtores.length === 0) carregarProdutoresSilencioso();
       if (centrosCusto.length === 0) listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
     }
@@ -2262,7 +2268,8 @@ function CadastrosInner() {
       pis_nis: f.pis_nis ?? "", ctps_numero: f.ctps_numero ?? "", ctps_serie: f.ctps_serie ?? "", ctps_uf: f.ctps_uf ?? "",
       tipo: f.tipo, tipo_vinculo_esocial: f.tipo_vinculo_esocial ?? "",
       area_trabalho: f.area_trabalho ?? "operacional",
-      funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
+      funcao: f.funcao ?? "", funcao_id: f.funcao_id ?? "", funcoes_secundarias: f.funcoes_secundarias ?? [],
+      data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
       salario_base: f.salario_base ? String(f.salario_base) : "",
       salario_liquido: f.salario_liquido ? String(f.salario_liquido) : (f.salario_base ? String(liquidoCarteira(Number(f.salario_base))) : ""),
       valor_em_maos: f.valor_em_maos ? String(f.valor_em_maos) : "",
@@ -2285,7 +2292,7 @@ function CadastrosInner() {
       ctps_numero: "", ctps_serie: "", ctps_uf: "",
       tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
       area_trabalho: "operacional" as Funcionario["area_trabalho"],
-      funcao: "", data_admissao: "", data_demissao: "", ativo: true,
+      funcao: "", funcao_id: "", funcoes_secundarias: [] as string[], data_admissao: "", data_demissao: "", ativo: true,
       salario_base: "", salario_liquido: "", valor_em_maos: "", complemento_salarial: "", piso_categoria: "",
       vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
       fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
@@ -2300,6 +2307,26 @@ function CadastrosInner() {
     setModalFunc(true);
   };
 
+  const nomesSecundarias = (f: Funcionario) => (f.funcoes_secundarias ?? []).map(id => funcoes.find(fn => fn.id === id)?.nome).filter(Boolean).join(", ");
+
+  const abrirNovaFuncao = () => { setEditFuncao(null); setFFuncao({ nome: "", descricao: "", eh_motorista: false }); setErroModal(""); setModalFuncao(true); };
+
+  const gravarFuncao = async () => {
+    const nome = fFuncao.nome.trim();
+    if (!nome) { setErroModal("Preencha: Nome"); return; }
+    if (!contaId) { setErroModal("Cliente não identificado."); return; }
+    setErroModal("");
+    setSalvando(true);
+    try {
+      const n = await salvarFuncao({ conta_id: contaId, nome, descricao: fFuncao.descricao.trim() || null, eh_motorista: fFuncao.eh_motorista }, editFuncao?.id);
+      setFuncoes(x => [...x.filter(r => r.id !== n.id), n].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+      if (editFuncao) setFuncs(x => x.map(r => r.funcao_id === n.id ? { ...r, funcao: n.nome } : r));
+      setFFunc(p => p.funcao_id === n.id ? { ...p, funcao: n.nome } : p);
+      setModalFuncao(false);
+    } catch (e: unknown) { setErroModal((e as { message?: string })?.message || "Não foi possível salvar."); }
+    finally { setSalvando(false); }
+  };
+
   const salvarFunc = async () => salvar(async () => {
     if (!fFunc.nome.trim()) { setErroModal("Preencha: Nome do Funcionário"); return; }
     setErroModal("");
@@ -2310,7 +2337,9 @@ function CadastrosInner() {
       ctps_serie: fFunc.ctps_serie || undefined, ctps_uf: fFunc.ctps_uf || undefined,
       tipo: fFunc.tipo, tipo_vinculo_esocial: fFunc.tipo_vinculo_esocial || undefined,
       area_trabalho: fFunc.area_trabalho ?? "operacional",
-      funcao: fFunc.funcao || undefined,
+      funcao: fFunc.funcao,
+      funcao_id: fFunc.funcao_id || null,
+      funcoes_secundarias: fFunc.funcoes_secundarias,
       data_admissao: fFunc.data_admissao || undefined, data_demissao: fFunc.data_demissao || undefined,
       ativo: fFunc.ativo,
       salario_base: fFunc.salario_base ? Number(fFunc.salario_base) : undefined,
@@ -5942,6 +5971,44 @@ function CadastrosInner() {
           {/* ══ FUNCIONÁRIOS ══ */}
           {aba === "funcionarios" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div data-arato-tabs="true" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", alignSelf: "flex-start" }}>
+                {([{ k: "funcionarios", label: "Funcionários" }, { k: "funcoes", label: "Funções" }] as { k: "funcionarios" | "funcoes"; label: string }[]).map(s => (
+                  <OperationalButton data-arato-tab-active={subAbaFunc === s.k} data-arato-tab="true" data-arato-button="toggle" key={s.k} onClick={() => setSubAbaFunc(s.k)} style={{ padding: "8px 18px", border: "none", cursor: "pointer", fontSize: 12, background: subAbaFunc === s.k ? "#111111" : "transparent", color: subAbaFunc === s.k ? "#fff" : "#666", fontWeight: subAbaFunc === s.k ? 600 : 400 }}>{s.label}</OperationalButton>
+                ))}
+              </div>
+
+              {subAbaFunc === "funcoes" && (
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Funções</div>
+                      <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Ex: Operador de Máquinas, Tratorista, Motorista, Mecânico</div>
+                    </div>
+                    <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovaFuncao}>+ Nova Função</OperationalButton>
+                  </div>
+                  <OperationalGrid data-native-cadastro-grid="true" data-op-title="Funções" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <TH cols={["Nome", "Descrição", "Motorista", ""]} />
+                    <tbody>
+                      {funcoes.length === 0 && <tr><td colSpan={4} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma função cadastrada</td></tr>}
+                      {funcoes.map((fn, i) => (
+                        <tr key={fn.id} style={{ borderBottom: i < funcoes.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{fn.nome}</td>
+                          <td style={{ padding: "10px 14px", color: "var(--text-1)", fontSize: 12 }}>{fn.descricao || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{fn.eh_motorista ? badge("Sim", "#E6F1FB", "#0C447C") : <span style={{ color: "var(--text-3)" }}>—</span>}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}><NativeRowActions>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setEditFuncao(fn); setFFuncao({ nome: fn.nome, descricao: fn.descricao ?? "", eh_motorista: fn.eh_motorista }); setErroModal(""); setModalFuncao(true); }}>Editar</OperationalButton>
+                              <OperationalButton data-native-command-label="true" aria-label="Excluir" data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir função?")) excluirFuncao(fn.id).then(() => setFuncoes(x => x.filter(r => r.id !== fn.id))).catch(e => setErro(e.message)); }}>✕</OperationalButton>
+                            </div>
+                          </NativeRowActions></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </OperationalGrid>
+                </div>
+              )}
+
+              {subAbaFunc === "funcionarios" && <>
               {/* Cabeçalho + controles */}
               <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <OperationalFilters data-arato-filters="true" style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
@@ -5970,6 +6037,7 @@ function CadastrosInner() {
                       return f.nome.toLowerCase().includes(q) ||
                         empregador.includes(q) ||
                         (f.funcao ?? "").toLowerCase().includes(q) ||
+                        nomesSecundarias(f).toLowerCase().includes(q) ||
                         f.tipo.toLowerCase().includes(q) ||
                         (f.area_trabalho ?? "").toLowerCase().includes(q);
                     }).map((f, i) => {
@@ -5994,7 +6062,10 @@ function CadastrosInner() {
                             {produtores.find(p => p.id === f.produtor_id)?.nome ?? empresas.find(e => e.id === f.empresa_id)?.nome ?? <span style={{ color: "var(--text-3)" }}>—</span>}
                             {f.empresa_id && !f.produtor_id && <div style={{ fontSize: 10, color: "var(--text-3)" }}>Empresa</div>}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{f.funcao || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
+                            {f.funcao || "—"}
+                            {nomesSecundarias(f) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>+ {nomesSecundarias(f)}</div>}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{f.data_admissao || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-1)" }}>{sal > 0 ? `R$ ${sal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: custoTotal > 0 ? "#C9921B" : "var(--text-3)", fontWeight: custoTotal > 0 ? 600 : 400 }}>{custoTotal > 0 ? `R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
@@ -6011,6 +6082,7 @@ function CadastrosInner() {
                   </tbody>
                 </OperationalGrid>
               </div>
+              </>}
             </div>
           )}
 
@@ -10365,7 +10437,29 @@ function CadastrosInner() {
                     <option value="estagiario">Estagiário</option>
                   </SelectField>
                 </div>
-                <div><label data-arato-label="true" style={lbl}>Função / Cargo</label><input style={inp} value={fFunc.funcao} onChange={e => setFFunc(p => ({ ...p, funcao: e.target.value }))} placeholder="Operador de máquina, tratorista…" /></div>
+                <div>
+                  <label data-arato-label="true" style={lbl}>Função de contratação</label>
+                  <SelectBusca style={inp} value={fFunc.funcao_id} placeholder={fFunc.funcao || "— selecionar —"}
+                    onChange={v => setFFunc(p => ({ ...p, funcao_id: v, funcao: funcoes.find(fn => fn.id === v)?.nome ?? "", funcoes_secundarias: p.funcoes_secundarias.filter(id => id !== v) }))}
+                    options={[{ value: "", label: "— sem função —" }, ...funcoes.map(fn => ({ value: fn.id, label: fn.nome }))]} />
+                </div>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label data-arato-label="true" style={lbl}>Funções secundárias <span style={{ fontWeight: 400, color: "#888" }}>(uso interno, não entram na folha)</span></label>
+                    <OperationalButton data-arato-button="secondary" type="button" style={{ ...btnE, fontSize: 11 }} onClick={abrirNovaFuncao}>+ Nova função</OperationalButton>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {funcoes.filter(fn => fn.id !== fFunc.funcao_id).map(fn => {
+                      const marcada = fFunc.funcoes_secundarias.includes(fn.id);
+                      return <OperationalButton data-arato-button="toggle" type="button" key={fn.id} aria-pressed={marcada} onClick={() => setFFunc(p => ({ ...p, funcoes_secundarias: marcada ? p.funcoes_secundarias.filter(id => id !== fn.id) : [...p.funcoes_secundarias, fn.id] }))}
+                        style={{ padding: "5px 11px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", border: marcada ? "1.5px solid #2A2A2A" : "0.5px solid #DDE2EE", background: marcada ? "#2A2A2A" : "#fff", color: marcada ? "#fff" : "#555" }}>{fn.nome}</OperationalButton>;
+                    })}
+                    {funcoes.length === 0 && <span style={{ fontSize: 12, color: "#888" }}>Nenhuma função cadastrada.</span>}
+                  </div>
+                  {funcoes.some(fn => fn.eh_motorista && (fn.id === fFunc.funcao_id || fFunc.funcoes_secundarias.includes(fn.id))) && (
+                    <div style={{ fontSize: 11, color: "#0C447C", marginTop: 6 }}>Ao salvar, aparece em Transporte → Motoristas como pré-cadastro. A CNH é preenchida lá.</div>
+                  )}
+                </div>
                 <div>
                   <label data-arato-label="true" style={lbl}>Área de Trabalho *</label>
                   <SelectField style={{ ...inp, background: fFunc.area_trabalho === "administrativo" ? "#EBF3FE" : "#F0FBF0" }} value={fFunc.area_trabalho ?? "operacional"} onChange={e => setFFunc(p => ({ ...p, area_trabalho: e.target.value as Funcionario["area_trabalho"] }))}>
@@ -10651,6 +10745,26 @@ function CadastrosInner() {
           </Modal>
         );
       })()}
+
+      {/* Modal Função (depois do modal do funcionário, para abrir por cima dele) */}
+      {modalFuncao && (
+        <Modal titulo={editFuncao ? "Editar Função" : "Nova Função"} onClose={() => { setModalFuncao(false); setErroModal(""); }} width={520}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div><label data-arato-label="true" style={lbl}>Nome *</label><input style={inp} placeholder="Ex: Operador de Máquinas" value={fFuncao.nome}
+              onChange={e => { const nome = e.target.value; setFFuncao(p => ({ ...p, nome, eh_motorista: p.eh_motorista || /motorista/i.test(nome) })); }} /></div>
+            <div><label data-arato-label="true" style={lbl}>Descrição</label><input style={inp} value={fFuncao.descricao} onChange={e => setFFuncao(p => ({ ...p, descricao: e.target.value }))} /></div>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "var(--text-1)", cursor: "pointer" }}>
+              <input type="checkbox" checked={fFuncao.eh_motorista} onChange={e => setFFuncao(p => ({ ...p, eh_motorista: e.target.checked }))} />
+              <span>Esta função dirige caminhão. Quem tem esta função, principal ou secundária, aparece em Transporte → Motoristas.</span>
+            </label>
+          </div>
+          {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 12 }}>{erroModal}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalFuncao(false); setErroModal(""); }}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={gravarFuncao}>{salvando ? "Salvando…" : "Salvar"}</OperationalButton>
+          </div>
+        </Modal>
+      )}
 
       {/* Modal Nova Premiação */}
       {modalPremiacao && (

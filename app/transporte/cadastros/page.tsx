@@ -51,6 +51,7 @@ interface Motorista {
   rntrc?: string;
   telefone?: string; email?: string;
   ativo: boolean; obs?: string;
+  funcionario_id?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -243,7 +244,7 @@ export default function TransporteCadastrosPage() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar m)", perigo: false }))) return;
     if (!fazendaId || !modalM?.nome?.trim()) { alert("Nome é obrigatório."); return; }
     setSalvando(true);
-    const pay = { ...modalM, fazenda_id: fazendaId, ativo: modalM.ativo ?? true, tipo: modalM.transportadora_id ? "clt" as const : "tac" as const };
+    const pay = { ...modalM, fazenda_id: fazendaId, ativo: modalM.ativo ?? true, tipo: modalM.transportadora_id || modalM.funcionario_id ? "clt" as const : "tac" as const };
     if (pay.id) {
       await supabase.from("motoristas").update(pay).eq("id", pay.id);
     } else {
@@ -548,6 +549,11 @@ export default function TransporteCadastrosPage() {
                         <td style={{ padding: "10px 12px" }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.nome}</div>
                           {m.email && <div style={{ fontSize: 11, color: "#666" }}>{m.email}</div>}
+                          {m.funcionario_id && (
+                            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, fontWeight: 600, background: m.cnh_numero ? "#EBF3FF" : "#FBF3E0", color: m.cnh_numero ? "#2A2A2A" : "#7A5A12" }}>
+                              {m.cnh_numero ? "Funcionário" : "Pré-cadastro · falta CNH"}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{m.cpf ?? "—"}</td>
                         <td style={{ padding: "10px 12px", fontSize: 12 }}>
@@ -914,9 +920,10 @@ export default function TransporteCadastrosPage() {
             <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
               <Campo label={<>Transportadora {modalM.transportadora_id
                 ? <span style={{ color: "#16A34A", fontWeight: 700 }}>· CLT</span>
+                : modalM.funcionario_id ? <span style={{ color: "#16A34A", fontWeight: 700 }}>· Funcionário</span>
                 : <span style={{ color: "#C9921B", fontWeight: 700 }}>· Autônomo (TAC)</span>}</>}>
                 <SelectField style={inp} value={modalM.transportadora_id ?? ""} onChange={e => setModalM(p => ({ ...p!, transportadora_id: e.target.value || undefined }))}>
-                  <option value="">— autônomo (TAC — CIOT obrigatório) —</option>
+                  <option value="">{modalM.funcionario_id ? "— sem transportadora —" : "— autônomo (TAC — CIOT obrigatório) —"}</option>
                   {transportadoras.filter(t => t.ativa).map(t => <option key={t.id} value={t.id}>{t.razao_social}</option>)}
                 </SelectField>
               </Campo>

@@ -19149,3 +19149,177 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE apolices_seguro ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_apolices_produtor ON apolices_seguro(produtor_id) WHERE produtor_id IS NOT NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 406 — Funções da fazenda, função secundária do funcionário e pré-cadastro de motorista
+--   funcoes: lista por cliente. funcionarios.funcao (texto) continua sendo a função de contratação, lida pela
+--   folha e pelo eSocial; funcao_id a liga à lista. funcoes_secundarias é só de uso interno, a folha não lê.
+--   Funcionário ativo com função marcada eh_motorista ganha pré-cadastro em motoristas (tipo clt, sem transportadora).
+--   Os gatilhos ficam no banco para valer também na importação, no desligamento e no eSocial.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS funcoes (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id     uuid NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  nome         text NOT NULL,
+  descricao    text,
+  eh_motorista boolean NOT NULL DEFAULT false,
+  created_at   timestamptz DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_funcoes_conta_nome ON funcoes(conta_id, lower(btrim(nome)));
+
+ALTER TABLE funcoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "funcoes_cliente" ON funcoes;
+CREATE POLICY "funcoes_cliente" ON funcoes FOR ALL TO authenticated
+  USING ((SELECT public.rls_sou_raccotlo()) OR conta_id IN (SELECT public.rls_minhas_contas()))
+  WITH CHECK ((SELECT public.rls_sou_raccotlo()) OR conta_id IN (SELECT public.rls_minhas_contas()));
+
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS funcao_id uuid REFERENCES funcoes(id),
+  ADD COLUMN IF NOT EXISTS funcoes_secundarias uuid[] NOT NULL DEFAULT '{}';
+ALTER TABLE motoristas
+  ADD COLUMN IF NOT EXISTS funcionario_id uuid REFERENCES funcionarios(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_motoristas_funcionario ON motoristas(funcionario_id) WHERE funcionario_id IS NOT NULL;
+
+-- Funções que já existem como texto no cadastro, mais "Motorista" em todo cliente
+INSERT INTO funcoes (conta_id, nome, eh_motorista)
+SELECT DISTINCT ON (conta, lower(btrim(funcao))) conta, btrim(funcao), funcao ILIKE '%motorista%'
+  FROM (SELECT COALESCE(fu.conta_id, fz.conta_id) AS conta, fu.funcao
+          FROM funcionarios fu JOIN fazendas fz ON fz.id = fu.fazenda_id
+         WHERE btrim(COALESCE(fu.funcao, '')) <> '') x
+ WHERE conta IS NOT NULL
+ON CONFLICT (conta_id, lower(btrim(nome))) DO NOTHING;
+
+INSERT INTO funcoes (conta_id, nome, eh_motorista)
+SELECT id, 'Motorista', true FROM contas
+ON CONFLICT (conta_id, lower(btrim(nome))) DO NOTHING;
+
+-- Liga o texto da função à lista; texto novo (ex.: importação) entra na lista sozinho
+CREATE OR REPLACE FUNCTION public.funcionarios_resolver_funcao() RETURNS trigger
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  v_conta uuid;
+  v_nome  text;
+BEGIN
+  IF NEW.funcao_id IS NOT NULL THEN
+    SELECT nome INTO v_nome FROM funcoes WHERE id = NEW.funcao_id;
+    IF v_nome IS NOT NULL THEN NEW.funcao := v_nome; END IF;
+    RETURN NEW;
+  END IF;
+  NEW.funcao := NULLIF(btrim(COALESCE(NEW.funcao, '')), '');
+  IF NEW.funcao IS NULL THEN RETURN NEW; END IF;
+  v_conta := NEW.conta_id;
+  IF v_conta IS NULL THEN SELECT conta_id INTO v_conta FROM fazendas WHERE id = NEW.fazenda_id; END IF;
+  IF v_conta IS NULL THEN RETURN NEW; END IF;
+  INSERT INTO funcoes (conta_id, nome, eh_motorista)
+  VALUES (v_conta, NEW.funcao, NEW.funcao ILIKE '%motorista%')
+  ON CONFLICT (conta_id, lower(btrim(nome))) DO UPDATE SET nome = funcoes.nome
+  RETURNING id INTO NEW.funcao_id;
+  RETURN NEW;
+END $$;
+
+-- Cria, atualiza ou inativa o motorista do funcionário. Nunca mexe na CNH nem na transportadora.
+CREATE OR REPLACE FUNCTION public.funcionario_sincronizar_motorista(p_id uuid) RETURNS void
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  f       funcionarios%ROWTYPE;
+  v_conta uuid;
+  v_cpf   text;
+  v_mot   uuid;
+  v_dirige boolean;
+BEGIN
+  SELECT * INTO f FROM funcionarios WHERE id = p_id;
+  IF NOT FOUND THEN RETURN; END IF;
+  v_dirige := COALESCE(f.ativo, false)
+    AND (f.data_demissao IS NULL OR f.data_demissao > current_date)
+    AND EXISTS (SELECT 1 FROM funcoes fn WHERE fn.eh_motorista AND (fn.id = f.funcao_id OR fn.id = ANY(f.funcoes_secundarias)));
+  IF NOT v_dirige THEN
+    UPDATE motoristas SET ativo = false WHERE funcionario_id = f.id AND ativo;
+    RETURN;
+  END IF;
+  v_conta := f.conta_id;
+  IF v_conta IS NULL THEN SELECT conta_id INTO v_conta FROM fazendas WHERE id = f.fazenda_id; END IF;
+  v_cpf := regexp_replace(COALESCE(f.cpf, ''), '\D', '', 'g');
+  SELECT id INTO v_mot FROM motoristas WHERE funcionario_id = f.id;
+  -- Motorista já cadastrado à mão: liga em vez de duplicar (pelo CPF; sem CPF, pelo nome)
+  IF v_mot IS NULL THEN
+    SELECT m.id INTO v_mot FROM motoristas m
+     WHERE m.funcionario_id IS NULL
+       AND (m.conta_id = v_conta OR m.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = v_conta))
+       AND CASE WHEN v_cpf <> '' THEN regexp_replace(COALESCE(m.cpf, ''), '\D', '', 'g') = v_cpf
+                ELSE regexp_replace(COALESCE(m.cpf, ''), '\D', '', 'g') = '' AND upper(btrim(m.nome)) = upper(btrim(f.nome)) END
+     ORDER BY m.ativo DESC, m.created_at LIMIT 1;
+  END IF;
+  IF v_mot IS NOT NULL THEN
+    UPDATE motoristas SET funcionario_id = f.id, nome = f.nome, cpf = COALESCE(NULLIF(btrim(f.cpf), ''), cpf), tipo = 'clt', ativo = true
+     WHERE id = v_mot;
+  ELSE
+    INSERT INTO motoristas (fazenda_id, conta_id, nome, cpf, funcionario_id, tipo, ativo)
+    VALUES (f.fazenda_id, v_conta, f.nome, NULLIF(btrim(f.cpf), ''), f.id, 'clt', true);
+  END IF;
+END $$;
+
+-- Só reage quando algo relevante mudou: motorista inativado à mão não volta quando o cadastro é salvo de novo
+CREATE OR REPLACE FUNCTION public.funcionarios_apos_salvar() RETURNS trigger
+LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND (NEW.nome, NEW.cpf, NEW.ativo, NEW.data_demissao, NEW.funcao_id, NEW.funcoes_secundarias)
+     IS NOT DISTINCT FROM (OLD.nome, OLD.cpf, OLD.ativo, OLD.data_demissao, OLD.funcao_id, OLD.funcoes_secundarias) THEN
+    RETURN NEW;
+  END IF;
+  PERFORM public.funcionario_sincronizar_motorista(NEW.id);
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.funcionarios_antes_excluir() RETURNS trigger
+LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  UPDATE motoristas SET ativo = false WHERE funcionario_id = OLD.id AND ativo;
+  RETURN OLD;
+END $$;
+
+-- Renomear a função atualiza o funcionário; marcar ou desmarcar "motorista" refaz os motoristas de quem a tem
+CREATE OR REPLACE FUNCTION public.funcoes_apos_alterar() RETURNS trigger
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  r record;
+BEGIN
+  IF NEW.nome IS DISTINCT FROM OLD.nome THEN
+    UPDATE funcionarios SET funcao = NEW.nome WHERE funcao_id = NEW.id;
+  END IF;
+  IF NEW.eh_motorista IS DISTINCT FROM OLD.eh_motorista THEN
+    FOR r IN SELECT id FROM funcionarios WHERE funcao_id = NEW.id OR NEW.id = ANY(funcoes_secundarias) LOOP
+      PERFORM public.funcionario_sincronizar_motorista(r.id);
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_funcionarios_resolver_funcao ON funcionarios;
+CREATE TRIGGER trg_funcionarios_resolver_funcao BEFORE INSERT OR UPDATE OF funcao, funcao_id ON funcionarios
+  FOR EACH ROW EXECUTE FUNCTION public.funcionarios_resolver_funcao();
+DROP TRIGGER IF EXISTS trg_funcionarios_apos_salvar ON funcionarios;
+CREATE TRIGGER trg_funcionarios_apos_salvar AFTER INSERT OR UPDATE OF nome, cpf, ativo, data_demissao, funcao, funcao_id, funcoes_secundarias ON funcionarios
+  FOR EACH ROW EXECUTE FUNCTION public.funcionarios_apos_salvar();
+DROP TRIGGER IF EXISTS trg_funcionarios_antes_excluir ON funcionarios;
+CREATE TRIGGER trg_funcionarios_antes_excluir BEFORE DELETE ON funcionarios
+  FOR EACH ROW EXECUTE FUNCTION public.funcionarios_antes_excluir();
+DROP TRIGGER IF EXISTS trg_funcoes_apos_alterar ON funcoes;
+CREATE TRIGGER trg_funcoes_apos_alterar AFTER UPDATE OF nome, eh_motorista ON funcoes
+  FOR EACH ROW EXECUTE FUNCTION public.funcoes_apos_alterar();
+
+-- Liga os funcionários atuais; o gatilho cria o pré-cadastro de quem já é motorista
+UPDATE funcionarios fu SET funcao_id = fn.id
+  FROM fazendas fz, funcoes fn
+ WHERE fz.id = fu.fazenda_id
+   AND fn.conta_id = COALESCE(fu.conta_id, fz.conta_id)
+   AND lower(btrim(fn.nome)) = lower(btrim(fu.funcao))
+   AND fu.funcao_id IS NULL;
+
+COMMIT;
+NOTIFY pgrst, 'reload schema';
+
+-- Conferência depois de rodar:
+--   SELECT count(*) AS funcionarios_com_texto_sem_ligacao FROM funcionarios WHERE btrim(COALESCE(funcao, '')) <> '' AND funcao_id IS NULL;
+--   SELECT count(*) AS pre_cadastros FROM motoristas WHERE funcionario_id IS NOT NULL;
