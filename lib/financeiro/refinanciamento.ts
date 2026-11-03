@@ -6,6 +6,9 @@
  * são BAIXADOS na conta indicada pelo valor que o banco debitou — cada débito do extrato tem o seu título para conciliar:
  * amortizações e juros já vencidos primeiro; o que sobra paga os juros do período; os juros futuros que o banco não
  * cobrou (liquidação antecipada) saem como desconto. O que já foi pago antes não muda.
+ *
+ * Liquidação interna: o banco quita dentro dele, sem passar pela conta. Os títulos são baixados sem conta e a parte da
+ * cédula usada na quitação entra como liberação sem caixa. O que sobrar da cédula é liberado na conta normalmente.
  */
 
 export type TituloOrigem = {
@@ -24,6 +27,8 @@ export type TituloOrigem = {
   conta_bancaria?: string | null;
   valor_desconto?: number | null;
   valor_juros?: number | null;
+  conciliado?: boolean | null;
+  forma_pagamento?: string | null;
 };
 
 /** Estado do título antes do refinanciamento — guardado para o Desvincular devolver tudo como estava.
@@ -32,6 +37,7 @@ export type TituloAntes = {
   id: string; status: string | null; valor: number | null; valor_pago?: number | null; observacao: string | null;
   acao?: "baixado"; data_baixa?: string | null; conta_bancaria?: string | null; valor_desconto?: number | null;
   valor_juros?: number | null; pago_depois?: number;
+  interna?: boolean; parcela_liberacao_id?: string | null; conciliado?: boolean | null; forma_pagamento?: string | null;
 };
 
 export type ItemLiquidacao = { titulo: TituloOrigem; pago: number; desconto: number; juros: number };
@@ -100,7 +106,7 @@ export const notaRefinanciamento = (obs: string | null | undefined, cedula: stri
  */
 export function podeRestaurar(atual: Pick<TituloOrigem, "status" | "valor" | "valor_pago"> & { conciliado?: boolean | null }, antes: TituloAntes): boolean {
   if (antes.acao === "baixado") {
-    return atual.status === "baixado" && !atual.conciliado && Math.abs((Number(atual.valor_pago) || 0) - (antes.pago_depois ?? 0)) < 0.01;
+    return atual.status === "baixado" && (antes.interna || !atual.conciliado) && Math.abs((Number(atual.valor_pago) || 0) - (antes.pago_depois ?? 0)) < 0.01;
   }
   if (antes.status === "parcial") {
     const pagoAntes = Number(antes.valor_pago) || 0;

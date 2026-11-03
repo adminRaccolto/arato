@@ -1696,6 +1696,7 @@ export type ContratoRefinanciamento = {
   contrato_novo_id: string;       // o contrato que absorveu
   contrato_origem_id: string;     // o contrato que foi consolidado
   saldo_incorporado?: number | null;
+  titulos_encerrados?: { interna?: boolean }[] | null;
   created_at?: string;
   // joins opcionais
   contrato_origem?: ContratoFinanceiro;
@@ -1711,7 +1712,7 @@ export type ParcelaLiberacao = {
   valor_liberado: number;
   valor_liberado_brl?: number;
   lancamento_id?: string;
-  tipo?: "capital" | "despesa_financiada" | "fornecedor";   // despesa_financiada = IOF/tarifas embutidos (Seção 349); fornecedor = banco pagou direto o fornecedor, quitando CP (Seção 392)
+  tipo?: "capital" | "despesa_financiada" | "fornecedor" | "refinanciamento";   // despesa_financiada = IOF/tarifas embutidos (Seção 349); fornecedor = banco pagou direto o fornecedor, quitando CP (Seção 392)
   despesa_lancamento_id?: string;           // CP da despesa financiada
   created_at?: string;
 };

@@ -5,6 +5,7 @@
  */
 
 import { motivoBloqueioExclusao, notaDoTitulo } from "./financeiro/bloqueio-exclusao";
+import { cotacaoDoContrato } from "./financeiro/moeda";
 import { itemDoCliente } from "./estoque/duplicados";
 import { falharSeErro } from "./db-util";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
@@ -4160,18 +4161,21 @@ export async function criarParcelaLiberacao(
   p: Omit<ParcelaLiberacao, "id" | "created_at">,
   contrato: ContratoFinanceiro,
 ): Promise<ParcelaLiberacao> {
+  // O banco deposita em reais: em contrato em dólar a entrada de capital é o valor convertido, em R$
+  const cotacao = cotacaoDoContrato(contrato);
+  if (contrato.moeda === "USD" && !cotacao) throw new Error("Contrato em US$ sem cotação: informe a cotação no contrato antes de lançar a liberação.");
   const { data, error } = await supabase.from("parcelas_liberacao").insert(p).select().single();
   if (error) throw error;
 
   // Cria lançamento CR automático (entrada de capital)
-  const valor = contrato.moeda === "USD" && contrato.valor_cotacao
-    ? p.valor_liberado * contrato.valor_cotacao
+  const valor = contrato.moeda === "USD" && cotacao
+    ? Math.round(p.valor_liberado * cotacao * 100) / 100
     : p.valor_liberado;
   const ogMap = await buscarOgsCf(p.fazenda_id);
   const { data: lanc } = await supabase.from("lancamentos").insert({
     fazenda_id: p.fazenda_id,
     tipo: "receber",
-    moeda: contrato.moeda,
+    moeda: "BRL",
     descricao: `${contrato.descricao} — Liberação ${p.num_parcela}`,
     categoria: CAT_CAPTACAO[contrato.tipo],
     operacao_gerencial_id: ogMap.get(OG_CAPTACAO_CLASS) ?? null,

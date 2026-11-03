@@ -5,11 +5,13 @@
 //       origem são BAIXADOS na conta indicada pelo valor debitado (amortizações e juros vencidos; a diferença paga os juros
 //       do período; juros futuros não cobrados saem como desconto). A origem fica Refinanciado; o estado anterior de cada
 //       título fica no vínculo.
+//     interna: true → o banco quitou dentro dele: títulos baixados sem conta e liberação sem caixa pelo valor da quitação.
 //   { acao: "desvincular", id } → estorna as baixas (as que ninguém mexeu nem conciliou depois) e a origem volta a Ativo.
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../lib/supabase-servidor";
 import { exigirAcessoRegistro } from "../../../../../lib/api-auth";
 import { hojeLocal } from "../../../../../lib/data-local";
+import { cotacaoDoContrato } from "../../../../../lib/financeiro/moeda";
 import {
   notaRefinanciamento, planejarLiquidacao, podeRestaurar, saldoDevedorOrigem,
   type TituloAntes, type TituloOrigem,
@@ -22,7 +24,7 @@ const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", cur
 type Sb = ReturnType<typeof admin>;
 async function titulosDaOrigem(sb: Sb, contratoId: string): Promise<TituloOrigem[]> {
   const { data, error } = await sb.from("lancamentos")
-    .select("id, tipo, status, valor, valor_pago, data_vencimento, descricao, observacao, lote_id, moeda, cotacao_usd, data_baixa, conta_bancaria, valor_desconto, valor_juros")
+    .select("id, tipo, status, valor, valor_pago, data_vencimento, descricao, observacao, lote_id, moeda, cotacao_usd, data_baixa, conta_bancaria, valor_desconto, valor_juros, conciliado, forma_pagamento")
     .eq("contrato_financeiro_id", contratoId).order("id");
   if (error) throw error;
   return (data ?? []) as TituloOrigem[];
@@ -31,7 +33,7 @@ async function titulosDaOrigem(sb: Sb, contratoId: string): Promise<TituloOrigem
 export async function POST(req: NextRequest) {
   try {
     const b = await req.json() as { acao: "saldo" | "vincular" | "desvincular"; contrato_novo_id?: string; contrato_origem_id?: string;
-      valor_liquidacao?: number | null; conta_bancaria?: string | null; data?: string; id?: string };
+      valor_liquidacao?: number | null; conta_bancaria?: string | null; data?: string; id?: string; interna?: boolean };
     const sb = admin();
     const data = b.data || hojeLocal();
 
@@ -42,12 +44,14 @@ export async function POST(req: NextRequest) {
       if (eV) return NextResponse.json({ ok: false, error: eV.message }, { status: 400 });
       if (!v) return NextResponse.json({ ok: false, error: "Vínculo não encontrado." }, { status: 404 });
       let devolvidos = 0, mantidos = 0;
-      for (const antes of (v.titulos_encerrados ?? []) as TituloAntes[]) {
+      const titulosVinculo = (v.titulos_encerrados ?? []) as TituloAntes[];
+      for (const antes of titulosVinculo) {
         const { data: atual } = await sb.from("lancamentos").select("status, valor, valor_pago, conciliado").eq("id", antes.id).maybeSingle();
         if (!atual || !podeRestaurar(atual, antes)) { mantidos++; continue; }
         const volta = antes.acao === "baixado"
           ? { status: antes.status, valor_pago: antes.valor_pago ?? null, data_baixa: antes.data_baixa ?? null, conta_bancaria: antes.conta_bancaria ?? null,
-              valor_desconto: antes.valor_desconto ?? null, valor_juros: antes.valor_juros ?? null, observacao: antes.observacao }
+              valor_desconto: antes.valor_desconto ?? null, valor_juros: antes.valor_juros ?? null, observacao: antes.observacao,
+              ...(antes.interna ? { conciliado: antes.conciliado ?? false, forma_pagamento: antes.forma_pagamento ?? null } : {}) }
           : { status: antes.status, valor: antes.valor, observacao: antes.observacao };
         const { error } = await sb.from("lancamentos").update(volta).eq("id", antes.id);
         if (error) throw error;
@@ -55,6 +59,17 @@ export async function POST(req: NextRequest) {
           await sb.from("parcelas_pagamento").update({ status: antes.status === "vencido" ? "vencido" : "em_aberto", data_pagamento: null }).eq("lancamento_id", antes.id);
         }
         devolvidos++;
+      }
+      // Liquidação interna: a liberação sem caixa criada junto sai com o vínculo
+      const parcelaInterna = titulosVinculo.find(t => t.parcela_liberacao_id)?.parcela_liberacao_id;
+      if (parcelaInterna) {
+        const { data: parc } = await sb.from("parcelas_liberacao").select("lancamento_id").eq("id", parcelaInterna).maybeSingle();
+        const { error: eParc } = await sb.from("parcelas_liberacao").delete().eq("id", parcelaInterna);
+        if (eParc) throw eParc;
+        if (parc?.lancamento_id) {
+          const { error: eCr } = await sb.from("lancamentos").delete().eq("id", parc.lancamento_id);
+          if (eCr) throw eCr;
+        }
       }
       await sb.from("contratos_refinanciamento").delete().eq("id", v.id);
       const { error: eAtivo } = await sb.from("contratos_financeiros").update({ status: "ativo", refinanciado_por_id: null }).eq("id", v.contrato_origem_id);
@@ -79,38 +94,76 @@ export async function POST(req: NextRequest) {
     if (b.contrato_novo_id === b.contrato_origem_id) return NextResponse.json({ ok: false, error: "Um contrato não pode refinanciar ele mesmo." }, { status: 400 });
     const valor = Number(b.valor_liquidacao) || 0;
     if (valor <= 0) return NextResponse.json({ ok: false, error: "Informe o valor da liquidação (o débito do contrato antigo no extrato)." }, { status: 400 });
-    if (!b.conta_bancaria) return NextResponse.json({ ok: false, error: "Informe a conta bancária em que o banco debitou a liquidação." }, { status: 400 });
+    const interna = !!b.interna;
+    if (!interna && !b.conta_bancaria) return NextResponse.json({ ok: false, error: "Informe a conta bancária em que o banco debitou a liquidação." }, { status: 400 });
     const plano = planejarLiquidacao(titulos, valor, data);
     if (plano.emBordero.length) {
       const v = plano.emBordero.reduce((s, t) => s + (Number(t.valor) || 0) - (Number(t.valor_pago) || 0), 0);
       return NextResponse.json({ ok: false, error: `${plano.emBordero.length} título(s) do contrato de origem (${fmtBRL(v)}) estão em borderô ainda não pago. Confirme ou estorne o borderô antes de refinanciar.` }, { status: 400 });
     }
     if (!plano.itens.length) return NextResponse.json({ ok: false, error: "O contrato de origem não tem títulos a pagar no Contas a Pagar." }, { status: 400 });
-    const { data: novo } = await sb.from("contratos_financeiros").select("id, fazenda_id, numero_documento, descricao").eq("id", b.contrato_novo_id!).maybeSingle();
+    const { data: novo } = await sb.from("contratos_financeiros").select("id, fazenda_id, numero_documento, descricao, moeda, valor_cotacao, cotacao_usd, pessoa_id, produtor_id").eq("id", b.contrato_novo_id!).maybeSingle();
     if (!novo) return NextResponse.json({ ok: false, error: "Contrato novo não encontrado." }, { status: 404 });
     const cedula = novo.numero_documento || novo.descricao || novo.id.slice(0, 8);
+
+    // Liquidação interna: captação sem caixa pelo valor da quitação, como na liberação direta ao fornecedor
+    let parcelaInternaId: string | null = null;
+    let crInternoId: string | null = null;
+    const desfazerInterna = async () => {
+      if (parcelaInternaId) await sb.from("parcelas_liberacao").delete().eq("id", parcelaInternaId);
+      if (crInternoId) await sb.from("lancamentos").delete().eq("id", crInternoId);
+    };
+    if (interna) {
+      const cotacao = novo.moeda === "USD" ? cotacaoDoContrato(novo) : null;
+      if (novo.moeda === "USD" && !cotacao) return NextResponse.json({ ok: false, error: "Cédula em US$ sem cotação: informe a cotação na cédula antes." }, { status: 400 });
+      const { data: fz } = await sb.from("fazendas").select("conta_id").eq("id", novo.fazenda_id).maybeSingle();
+      const { data: og } = await sb.from("operacoes_gerenciais").select("id")
+        .or([`and(fazenda_id.is.null,conta_id.is.null)`, ...(fz?.conta_id ? [`conta_id.eq.${fz.conta_id}`] : []), `fazenda_id.eq.${novo.fazenda_id}`].join(","))
+        .eq("classificacao", "1.03.01.01.003").eq("inativo", false).limit(1).maybeSingle();
+      const { data: maxN } = await sb.from("parcelas_liberacao").select("num_parcela").eq("contrato_id", novo.id).order("num_parcela", { ascending: false }).limit(1);
+      const { data: cr, error: eCr } = await sb.from("lancamentos").insert({
+        fazenda_id: novo.fazenda_id, tipo: "receber", moeda: "BRL", valor, valor_pago: valor,
+        descricao: `${novo.descricao} — Liberação usada na liquidação interna`, categoria: "Captação de Empréstimos",
+        operacao_gerencial_id: og?.id ?? null, pessoa_id: novo.pessoa_id ?? null, produtor_id: novo.produtor_id ?? null,
+        data_lancamento: data, data_vencimento: data, data_baixa: data, status: "baixado", conciliado: true, conta_bancaria: null,
+        auto: true, origem_lancamento: "contrato_financeiro", contrato_financeiro_id: novo.id,
+        observacao: "Banco liquidou o contrato anterior internamente, sem passar pela conta",
+      }).select("id").single();
+      if (eCr) return NextResponse.json({ ok: false, error: `Liberação não registrada: ${eCr.message}` }, { status: 400 });
+      crInternoId = cr.id;
+      const { data: parc, error: eP } = await sb.from("parcelas_liberacao").insert({
+        contrato_id: novo.id, fazenda_id: novo.fazenda_id, num_parcela: Number(maxN?.[0]?.num_parcela ?? 0) + 1, data_liberacao: data,
+        valor_liberado: cotacao ? Math.round(valor / cotacao * 100) / 100 : valor, valor_liberado_brl: valor, lancamento_id: cr.id, tipo: "refinanciamento",
+      }).select("id").single();
+      if (eP) { await desfazerInterna(); return NextResponse.json({ ok: false, error: eP.message }, { status: 400 }); }
+      parcelaInternaId = parc.id;
+    }
 
     const antes: TituloAntes[] = plano.itens.map(({ titulo: t, pago }) => ({
       id: t.id, acao: "baixado", status: t.status, valor: t.valor, valor_pago: t.valor_pago, observacao: t.observacao ?? null,
       data_baixa: t.data_baixa ?? null, conta_bancaria: t.conta_bancaria ?? null, valor_desconto: t.valor_desconto ?? null,
       valor_juros: t.valor_juros ?? null, pago_depois: Math.round(((Number(t.valor_pago) || 0) + pago) * 100) / 100,
+      ...(interna ? { interna: true, parcela_liberacao_id: parcelaInternaId, conciliado: t.conciliado ?? false, forma_pagamento: t.forma_pagamento ?? null } : {}),
     }));
     const { data: vinculo, error: eIns } = await sb.from("contratos_refinanciamento")
       .insert({ contrato_novo_id: novo.id, contrato_origem_id: b.contrato_origem_id, fazenda_id: novo.fazenda_id, saldo_incorporado: valor, titulos_encerrados: antes })
       .select("*, contrato_origem:contratos_financeiros!contrato_origem_id(*)").single();
+    if (eIns) await desfazerInterna();
     if (eIns) return NextResponse.json({ ok: false, error: eIns.code === "42703" || eIns.code === "PGRST204" ? SECAO : eIns.message }, { status: 400 });
 
     // A origem vira Refinanciado antes de baixar os títulos: se o banco recusar (Seção 399 não rodada), nada é baixado
     const { error: eStatus } = await sb.from("contratos_financeiros").update({ status: "refinanciado", refinanciado_por_id: novo.id }).eq("id", b.contrato_origem_id!);
     if (eStatus) {
       await sb.from("contratos_refinanciamento").delete().eq("id", vinculo.id);
+      await desfazerInterna();
       return NextResponse.json({ ok: false, error: eStatus.code === "23514" ? "Aplique a Seção 399 do supabase_migrations.sql (status Refinanciado em contratos financeiros)." : eStatus.message }, { status: 400 });
     }
     for (const [i, it] of plano.itens.entries()) {
       const { error } = await sb.from("lancamentos").update({
         status: "baixado", valor_pago: antes[i].pago_depois, data_baixa: data,
         // título só com desconto (juros futuros não cobrados) não movimenta a conta
-        conta_bancaria: it.pago > 0.009 ? b.conta_bancaria : (it.titulo.conta_bancaria ?? null),
+        conta_bancaria: interna ? null : it.pago > 0.009 ? b.conta_bancaria : (it.titulo.conta_bancaria ?? null),
+        ...(interna ? { conciliado: true, forma_pagamento: "Refinanciamento" } : {}),
         valor_desconto: it.desconto > 0.009 ? it.desconto : null,
         valor_juros: it.juros > 0.009 ? it.juros : (it.titulo.valor_juros ?? null),
         observacao: notaRefinanciamento(it.titulo.observacao, cedula),

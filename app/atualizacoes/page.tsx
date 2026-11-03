@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-p",
+    data: "03/11/2026",
+    titulo: "Contratos financeiros: liquidação interna e liberação em dólar",
+    modulos: ["Contratos Financeiros", "Contas a Receber"],
+    itens: [
+      { tipo: "novo", texto: "Cédula que liquida outro contrato: agora dá para escolher entre \"Passa pela conta\" e \"Interna no banco\". Na interna, os títulos são baixados e a parte da cédula usada na quitação entra sem movimentar conta." },
+      { tipo: "melhoria", texto: "Se a cédula for maior que a quitação, o saldo aparece em \"Saldo a liberar\" e, ao ser lançado em Liberação, fica disponível na conta como em qualquer contrato." },
+      { tipo: "correcao", texto: "Liberação de contrato em dólar agora entra no Contas a Receber em reais, pela cotação do contrato. Antes o valor já convertido era gravado como dólar. Contrato em US$ sem cotação pede a cotação antes de lançar." },
+    ],
+  },
+  {
     versao: "2026.11.03-o",
     data: "03/11/2026",
     titulo: "Folha de pagamento ligada de verdade ao Contas a Pagar",

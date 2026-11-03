@@ -1,5 +1,6 @@
 "use client";
 import { intercalarJuros, repartirCronograma, separarCapitalizado } from "../../../lib/financeiro/cronograma";
+import { cotacaoDoContrato } from "../../../lib/financeiro/moeda";
 import LiberacaoFornecedor from "../../../components/financeiro/LiberacaoFornecedor";
 import { parcelaJaPaga, registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
@@ -259,7 +260,7 @@ export default function ContratosFinanceiros() {
   const [ccOptions, setCcOptions]                 = useState<CentroCusto[]>([]);
   const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
   const [origensRefin, setOrigensRefin]           = useState<ContratoRefinanciamento[]>([]);
-  const REFIN_VAZIO = { contrato_origem_id: "", valor: "", conta: "", data: "" };
+  const REFIN_VAZIO = { contrato_origem_id: "", valor: "", conta: "", data: "", interna: false };
   const [fRefin, setFRefin]                       = useState(REFIN_VAZIO);
   // Cédula ainda não salva: contratos que ela liquida ficam aqui e são aplicados ao salvar
   const [refinPendentes, setRefinPendentes]       = useState<(typeof REFIN_VAZIO)[]>([]);
@@ -808,7 +809,7 @@ export default function ContratosFinanceiros() {
       const errosRefin: string[] = [];
       for (const r of refinPendentes) {
         try {
-          const j = await apiRefin({ acao: "vincular", contrato_novo_id: novo.id, contrato_origem_id: r.contrato_origem_id, valor_liquidacao: numBR(r.valor), conta_bancaria: r.conta, data: r.data }) as { vinculo: ContratoRefinanciamento };
+          const j = await apiRefin({ acao: "vincular", contrato_novo_id: novo.id, contrato_origem_id: r.contrato_origem_id, valor_liquidacao: numBR(r.valor), conta_bancaria: r.interna ? null : r.conta, data: r.data, interna: r.interna }) as { vinculo: ContratoRefinanciamento };
           setOrigensRefin(p => [...p, j.vinculo]);
           setContratos(p => p.map(c => c.id === r.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: novo.id } : c));
         } catch (e) { errosRefin.push(`${contratos.find(c => c.id === r.contrato_origem_id)?.numero_documento ?? "contrato"}: ${(e as Error).message}`); }
@@ -830,6 +831,8 @@ export default function ContratosFinanceiros() {
     setErroModal(null);
     const vl = parseFloat(fLib.valor_liberado.replace(",", ".")) || 0;
     const nParcelas = Math.max(1, Number(fLib.parcelas_liberacao) || 1);
+    const cotacaoLib = cotacaoDoContrato(contratoModal);
+    if (contratoModal.moeda === "USD" && !cotacaoLib) { setErroModal("Contrato em US$ sem cotação: informe a cotação na aba Principal antes de lançar a liberação."); return; }
     for (let i = 1; i <= nParcelas; i++) {
       const d = new Date(fLib.data_liberacao + "T12:00:00");
       d.setMonth(d.getMonth() + (i - 1));
@@ -838,7 +841,7 @@ export default function ContratosFinanceiros() {
         num_parcela: (parcelasLiberacao.length + i),
         data_liberacao: d.toISOString().slice(0, 10),
         valor_liberado: vl,
-        valor_liberado_brl: contratoModal.moeda === "USD" && contratoModal.valor_cotacao ? vl * contratoModal.valor_cotacao : vl,
+        valor_liberado_brl: contratoModal.moeda === "USD" && cotacaoLib ? vl * cotacaoLib : vl,
       }, contratoModal);
       setParcelasLiberacao(p => [...p, nova]);
     }
@@ -2122,16 +2125,17 @@ export default function ContratosFinanceiros() {
                     const nomeConta = (id?: string | null) => contas.find(c => c.id === id)?.nome ?? "—";
                     const th = { padding: "6px 10px", textAlign: "left" as const, fontSize: 11, fontWeight: 600, color: "#4B3B9B" };
                     const td = { padding: "7px 10px", fontSize: 12 };
-                    const podeAdd = !!fRefin.contrato_origem_id && numBR(fRefin.valor) > 0 && !!fRefin.conta && !!fRefin.data && !refinPrevia?.em_bordero;
+                    const podeAdd = !!fRefin.contrato_origem_id && numBR(fRefin.valor) > 0 && (fRefin.interna || !!fRefin.conta) && !!fRefin.data && !refinPrevia?.em_bordero;
                     const adicionar = async () => {
                       if (!podeAdd) return;
                       if (!contratoModal) {   // cédula ainda não salva: aplica ao salvar
                         setRefinPendentes(p => [...p, fRefin]); setFRefin(REFIN_VAZIO); setRefinPrevia(null); return;
                       }
-                      if (!confirm(`Liquidar este contrato pelo refinanciamento?\n\n${fmtBRL(numBR(fRefin.valor))} são baixados na conta ${nomeConta(fRefin.conta)} em ${fmtData(fRefin.data)}, nos títulos a pagar dele (amortizações e juros vencidos; a diferença paga os juros do período; juros futuros não cobrados saem como desconto). Desvincular desfaz.`)) return;
+                      if (!confirm(`Liquidar este contrato pelo refinanciamento?\n\n${fmtBRL(numBR(fRefin.valor))} são baixados ${fRefin.interna ? "sem movimentar conta (liquidação interna no banco)" : `na conta ${nomeConta(fRefin.conta)}`} em ${fmtData(fRefin.data)}, nos títulos a pagar dele (amortizações e juros vencidos; a diferença paga os juros do período; juros futuros não cobrados saem como desconto). Desvincular desfaz.`)) return;
                       try {
-                        const j = await apiRefin({ acao: "vincular", contrato_novo_id: contratoModal.id, contrato_origem_id: fRefin.contrato_origem_id, valor_liquidacao: numBR(fRefin.valor), conta_bancaria: fRefin.conta, data: fRefin.data }) as { vinculo: ContratoRefinanciamento };
+                        const j = await apiRefin({ acao: "vincular", contrato_novo_id: contratoModal.id, contrato_origem_id: fRefin.contrato_origem_id, valor_liquidacao: numBR(fRefin.valor), conta_bancaria: fRefin.interna ? null : fRefin.conta, data: fRefin.data, interna: fRefin.interna }) as { vinculo: ContratoRefinanciamento };
                         setOrigensRefin(p => [...p, j.vinculo]);
+                        if (fRefin.interna) listarParcelasLiberacao(contratoModal.id).then(setParcelasLiberacao).catch(() => {});
                         setContratos(p => p.map(c => c.id === fRefin.contrato_origem_id ? { ...c, status: "refinanciado", refinanciado_por_id: contratoModal.id } : c));
                         setFRefin(REFIN_VAZIO); setRefinPrevia(null);
                       } catch (e) { alert("Erro ao vincular: " + (e as Error).message); }
@@ -2145,14 +2149,14 @@ export default function ContratosFinanceiros() {
                         {(origensRefin.length > 0 || refinPendentes.length > 0) && (
                           <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
                             <thead><tr style={{ background: "#EDE9FB" }}>
-                              {["Contrato liquidado", "Valor debitado", "Conta", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
+                              {["Contrato liquidado", "Valor da quitação", "Conta", ""].map((h, i) => <th key={i} style={th}>{h}</th>)}
                             </tr></thead>
                             <tbody>
                               {origensRefin.map(o => (
                                 <tr key={o.id} style={{ borderBottom: "0.5px solid #DDD8F5", background: "#fff" }}>
                                   <td style={{ ...td, fontWeight: 600, color: "#4B3B9B" }}>{rotulo(o.contrato_origem)}</td>
                                   <td style={td}>{o.saldo_incorporado ? fmtBRL(o.saldo_incorporado) : "—"}</td>
-                                  <td style={{ ...td, color: "#555" }}>Liquidado</td>
+                                  <td style={{ ...td, color: "#555" }}>{o.titulos_encerrados?.some(t => t.interna) ? "Interna no banco" : "Liquidado"}</td>
                                   <td style={{ ...td, textAlign: "right" }}>
                                     <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
                                       if (!confirm("Desvincular este contrato? As baixas da liquidação são estornadas, os títulos voltam ao Contas a Pagar como estavam e ele volta a Ativo.")) return;
@@ -2161,6 +2165,7 @@ export default function ContratosFinanceiros() {
                                         if (j.mantidos) alert(`${j.devolvidos ?? 0} título(s) voltaram ao Contas a Pagar. ${j.mantidos} foram alterados ou conciliados depois e ficaram como estão.`);
                                       } catch (e) { alert("Erro ao desvincular: " + (e as Error).message); return; }
                                       setOrigensRefin(p => p.filter(x => x.id !== o.id));
+                                      if (contratoModal && o.titulos_encerrados?.some(t => t.interna)) listarParcelasLiberacao(contratoModal.id).then(setParcelasLiberacao).catch(() => {});
                                       setContratos(p => p.map(c => c.id === o.contrato_origem_id ? { ...c, status: "ativo", refinanciado_por_id: null } : c));
                                     }}>Desvincular</OperationalButton>
                                   </td>
@@ -2170,7 +2175,7 @@ export default function ContratosFinanceiros() {
                                 <tr key={r.contrato_origem_id} style={{ borderBottom: "0.5px solid #DDD8F5", background: "#FAF9FE" }}>
                                   <td style={{ ...td, fontWeight: 600, color: "#4B3B9B" }}>{rotulo(contratos.find(c => c.id === r.contrato_origem_id))}</td>
                                   <td style={td}>{fmtBRL(numBR(r.valor))}</td>
-                                  <td style={{ ...td, color: "#555" }}>{nomeConta(r.conta)} · {fmtData(r.data)} <span style={{ color: "#C9921B" }}>(ao salvar)</span></td>
+                                  <td style={{ ...td, color: "#555" }}>{r.interna ? "Interna no banco" : nomeConta(r.conta)} · {fmtData(r.data)} <span style={{ color: "#C9921B" }}>(ao salvar)</span></td>
                                   <td style={{ ...td, textAlign: "right" }}>
                                     <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setRefinPendentes(p => p.filter((_, k) => k !== i))}>Remover</OperationalButton>
                                   </td>
@@ -2179,7 +2184,15 @@ export default function ContratosFinanceiros() {
                             </tbody>
                           </OperationalGrid>
                         )}
-                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 1.2fr 1.4fr 1.1fr auto", gap: 10, alignItems: "end" }}>
+                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#4B3B9B" }}>
+                          <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
+                            <input type="radio" checked={!fRefin.interna} onChange={() => setFRefin(p => ({ ...p, interna: false }))} /> Passa pela conta: o banco libera e debita
+                          </label>
+                          <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
+                            <input type="radio" checked={fRefin.interna} onChange={() => setFRefin(p => ({ ...p, interna: true }))} /> Interna no banco: não passa pela conta
+                          </label>
+                        </div>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: fRefin.interna ? "3fr 1.2fr 1.1fr auto" : "3fr 1.2fr 1.4fr 1.1fr auto", gap: 10, alignItems: "end" }}>
                           <div>
                             <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Contrato liquidado</label>
                             <SelectBusca style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} placeholder="— Instituição | Nº da cédula | Descrição —"
@@ -2199,24 +2212,29 @@ export default function ContratosFinanceiros() {
                               }} />
                           </div>
                           <div>
-                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Valor debitado (R$)</label>
+                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>{fRefin.interna ? "Valor da quitação (R$)" : "Valor debitado (R$)"}</label>
                             <InputMonetario style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.valor} onChange={v => setFRefin(p => ({ ...p, valor: String(v) }))} />
                           </div>
-                          <div>
+                          {!fRefin.interna && <div>
                             <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Conta debitada</label>
                             <SelectField style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.conta} onChange={e => setFRefin(p => ({ ...p, conta: e.target.value }))}>
                               <option value="">— Conta —</option>
                               {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}</option>)}
                             </SelectField>
-                          </div>
+                          </div>}
                           <div>
-                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Data do débito</label>
+                            <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>{fRefin.interna ? "Data da quitação" : "Data do débito"}</label>
                             <InputData style={{ ...inp, borderColor: "#7C6FC360" }} type="date" value={fRefin.data} onChange={e => setFRefin(p => ({ ...p, data: e.target.value }))} />
                           </div>
                           <OperationalButton data-arato-button="toggle" disabled={!podeAdd || salvando} onClick={adicionar}
                             style={{ padding: "8px 16px", background: podeAdd ? "#4B3B9B" : "#ccc", color: "#fff", border: "none", borderRadius: 8, cursor: podeAdd ? "pointer" : "default", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>
                             {contratoModal ? "+ Liquidar" : "+ Adicionar"}
                           </OperationalButton>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#6B5CA5", marginTop: 8 }}>
+                          {fRefin.interna
+                            ? "A parte da cédula usada na quitação entra como liberação sem passar pela conta. Se a cédula for maior que a quitação, lance o saldo na aba Liberação: ele fica disponível na conta, como em qualquer contrato."
+                            : "Lance a liberação total da cédula na aba Liberação. O que sobrar depois do débito fica disponível na conta, como em qualquer contrato."}
                         </div>
                         {refinPrevia && (
                           <div style={{ fontSize: 11, color: refinPrevia.em_bordero ? "#B42318" : "#6B5CA5", marginTop: 8 }}>
@@ -2284,8 +2302,9 @@ export default function ContratosFinanceiros() {
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
                             {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.tipo === "despesa_financiada" ? badge("IOF/tarifas financiados", "#FBF3E0", "#7A4300") : p.tipo === "fornecedor" ? badge("Direto ao fornecedor (CP quitado)", "#D5E8F5", "#0B2D50") : p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.tipo === "despesa_financiada" ? badge("IOF/tarifas financiados", "#FBF3E0", "#7A4300") : p.tipo === "fornecedor" ? badge("Direto ao fornecedor (CP quitado)", "#D5E8F5", "#0B2D50") : p.tipo === "refinanciamento" ? badge("Liquidação interna (sem caixa)", "#EDE9FB", "#4B3B9B") : p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
                             <td style={{ padding: "8px 12px", textAlign: "right" }}><OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
+                              if (p.tipo === "refinanciamento") { setErroModal("Esta liberação veio da liquidação interna. Para desfazer, desvincule o contrato na aba Principal."); return; }
                               // Direto ao fornecedor: desfaz pelo servidor (CPs voltam a dever, captação e garantias apagadas, máquinas como antes)
                               if (p.tipo === "fornecedor") {
                                 if (!(await confirmarAcao({ titulo: "Desfazer liberação direta ao fornecedor?", perigo: true, textoConfirmar: "Desfazer",

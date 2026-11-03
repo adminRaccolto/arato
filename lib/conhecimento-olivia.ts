@@ -336,6 +336,10 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Cédula que liquida contrato (03/11/2026)**: em Contratos Financeiros → aba Principal → "Esta cédula liquida os contratos", há duas formas. "Passa pela conta": o banco libera e debita, então lance a liberação total em Liberação e informe o débito e a conta; os títulos são baixados nessa conta e o que sobrar fica disponível. "Interna no banco": informe só o valor e a data da quitação; os títulos são baixados sem conta, e essa parte da cédula aparece em Liberação como "Liquidação interna (sem caixa)". Se a cédula for maior que a quitação, o saldo aparece em "Saldo a liberar" e deve ser lançado em Liberação. Para desfazer, use Desvincular.
+
+**Liberação de contrato em dólar (03/11/2026)**: o banco deposita em reais, então a entrada no Contas a Receber fica em R$, pela cotação do contrato. Sem cotação, o sistema pede para informar na aba Principal.
+
 **Folha e Contas a Pagar (03/11/2026)**: cada linha de folha fechada fica ligada ao título do salário no CP. A lista de folhas mostra "Fechado · X de Y pagos" e vira "Pago" quando todos os salários estão baixados. Ao abrir a folha, a coluna de situação mostra Pago, Parcial, Aberto no CP ou Previsão por funcionário. Excluir o título no CP deixa a linha sem título; reprocessar a folha cria um novo. Se um cliente relatar salário pago que não aparece como pago na folha, encaminhe à equipe Raccolto informando a competência e o funcionário.
 
 **CNH do motorista (03/11/2026)**: até esta data, salvar um motorista com o número da CNH preenchido não gravava o cadastro, sem aviso. Se um cliente relatar motorista ou CNH que "não salvou" antes disso, peça para preencher de novo em Transporte → Motoristas.

@@ -11,6 +11,10 @@ export const fmtUSDn = (v?: number | null) => `US$ ${(v ?? 0).toLocaleString("pt
 /** Formata no símbolo da moeda do título (R$ ou US$). */
 export const fmtNaMoeda = (v: number | null | undefined, moeda?: string | null) => (ehUSD(moeda) ? fmtUSDn(v) : fmtBRLn(v));
 
+/** Cotação do contrato financeiro em dólar: a tela grava valor_cotacao; contratos importados têm cotacao_usd. */
+export const cotacaoDoContrato = (c: { valor_cotacao?: number | null; cotacao_usd?: number | null }): number | null =>
+  Number(c.valor_cotacao) > 0 ? Number(c.valor_cotacao) : Number(c.cotacao_usd) > 0 ? Number(c.cotacao_usd) : null;
+
 /** Cotação a aplicar: a do lançamento; sem ela, a PTAX corrente; sem nenhuma, null. */
 export function cotacaoEfetiva(cotacaoTitulo?: number | null, ptax?: number | null): number | null {
   if (cotacaoTitulo && cotacaoTitulo > 0) return cotacaoTitulo;

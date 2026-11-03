@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { cotacaoDoContrato } from "./moeda.ts";
 import { planejarLiquidacao, podeRestaurar, saldoDevedorOrigem, type TituloOrigem } from "./refinanciamento.ts";
 
 const t = (o: Partial<TituloOrigem>): TituloOrigem => ({ id: "x", tipo: "pagar", status: "em_aberto", valor: 100, valor_pago: null,
@@ -45,4 +46,16 @@ test("desvincular só devolve o título que ninguém mexeu depois", () => {
   assert.equal(podeRestaurar({ status: "cancelado", valor: 100, valor_pago: null }, { id: "a", status: "em_aberto", valor: 100, observacao: null }), true);
   assert.equal(podeRestaurar({ status: "baixado", valor: 40, valor_pago: 40 }, { id: "b", status: "parcial", valor: 100, valor_pago: 40, observacao: null }), true);
   assert.equal(podeRestaurar({ status: "baixado", valor: 100, valor_pago: 100 }, { id: "b", status: "parcial", valor: 100, valor_pago: 40, observacao: null }), false);
+});
+
+test("liquidação interna volta mesmo conciliada, porque nasce conciliada", () => {
+  const interna = { id: "a", acao: "baixado" as const, status: "em_aberto", valor: 100, valor_pago: 0, observacao: null, pago_depois: 100, interna: true };
+  assert.equal(podeRestaurar({ status: "baixado", valor: 100, valor_pago: 100, conciliado: true }, interna), true);
+  assert.equal(podeRestaurar({ status: "baixado", valor: 100, valor_pago: 60, conciliado: true }, interna), false);
+});
+
+test("cotação do contrato: a da tela; senão a dos contratos importados", () => {
+  assert.equal(cotacaoDoContrato({ valor_cotacao: 5.4, cotacao_usd: 5.1 }), 5.4);
+  assert.equal(cotacaoDoContrato({ valor_cotacao: null, cotacao_usd: 5.46 }), 5.46);
+  assert.equal(cotacaoDoContrato({ valor_cotacao: null, cotacao_usd: null }), null);
 });
