@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-b",
+    data: "03/11/2026",
+    titulo: "Previsão de Gastos: periodicidade e vencimentos editáveis na recorrência",
+    modulos: ["Previsão de Gastos"],
+    itens: [
+      { tipo: "melhoria", texto: "Na recorrência, o vencimento pode ser Mensal, Bimestral, Trimestral, Semestral ou Anual. A tela mostra um grid com as parcelas, e a data de cada uma pode ser alterada. As previsões só vão para o Contas a Pagar depois de salvar." },
+    ],
+  },
+  {
     versao: "2026.11.03-a",
     data: "03/11/2026",
     titulo: "Dólar do painel Mercado não cai mais em valor fixo",

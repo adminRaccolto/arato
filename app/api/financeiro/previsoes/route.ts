@@ -4,7 +4,7 @@
  * Body: { operacao, fazenda_id, ... }
  *   listar                  → previsões da conta com OG, fornecedor, ciclo e consumos
  *   abertas                 → previsões em aberto (seletor do CP / NF): { lado?: "produtor" | "empresa" }
- *   criar                   → { linha, recorrencia?: { qtd, freq } }
+ *   criar                   → { linha, recorrencia?: { datas } | { qtd, freq } }
  *   editar / cancelar       → { id, campos? }
  *   consumir                → { previsao_id, valor, lancamento_id?, emp_lancamento_id?, origem }
  *   consumir_nf             → { previsao_id, nf_entrada_id } (soma os títulos gerados pela NF)
@@ -112,8 +112,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Informe OG, valor e vencimento." }, { status: 400 });
       }
       if (!fazIds.includes(linha.fazenda_id)) return NextResponse.json({ ok: false, error: "Fazenda fora da conta." }, { status: 403 });
-      const rec = body.recorrencia as { qtd?: number; freq?: number } | undefined;
-      const datas = rec && Number(rec.qtd) > 1 ? datasRecorrencia(linha.data_vencimento, Math.min(120, Number(rec.qtd)), Number(rec.freq) || 1) : [linha.data_vencimento];
+      // Recorrência: vencimentos conferidos no grid da tela (datas) ou calculados por quantidade e periodicidade
+      const rec = body.recorrencia as { datas?: string[]; qtd?: number; freq?: number } | undefined;
+      if (rec?.datas && (!rec.datas.length || rec.datas.length > 120 || rec.datas.some(d => !/^\d{4}-\d{2}-\d{2}$/.test(String(d))))) {
+        return NextResponse.json({ ok: false, error: "Vencimentos da recorrência inválidos." }, { status: 400 });
+      }
+      const datas = rec?.datas ?? (rec && Number(rec.qtd) > 1 ? datasRecorrencia(linha.data_vencimento, Math.min(120, Number(rec.qtd)), Number(rec.freq) || 1) : [linha.data_vencimento]);
       const grupo = datas.length > 1 ? crypto.randomUUID() : null;
       const linhas: NovaPrevisao[] = datas.map(d => ({
         ...linha, conta_id, valor: Number(linha.valor), data_vencimento: d,

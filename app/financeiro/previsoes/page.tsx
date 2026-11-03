@@ -13,7 +13,7 @@ import {
   listarCentrosCustoGeralDaConta, listarProdutoresDaConta, listarFazendas,
 } from "../../../lib/db";
 import type { OperacaoGerencial, Pessoa, Empresa, AnoSafra, Ciclo, CentroCusto, Produtor, Fazenda } from "../../../lib/supabase";
-import { STATUS_PREVISAO_LABEL, previsaoVencida, type StatusPrevisao, type LinhaPxR } from "../../../lib/financeiro/previsoes";
+import { STATUS_PREVISAO_LABEL, previsaoVencida, datasRecorrencia, type StatusPrevisao, type LinhaPxR } from "../../../lib/financeiro/previsoes";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type Previsao = {
@@ -88,6 +88,12 @@ export default function PrevisaoGastosPage() {
   // Modal
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(FORM_VAZIO);
+  // Vencimentos alterados à mão no grid da recorrência (posição → data). Mudar 1º vencimento, quantidade ou periodicidade refaz o grid.
+  const [ajustesRec, setAjustesRec] = useState<Record<number, string>>({});
+  const qtdRec = Math.max(2, Math.min(120, parseInt(form.qtd) || 0));
+  const datasRec = useMemo(() => (form.recorrente && form.data_vencimento
+    ? datasRecorrencia(form.data_vencimento, qtdRec, parseInt(form.freq) || 1).map((d, i) => ajustesRec[i] ?? d)
+    : []), [form.recorrente, form.data_vencimento, form.freq, qtdRec, ajustesRec]);
   const [salvando, setSalvando] = useState(false);
 
   // Vencidas / config
@@ -184,6 +190,7 @@ export default function PrevisaoGastosPage() {
   // ─── Ações ───────────────────────────────────────────────────
   function abrirNova() {
     setForm({ ...FORM_VAZIO, fazenda_id: fazendaId ?? "", data_vencimento: hoje });
+    setAjustesRec({});
     setErro(""); setModal(true);
   }
   function abrirEdicao(p: Previsao) {
@@ -206,7 +213,8 @@ export default function PrevisaoGastosPage() {
     if (!form.data_vencimento) faltam.push("vencimento");
     if (form.lado === "empresa" && !form.empresa_id) faltam.push("empresa");
     if (faltam.length) { setErro(`Informe: ${faltam.join(", ")}.`); return; }
-    const qtd = form.recorrente ? Math.max(2, Math.min(120, parseInt(form.qtd) || 0)) : 1;
+    if (form.recorrente && datasRec.some(d => !d)) { setErro("Informe o vencimento de todas as parcelas da recorrência."); return; }
+    const qtd = form.recorrente ? qtdRec : 1;
     if (!(await confirmarAcao({
       titulo: form.id ? "Salvar previsão" : "Lançar previsão",
       mensagem: form.id ? "A previsão e o título de previsão no Contas a Pagar serão atualizados."
@@ -224,7 +232,7 @@ export default function PrevisaoGastosPage() {
     };
     try {
       if (form.id) await api({ operacao: "editar", id: form.id, campos });
-      else await api({ operacao: "criar", linha: campos, recorrencia: form.recorrente ? { qtd, freq: parseInt(form.freq) || 1 } : undefined });
+      else await api({ operacao: "criar", linha: campos, recorrencia: form.recorrente ? { datas: datasRec } : undefined });
       setModal(false);
       setMsg(form.id ? "Previsão atualizada." : qtd > 1 ? `${qtd} previsões lançadas.` : "Previsão lançada.");
       await carregar();
@@ -634,24 +642,47 @@ export default function PrevisaoGastosPage() {
               </div>
               <div>
                 <label style={S.label}>{form.recorrente ? "1º vencimento *" : "Vencimento *"}</label>
-                <input type="date" value={form.data_vencimento} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} style={S.inp} />
+                <input type="date" value={form.data_vencimento} onChange={e => { setAjustesRec({}); setForm(f => ({ ...f, data_vencimento: e.target.value })); }} style={S.inp} />
               </div>
               {!form.id && (
                 <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap", background: "#F4F6FA", borderRadius: 8, padding: 12 }}>
                   <label style={{ fontSize: 13, color: "#1a1a1a", display: "flex", alignItems: "center", gap: 6, paddingBottom: 8 }}>
-                    <input type="checkbox" checked={form.recorrente} onChange={e => setForm(f => ({ ...f, recorrente: e.target.checked }))} /> Repetir (recorrência)
+                    <input type="checkbox" checked={form.recorrente} onChange={e => { setAjustesRec({}); setForm(f => ({ ...f, recorrente: e.target.checked })); }} /> Repetir (recorrência)
                   </label>
                   {form.recorrente && <>
-                    <div style={{ width: 120 }}><label style={S.label}>Quantidade</label><input value={form.qtd} onChange={e => setForm(f => ({ ...f, qtd: e.target.value.replace(/\D/g, "") }))} style={{ ...S.inp, textAlign: "right" }} /></div>
+                    <div style={{ width: 120 }}><label style={S.label}>Quantidade</label><input value={form.qtd} onChange={e => { setAjustesRec({}); setForm(f => ({ ...f, qtd: e.target.value.replace(/\D/g, "") })); }} style={{ ...S.inp, textAlign: "right" }} /></div>
                     <div style={{ width: 160 }}>
-                      <label style={S.label}>A cada</label>
-                      <select value={form.freq} onChange={e => setForm(f => ({ ...f, freq: e.target.value }))} style={S.inp}>
-                        <option value="1">1 mês</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
+                      <label style={S.label}>Vencimento</label>
+                      <select value={form.freq} onChange={e => { setAjustesRec({}); setForm(f => ({ ...f, freq: e.target.value })); }} style={S.inp}>
+                        <option value="1">Mensal</option><option value="2">Bimestral</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option>
                       </select>
                     </div>
                     <div style={{ fontSize: 12, color: "#555", paddingBottom: 8 }}>
-                      {Math.max(2, parseInt(form.qtd) || 0)} × {form.valor || "0,00"} = {fmtBRL(numBR(form.valor) * Math.max(2, parseInt(form.qtd) || 0))}
+                      {qtdRec} × {form.valor || "0,00"} = {fmtBRL(numBR(form.valor) * qtdRec)}
                     </div>
+                    {datasRec.length > 0 && (
+                      <div style={{ flexBasis: "100%" }}>
+                        <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>Confira os vencimentos. Só vão para o Contas a Pagar, como previsão, depois de salvar.</div>
+                        <div style={{ maxHeight: 220, overflowY: "auto", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead><tr>
+                              <th style={{ ...S.th, position: "sticky", top: 0, background: "#fff" }}>Parcela</th>
+                              <th style={{ ...S.th, position: "sticky", top: 0, background: "#fff" }}>Vencimento</th>
+                              <th style={{ ...S.th, position: "sticky", top: 0, background: "#fff", textAlign: "right" }}>Valor</th>
+                            </tr></thead>
+                            <tbody>
+                              {datasRec.map((d, i) => (
+                                <tr key={i}>
+                                  <td style={S.td}>{i + 1}/{datasRec.length}</td>
+                                  <td style={S.td}><input type="date" value={d} onChange={e => setAjustesRec(a => ({ ...a, [i]: e.target.value }))} style={{ ...S.inp, width: 150 }} /></td>
+                                  <td style={{ ...S.td, ...S.num }}>{fmtBRL(numBR(form.valor))}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </>}
                 </div>
               )}
