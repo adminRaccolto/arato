@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-a",
+    data: "03/11/2026",
+    titulo: "Dólar do painel Mercado não cai mais em valor fixo",
+    modulos: ["Painel", "Mercado"],
+    itens: [
+      { tipo: "correcao", texto: "Quando a consulta do dólar falhava, o painel mostrava o valor fixo de R$ 5,90, e a soja e o algodão em reais eram calculados com ele. Agora o dólar tem mais fontes e, se todas falharem, usa a última cotação real guardada." },
+      { tipo: "correcao", texto: "A PTAX aparecia vazia depois de fim de semana com feriado. Agora mostra a última publicada pelo Banco Central." },
+    ],
+  },
+  {
     versao: "2026.11.02-d",
     data: "02/11/2026",
     titulo: "Folha de Pagamento: uma folha por mês na tela",

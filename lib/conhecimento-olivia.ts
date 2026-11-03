@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Painel Mercado (03/11/2026)**: o dólar spot vem de cotação ao vivo, com fontes de reserva. A PTAX é a última publicada pelo Banco Central (a do dia sai por volta das 13h; fim de semana e feriado mantêm a anterior). "dados aprox." significa que o spot não veio da fonte ao vivo: é a PTAX ou a última cotação guardada.
+
 **Folha de Pagamento por mês (02/11/2026)**: a lista mostra uma linha por mês. Se o mês tem mais de um empregador (produtores ou empresas), Abrir mostra cada um, e é lá que se edita; Fechar Folha e Excluir na linha do mês valem para todos. Salários saem um título por funcionário; FGTS e INSS Patronal saem separados por empregador, porque cada um recolhe o seu.
 
 **Nova Recomendação Agronômica (02/11/2026)**: escolha o Tipo de Operação no topo e avance com Próximo por Geral, Talhões, Produtos e Condições. Salvar Recomendação fica na aba Condições. Ao editar uma recomendação existente, o botão de salvar aparece em todas as abas.

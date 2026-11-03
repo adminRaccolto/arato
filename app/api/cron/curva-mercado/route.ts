@@ -43,10 +43,11 @@ export async function GET(req: NextRequest) {
   let inseridos = 0;
 
   // Busca front-month CBOT em paralelo (contratos contínuos — confirmados funcionando)
-  const [sojaRes, milhoRes, algodaoRes] = await Promise.allSettled([
+  const [sojaRes, milhoRes, algodaoRes, dolarRes] = await Promise.allSettled([
     fetchYahooChart("ZS=F"),
     fetchYahooChart("ZC=F"),
     fetchYahooChart("CT=F"),
+    fetchYahooChart("USDBRL=X"),
   ]);
 
   const precos: { instrumento: string; valor: number }[] = [];
@@ -66,6 +67,12 @@ export async function GET(req: NextRequest) {
   else if (algodaoRes.status === "rejected")
     erros.push(`CT=F: ${String(algodaoRes.reason)}`);
 
+  // Última cotação real do dólar: reserva de /api/precos quando todas as fontes falham
+  if (dolarRes.status === "fulfilled" && dolarRes.value > 0)
+    precos.push({ instrumento: "USD_BRL", valor: dolarRes.value });
+  else if (dolarRes.status === "rejected")
+    erros.push(`USDBRL=X: ${String(dolarRes.reason)}`);
+
   // Insere como spot (vencimento=null = contrato contínuo/front-month)
   for (const p of precos) {
     const { error } = await sb.from("curva_mercado").insert({
@@ -74,7 +81,7 @@ export async function GET(req: NextRequest) {
       vencimento:      null,
       data_referencia: hoje,
       valor:           p.valor,
-      unidade:         "cents_bu",
+      unidade:         p.instrumento === "USD_BRL" ? "brl_usd" : "cents_bu",
       fonte:           "YAHOO",
       boletim:         "fechamento",
     });

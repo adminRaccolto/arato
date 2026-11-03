@@ -126,30 +126,37 @@ export async function GET() {
     } catch { return { soja_png: null, milho_cps: null }; }
   }
 
-  // PTAX Banco Central — tenta hoje, cai para D-1 se não publicado ainda
+  // PTAX Banco Central: a última publicada nos últimos 10 dias. Fim de semana e feriado não têm PTAX, e a de hoje só sai
+  // por volta das 13h (achado 03/11/2026: olhar 3 dias para trás dava vazio entre sábado e o pós-Finados).
   async function fetchPtax(): Promise<number | null> {
-    for (let delta = 0; delta <= 3; delta++) {
-      const d = new Date(); d.setDate(d.getDate() - delta);
-      // BCB usa MM-DD-YYYY
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      const yyyy = d.getFullYear();
-      const url = `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@d)?@d='${mm}-${dd}-${yyyy}'&$top=1&$format=json&$select=cotacaoVenda`;
-      try {
-        const res = await fetchJSON(url, 5000);
-        const val = (res as { value?: { cotacaoVenda?: number }[] })?.value?.[0]?.cotacaoVenda;
-        if (val && val > 0) return Math.round(val * 10000) / 10000;
-      } catch { /* try previous day */ }
-    }
-    return null;
+    const fmt = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}-${d.getFullYear()}`;
+    const fim = new Date();
+    const ini = new Date(fim.getTime() - 10 * 86_400_000);
+    const url = `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@i,dataFinalCotacao=@f)?@i='${fmt(ini)}'&@f='${fmt(fim)}'&$top=1&$orderby=dataHoraCotacao%20desc&$format=json&$select=cotacaoVenda`;
+    const res = await fetchJSON(url, 6000);
+    const val = (res as { value?: { cotacaoVenda?: number }[] })?.value?.[0]?.cotacaoVenda;
+    return val && val > 0 ? Math.round(val * 10000) / 10000 : null;
+  }
+
+  // Última cotação real guardada pelo cron diário: reserva quando todas as fontes falham
+  async function dolarSalvo(): Promise<{ valor: number; data: string } | null> {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      const { data } = await sb.from("curva_mercado").select("valor, data_referencia")
+        .is("fazenda_id", null).eq("instrumento", "USD_BRL")
+        .order("data_referencia", { ascending: false }).limit(1).maybeSingle();
+      return data?.valor ? { valor: Number(data.valor), data: String(data.data_referencia) } : null;
+    } catch { return null; }
   }
 
   try {
     const b3MilhoTickers = milhoB3Tickers();
     console.log("[precos] iniciando fetch paralelo");
 
-    const [cambioRes, sojaRes, milhoCbotRes, algodaoRes, ptaxRes, cepeaRes, ...milhoB3Results] = await Promise.allSettled([
+    const [cambioRes, cambioYahooRes, sojaRes, milhoCbotRes, algodaoRes, ptaxRes, cepeaRes, ...milhoB3Results] = await Promise.allSettled([
       fetchJSON("https://economia.awesomeapi.com.br/json/last/USD-BRL"),
+      fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/USDBRL=X?interval=1d&range=2d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZS=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZC=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/CT=F?interval=1d&range=5d"),
@@ -164,17 +171,27 @@ export async function GET() {
     // Dólar PTAX (Banco Central)
     const usdPtax: number | null = ptaxRes.status === "fulfilled" ? ptaxRes.value : null;
 
-    // Dólar Spot (taxa comercial) — fallback em cascata: AwesomeAPI → PTAX → hardcoded
+    // Dólar Spot (taxa comercial) em cascata: AwesomeAPI → Yahoo → PTAX → última cotação guardada → valor fixo
     let usdBrl = usdFallback;
     let usdBrlFonte = "fallback";
+    let dataSalvo = "";
     if (cambioRes.status === "fulfilled") {
       const bid = (cambioRes.value as { USDBRL?: { bid?: string } })?.USDBRL?.bid;
       if (bid && parseFloat(bid) > 0) { usdBrl = Math.round(parseFloat(bid) * 100) / 100; usdBrlFonte = "awesomeapi"; }
+    }
+    if (usdBrlFonte === "fallback" && cambioYahooRes.status === "fulfilled") {
+      const y = yahooPrice(cambioYahooRes.value).last;
+      if (y > 0) { usdBrl = Math.round(y * 100) / 100; usdBrlFonte = "yahoo"; }
     }
     if (usdBrlFonte === "fallback" && usdPtax && usdPtax > 0) {
       usdBrl = usdPtax;
       usdBrlFonte = "ptax";
     }
+    if (usdBrlFonte === "fallback") {
+      const salvo = await dolarSalvo();
+      if (salvo) { usdBrl = salvo.valor; usdBrlFonte = "salvo"; dataSalvo = salvo.data; }
+    }
+    if (usdBrlFonte !== "awesomeapi") console.warn("[precos] dólar pela fonte", usdBrlFonte, usdBrl);
 
     // CEPEA
     const cepea = cepeaRes.status === "fulfilled" ? cepeaRes.value : { soja_png: null, milho_cps: null };
@@ -235,7 +252,7 @@ export async function GET() {
       cepea_milho_cps: cepea.milho_cps,
       premio_implicito: premioImplicito,
       atualizadoEm: new Date().toISOString(),
-      erro: usdBrlFonte === "fallback" ? "Dólar: usando valor fixo (APIs indisponíveis)" : usdBrlFonte === "ptax" ? "Dólar Spot indisponível — usando PTAX" : undefined,
+      erro: usdBrlFonte === "fallback" ? "Dólar: usando valor fixo (APIs indisponíveis)" : usdBrlFonte === "ptax" ? "Dólar Spot indisponível — usando PTAX" : usdBrlFonte === "salvo" ? `Dólar: última cotação guardada (${dataSalvo})` : undefined,
     };
     console.log("[precos] ok", { usdBrl, sojaCbot, cepea_soja_png: cepea.soja_png, premioImplicito });
 
