@@ -58,11 +58,6 @@
 }
 @media print{.native-context-area,.native-context-toolbar,.native-session-dialog{display:none!important}}
 @media screen{
-.native-finance-indicators.native-finance-receivables{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:1000px){.native-finance-indicators.native-finance-receivables{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:520px){.native-finance-indicators.native-finance-receivables{grid-template-columns:minmax(0,1fr)}}
-}
-@media screen{
 .native-cadastro-row-actions{display:inline-flex;max-width:100%}.native-cadastro-row-actions .native-action-trigger{font-size:11px;padding:8px 11px}.native-cadastro-row-actions .native-action-options div{display:contents!important}.native-cadastro-row-actions .native-action-options button[data-native-command-label]:after{content:attr(aria-label);margin-left:5px}.native-cadastro-row-actions .native-action-options button{margin:0!important;white-space:normal!important;min-width:0;max-width:100%}
 .native-cadastro-overlay{padding:14px;box-sizing:border-box} .arato-operational .native-cadastro-dialog[data-arato-dialog]{--bg-page:#f4f9f6;--bg-header:#fff;--bg-tag:#edf5ef;--bg-hover:#edf7f0;--text-muted:#7b9186;--border-row:#e2ebe6;--bg-card:#fff;--bg-input:#fff;--text-1:#294c51;--text-2:#57716e;--text-3:#6e867e;--border:#ceded8;--border-table:#d3e2de;display:flex;flex-direction:column;min-width:0;width:min(var(--native-cadastro-width),96vw)!important;max-width:96vw;max-height:94dvh;overflow:hidden;padding:0!important;background:#fff;border:1px solid #cadfd6;border-radius:24px}
 .arato-operational .native-cadastro-dialog.native-cadastro-wide[data-arato-dialog]{width:min(calc(var(--native-cadastro-width) + 220px),1250px,96vw)!important}

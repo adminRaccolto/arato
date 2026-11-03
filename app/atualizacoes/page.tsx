@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-h",
+    data: "03/11/2026",
+    titulo: "Contas a Receber com a mesma tela do Contas a Pagar",
+    modulos: ["Contas a Receber"],
+    itens: [
+      { tipo: "melhoria", texto: "Os indicadores, a busca de título e os filtros (Origem, Status e Moeda em lista, e o novo Limpar filtros) ficaram iguais aos do Contas a Pagar." },
+      { tipo: "melhoria", texto: "O painel do borderô mostra os mesmos dados e ações do Contas a Pagar, incluindo saldo em aberto, recebimento parcial e receber saldo restante." },
+    ],
+  },
+  {
     versao: "2026.11.03-g",
     data: "03/11/2026",
     titulo: "Segurança: rotas do servidor conferem o cliente",

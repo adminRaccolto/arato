@@ -190,10 +190,6 @@ function derivarCategoriaReceita(classificacao: string): string {
 const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff" };
 const lblMini: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.03em" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" };
-const chip = (ativo: boolean): React.CSSProperties => ({
-  padding: "5px 11px", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer",
-  border: ativo ? "1.5px solid #2A2A2A" : "0.5px solid #DDE2EE", background: ativo ? "#2A2A2A" : "#fff", color: ativo ? "#fff" : "#555",
-});
 
 // Colunas do grid — ordem e visibilidade são escolhidas pelo usuário (botão direito no cabeçalho).
 const COLS_GRID_CR: ColDef[] = [
@@ -225,7 +221,6 @@ const COLS_GRID_CR: ColDef[] = [
 
 export default function ContasAReceberPage() {
   const nativePresentation=useOperationalPresentation();
-  const [nativeBorderoFocus,setNativeBorderoFocus]=useState('');
   const columnDefinitions = COLS_GRID_CR;
   const { fazendaId, fazendaIds, contaId, emailUsuario, anoSafraVigenteId } = useAuth();
   const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cr", columnDefinitions);
@@ -273,11 +268,6 @@ export default function ContasAReceberPage() {
     else { setOrdenarPor(campo); setOrdemAsc(campo === "vencimento"); }
   }
 
-  const toggle = (set: Set<string>, setFn: (s: Set<string>) => void, v: string) => {
-    const next = new Set(set);
-    next.has(v) ? next.delete(v) : next.add(v);
-    setFn(next);
-  };
 
   // ── Cadastros de apoio pro formulário de Novo Lançamento ──────
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
@@ -1412,9 +1402,9 @@ export default function ContasAReceberPage() {
   );
 
   return (
-    <div data-arato-page="true" style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" className={nativePresentation?"native-payable-workspace":undefined} style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
-      <div style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
+      <div data-native-finance-body="true" style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
 
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
@@ -1447,43 +1437,32 @@ export default function ContasAReceberPage() {
             );
           })}
         </div>
-        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div>
             <label data-arato-label="true" style={lblMini}>Origem</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              {ORIGEM_OPCOES.map(o => (
-                <OperationalButton data-arato-button="secondary" key={o.v} onClick={() => toggle(fOrigem, setFOrigem, o.v)} style={chip(fOrigem.has(o.v))}>{o.label}</OperationalButton>
-              ))}
-            </div>
+            <MultiSelectDropdown opcoes={ORIGEM_OPCOES} selecionados={fOrigem} onChange={setFOrigem} textoTodos="Todas" largura={150} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Status</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {STATUS_OPCOES.map(s => (
-                <OperationalButton data-arato-button="secondary" key={s.v} onClick={() => toggle(fStatus, setFStatus, s.v)} style={chip(fStatus.has(s.v))}>{s.label}</OperationalButton>
-              ))}
-            </div>
+            <MultiSelectDropdown opcoes={STATUS_OPCOES} selecionados={fStatus} onChange={setFStatus} textoTodos="Todos" largura={170} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Moeda</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {MOEDA_OPCOES.map(o => (
-                <OperationalButton data-arato-button="secondary" key={o.v} onClick={() => toggle(fMoeda, setFMoeda, o.v)} style={chip(fMoeda.has(o.v))}>{o.label}</OperationalButton>
-              ))}
-            </div>
+            <MultiSelectDropdown opcoes={MOEDA_OPCOES} selecionados={fMoeda} onChange={setFMoeda} textoTodos="Todas" largura={130} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Produtor</label>
             <MultiSelectDropdown opcoes={[...new Set((resultado ?? []).map(l => l.produtor_nome ?? l.empresa_nome ?? "").filter(Boolean))].sort().map(n => ({ v: n, label: n }))} selecionados={fProdutor} onChange={setFProdutor} textoTodos="Todos" largura={190} />
           </div>
-          <div>
+          <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
             <InputData type="date" value={semDataTela ? "" : fDataDe} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
-          <div>
+          <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={semDataTela ? "" : fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFDataDe(""); setFDataAte(""); setPeriodoManual(false); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); setFProdutor(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
@@ -1495,7 +1474,7 @@ export default function ContasAReceberPage() {
           </div>
         )}
 
-        <div className={nativePresentation?"native-finance-indicators native-finance-receivables":undefined} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
+        <div className={nativePresentation?"native-payable-command-strip":undefined}><div className={nativePresentation?"native-finance-indicators":undefined} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
           <span><strong>{linhasComBordero.length}</strong> título(s) · {borderosVisiveis.length} borderô(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
@@ -1503,9 +1482,8 @@ export default function ContasAReceberPage() {
           <span>Recebido: <strong style={{ color: "#166534" }}>{fmtBRL(totalRecebido)}</strong></span>
           <span>·</span>
           <span>Saldo a receber: <strong style={{ color: "#16A34A" }}>{fmtBRL(totalAberto)}</strong></span>
-        </div>
-
-        {nativePresentation && <NativeFocusPicker entries={(carregando?[]:linhasComBordero).map(entry=>entry.kind==='bordero'?{key:'bordero:'+entry.b.id,label:['Borderô',entry.b.numero_titulo,entry.b.descricao].filter(Boolean).join(' · ')}:{key:entry.l.origem_tabela+':'+entry.l.id,label:[entry.l.numero,entry.l.pessoa_nome??entry.l.empresa_nome??entry.l.produtor_nome,entry.l.descricao].filter(Boolean).join(' · ')})} value={nativeBorderoFocus?'bordero:'+nativeBorderoFocus:popover?popover.l.origem_tabela+':'+popover.l.id:''} onChange={key=>{const entry=linhasComBordero.find(row=>(row.kind==='bordero'?'bordero:'+row.b.id:row.l.origem_tabela+':'+row.l.id)===key);if(entry?.kind==='bordero'){setPopover(null);setNativeBorderoFocus(entry.b.id);}else{setNativeBorderoFocus('');setPopover(entry?.kind==='lanc'?{l:entry.l,x:0,y:0}:null);}}}/>}
+        </div>        {nativePresentation && <NativeFocusPicker compact entries={(carregando?[]:linhasComBordero).map(entry=>entry.kind==='bordero'?{key:'bordero:'+entry.b.id,label:['Borderô',entry.b.numero_titulo,entry.b.descricao].filter(Boolean).join(' · ')}:{key:entry.l.origem_tabela+':'+entry.l.id,label:[entry.l.numero,entry.l.pessoa_nome??entry.l.empresa_nome??entry.l.produtor_nome,entry.l.descricao].filter(Boolean).join(' · ')})} value={popBordero?'bordero:'+popBordero.b.id:popover?popover.l.origem_tabela+':'+popover.l.id:''} onChange={key=>{const entry=linhasComBordero.find(row=>(row.kind==='bordero'?'bordero:'+row.b.id:row.l.origem_tabela+':'+row.l.id)===key);if(entry?.kind==='bordero'){setPopover(null);setPopBordero({b:entry.b,x:0,y:0});}else{setPopBordero(null);setPopover(entry?.kind==='lanc'?{l:entry.l,x:0,y:0}:null);}}}/>}
+</div>
       {nativePresentation && !carregando && popover && linhas.some(row=>row.id===popover.l.id&&row.origem_tabela===popover.l.origem_tabela) && (() => {
         const l = linhas.find(row=>row.id===popover.l.id&&row.origem_tabela===popover.l.origem_tabela)!;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
@@ -1634,26 +1612,55 @@ export default function ContasAReceberPage() {
         );
       })()}
 
-      {nativePresentation && !carregando && nativeBorderoFocus && (()=>{const entry=linhasComBordero.find(row=>row.kind==='bordero'&&row.b.id===nativeBorderoFocus);if(!entry||entry.kind!=='bordero')return null;const b=entry.b,pago=entry.pago,qtdItens=(b.itens??[]).length;return <NativeRecordPanel key={b.id} label="Borderô em foco" routine="Contas a Receber" onClose={()=>setNativeBorderoFocus('')}><div className="native-record-details"><div><div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            {pago
-                              ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
-                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>}
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
-                            {b.numero_titulo && <span style={{ fontSize: 11, color: "#888" }}>Nº {b.numero_titulo}</span>}
-                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(pago ? (b.valor_pago ?? b.valor_total) : b.valor_total)}</strong></span>
-                            {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
-                            {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>recebido em {fmtData(b.data_pagamento)}</span>}
-                          </div></div></div><NativeActionOrbit inline label={b.descricao||'Borderô'}>
-                            <OperationalButton data-arato-button="secondary" onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver NFs</OperationalButton>
-                            {pago ? (
-                              <OperationalButton data-arato-button="secondary" onClick={() => estornarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>↩ Estornar</OperationalButton>
-                            ) : (
-                              <>
-                                <OperationalButton data-arato-button="primary" onClick={() => abrirConfirmarBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>✅ Confirmar Recebimento</OperationalButton>
-                                <OperationalButton data-arato-button="secondary" onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</OperationalButton>
-                              </>
-                            )}
-                          </NativeActionOrbit></NativeRecordPanel>;})()}
+      {nativePresentation && !carregando && popBordero && borderosVisiveis.some(row=>row.id===popBordero.b.id) && (() => {
+        const b = borderosVisiveis.find(row=>row.id===popBordero.b.id)!;
+        const resumo = resumoBordero(b);
+        const pago = resumo.status === "baixado";
+        const parcial = resumo.status === "parcial";
+        const qtd = (b.itens ?? []).length;
+        return (
+          <NativeRecordPanel key={b.id} label="Borderô em foco" routine="Contas a Receber" onClose={()=>setPopBordero(null)}>
+            <div className="native-record-details"><div>
+              <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ RECEBIDO" : parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}{b.numero_titulo ? ` · Nº ${b.numero_titulo}` : ""}</div>
+                {infoBordero.get(b.id)?.cliente && <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>Cliente: <strong style={{ color: "#1a1a1a" }}>{infoBordero.get(b.id)?.cliente}</strong></div>}
+              </div>
+              <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
+                <div><div style={{ color: "#888", fontSize: 10 }}>NFs</div><div style={{ color: "#1a1a1a" }}>{qtd} NF{qtd !== 1 ? "s" : ""}</div></div>
+                <div><div style={{ color: "#888", fontSize: 10 }}>Saldo em aberto</div><div style={{ color: parcial ? "#7A5200" : "#1a1a1a", fontWeight: 700 }}>{fmtBRL(resumo.saldo)}</div></div>
+                {!pago && <div><div style={{ color: "#888", fontSize: 10 }}>Vencimento do saldo</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_vencimento)}</div></div>}
+                <div><div style={{ color: "#888", fontSize: 10 }}>Total das NFs</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
+                {(pago || parcial) ? (
+                  <>
+                    <div><div style={{ color: "#888", fontSize: 10 }}>Principal recebido</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_pago ?? b.valor_total)}</div></div>
+                    <div><div style={{ color: "#888", fontSize: 10 }}>Data do recebimento</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_pagamento)}</div></div>
+                    {!!(b.valor_juros || b.valor_multa) && <div><div style={{ color: "#888", fontSize: 10 }}>Juros + Multa</div><div style={{ color: "#1a1a1a" }}>{fmtBRL((b.valor_juros ?? 0) + (b.valor_multa ?? 0))}</div></div>}
+                    {!!b.valor_desconto && <div><div style={{ color: "#888", fontSize: 10 }}>Desconto</div><div style={{ color: "#1a1a1a" }}>{fmtBRL(b.valor_desconto)}</div></div>}
+                  </>
+                ) : (
+                  <>
+                    <div><div style={{ color: "#888", fontSize: 10 }}>Criado em</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.created_at)}</div></div>
+                    <div><div style={{ color: "#888", fontSize: 10 }}>Situação</div><div style={{ color: "#1a1a1a" }}>Aguardando confirmação</div></div>
+                  </>
+                )}
+              </div>
+            </div></div>
+            <NativeActionOrbit inline label={b.descricao||"Borderô"}>
+              <OperationalButton data-arato-button="secondary" onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver NFs</OperationalButton>
+              {(pago || parcial) && (
+                <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↩ Estornar recebimento</OperationalButton>
+              )}
+              {!pago && (
+                <>
+                  <OperationalButton data-arato-button="primary" onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>{parcial ? "Receber saldo restante" : "✅ Confirmar Recebimento"}</OperationalButton>
+                  {!parcial && <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</OperationalButton>}
+                </>
+              )}
+            </NativeActionOrbit>
+          </NativeRecordPanel>
+        );
+      })()}
       {nativePresentation && !carregando && selecionados.size > 0 && (
         <div className="op-bulk-actions native-bulk-actions" style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
@@ -1765,7 +1772,7 @@ export default function ContasAReceberPage() {
                     status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? "Borderô recebido" : res.status === "parcial" ? "Borderô parcial" : "Borderô pendente"}</span>),
                   };
                   return (
-                    <tr key={`bdr-${b.id}`} data-native-record="true" tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar borderô ${b.numero_titulo??b.descricao??b.id}`:undefined} onClick={e=>{if(nativePresentation){setPopover(null);setNativeBorderoFocus(b.id);}else setPopBordero({b,x:e.clientX,y:e.clientY});}} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setPopover(null);setNativeBorderoFocus(b.id);}}} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60", cursor: "pointer" }}>
+                    <tr key={`bdr-${b.id}`} tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar borderô ${b.numero_titulo??b.descricao??b.id}`:undefined} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setPopover(null);setPopBordero({b,x:0,y:0});}}} onClick={e=>{if(nativePresentation)setPopover(null);setPopBordero({b,x:e.clientX,y:e.clientY});}} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60", cursor: "pointer" }}>
                       {colunasVisiveis.filter(c=>!nativePresentation||c.key!=="acoes").map(c => <Fragment key={c.key}>{celulasBordero[c.key] ?? <td />}</Fragment>)}
                     </tr>
                   );
@@ -1870,10 +1877,10 @@ export default function ContasAReceberPage() {
                   ),
                 };
                 return (
-                  <tr key={l.id} tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar título ${l.numero??l.descricao??l.id}`:undefined} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setNativeBorderoFocus('');setPopover({l,x:0,y:0});}}}
+                  <tr key={l.id} tabIndex={nativePresentation?0:undefined} aria-label={nativePresentation?`Inspecionar título ${l.numero??l.descricao??l.id}`:undefined} onKeyDown={e=>{if(nativePresentation&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setPopBordero(null);setPopover({l,x:0,y:0});}}}
                     onClick={e => {
                       if ((e.target as HTMLElement).closest("button,input,select,a")) return;
-                      if(nativePresentation){setNativeBorderoFocus('');}
+                      if(nativePresentation){setPopBordero(null);}
                       setPopover(p => p?.l.id === l.id && (!nativePresentation || p.l.origem_tabela === l.origem_tabela) ? null : { l, x: e.clientX, y: e.clientY });
                     }}
                     style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined, cursor: "pointer" }}>
