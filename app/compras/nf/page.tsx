@@ -4,7 +4,7 @@ import { OperationalButton, OperationalFilters, OperationalGrid } from "../../..
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../../lib/cfop-imobilizado";
+import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_REMESSA_BEM, CFOPS_RETORNO_DE_REMESSA } from "../../../lib/cfop-imobilizado";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -99,7 +99,7 @@ const CFOP_NATUREZA: Record<string, string> = {
 // operacional, é investimento (CAPEX). Item nesse CFOP entra como "Direto" (sem mexer em estoque)
 // e a Operação Gerencial vai pra "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM." (2.03.01.003), que já é
 // excluída do DRE — decisão do dono, 23/09/2026, pra não precisar classificar isso na mão toda vez.
-const CFOPS_ATIVO_IMOBILIZADO = new Set([...Array.from(CFOPS_COMPRA_BEM), ...Array.from(CFOPS_BEM_SEM_PAGAMENTO)]);
+const CFOPS_ATIVO_IMOBILIZADO = new Set([...Array.from(CFOPS_COMPRA_BEM), ...Array.from(CFOPS_REMESSA_BEM), ...Array.from(CFOPS_BEM_SEM_PAGAMENTO)]);
 function tipoApropDeCfop(cfop: string | undefined, fallback: NfEntradaItem["tipo_apropiacao"]): NfEntradaItem["tipo_apropiacao"] {
   return CFOPS_ATIVO_IMOBILIZADO.has((cfop ?? "").trim()) ? "direto" : fallback;
 }
@@ -1642,7 +1642,7 @@ export default function NfCompraPage() {
     // Guard: operação gerencial é obrigatória.
     // Exceção: NF com classificação automática aplicada (sugestaoNome != null) —
     // a regra já carrega a informação gerencial e o bloqueio seria redundante.
-    if (!cab.operacao_gerencial_id && !sugestaoNome && !CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop ?? "").trim())) {
+    if (!cab.operacao_gerencial_id && !sugestaoNome && !CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop ?? "").trim()) && !CFOPS_REMESSA_BEM.has((cab.cfop ?? "").trim())) {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
       return;
     }
@@ -1908,7 +1908,8 @@ export default function NfCompraPage() {
       // qualquer outro caso sem CP/emp_lancamento agora é bloqueado aqui em vez
       // de deixar a NF marcada como concluída de forma enganosa.
       const temApenasRemessa = itensDB.length > 0 && itensDB.every(i => i.tipo_apropiacao === "remessa");
-      const semPagamentoBem = CFOPS_BEM_SEM_PAGAMENTO.has(((cab.cfop || nfEdit.cfop) ?? "").trim());
+      const cfopBemNf = ((cab.cfop || nfEdit.cfop) ?? "").trim();
+      const semPagamentoBem = CFOPS_BEM_SEM_PAGAMENTO.has(cfopBemNf) || CFOPS_REMESSA_BEM.has(cfopBemNf);
       if (!temApenasRemessa && !semPagamentoBem) {
         const { data: nfPosProc } = await supabase
           .from("nf_entradas")

@@ -1,6 +1,10 @@
+import { CFOPS_REMESSA_BEM } from "./fiscal/cfop-cobranca";
+
 // CFOPs de bem do ativo imobilizado na NF de ENTRADA.
 // COMPRA: investimento (CAPEX) — gera CP e OG de aquisição de máquinas/equipamentos.
-export const CFOPS_COMPRA_BEM = new Set(["1551", "1556", "2551", "2556", "5554", "6554"]);
+export const CFOPS_COMPRA_BEM = new Set(["1551", "1556", "2551", "2556"]);
+// REMESSA: bem do terceiro enviado para uso aqui (5554/6554), sem cobrança; só vira compra se o usuário disser (lib/fiscal/cfop-cobranca).
+export { CFOPS_REMESSA_BEM };
 // RETORNO/ENTRADA de bem (sem cobrança): retorno de bem que saiu para uso fora, entrada de bem de terceiro
 // (comodato) e transferência de bem entre estabelecimentos — não gera Contas a Pagar nem estoque.
 export const CFOPS_BEM_SEM_PAGAMENTO = new Set(["1552", "2552", "1554", "2554", "1555", "2555"]);
@@ -13,5 +17,5 @@ export const CFOPS_RETORNO_DE_REMESSA = new Set(["1554", "2554", "1555", "2555"]
 export const CFOPS_RETORNO_ARMAZENAGEM = new Set(["5906", "6906", "5907", "6907", "1906", "2906", "1907", "2907"]);
 export const ehBemImobilizado = (cfop?: string | null) => {
   const c = (cfop ?? "").trim();
-  return CFOPS_COMPRA_BEM.has(c) || CFOPS_BEM_SEM_PAGAMENTO.has(c);
+  return CFOPS_COMPRA_BEM.has(c) || CFOPS_REMESSA_BEM.has(c) || CFOPS_BEM_SEM_PAGAMENTO.has(c);
 };

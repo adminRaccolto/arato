@@ -8,6 +8,8 @@
 //    vasilhame. Não gera CP.
 //  - "confirmar": CFOP genérico "outras entradas/saídas" (5949/6949/1949/2949) — pode ser compra com CFOP genérico ou
 //    garantia/bonificação; o usuário decide se gera CP.
+//  - "remessa_bem": remessa de bem do ativo para uso fora do estabelecimento (5554/6554). Não é cobrança: sem resposta, não
+//    gera CP. Mas há máquina usada vendida com esse CFOP, então na tela da NF o usuário pode dizer que foi compra.
 //  - "compra": o resto (inclusive o simples faturamento) gera CP como sempre.
 
 const dig = (c: string | null | undefined) => String(c ?? "").replace(/\D/g, "");
@@ -24,8 +26,9 @@ export const CFOPS_SEM_COBRANCA = new Set([
   ...grupo("920", "921"),          // vasilhame/sacaria (remessa / retorno)
 ]);
 export const CFOPS_CONFIRMAR = new Set(grupo("949"));
+export const CFOPS_REMESSA_BEM = new Set(["5554", "6554"]);
 
-export type CobrancaCfop = "compra" | "entrega_futura" | "sem_cobranca" | "confirmar";
+export type CobrancaCfop = "compra" | "entrega_futura" | "sem_cobranca" | "confirmar" | "remessa_bem";
 
 /** Classificação da NF pelos CFOPs (cabeçalho e itens): todos os itens precisam cair no mesmo caso para não ser compra. */
 export function cobrancaDaNf(cfopCabecalho: string | null | undefined, cfopsItens: (string | null | undefined)[] = []): CobrancaCfop {
@@ -35,6 +38,7 @@ export function cobrancaDaNf(cfopCabecalho: string | null | undefined, cfopsIten
   const lista = usados.length ? usados : cs;   // itens mandam; sem CFOP nos itens, vale o do cabeçalho
   if (lista.every(c => CFOPS_ENTREGA_FUTURA.has(c))) return "entrega_futura";
   if (lista.every(c => CFOPS_SEM_COBRANCA.has(c))) return "sem_cobranca";
+  if (lista.every(c => CFOPS_REMESSA_BEM.has(c))) return "remessa_bem";
   if (lista.every(c => CFOPS_CONFIRMAR.has(c) || CFOPS_SEM_COBRANCA.has(c)) && lista.some(c => CFOPS_CONFIRMAR.has(c))) return "confirmar";
   return "compra";
 }

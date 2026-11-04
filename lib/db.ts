@@ -3401,7 +3401,8 @@ export async function processarNfEntrada(
   // armazenagem e vasilhame: sem cobrança, sem CP (lib/fiscal/cfop-cobranca). 5949 genérico: o que o usuário confirmou.
   const cobranca = cobrancaDaNf(cfopNf, itens.map(i => (i as { cfop?: string | null }).cfop));
   const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(cfopNf) || CFOPS_RETORNO_ARMAZENAGEM.has(cfopNf)
-    || cobranca === "entrega_futura" || cobranca === "sem_cobranca" || opts?.gerarCp === false;
+    || cobranca === "entrega_futura" || cobranca === "sem_cobranca" || opts?.gerarCp === false
+    || (cobranca === "remessa_bem" && opts?.gerarCp !== true); // remessa de bem: só gera CP se o usuário disse que foi compra
 
   // Trava de duplicidade: se a NF JÁ tem título ativo do produtor, processar de novo nunca cria outro.
   // Achado 14/10/2026: reprocessamentos da mesma NF geraram um segundo CP em aberto ao lado do já baixado

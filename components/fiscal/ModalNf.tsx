@@ -59,7 +59,7 @@ import InputMonetario from "../InputMonetario";
 import InputNumerico from "../InputNumerico";
 import SelectBusca from "../SelectBusca";
 import { estornarNfComConfirmacao } from "../../lib/fiscal/estornar-nf-cliente";
-import { cobrancaDaNf, motivoSemCp, CFOPS_ENTREGA_FUTURA, CFOPS_SIMPLES_FATURAMENTO } from "../../lib/fiscal/cfop-cobranca";
+import { cobrancaDaNf, motivoSemCp, CFOPS_ENTREGA_FUTURA, CFOPS_REMESSA_BEM, CFOPS_SIMPLES_FATURAMENTO } from "../../lib/fiscal/cfop-cobranca";
 import { alocarRemessa } from "../../lib/estoque/entrega-futura";
 import { chavesReferenciadas } from "../../lib/fiscal/retorno-rateio";
 
@@ -118,7 +118,7 @@ const CFOP_NATUREZA: Record<string, string> = {
 // operacional, é investimento (CAPEX). Item nesse CFOP entra como "Direto" (sem mexer em estoque)
 // e a Operação Gerencial vai pra "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM." (2.03.01.003), que já é
 // excluída do DRE — decisão do dono, 23/09/2026, pra não precisar classificar isso na mão toda vez.
-const CFOPS_ATIVO_IMOBILIZADO = new Set([...Array.from(CFOPS_COMPRA_BEM), ...Array.from(CFOPS_BEM_SEM_PAGAMENTO)]);
+const CFOPS_ATIVO_IMOBILIZADO = new Set([...Array.from(CFOPS_COMPRA_BEM), ...Array.from(CFOPS_REMESSA_BEM), ...Array.from(CFOPS_BEM_SEM_PAGAMENTO)]);
 function tipoApropDeCfop(cfop: string | undefined, fallback: NfEntradaItem["tipo_apropiacao"]): NfEntradaItem["tipo_apropiacao"] {
   return CFOPS_ATIVO_IMOBILIZADO.has((cfop ?? "").trim()) ? "direto" : fallback;
 }
@@ -728,7 +728,7 @@ export default function ModalNf({
     // "combustivel" não é um TipoEntrada base — mapeia para "insumos" + e_combustivel=true
     // Sem tipo gravado, o CFOP sugere: simples faturamento → Entrega Futura (VEF); remessa de entrega futura → Entrega
     const cfopNfAbrir = String(nf.cfop ?? "").replace(/\D/g, "");
-    const tipoPeloCfop: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(cfopNfAbrir) ? "vef" : CFOPS_ENTREGA_FUTURA.has(cfopNfAbrir) ? "remessa" : CFOPS_COMPRA_BEM.has(cfopNfAbrir) ? "imobilizado" : null;
+    const tipoPeloCfop: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(cfopNfAbrir) ? "vef" : CFOPS_ENTREGA_FUTURA.has(cfopNfAbrir) ? "remessa" : CFOPS_COMPRA_BEM.has(cfopNfAbrir) || CFOPS_REMESSA_BEM.has(cfopNfAbrir) ? "imobilizado" : null;
     setTipo((nf.tipo_entrada === "combustivel" ? "insumos" : (nf.tipo_entrada ?? tipoPeloCfop ?? "insumos")) as TipoEntrada);
     // "pecas" é um TipoEntrada válido — não remapeia
     setCab({
@@ -1411,7 +1411,7 @@ export default function ModalNf({
     // Guard: operação gerencial é obrigatória.
     // Exceção: NF com classificação automática aplicada (sugestaoNome != null) —
     // a regra já carrega a informação gerencial e o bloqueio seria redundante.
-    if (!cab.operacao_gerencial_id && !sugestaoNome && !CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop ?? "").trim())) {
+    if (!cab.operacao_gerencial_id && !sugestaoNome && !CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop ?? "").trim()) && !CFOPS_REMESSA_BEM.has((cab.cfop ?? "").trim())) {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
       return;
     }
@@ -1753,6 +1753,13 @@ export default function ModalNf({
           if (!(await confirmarAcao({ titulo: "Atenção: CP em dobro", perigo: true, textoConfirmar: "Processar mesmo assim",
             mensagem: `Este é o simples faturamento (o Contas a Pagar nasce aqui), mas remessas de entrega futura deste fornecedor (NF ${nums}) já têm ${cpsRem.length} título(s) em aberto, R$ ${tot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.\n\nSe forem do mesmo pedido, apague esses títulos das remessas para não pagar em dobro.` }))) { setSaving(false); return; }
         }
+      } else if (cobranca === "remessa_bem") {
+        // Remessa de bem normalmente não tem cobrança; só gera CP se o usuário disser que foi compra
+        gerarCp = await confirmarAcao({ titulo: "Esta NF foi uma compra da máquina?", perigo: false, textoConfirmar: "Sim, foi compra: gerar Contas a Pagar",
+          mensagem: `A NF ${nfEdit.numero} usa o CFOP ${cab.cfop || nfEdit.cfop}: remessa de bem para uso fora do estabelecimento, que normalmente não tem cobrança (o bem continua sendo do emitente).\n\nSó confirme se foi mesmo uma compra a pagar. Se não foi, clique em Cancelar e processe sem CP.` });
+        if (gerarCp && !(cab.operacao_gerencial_id || nfEdit.operacao_gerencial_id)) { setErr("Compra a pagar: selecione a Operação Gerencial na aba Cabeçalho antes de processar."); setSaving(false); return; }
+        if (!gerarCp && !(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
+          mensagem: `A NF ${nfEdit.numero} será processada sem título no Contas a Pagar.` }))) { setSaving(false); return; }
       } else if (cobranca === "confirmar") {
         gerarCp = await confirmarAcao({ titulo: "Esta NF é uma compra a pagar?", perigo: false, textoConfirmar: "Sim, gerar Contas a Pagar",
           mensagem: `A NF ${nfEdit.numero} usa o CFOP genérico ${cab.cfop || nfEdit.cfop} ("outras entradas/saídas"), que serve tanto para compra quanto para garantia, bonificação ou remessa.\n\nÉ uma compra que vai ser paga? Se não for (garantia paga pela fábrica, brinde, troca), clique em Cancelar e escolha processar sem CP.` });
@@ -1806,7 +1813,9 @@ export default function ModalNf({
       // de deixar a NF marcada como concluída de forma enganosa.
       const temApenasRemessa = itensDB.length > 0 && itensDB.every(i => i.tipo_apropiacao === "remessa");
       const semPagamentoBem = CFOPS_BEM_SEM_PAGAMENTO.has(((cab.cfop || nfEdit.cfop) ?? "").trim());
-      if (!temApenasRemessa && !semPagamentoBem) {
+      // NF que por regra não tem cobrança não pode acusar falta de CP
+      const semCpEsperado = gerarCp === false || cobranca === "entrega_futura" || cobranca === "sem_cobranca" || (cobranca === "remessa_bem" && gerarCp !== true);
+      if (!temApenasRemessa && !semPagamentoBem && !semCpEsperado) {
         const { data: nfPosProc } = await supabase
           .from("nf_entradas")
           .select("lancamento_id, emp_lancamento_id")
@@ -2717,11 +2726,11 @@ export default function ModalNf({
                         )}
                         {(() => {
                           const c = String(cab.cfop || nfEdit?.cfop || "").replace(/\D/g, "");
-                          const sug: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(c) ? "vef" : CFOPS_ENTREGA_FUTURA.has(c) ? "remessa" : CFOPS_COMPRA_BEM.has(c) ? "imobilizado" : null;
+                          const sug: TipoEntrada | null = CFOPS_SIMPLES_FATURAMENTO.has(c) ? "vef" : CFOPS_ENTREGA_FUTURA.has(c) ? "remessa" : CFOPS_COMPRA_BEM.has(c) || CFOPS_REMESSA_BEM.has(c) ? "imobilizado" : null;
                           if (!sug || sug === tipo) return null;
                           return (
                             <div style={{ fontSize: 11, color: "#7A5200", background: "#FBF3E0", borderRadius: 6, padding: "4px 8px", marginTop: 4 }}>
-                              CFOP {c} é {sug === "vef" ? "simples faturamento de compra para entrega futura" : sug === "imobilizado" ? "compra de bem para o ativo imobilizado" : "remessa de compra para entrega futura"}.{" "}
+                              CFOP {c} é {sug === "vef" ? "simples faturamento de compra para entrega futura" : sug === "imobilizado" ? (CFOPS_REMESSA_BEM.has(c) ? "remessa de bem para uso fora do estabelecimento" : "compra de bem para o ativo imobilizado") : "remessa de compra para entrega futura"}.{" "}
                               <button type="button" onClick={() => setTipo(sug)} style={{ border: "none", background: "none", color: "#1A4870", fontWeight: 600, cursor: "pointer", padding: 0, fontSize: 11, textDecoration: "underline" }}>Usar &quot;{TIPO_LABELS[sug].label}&quot;</button>
                             </div>
                           );
@@ -2901,6 +2910,12 @@ export default function ModalNf({
                     </div>
                   </div>
 
+                  {CFOPS_REMESSA_BEM.has((cab.cfop || "").trim()) && (
+                    <div data-arato-panel="true" style={{ border: "0.5px solid #C9921B", background: "#FBF3E0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5500" }}>Remessa de bem do ativo para uso fora do estabelecimento</div>
+                      <div style={{ fontSize: 11, color: "#7A5500", marginTop: 2 }}>Normalmente sem cobrança: o bem continua sendo do emitente. Ao processar, o sistema pergunta se foi compra; só então gera Contas a Pagar.</div>
+                    </div>
+                  )}
                   {CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop || "").trim()) && (
                     <div data-arato-panel="true" style={{ border: "0.5px solid #C9921B", background: "#FBF3E0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5500" }}>Bem do ativo imobilizado — {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) ? "retorno / entrada de bem" : "transferência de bem"}</div>

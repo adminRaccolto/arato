@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-b",
+    data: "04/11/2026",
+    titulo: "NF de remessa de bem (CFOP 5554/6554) não gera CP sozinha",
+    modulos: ["Documentos Fiscais", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "NF de entrada com CFOP 5554/6554 (remessa de bem para uso fora do estabelecimento) era tratada como compra e gerava Contas a Pagar. Agora, ao processar, o sistema pergunta se foi compra; só com a sua confirmação nasce o título." },
+      { tipo: "correcao", texto: "Comodato, conserto e outras NFs sem cobrança não acusam mais falta de Contas a Pagar ao processar." },
+    ],
+  },
+  {
     versao: "2026.11.04-a",
     data: "04/11/2026",
     titulo: "Fluxo de Caixa: previsões identificadas e aviso de vencidas",

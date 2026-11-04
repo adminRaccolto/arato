@@ -20,3 +20,10 @@ test("CFOP genérico 5949 pede confirmação; mistura com compra é compra", () 
   assert.equal(cobrancaDaNf("5102", ["5102"]), "compra");
   assert.equal(cobrancaDaNf(null, []), "compra");
 });
+
+test("remessa de bem do ativo (5554/6554) não é compra, nem com o CFOP só nos itens", () => {
+  assert.equal(cobrancaDaNf("6554", ["6554", "6554"]), "remessa_bem");
+  assert.equal(cobrancaDaNf(null, ["5554", "5554"]), "remessa_bem");
+  assert.equal(cobrancaDaNf("5554", []), "remessa_bem");
+  assert.equal(cobrancaDaNf("5554", ["5554", "5102"]), "compra");
+});
