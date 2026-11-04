@@ -921,6 +921,14 @@ function FaturamentoInner() {
     return { payload, moduloFiscal };
   }
 
+  // O motivo fica gravado na nota: a mensagem na tela some ao fechar a janela
+  async function marcarRejeitada(nota: NotaFiscal, motivo: string) {
+    const dj = { ...((nota.dados_nf_json ?? {}) as Record<string, unknown>), sefaz_erro: motivo };
+    await supabase.from("notas_fiscais").update({ status: "rejeitada", dados_nf_json: dj }).eq("id", nota.id);
+    nota.status = "rejeitada";
+    nota.dados_nf_json = dj;
+  }
+
   async function emitirNota() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir nota)", perigo: false }))) return;
     const fazEmissao = fazNFe || fazendaId || "";
@@ -1052,15 +1060,16 @@ function FaturamentoInner() {
               nova.numero = novoNumero;
               if (res.serie) nova.serie = res.serie;
             } else {
-              await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nova.id);
-              nova.status = "rejeitada";
+              await marcarRejeitada(nova, `SEFAZ [${res.cStat}]: ${res.xMotivo}`);
               erroSefaz = `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
             }
+          } else {
+            // Tempo esgotado ou erro do servidor: não dá para afirmar que a SEFAZ recusou. A nota não vira rejeitada.
+            erroSefaz = `Sem resposta confirmada da emissão (HTTP ${resp.status}). Não emita de novo: atualize a lista e confira se a nota foi autorizada.`;
           }
         } catch (errSefaz) {
           // Erro interno (ex: IBGE ausente, certificado inválido) — mostra para o usuário e marca como rejeitada
-          await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nova.id);
-          nova.status = "rejeitada";
+          await marcarRejeitada(nova, String(errSefaz));
           erroSefaz = String(errSefaz);
         }
       }
@@ -1636,6 +1645,7 @@ function FaturamentoInner() {
                           {djLinha.peso_aproximado === true ? "Direto · peso aproximado" : "Direto, sem romaneio"}
                         </span>
                       )}
+                      {nota.status === "rejeitada" && djLinha.sefaz_erro ? <span title={String(djLinha.sefaz_erro)} style={{ display:"block", maxWidth:260, fontSize:10, fontWeight:400, color:"#B91C1C", whiteSpace:"normal" }}>{String(djLinha.sefaz_erro)}</span> : null}
                       {djLinha.complementar_de ? <span style={{ display:"block", fontSize:10, fontWeight:600, color:"#1A4870" }}>Complementar da NF {String(djLinha.nf_ref_numero ?? "")}</span> : null}
                       {djLinha.romaneio_id && djLinha.faturamento_direto === true && Number(djLinha.diferenca_kg) < 0 ? (
                         <span title="Sem regra fiscal definida para peso a menor: o título saiu pelo peso real. Defina com o contador se cabe documento fiscal." style={{ display:"block", fontSize:10, fontWeight:600, color:"#B91C1C" }}>

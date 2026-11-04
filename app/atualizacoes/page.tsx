@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-j",
+    data: "04/11/2026",
+    titulo: "NF-e: número em uso e motivo da recusa",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Quando a SEFAZ recusa porque o número já existe, o sistema pula para depois do último número usado naquela série e tenta poucas vezes, em vez de testar número por número." },
+      { tipo: "melhoria", texto: "Nas Notas de Venda, o motivo da recusa fica gravado e aparece na lista. Sem resposta confirmada da emissão, a tela avisa para conferir antes de emitir de novo, e a nota não vira rejeitada." },
+    ],
+  },
+  {
     versao: "2026.11.04-i",
     data: "04/11/2026",
     titulo: "NF-e: textos de venda só em nota de venda",

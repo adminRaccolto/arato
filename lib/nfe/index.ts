@@ -15,7 +15,7 @@ import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
 import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesmoMunicipio, documentoDoModulo } from "./identidade-fiscal";
 import { configComIdentidade, buscarTitularCadastro, produtoresDoDocumento } from "./titular-cadastro";
-import { mensagemNumeroEmUso, numeroJaEmUso } from "./numero-em-uso";
+import { maiorNumeroDaSerie, mensagemNumeroEmUso, numeroJaEmUso } from "./numero-em-uso";
 import { usaTextosDeVenda } from "./textos-automaticos";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
 
@@ -278,7 +278,12 @@ async function proximoNumero(
   confg: Record<string, string>
 ): Promise<number> {
   const atual = parseInt(String(confg.numero_inicial ?? "1"));
-  const proximo = String(atual + 1);
+  await gravarProximoNumero(fazendaId, moduloKey, confg, atual + 1);
+  return atual;
+}
+
+async function gravarProximoNumero(fazendaId: string, moduloKey: string, confg: Record<string, string>, valor: number): Promise<void> {
+  const proximo = String(valor);
   // Incrementa no banco antes de emitir. Grava SÓ o contador, em cada linha que o guarda (base e, se
   // existir, a config por-IE que sobrepõe a base na leitura) — sem regravar a config mesclada inteira.
   //
@@ -306,7 +311,25 @@ async function proximoNumero(
         .eq("fazenda_id", linha.fazenda_id).eq("modulo", m);
     }
   }
-  return atual;
+}
+
+// Depois da 1ª recusa por número em uso: se a série já foi além disso, o próximo número passa para depois do último.
+// Nota rejeitada não consome número, por isso só contam as autorizadas e canceladas.
+async function saltarParaDepoisDoUltimo(fazendaId: string, moduloKey: string, confg: Record<string, string>, documento: string, serie: string, numero: number): Promise<void> {
+  const { data: fz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const { data: fzs } = fz?.conta_id ? await sb().from("fazendas").select("id").eq("conta_id", fz.conta_id) : { data: [{ id: fazendaId }] };
+  const doc = documento.replace(/\D/g, "").padStart(14, "0");
+  const chaves: string[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await sb().from("notas_fiscais").select("id, chave_acesso")
+      .in("fazenda_id", (fzs ?? []).map(f => f.id as string)).in("status", ["autorizada", "cancelada"])
+      .like("chave_acesso", `______${doc}55${serie.padStart(3, "0")}%`).order("id").range(de, de + 999);
+    if (error) return; // sem o salto, segue tentando o número seguinte
+    chaves.push(...(data ?? []).map(r => r.chave_acesso as string));
+    if (!data || data.length < 1000) break;
+  }
+  const maior = maiorNumeroDaSerie(chaves, doc, serie);
+  if (maior >= numero) await gravarProximoNumero(fazendaId, moduloKey, confg, maior + 1);
 }
 
 // ─── Salva XML no Storage e retorna URL pública ───────────────────────────────
@@ -724,11 +747,13 @@ export async function emitirNFe(
   }
 
   // Esse número/série já existe autorizado com OUTRA chave (ex.: nota emitida por outro sistema ou por contador antes do
-  // Arato). Rejeição não consome o número, então avança o contador e tenta o próximo, até achar um livre (limite de 30
-  // para não ficar em laço). Ao esgotar, a mensagem diz que nada foi emitido: a chave citada pela SEFAZ é da nota antiga.
+  // Arato). Rejeição não consome o número: na 1ª recusa salta para depois do último número conhecido da série e tenta de
+  // novo, até 5 vezes. Eram 30 tentativas, número a número, e a tela ficava minutos em "Emitindo" (série trocada de IE).
+  // Ao esgotar, a mensagem diz que nada foi emitido: a chave citada pela SEFAZ é da nota antiga.
   if (numeroJaEmUso(resposta.cStat, resposta.xMotivo, built.chave)) {
-    if (tentativa < 30) {
+    if (tentativa < 5) {
       console.warn(`[NF-e] ${resposta.cStat} no número ${numero} (série ${serie}) — tentando o próximo (tentativa ${tentativa + 1})`);
+      if (tentativa === 0) await saltarParaDepoisDoUltimo(fazendaId, moduloKey, confg, cpfCnpjEmit, serie, numero);
       return emitirNFe(fazendaId, moduloKey, input, emitIeOverride, tentativa + 1);
     }
     return { sucesso: false, cStat: resposta.cStat, xMotivo: mensagemNumeroEmUso(serie, numero, resposta.xMotivo) };
