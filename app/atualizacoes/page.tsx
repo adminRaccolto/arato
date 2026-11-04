@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-k",
+    data: "04/11/2026",
+    titulo: "Conciliação: salários pelo nome de quem recebeu",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O mesmo título era sugerido para várias linhas do extrato de mesmo valor, mesmo com outro nome no PIX. Agora cada título é sugerido a uma linha só, o nome de quem recebeu tem prioridade, e salário não é sugerido para linha com o nome de outra pessoa." },
+    ],
+  },
+  {
     versao: "2026.11.04-j",
     data: "04/11/2026",
     titulo: "NF-e: número em uso e motivo da recusa",

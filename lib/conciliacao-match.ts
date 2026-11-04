@@ -75,6 +75,31 @@ export function sugerirTextoRegra(descricao: string): string {
   return uteis.slice(0, 5).join(" ");
 }
 
+// ── Nome de quem recebeu ─────────────────────────────────────────────────────
+// Salário de mesmo valor é comum: sem olhar o nome, o PIX de um funcionário casava com o título de outro.
+const PALAVRAS_DE_BANCO = new Set(("pagamento pagamentos pag pgto pagto pix deb cred debito credito transf transferencia realizada emitido enviado recebido " +
+  "outra entre contas conta corrente poupanca ted doc tef liquidacao boleto tarifa salario salarios folha remuneracao sicoob sicredi cresol bradesco itau " +
+  "santander caixa banco brasil ltda mei dos das").split(" "));
+
+export function tokensDeNome(texto: string): string[] {
+  return normalizarTexto(texto).split(" ").filter(t => t.length >= 3 && !/\d/.test(t) && !PALAVRAS_DE_BANCO.has(t));
+}
+
+export const ehTituloDeSalario = (descricao: string) => /^\s*sal[aá]rio/i.test(descricao ?? "");
+
+// Nome no título: o que vem depois do travessão ("Salário Out/2026 — JOSE EVERTON"; "Salário - JOSE"). Sem travessão, não há nome.
+export function nomeDoTitulo(descricao: string): string {
+  const m = (descricao ?? "").match(/\s[—–-]\s(.+)$/);
+  return m ? m[1] : "";
+}
+
+// Palavras do nome presentes na linha. O banco corta o fim do nome, então vale o início da palavra (mínimo 3 letras).
+export function pontosDeNome(descricaoLinha: string, descricaoTitulo: string): number {
+  const linha = tokensDeNome(descricaoLinha);
+  const nome = tokensDeNome(nomeDoTitulo(descricaoTitulo));
+  return nome.filter(n => linha.some(l => l === n || n.startsWith(l) || l.startsWith(n))).length;
+}
+
 // ── Regras ───────────────────────────────────────────────────────────────────
 export interface RegraMatch {
   id: string;
@@ -133,19 +158,24 @@ export function avaliarLinha(
     if (jaPago(l) && ctx.conta && l.conta_bancaria && l.conta_bancaria !== ctx.conta.id) {
       bloqueios.push("já baixado em outra conta bancária"); continue;
     }
+    if (ehTituloDeSalario(l.descricao) && tokensDeNome(linha.descricao).length && tokensDeNome(nomeDoTitulo(l.descricao)).length && pontosDeNome(linha.descricao, l.descricao) === 0) {
+      bloqueios.push("a linha é de outra pessoa"); continue;
+    }
     viaveis.push(l);
   }
   if (viaveis.length === 0) return { nivel: "bloqueado", motivos: Array.from(new Set(bloqueios)) };
 
-  // Melhor candidato: data mais próxima; empate → já baixado nesta conta
+  // Melhor candidato: nome de quem recebeu; depois data mais próxima; empate → já baixado nesta conta
   const ranked = viaveis
-    .map(l => ({ l, d: dias(linha.data, l.data_baixa ?? l.data_vencimento) }))
-    .sort((a, b) => a.d - b.d || (jaPago(a.l) ? 0 : 1) - (jaPago(b.l) ? 0 : 1));
-  const { l: melhor, d: dMelhor } = ranked[0];
+    .map(l => ({ l, d: dias(linha.data, l.data_baixa ?? l.data_vencimento), n: pontosDeNome(linha.descricao, l.descricao) }))
+    .sort((a, b) => b.n - a.n || a.d - b.d || (jaPago(a.l) ? 0 : 1) - (jaPago(b.l) ? 0 : 1));
+  const { l: melhor, d: dMelhor, n: nomeMelhor } = ranked[0];
 
   // Critérios de "alta"
   const motivos: string[] = [];
   if (viaveis.length > 1) motivos.push(`${viaveis.length} lançamentos com o mesmo valor`);
+  // Salário só casa sozinho com o nome confirmado na linha
+  if (ehTituloDeSalario(melhor.descricao) && nomeMelhor === 0) motivos.push("linha sem o nome do funcionário");
   if (dMelhor > ALTA_DIAS) motivos.push(`data ${Math.round(dMelhor)} dias distante`);
 
   // Conta: lançamento em aberto ainda não tem conta (a baixa é que define). Só há
@@ -161,28 +191,28 @@ export function avaliarLinha(
   return { nivel: motivos.length === 0 ? "alta" : "media", lancamento: melhor, motivos };
 }
 
-// Avalia várias linhas em ordem. 1º passo: só "alta" consome o lançamento; 2º passo:
-// as sugestões ("media") nunca disputam um lançamento que já foi dado como "alta".
+// Um título vai para uma linha só: quem tem o nome confirmado escolhe primeiro. 1º passo: "alta" consome o lançamento;
+// 2º passo: as sugestões ("media") dividem o que sobrou, sem repetir título. Antes, o mesmo título era sugerido a todas as
+// linhas de mesmo valor.
 export function avaliarLinhas(
   linhas: LinhaMatch[],
   lancs: LancMatch[],
   ctx: CtxAvaliacao,
 ): Map<string, Avaliacao> {
+  const melhorNome = (l: LinhaMatch) => lancs.reduce((m, t) =>
+    Math.abs(valorDe(t) - l.valor) <= TOL_VALOR ? Math.max(m, pontosDeNome(l.descricao, t.descricao)) : m, 0);
+  const ordem = linhas.map(l => ({ l, n: melhorNome(l) })).sort((a, b) => b.n - a.n).map(x => x.l);
   const usados = new Set<string>();
   const res = new Map<string, Avaliacao>();
-  for (const linha of linhas) {
+  for (const linha of ordem) {
     const a = avaliarLinha(linha, lancs, ctx, usados);
-    if (a.nivel === "alta" && a.lancamento) usados.add(a.lancamento.id);
-    res.set(linha.id, a);
+    if (a.nivel === "alta" && a.lancamento) { usados.add(a.lancamento.id); res.set(linha.id, a); }
   }
-  // 2º passo: sugestão que apontava para lançamento já tomado por "alta" é refeita sem ele
-  for (const linha of linhas) {
-    const a = res.get(linha.id)!;
-    if (a.nivel === "media" && a.lancamento && usados.has(a.lancamento.id)) {
-      const refeita = avaliarLinha(linha, lancs, ctx, usados);
-      if (refeita.nivel === "alta" && refeita.lancamento) usados.add(refeita.lancamento.id);
-      res.set(linha.id, refeita);
-    }
+  for (const linha of ordem) {
+    if (res.has(linha.id)) continue;
+    const a = avaliarLinha(linha, lancs, ctx, usados);
+    if (a.lancamento) usados.add(a.lancamento.id);
+    res.set(linha.id, a);
   }
   return res;
 }
