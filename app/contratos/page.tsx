@@ -29,6 +29,8 @@ import PlanoGate from "../../components/PlanoGate";
 import AnexoDocumentos from "../../components/AnexoDocumentos";
 import { produtoDoContrato } from "../../lib/fiscal/ncm-produtos";
 import FaturamentosCarga from "../../components/contratos/FaturamentosCarga";
+import { notaAguardaRomaneio, pesoDaNota } from "../../lib/contratos/romaneio-nf";
+import type { NotaFiscal } from "../../lib/supabase";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -1217,6 +1219,21 @@ export default function Contratos() {
 
   // ── romaneio — cálculos em tempo real ─────────────────────────
   const contratoSel   = contratos.find(c => c.id === fRom.contratoId);
+  // NF aproximada à espera do romaneio do recebedor, deste contrato
+  const [nfsDiretas, setNfsDiretas] = useState<NotaFiscal[]>([]);
+  const [notaDiretaId, setNotaDiretaId] = useState("");
+  useEffect(() => {
+    if (!modalRomaneio || !fRom.contratoId) { setNfsDiretas([]); setNotaDiretaId(""); return; }
+    let vivo = true;
+    supabase.from("notas_fiscais").select("*").eq("dados_nf_json->>contrato_id", fRom.contratoId).eq("status", "autorizada").then(({ data }) => {
+      if (!vivo) return;
+      const abertas = ((data ?? []) as NotaFiscal[]).filter(notaAguardaRomaneio);
+      setNfsDiretas(abertas);
+      setNotaDiretaId(!editRomaneio?.nfe_numero && abertas.length === 1 ? abertas[0].id : "");
+    });
+    return () => { vivo = false; };
+  }, [modalRomaneio, fRom.contratoId, editRomaneio?.nfe_numero]);
+  const notaDireta = nfsDiretas.find(n => n.id === notaDiretaId);
   const produto_rom   = contratoSel?.produto ?? "Soja";
   const clsComm       = classeCommodityDin(produto_rom);
   const isSoja        = produto_rom.toLowerCase().startsWith("soja");
@@ -1252,6 +1269,25 @@ export default function Contratos() {
   const difKg      = pesoDest > 0 && pesoClass > 0 ? +(pesoClass - pesoDest).toFixed(2) : 0;
   const difPct     = pesoClass > 0 && difKg !== 0 ? +(difKg / pesoClass * 100).toFixed(3) : 0;
 
+  // O romaneio do recebedor passa a valer como peso real: liga à NF aproximada e oferece a complementar quando veio mais peso
+  const vincularRomaneioNf = async (romaneioId: string) => {
+    if (!notaDiretaId) return;
+    const r = await fetch("/api/contratos/vincular-romaneio-nf", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ romaneio_id: romaneioId, nota_id: notaDiretaId }) });
+    const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; aviso?: string; nota_numero?: string; conferencia?: { situacao: string; diferenca_kg: number; valor_diferenca: number } };
+    if (!j.ok || !j.conferencia) { alert(`O romaneio foi salvo, mas não foi ligado à NF: ${j.error ?? `HTTP ${r.status}`}`); return; }
+    const { data: rom } = await supabase.from("romaneios").select("*").eq("id", romaneioId).maybeSingle();
+    if (rom) setContratos(prev => prev.map(c => ({ ...c, romaneios: c.romaneios.map(x => x.id === romaneioId ? rom as Romaneio : x) })));
+    if (j.aviso) alert(j.aviso);
+    if (j.conferencia.situacao === "complemento") {
+      const ok = await confirmarAcao({ titulo: "Emitir NF complementar", perigo: false, textoConfirmar: "Abrir complementar",
+        mensagem: `O romaneio veio com ${j.conferencia.diferenca_kg.toLocaleString("pt-BR")} kg a mais que a NF ${j.nota_numero} (${fmtR$(j.conferencia.valor_diferenca)}). Abrir a NF complementar agora? Você também pode emitir depois, pelo botão Complemento em Notas de Venda.` });
+      if (ok) window.location.href = `/comercial/faturamento?complementar=${notaDiretaId}`;
+    } else if (j.conferencia.situacao === "a_menor") {
+      alert(`O romaneio veio com ${Math.abs(j.conferencia.diferenca_kg).toLocaleString("pt-BR")} kg a menos que a NF ${j.nota_numero}. O título e o contrato seguem o peso real. Não há documento fiscal definido para esse caso: confira com o contador.`);
+    }
+  };
+
   const gerarRomaneio = async () => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar romaneio)", perigo: false }))) return;
     if (!contratoSel || !fRom.placa || plCalc <= 0) return;
@@ -1274,7 +1310,7 @@ export default function Contratos() {
           avariados_pct:         romAvariados || undefined,
           avariados_padrao_pct:  temClassif ? clsComm.avariados_padrao : undefined,
           desconto_avariados_kg: descAvar     || undefined,
-          peso_classificado_kg:  temClassif ? pesoClass : plCalc,
+          peso_classificado_kg:  notaDiretaId && pesoDest > 0 ? pesoDest : temClassif ? pesoClass : plCalc,
           data:                  editRomaneio.data,
           ph_hl:               parseFloat(fRom.ph)               || undefined,
           ardidos_pct:         pArd  || undefined,
@@ -1303,6 +1339,7 @@ export default function Contratos() {
             romaneios: c.romaneios.map(r => r.id === editRomaneio.id ? (romAtual ?? r) : r),
           };
         }));
+        await vincularRomaneioNf(editRomaneio.id);
         setEditRomaneio(null);
         setFRom(ROM_VAZIO());
         setModalRomaneio(false);
@@ -1330,7 +1367,8 @@ export default function Contratos() {
         avariados_pct:         romAvariados || undefined,
         avariados_padrao_pct:  temClassif ? clsComm.avariados_padrao : undefined,
         desconto_avariados_kg: descAvar     || undefined,
-        peso_classificado_kg:  temClassif ? pesoClass : plCalc,
+        // Ligado à NF aproximada, o peso do destino é o real e é ele que consome o contrato
+        peso_classificado_kg:  notaDiretaId && pesoDest > 0 ? pesoDest : temClassif ? pesoClass : plCalc,
         // sacas é GENERATED ALWAYS no banco (peso_classificado_kg / kg_saca)
         data:                  TODAY,
         // classificação — detalhada
@@ -1367,7 +1405,7 @@ export default function Contratos() {
       if (!fRom.aplicarAdiant && !contratoSel.recebimento_por_carga) {
         const precoSel  = contratoSel.preco ?? cAtual?.preco ?? 0;
         const moedaSel  = contratoSel.moeda ?? cAtual?.moeda ?? "BRL";
-        const scsFat    = sacasFat > 0 ? sacasFat : sacasCalc;
+        const scsFat    = sacasFat > 0 ? sacasFat : notaDiretaId && pesoDest > 0 ? +(pesoDest / clsComm.kg_saca).toFixed(3) : sacasCalc;
         const valorEnt  = +(scsFat * precoSel).toFixed(2);
         if (valorEnt > 0 && fazendaId) {
           const compradorNome = pessoas.find(p=>p.id===(contratoSel.pessoa_id ?? cAtual?.pessoa_id))?.nome
@@ -1485,6 +1523,7 @@ export default function Contratos() {
           ));
         }
       }
+      await vincularRomaneioNf(criado.id);
       setEditRomaneio(null);
       setFRom(ROM_VAZIO());
       setModalRomaneio(false);
@@ -3222,6 +3261,24 @@ export default function Contratos() {
                         : "Preencher após receber o ticket de pesagem do destino"}
                     </span>
                   </div>
+                  {nfsDiretas.length > 0 && (
+                    <div style={{ marginBottom:10, background:"#FBF3E0", borderRadius:7, padding:"8px 12px" }}>
+                      <label data-arato-label="true" style={{ fontSize:11, fontWeight:600, color:"#7A5200", marginBottom:4, display:"block" }}>Romaneio do recebedor: NF aproximada desta carga</label>
+                      <select style={{ ...inp, fontSize:12 }} value={notaDiretaId} onChange={e => setNotaDiretaId(e.target.value)}>
+                        <option value="">Não ligar a nenhuma NF</option>
+                        {nfsDiretas.map(n => <option key={n.id} value={n.id}>NF {n.numero} · {fmtData(n.data_emissao)} · {pesoDaNota(n.itens_json).toLocaleString("pt-BR")} kg · {fmtR$(n.valor_total)}</option>)}
+                      </select>
+                      {notaDireta && (() => {
+                        const real = pesoDest > 0 ? pesoDest : temClassif ? pesoClass : plCalc;
+                        const dif = +(real - pesoDaNota(notaDireta.itens_json)).toFixed(2);
+                        return real > 0 ? (
+                          <div style={{ fontSize:11, marginTop:5, color: dif < 0 ? "#B91C1C" : "#7A5200" }}>
+                            Peso real {real.toLocaleString("pt-BR")} kg: {dif > 0 ? `${dif.toLocaleString("pt-BR")} kg a mais, gera NF complementar` : dif < 0 ? `${Math.abs(dif).toLocaleString("pt-BR")} kg a menos que a NF` : "igual à NF"}.
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
                   <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
                     <div>
                       <label data-arato-label="true" style={{ fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" }}>Peso Classificado Destino (kg)</label>
@@ -3251,7 +3308,7 @@ export default function Contratos() {
                       <span>⚠️</span>
                       <div>
                         <strong>NF Complementar necessária</strong> — diferença de {fmtPeso(Math.abs(difKg))} ({(Math.abs(difKg)/plCalc*100).toFixed(2)}%) entre o peso estimado e o peso real do comprador.
-                        Após salvar, emita uma NF Complementar em <strong>Fiscal → Emitir Complementar</strong> para ajustar a quantidade.
+                        Ligue este romaneio à NF aproximada, acima, para o sistema abrir a NF complementar.
                       </div>
                     </div>
                   )}

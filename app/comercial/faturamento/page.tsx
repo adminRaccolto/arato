@@ -20,6 +20,7 @@ import ProdutorCombo from "../../../components/ProdutorCombo";
 import { fmtNcm, ncmPadraoDoProduto, produtoDoContrato } from "../../../lib/fiscal/ncm-produtos";
 import { ehRascunho, montarRascunhoDuplicado, podeDuplicarNota } from "../../../lib/fiscal/duplicar-nota";
 import { precoKgDoContrato } from "../../../lib/contratos/preco-nf";
+import { notaAguardaRomaneio, pesoDaNota } from "../../../lib/contratos/romaneio-nf";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
 // cfop_tipo liga cada natureza à tabela textos_legais_uf no banco.
@@ -147,6 +148,7 @@ const FVENDA_INICIAL = {
   nf_ref_numero:   "", // número legível da NF referenciada
   faturamento_direto: false, // NF do contrato sem romaneio
   peso_aproximado:    false, // peso informado à mão, a conferir na balança de destino
+  complementar_de:    "",    // NF de origem, quando esta é a NF-e complementar (finNFe 2)
 };
 
 const FRETES = [
@@ -367,12 +369,14 @@ function FaturamentoInner() {
   // Duplicar vindo do Monitor de NF-e: cria o rascunho uma vez só, depois que os cadastros carregaram
   const duplicarFeito = useRef(false);
   useEffect(() => {
-    const id = searchParams.get("duplicar");
+    const idComplemento = searchParams.get("complementar");
+    const id = searchParams.get("duplicar") ?? idComplemento;
     if (!id || loading || duplicarFeito.current) return;
     duplicarFeito.current = true;
     window.history.replaceState(null, "", "/comercial/faturamento");
     supabase.from("notas_fiscais").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      if (data && podeDuplicarNota(data as NotaFiscal)) void duplicarNota(data as NotaFiscal);
+      if (data && idComplemento && (data as NotaFiscal).status === "autorizada") abrirComplemento(data as NotaFiscal);
+      else if (data && !idComplemento && podeDuplicarNota(data as NotaFiscal)) void duplicarNota(data as NotaFiscal);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, searchParams]);
@@ -416,6 +420,7 @@ function FaturamentoInner() {
   async function vincularCargaContrato(nota: NotaFiscal) {
     const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
     if (!dj.contrato_id || !dj.recebimento_por_carga) return;
+    if (dj.peso_aproximado === true) return; // NF aproximada: o CR nasce quando chegar o romaneio do recebedor
     try {
       const r = await fetch("/api/contratos/faturar-carga", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ acao: "vincular", contrato_id: dj.contrato_id, nota_fiscal_id: nota.id }) });
@@ -454,7 +459,7 @@ function FaturamentoInner() {
   // NFs deste contrato faturadas sem romaneio: a carga, quando chegar como romaneio, não pode ser faturada de novo
   const notasDiretasDoContrato = (contratoId: string) => notas.filter(n => {
     const dj = (n.dados_nf_json ?? {}) as Record<string, unknown>;
-    return dj.contrato_id === contratoId && dj.faturamento_direto === true && n.status === "autorizada";
+    return dj.contrato_id === contratoId && notaAguardaRomaneio(n);
   });
 
   function faturarDireto() {
@@ -631,6 +636,53 @@ function FaturamentoInner() {
       valor_total: i.valor_total, valor_financeiro: i.valor_total, cclass_trib: "",
     })));
     setAvisoProdutoNf("");
+    setTabNFe("produtor");
+    setErroForm(null);
+    setPasso("form");
+    setModalAberto(true);
+  }
+
+  // ── NF complementar: pela diferença do romaneio do recebedor, ou quantidade a informar quando aberta sem romaneio ──
+  function abrirComplemento(nota: NotaFiscal) {
+    const hoje  = hojeLocal();
+    const agora = new Date().toTimeString().slice(0, 8);
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const txt = (k: string) => String(dj[k] ?? "");
+    const emitDoc = txt("emit_cnpj").replace(/\D/g, "");
+    const dif = Math.max(0, Number(dj.diferenca_kg) || 0);
+    const itens = nota.itens_json ?? [];
+    const pesoNf = pesoDaNota(itens);
+    const precoKg = pesoNf > 0 ? nota.valor_total / pesoNf : (itens[0]?.valor_unitario ?? 0);
+    const valor = Math.round(dif * precoKg * 100) / 100;
+    ieAlvo.current = txt("ie_id") || txt("emit_ie") || null;
+    setContratoSelecionado(contratos.find(c => c.id === dj.contrato_id) ?? null);
+    setFazNFe(nota.fazenda_id);
+    setTipoAvulsa("venda");
+    setRetornoOrigemId(null);
+    setRascunhoId(null); setRascunhoOrigem("");
+    setFVenda({
+      ...FVENDA_INICIAL,
+      produtor_id: txt("produtor_id") || produtores.find(p => emitDoc && p.cpf_cnpj?.replace(/\D/g, "") === emitDoc)?.id || "",
+      ie_id: txt("ie_id") || iesProdutor.find(ie => ie.inscricao_estadual === txt("emit_ie"))?.id || "",
+      destinatario: nota.destinatario ?? "", cnpj: nota.cnpj_destinatario ?? "",
+      dest_tipo_pessoa: (dj.dest_tipo_pessoa as "fisica" | "juridica") ?? "juridica",
+      dest_ie: txt("dest_ie"), dest_endereco: txt("dest_endereco"), dest_numero: txt("dest_numero"), dest_bairro: txt("dest_bairro"),
+      dest_cep: txt("dest_cep"), dest_fone: txt("dest_fone"), dest_cidade: txt("dest_cidade"), dest_uf: txt("dest_uf"), dest_municipio_ibge: txt("dest_municipio_ibge"),
+      cfop: nota.cfop, natureza_texto: nota.natureza ?? "",
+      observacao: `NF-e complementar à NF-e ${nota.numero}${dj.romaneio_numero ? `, por diferença de peso apurada no romaneio ${dj.romaneio_numero}` : ""}.`,
+      data_emissao: hoje, data_saida: hoje, hora_saida: agora,
+      frete_conta: txt("frete_conta") || FVENDA_INICIAL.frete_conta,
+      peso_bruto: aplicarMascara(String(Math.round(dif * 100))) || "0,00", peso_liquido: aplicarMascara(String(Math.round(dif * 100))) || "0,00", especie: txt("especie"),
+      contrato_numero: txt("contrato_numero"),
+      nf_ref_chave: nota.chave_acesso ?? "", nf_ref_numero: nota.numero, complementar_de: nota.id,
+    });
+    setNfeItens(itens.slice(0, 1).map(i => ({
+      id: crypto.randomUUID(), tipo_item: "Produto", item: i.item, ncm: i.ncm,
+      quantidade: String(dif), unidade: i.unidade.toLowerCase(),
+      valor_unitario: precoKg.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 10 }),
+      valor_total: valor, valor_financeiro: valor, cclass_trib: "",
+    })));
+    setAvisoProdutoNf(dif > 0 ? "" : "Informe a quantidade e o valor do complemento na aba de itens.");
     setTabNFe("produtor");
     setErroForm(null);
     setPasso("form");
@@ -854,6 +906,7 @@ function FaturamentoInner() {
         hora_saida:      fVenda.hora_saida,
         nf_ref_chave:    fVenda.nf_ref_chave || undefined,
         nf_ref_numero:   fVenda.nf_ref_numero || undefined,
+        complementar_de: fVenda.complementar_de || undefined,
         local_entrega:   fVenda.local_entrega || undefined,
       },
     };
@@ -872,7 +925,7 @@ function FaturamentoInner() {
     setEmitindo(true); setErroForm(null);
     try {
       const { payload, moduloFiscal } = await montarPayloadNota();
-      if (contratoSelecionado && nfeItens.some(i => !(i.valor_total > 0))) { setErroForm("Item da nota sem valor: confira o preço e a quantidade."); return; }
+      if ((contratoSelecionado || fVenda.complementar_de) && nfeItens.some(i => !(i.valor_total > 0))) { setErroForm("Item da nota sem valor: confira o preço e a quantidade."); return; }
 
       // Rascunho (cópia de NF emitida): grava na mesma linha, sem deixar o rascunho para trás
       let nova: NotaFiscal;
@@ -934,6 +987,7 @@ function FaturamentoInner() {
               inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
               frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
               nfe_ref:   fVenda.nf_ref_chave || undefined,
+              fin_nfe:   fVenda.complementar_de ? "2" : undefined,
               tipo:      "1" as const,
               // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
               transporte: fVenda.transportadora || fVenda.placa ? {
@@ -1017,6 +1071,13 @@ function FaturamentoInner() {
       const ehVendaOrdem    = contratoSelecionado?.venda_a_ordem === true;
       const ehEntregaFutura = fVenda.cfop === "6.117";
       if (nova.status === "autorizada") { setRascunhoId(null); setRascunhoOrigem(""); }
+      // Complementar autorizada: a NF de origem deixa de pedir complemento
+      if (nova.status === "autorizada" && fVenda.complementar_de) {
+        const { data: origem } = await supabase.from("notas_fiscais").select("dados_nf_json").eq("id", fVenda.complementar_de).maybeSingle();
+        const djOrigem = { ...((origem?.dados_nf_json ?? {}) as Record<string, unknown>), complemento_numero: nova.numero, complemento_chave: nova.chave_acesso ?? undefined };
+        await supabase.from("notas_fiscais").update({ dados_nf_json: djOrigem }).eq("id", fVenda.complementar_de);
+        setNotas(p => p.map(n => n.id === fVenda.complementar_de ? { ...n, dados_nf_json: djOrigem } : n));
+      }
       setNfEmitida({ numero: nova.numero, chave: nova.chave_acesso ?? undefined, cfop: fVenda.cfop, venda_a_ordem: ehVendaOrdem, entrega_futura: ehEntregaFutura });
 
       if (erroSefaz) {
@@ -1549,6 +1610,12 @@ function FaturamentoInner() {
                           {djLinha.peso_aproximado === true ? "Direto · peso aproximado" : "Direto, sem romaneio"}
                         </span>
                       )}
+                      {djLinha.complementar_de ? <span style={{ display:"block", fontSize:10, fontWeight:600, color:"#1A4870" }}>Complementar da NF {String(djLinha.nf_ref_numero ?? "")}</span> : null}
+                      {djLinha.romaneio_id && djLinha.faturamento_direto === true && Number(djLinha.diferenca_kg) < 0 ? (
+                        <span title="Sem regra fiscal definida para peso a menor: o título saiu pelo peso real. Defina com o contador se cabe documento fiscal." style={{ display:"block", fontSize:10, fontWeight:600, color:"#B91C1C" }}>
+                          ⚠ NF {Math.abs(Number(djLinha.diferenca_kg)).toLocaleString("pt-BR")} kg acima do romaneio
+                        </span>
+                      ) : null}
                     </td>
                     <td style={{ padding:"10px 14px", fontSize:12 }}>{fmtData(nota.data_emissao)}</td>
                     <td style={{ padding:"10px 14px", fontSize:13 }}>{nota.destinatario ?? "—"}</td>
@@ -1567,6 +1634,13 @@ function FaturamentoInner() {
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           DANFE
                         </OperationalButton>
+                        )}
+                        {nota.status === "autorizada" && Number(djLinha.diferenca_kg) > 0 && !djLinha.complemento_chave && (
+                          <OperationalButton data-arato-button="primary" title={`Romaneio ${String(djLinha.romaneio_numero ?? "")} veio com mais peso que a NF`}
+                            style={{ padding:"4px 10px", fontSize:11, fontWeight:600, background:"#C9921B", color:"#fff", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
+                            onClick={() => abrirComplemento(nota)}>
+                            ＋ Complemento {Number(djLinha.diferenca_kg).toLocaleString("pt-BR")} kg
+                          </OperationalButton>
                         )}
                         {podeDuplicarNota(nota) && (
                           <OperationalButton data-arato-button="secondary" title="Cria uma cópia em rascunho para editar. Nada é transmitido à SEFAZ até você emitir."
@@ -1994,10 +2068,10 @@ function FaturamentoInner() {
 
               {/* Barra de título */}
               <div style={{ background:"#111111", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => rascunhoId ? setModalAberto(false) : setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</OperationalButton>
+                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => rascunhoId || fVenda.complementar_de ? setModalAberto(false) : setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</OperationalButton>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
-                    {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
+                    {fVenda.complementar_de ? `NF-e Complementar — NF ${fVenda.nf_ref_numero}` : fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
                   </div>
                   <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
                     {fVenda.destinatario ? `Destinatário: ${fVenda.destinatario}` : "Preencha os dados da nota"}

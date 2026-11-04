@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-aa",
+    data: "03/11/2026",
+    titulo: "NF aproximada: romaneio do recebedor e NF complementar",
+    modulos: ["Comercial", "Documentos Fiscais"],
+    itens: [
+      { tipo: "novidade", texto: "Ao lançar o romaneio enviado pelo recebedor, ligue-o à NF aproximada do contrato. O peso do romaneio passa a valer: gera o Contas a Receber, consome o contrato e, se veio mais peso que a NF, abre a NF complementar já preenchida." },
+      { tipo: "correcao", texto: "NF aproximada de contrato com recebimento por carga não gera mais Contas a Receber na emissão: ele nasce com o romaneio." },
+      { tipo: "correcao", texto: "O botão Emitir Complementar não transmitia a nota à SEFAZ. Agora abre a NF complementar em Notas de Venda e transmite de verdade, referenciando a nota original." },
+    ],
+  },
+  {
     versao: "2026.11.03-z",
     data: "03/11/2026",
     titulo: "Notas de Venda: duplicar nota e faturar contrato sem romaneio",

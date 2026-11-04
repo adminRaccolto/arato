@@ -10,7 +10,7 @@ const PAGO = new Set(["baixado", "parcial", "liquidado"]);
 export type ResultadoCarga = { ok: true; cr_id: string | null; abatido: number; aviso?: string } | { ok: false; error: string };
 
 /** Vincula a NF-e de venda (notas_fiscais, saída autorizada) ao contrato com recebimento por carga. Idempotente. */
-export async function faturarCarga(sb: SupabaseClient, contratoId: string, notaId: string, valorAbatidoManual?: number | null): Promise<ResultadoCarga> {
+export async function faturarCarga(sb: SupabaseClient, contratoId: string, notaId: string, valorAbatidoManual?: number | null, valorCrManual?: number | null): Promise<ResultadoCarga> {
   const { data: ja } = await sb.from("contrato_faturamentos").select("id, contrato_id, cr_lancamento_id, valor_abatido").eq("nota_fiscal_id", notaId).maybeSingle();
   if (ja) return ja.contrato_id === contratoId ? { ok: true, cr_id: ja.cr_lancamento_id, abatido: Number(ja.valor_abatido) } : { ok: false, error: "Esta NF-e já está vinculada a outro contrato." };
 
@@ -23,7 +23,8 @@ export async function faturarCarga(sb: SupabaseClient, contratoId: string, notaI
   if (!nf) return { ok: false, error: "NF-e não encontrada." };
   if (nf.tipo !== "saida" || nf.status !== "autorizada") return { ok: false, error: "Só NF-e de saída autorizada pode ser vinculada ao contrato." };
 
-  const valorNf = r2(Number(nf.valor_total) || 0);
+  // Romaneio com peso menor que a NF aproximada: o título sai pelo peso real, não pelo valor da NF
+  const valorNf = valorCrManual != null && valorCrManual > 0 ? r2(valorCrManual) : r2(Number(nf.valor_total) || 0);
   const sacas = sacasDaNf(nf.itens_json as ItemNf[], kgSacaDoProduto(c.produto));
   const abatimento = valorAbatidoManual != null && valorAbatidoManual > 0 ? r2(valorAbatidoManual) : valorAbatimento(c, sacas, valorNf);
   if (abatimento == null) return { ok: false, error: "Não consegui ler as sacas da NF (unidade dos itens) para abater do contrato em US$. Informe o valor a abater." };

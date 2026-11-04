@@ -2132,7 +2132,7 @@ function FiscalInner() {
                   <TabelaNFe
                     notas={filtroStatusVenda ? notasVenda.filter(n => n.status === filtroStatusVenda || (filtroStatusVenda === "rejeitada" && n.status === "denegada")) : notasVenda}
                     onCancelar={n => setModalCancelamento(n)}
-                    onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
+                    onComplementar={n => router.push(`/comercial/faturamento?complementar=${n.id}`)}
                     onConsultarSefaz={consultarSefaz}
                     // DANFE unificado: usa o mesmo gerador (a partir do XML realmente transmitido,
                     // com a logo do cliente) já usado em Estoque → Transferências — antes esta tela
@@ -2299,7 +2299,7 @@ function FiscalInner() {
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {notasAutorizadas.map(n => (
                               <div key={n.id} style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", background: "var(--bg-card)" }}
-                                onClick={() => setModalComplemento(n)}>
+                                onClick={() => router.push(`/comercial/faturamento?complementar=${n.id}`)}>
                                 <div>
                                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>NF-e {n.numero} — {n.destinatario}</div>
                                   <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
