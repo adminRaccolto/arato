@@ -12,6 +12,7 @@
  * MDF-e nunca fica bloqueada esperando CIOT (ele é opcional no schema, minOccurs=0).
  */
 
+import { montarProcAutorizado } from "../fiscal/documento-autorizado";
 import { ciotExigido } from "./ciot-regra";
 import { createClient } from "../supabase-servidor";
 import { buildMDFe } from "./builder";
@@ -83,7 +84,8 @@ function inserirInfMDFeSupl(xmlAssinado: string, qrUrl: string): string {
 
 async function salvarXml(fazendaId: string, chave: string, xml: string): Promise<string> {
   const path = `${fazendaId}/mdfe_emitidos/${chave}.xml`;
-  await sb().storage.from("arquivos").upload(path, new Blob([xml], { type: "application/xml" }), { upsert: true });
+  const { error } = await sb().storage.from("arquivos").upload(path, new Blob([xml], { type: "application/xml" }), { upsert: true });
+  if (error) throw error;
   const { data } = sb().storage.from("arquivos").getPublicUrl(path);
   return data.publicUrl;
 }
@@ -440,7 +442,8 @@ export async function emitirMDFe(
 
   let xmlUrl: string | undefined;
   if (resposta.sucesso && resposta.xmlProt) {
-    try { xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt); } catch { /* best-effort */ }
+    try { xmlUrl = await salvarXml(fazendaId, built.chave, montarProcAutorizado("mdfe", xmlAssinado, resposta.xmlProt, "3.00")); }
+    catch (e) { console.error("[emissão mdfe] autorizado, mas o XML não foi guardado:", built.chave, e); }
   }
 
   // Achado real 28/09/2026: gravava em `fazendaId` (a fazenda ativa na emissão), mas o config MDF-e

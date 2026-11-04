@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-n",
+    data: "04/11/2026",
+    titulo: "CT-e e MDF-e: XML completo no arquivo",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O sistema guardava só o protocolo da SEFAZ. Os novos CT-e e MDF-e autorizados são guardados completos: documento assinado e protocolo." },
+    ],
+  },
+  {
     versao: "2026.11.04-m",
     data: "04/11/2026",
     titulo: "CT-e: rejeição 215 por falta do código do município",

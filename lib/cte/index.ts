@@ -16,6 +16,7 @@ import { transmitirCTe } from "./transmitter";
 import { cancelarCTe as registrarCancelamentoCTe, enviarCartaCorrecaoCTe, type CorrecaoCTeItem } from "./evento";
 import { pfxParaPem }   from "../nfe/signer";
 import { resolverConfigCTe } from "./config";
+import { montarProcAutorizado } from "../fiscal/documento-autorizado";
 import { ibgeValido } from "../nfe/identidade-fiscal";
 import type { CTeInput, EmitenteCTe } from "./builder";
 
@@ -83,8 +84,9 @@ function inserirInfCTeSupl(xmlAssinado: string, qrUrl: string): string {
 // ─── Salva XML no Storage ────────────────────────────────────────────────────
 async function salvarXml(fazendaId: string, chave: string, xml: string): Promise<string> {
   const path = `${fazendaId}/cte_emitidos/${chave}.xml`;
-  await sb().storage.from("arquivos")
+  const { error } = await sb().storage.from("arquivos")
     .upload(path, new Blob([xml], { type: "application/xml" }), { upsert: true });
+  if (error) throw error;
   const { data } = sb().storage.from("arquivos").getPublicUrl(path);
   return data.publicUrl;
 }
@@ -452,7 +454,8 @@ export async function emitirCTe(
   // 8. Salvar XML se autorizado
   let xmlUrl: string | undefined;
   if (resposta.sucesso && resposta.xmlProt) {
-    try { xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt); } catch { /* best-effort */ }
+    try { xmlUrl = await salvarXml(fazendaId, built.chave, montarProcAutorizado("cte", xmlAssinado, resposta.xmlProt, "4.00")); }
+    catch (e) { console.error("[emissão cte] autorizado, mas o XML não foi guardado:", built.chave, e); }
   }
 
   // 9. Atualizar registro `ctes` com service_role_key (evita falha silenciosa por JWT expirado no cliente)
