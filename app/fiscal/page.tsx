@@ -1340,7 +1340,10 @@ function FiscalInner() {
   };
 
   // Corrigir e retransmitir — abre o modal pré-preenchido com os dados da nota rejeitada
+  // Devolução de bem de terceiro exige finalidade de devolução e NF referenciada: só as Notas de Venda enviam os dois
+  const ehDevolucaoBemTerceiro = (cfop?: string | null) => ["5555", "6555"].includes(String(cfop ?? "").replace(/\D/g, ""));
   function abrirRetransmit(nota: NotaFiscal) {
+    if (ehDevolucaoBemTerceiro(nota.cfop)) { router.push(`/comercial/faturamento?corrigir=${nota.id}`); return; }
     const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     const dj    = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
@@ -1490,6 +1493,7 @@ function FiscalInner() {
   // Emitir NF-e de Venda — build → sign → transmit SEFAZ
   const emitirVenda = async () => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir venda)", perigo: false }))) return;
+    if (ehDevolucaoBemTerceiro(fVenda.cfop)) { alert("Devolução de bem de terceiro (CFOP 5.555/6.555) é emitida em Documentos Fiscais → Notas de Venda → Avulsa — Venda, que envia a finalidade de devolução e a NF referenciada."); return; }
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
     { const div = divergenciaProdutorEmitente(); if (div) { alert(div); return; } }

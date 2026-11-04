@@ -375,13 +375,15 @@ function FaturamentoInner() {
   const duplicarFeito = useRef(false);
   useEffect(() => {
     const idComplemento = searchParams.get("complementar");
-    const id = searchParams.get("duplicar") ?? idComplemento;
+    const idCorrigir = searchParams.get("corrigir");
+    const id = searchParams.get("duplicar") ?? idComplemento ?? idCorrigir;
     if (!id || loading || duplicarFeito.current) return;
     duplicarFeito.current = true;
     window.history.replaceState(null, "", "/comercial/faturamento");
     supabase.from("notas_fiscais").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      if (data && idComplemento && (data as NotaFiscal).status === "autorizada") abrirComplemento(data as NotaFiscal);
-      else if (data && !idComplemento && podeDuplicarNota(data as NotaFiscal)) void duplicarNota(data as NotaFiscal);
+      if (data && idCorrigir && (data as NotaFiscal).status === "rejeitada") abrirRascunho(data as NotaFiscal);
+      else if (data && idComplemento && (data as NotaFiscal).status === "autorizada") abrirComplemento(data as NotaFiscal);
+      else if (data && !idComplemento && !idCorrigir && podeDuplicarNota(data as NotaFiscal)) void duplicarNota(data as NotaFiscal);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, searchParams]);
@@ -632,6 +634,7 @@ function FaturamentoInner() {
       transp_endereco: txt("transp_endereco"), transp_numero: txt("transp_numero"), transp_cidade: txt("transp_cidade"),
       placa: txt("placa"), uf_placa: txt("uf_placa"), peso_bruto: num("peso_bruto"), peso_liquido: num("peso_liquido"), especie: txt("especie"),
       local_entrega: txt("local_entrega"), contrato_numero: txt("contrato_numero"),
+      nf_ref_chave: txt("nf_ref_chave"), nf_ref_numero: txt("nf_ref_numero"),
       faturamento_direto: dj.faturamento_direto === true, peso_aproximado: dj.peso_aproximado === true,
     });
     setNfeItens((nota.itens_json ?? []).map(i => ({
@@ -704,7 +707,7 @@ function FaturamentoInner() {
       const { data, error } = await supabase.from("notas_fiscais").update({
         ...payload,
         dados_nf_json: { ...payload.dados_nf_json, rascunho: true, duplicada_de_numero: rascunhoOrigem || undefined },
-      }).eq("id", rascunhoId).eq("status", "em_digitacao").select().single();
+      }).eq("id", rascunhoId).in("status", ["em_digitacao", "rejeitada"]).select().single();
       if (error) throw error;
       setNotas(p => p.map(n => n.id === rascunhoId ? data as NotaFiscal : n));
       setModalAberto(false);
@@ -1663,6 +1666,13 @@ function FaturamentoInner() {
                             style={{ padding:"4px 10px", fontSize:11, fontWeight:600, background:"#C9921B", color:"#fff", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
                             onClick={() => abrirComplemento(nota)}>
                             ＋ Complemento {Number(djLinha.diferenca_kg).toLocaleString("pt-BR")} kg
+                          </OperationalButton>
+                        )}
+                        {nota.status === "rejeitada" && ehDevolucaoBem(nota.cfop) && (
+                          <OperationalButton data-arato-button="primary"
+                            style={{ padding:"4px 10px", fontSize:11, background:"#C9921B", color:"#fff", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
+                            onClick={() => abrirRascunho(nota)}>
+                            ↺ Corrigir e reenviar
                           </OperationalButton>
                         )}
                         {podeDuplicarNota(nota) && (

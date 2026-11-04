@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-h",
+    data: "04/11/2026",
+    titulo: "Devolução de bem de terceiro: corrigir nota rejeitada",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "NF-e de devolução de bem de terceiro rejeitada ganhou o botão Corrigir e reenviar nas Notas de Venda, mantendo a chave da NF de remessa." },
+      { tipo: "correcao", texto: "O Monitor de NF-e não reenvia mais essa nota por conta própria: ela perderia a finalidade de devolução e a NF referenciada. Agora ele abre a correção nas Notas de Venda." },
+    ],
+  },
+  {
     versao: "2026.11.04-g",
     data: "04/11/2026",
     titulo: "Devolução de bem de terceiro: CST visível na nota",
