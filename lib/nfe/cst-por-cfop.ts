@@ -16,6 +16,10 @@ export const ehTransferencia = (cfop?: string | null): boolean => CFOPS_TRANSFER
 // ou não) ao remetente. Antes caíam na regra da venda interna (CST 51, diferido), errado para essa operação.
 export const CFOPS_INDUSTRIALIZACAO = new Set(["5901", "6901", "5924", "6924", "5902", "6902", "5903", "6903", "5925", "6925"]);
 
+// Devolução de bem do ativo de terceiro recebido para uso (5555/6555): retorno da remessa 5554/6554, que sai sem ICMS.
+// Sem esta regra o 6555 caía no ICMS de 12% da venda interestadual, sobre o valor inteiro da máquina.
+export const CFOPS_DEVOLUCAO_BEM_TERCEIRO = new Set(["5555", "6555"]);
+
 /** CST de exibição com origem (3 dígitos), como aparece na DANFE (coluna O/CST). */
 export function cstExibicaoPorCfop(cfop?: string | null): string {
   const cod = String(cfop ?? "").replace(/\D/g, "");
@@ -23,6 +27,7 @@ export function cstExibicaoPorCfop(cfop?: string | null): string {
   if (cod.startsWith("7")) return "041";
   if (p4 === "5905" || p4 === "6905" || p4 === "5934" || p4 === "6934") return "041";
   if (p4 === "5556" || p4 === "6556") return "020";
+  if (CFOPS_DEVOLUCAO_BEM_TERCEIRO.has(p4)) return "041";
   if (CFOPS_INDUSTRIALIZACAO.has(p4)) return "050";
   if (p4 === "5501" || p4 === "6501") return "040";
   if (CFOPS_TRANSFERENCIA.has(p4)) return "041";

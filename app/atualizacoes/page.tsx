@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-c",
+    data: "04/11/2026",
+    titulo: "Notas de Venda: devolução de bem de terceiro (CFOP 5.555/6.555)",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "novidade", texto: "A Natureza da Operação ganhou a devolução de bem do ativo de terceiro, 5.555 e 6.555, com NF de remessa referenciada na aba Fiscal. A nota sai como devolução, com CST 041, sem ICMS, e não movimenta estoque nem financeiro." },
+    ],
+  },
+  {
     versao: "2026.11.04-b",
     data: "04/11/2026",
     titulo: "NF de remessa de bem (CFOP 5554/6554) não gera CP sozinha",

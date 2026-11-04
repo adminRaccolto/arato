@@ -3,7 +3,7 @@
  * Gera o XML de NF-e 4.00 não assinado para produtor rural (MT).
  * Todos os valores monetários são formatados com 2 casas; quantidades com 4.
  */
-import { CFOPS_INDUSTRIALIZACAO, CFOPS_TRANSFERENCIA } from "./cst-por-cfop";
+import { CFOPS_INDUSTRIALIZACAO, CFOPS_TRANSFERENCIA, CFOPS_DEVOLUCAO_BEM_TERCEIRO } from "./cst-por-cfop";
 
 export interface EmitenteCfg {
   cpf_cnpj: string;       // apenas dígitos
@@ -290,6 +290,10 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
       cst: "20", baseCalc, valorIcms,
       xml: (vBC) => `<ICMS20><orig>0</orig><CST>20</CST><modBC>3</modBC><pRedBC>${red.toFixed(4)}</pRedBC><vBC>${fmtVal(vBC)}</vBC><pICMS>${aliq.toFixed(2)}</pICMS><vICMS>${fmtVal(valorIcms(vBC))}</vICMS></ICMS20>`,
     };
+  }
+
+  if (CFOPS_DEVOLUCAO_BEM_TERCEIRO.has(prefix)) {
+    return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 
   if (prefix === "5905" || prefix === "6905" || prefix === "5934" || prefix === "6934") {

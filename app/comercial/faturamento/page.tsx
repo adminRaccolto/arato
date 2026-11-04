@@ -86,6 +86,8 @@ const NATUREZAS_VENDA = [
     obs: "Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. Esta NF acompanha o transporte fisicamente e deve referenciar a chave da NF de venda simbólica (CFOP 6.101/6.501). ICMS diferido conforme legislação estadual aplicável ao produtor rural." },
 ];
 const NATUREZAS_DEVOLUCAO = [
+  { codigo: "6.555", descricao: "Devolução de bem do ativo de terceiro — interestadual (CFOP 6.555)", obs: "Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento." },
+  { codigo: "5.555", descricao: "Devolução de bem do ativo de terceiro — interna (CFOP 5.555)", obs: "Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento." },
   { codigo: "2.201", descricao: "Devolução de venda de produção — interestadual (CFOP 2.201)", obs: "Devolução de mercadoria originada em venda interestadual. ICMS diferido estornado conforme emissão original. Funrural não incide sobre devolução." },
   { codigo: "1.201", descricao: "Devolução de venda de produção — intraestadual (CFOP 1.201)", obs: "Devolução de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissão original." },
   { codigo: "2.202", descricao: "Devolução de mercadoria adquirida — interestadual (CFOP 2.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação interestadual." },
@@ -150,6 +152,9 @@ const FVENDA_INICIAL = {
   peso_aproximado:    false, // peso informado à mão, a conferir na balança de destino
   complementar_de:    "",    // NF de origem, quando esta é a NF-e complementar (finNFe 2)
 };
+
+// Devolução de bem de terceiro: finalidade de devolução e NF de remessa referenciada são obrigatórias na SEFAZ
+const ehDevolucaoBem = (cfop: string) => cfop === "5.555" || cfop === "6.555";
 
 const FRETES = [
   { v: "0", l: "Por conta do Emitente (CIF)" }, { v: "1", l: "Por conta do Destinatário (FOB)" },
@@ -921,6 +926,7 @@ function FaturamentoInner() {
     if (iesProdutor.length > 1 && !fVenda.ie_id) { setErroForm("Selecione a IE do produtor — ela define a fazenda que emite a nota."); return; }
     if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
     if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
+    if (ehDevolucaoBem(fVenda.cfop) && fVenda.nf_ref_chave.length !== 44) { setErroForm("Devolução de bem: informe na aba Fiscal a chave da NF de remessa (44 dígitos)."); return; }
     if (!fVenda.dest_municipio_ibge) { setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
     setEmitindo(true); setErroForm(null);
     try {
@@ -987,7 +993,7 @@ function FaturamentoInner() {
               inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
               frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
               nfe_ref:   fVenda.nf_ref_chave || undefined,
-              fin_nfe:   fVenda.complementar_de ? "2" : undefined,
+              fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? "4" : undefined,
               tipo:      "1" as const,
               // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
               transporte: fVenda.transportadora || fVenda.placa ? {
@@ -1435,6 +1441,17 @@ function FaturamentoInner() {
 
       case "fiscal": return (
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          {ehDevolucaoBem(fVenda.cfop) && (
+            <div data-arato-panel="true" style={{ background:"#FBF3E0", border:"0.5px solid #C9921B", borderRadius:10, padding:14 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"#7A5A12", marginBottom:10 }}>Devolução de bem de terceiro: NF de remessa referenciada (obrigatória)</div>
+              <label data-arato-label="true" style={lbl}>Chave da NF de remessa recebida, CFOP 5554/6554 (44 dígitos)</label>
+              <input style={inp} value={fVenda.nf_ref_chave} onChange={e => fv({ nf_ref_chave: e.target.value.replace(/\D/g,"").slice(0,44) })} maxLength={44} />
+              {fVenda.nf_ref_chave && fVenda.nf_ref_chave.length !== 44 && (
+                <div style={{ fontSize:10, color:"#E24B4A", marginTop:3 }}>Chave deve ter 44 dígitos ({fVenda.nf_ref_chave.length} digitados)</div>
+              )}
+              <div style={{ fontSize:11, color:"#7A5A12", marginTop:8 }}>A nota sai com finalidade de devolução e CST 041 (sem ICMS). Não movimenta estoque nem gera Contas a Receber.</div>
+            </div>
+          )}
           {(fVenda.cfop === "6.923" || fVenda.cfop === "6.117") && (
             <div data-arato-panel="true" style={{ background: fVenda.cfop === "6.923" ? "#F2F2F2" : "#FBF3E0", border:`0.5px solid ${fVenda.cfop === "6.923" ? "#93C5FD" : "#C9921B50"}`, borderRadius:10, padding:"14px 16px" }}>
               <div style={{ fontSize:12, fontWeight:700, color: fVenda.cfop === "6.923" ? "#1E40AF" : "#7A5A12", marginBottom:10 }}>
