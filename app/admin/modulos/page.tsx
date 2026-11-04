@@ -55,6 +55,7 @@ const MODULOS_LABEL: Record<string, string> = {
   ia_consorcio:          "🤖 IA — Importar Extrato de Consórcio (Add-on)",
   ia_apolice:            "🤖 IA — Lançar Apólice de Seguro (Add-on)",
   protecao_margem:       "📊 Proteção de Margem & Hedge (Add-on)",
+  nf_confirmacao_entrega: "📦 NF de Entrada — Enviar para Aprovação (estoque só após confirmar a entrega)",
 };
 
 const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
@@ -80,7 +81,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Add-ons Opcionais",
-    modulos: ["empresas", "algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "ia_apolice", "protecao_margem"],
+    modulos: ["empresas", "algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "ia_apolice", "protecao_margem", "nf_confirmacao_entrega"],
   },
 ];
 

@@ -109,6 +109,7 @@ export const NAV: NavItem[] = [
     children: [
       { type: "divider", label: "Notas de Entrada" },
       { id: "docfis-terceiro",   label: "Notas de Terceiro",                 path: "/fiscal/documentos",             moduleId: "nf_entrada" },
+      { id: "docfis-pend-entrega", label: "Notas Pendentes de Confirmação",  path: "/fiscal/notas-pendentes-entrega", moduleId: "nf_confirmacao_entrega" },
       { id: "docfis-proprias",   label: "Notas Próprias",                    path: "/fiscal/notas-proprias",         moduleId: "fiscal_nfe" },
       { id: "docfis-ret-agric",  label: "Retorno de Produto Agrícola",       path: "/comercial/faturamento",         moduleId: "contratos"  },
       { type: "divider", label: "Notas de Saída" },

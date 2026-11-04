@@ -28,9 +28,9 @@ async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: stri
 
   // Gate por NF de verdade vinculada, não pela flag `fiscal` (pode estar
   // desatualizada — ver lib/db.ts recalcularEntregaPedidoFiscal, achado 01/10/2026).
-  const { data: nfsVinculadas } = await sb.from("nf_entradas").select("id, status").eq("pedido_compra_id", pedido_id);
+  const { data: nfsVinculadas } = await sb.from("nf_entradas").select("*").eq("pedido_compra_id", pedido_id);
   if (!nfsVinculadas?.length) return;
-  const nfIds = nfsVinculadas.filter(n => n.status === "processada").map(n => n.id);
+  const nfIds = nfsVinculadas.filter(n => n.status === "processada" && n.entrega_status !== "pendente").map(n => n.id);
 
   let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number; unidade: string | null }[] = [];
   if (nfIds.length) {
@@ -225,6 +225,8 @@ export async function POST(req: NextRequest) {
       .eq("id", nf_id);
 
     if (errStatus) throw new Error(`Erro ao atualizar status: ${errStatus.message}`);
+    // Em separado: sem a Seção 409 a coluna não existe, e isso não pode impedir o estorno
+    await sb.from("nf_entradas").update({ entrega_status: null, entrega_data: null, entrega_confirmada_por: null, entrega_opts: null }).eq("id", nf_id).not("entrega_status", "is", null);
 
     // Estorno reverte a entrega — pedido fiscal pode voltar de "entregue"/
     // "parcialmente_entregue" pra "aprovado".

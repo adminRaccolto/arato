@@ -19367,3 +19367,21 @@ CREATE POLICY "capacidade_cenarios_raccolto" ON capacidade_cenarios FOR ALL TO a
   USING ((SELECT public.rls_sou_raccotlo())) WITH CHECK ((SELECT public.rls_sou_raccotlo()));
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 409 — NF de entrada: confirmação de entrega na fazenda
+--   NF enviada para aprovação entra no CP, mas só gera estoque quando a entrega é confirmada.
+--   entrega_status: NULL = fluxo normal · pendente = aguardando confirmação · confirmada = estoque já lançado.
+--   entrega_opts guarda o que o processamento precisa repetir na confirmação (faturamentos da remessa de entrega futura).
+--   A opção é por conta: conta_modulos, módulo nf_confirmacao_entrega (Admin Raccolto → Módulos).
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS entrega_status text;
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS entrega_data date;
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS entrega_confirmada_por text;
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS entrega_opts jsonb;
+ALTER TABLE nf_entradas DROP CONSTRAINT IF EXISTS nf_entradas_entrega_status_check;
+ALTER TABLE nf_entradas ADD CONSTRAINT nf_entradas_entrega_status_check CHECK (entrega_status IS NULL OR entrega_status IN ('pendente','confirmada'));
+CREATE INDEX IF NOT EXISTS idx_nf_entradas_entrega_pendente ON nf_entradas(fazenda_id) WHERE entrega_status = 'pendente';
+COMMIT;
+NOTIFY pgrst, 'reload schema';

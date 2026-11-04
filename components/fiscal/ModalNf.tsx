@@ -394,7 +394,10 @@ export default function ModalNf({
   // aqui (ela continua existindo só uma vez, nas funções já extraídas).
   acaoInicial?: "devolver" | "estornar";
 }) {
-  const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId, contaModulosOverrides } = useAuth();
+  // Enviar para Aprovação: CP agora, estoque só quando a entrega for confirmada. Só nas contas com a opção ligada; desmarcado por padrão.
+  const confirmacaoEntregaAtiva = contaModulosOverrides["nf_confirmacao_entrega"] === true;
+  const [enviarAprovacao, setEnviarAprovacao] = useState(false);
   // Cartões do cliente — forma de pagamento Cartão de Crédito na NF (Financeiro → Cartões de Crédito)
   const [cartoesConta, setCartoesConta] = useState<CartaoCredito[]>([]);
   useEffect(() => { if (contaId) listarCartoesDaConta(contaId).then(setCartoesConta).catch(() => setCartoesConta([])); }, [contaId]);
@@ -1756,6 +1759,7 @@ export default function ModalNf({
         if (!gerarCp && !(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
           mensagem: `A NF ${nfEdit.numero} será processada sem título no Contas a Pagar.` }))) { setSaving(false); return; }
       }
+      const temItemFisico = itensDB.some(i => ["estoque", "remessa"].includes(i.tipo_apropiacao) || !!i.bomba_id);
       await processarNfEntrada(
         nfEdit.id,
         fazendaId,
@@ -1770,6 +1774,7 @@ export default function ModalNf({
         {
           nfeNumero:           nfEdit.numero,
           gerarCp,
+          aguardarEntrega:     confirmacaoEntregaAtiva && enviarAprovacao && temItemFisico,
           vefNfIds:            tipo === "remessa" && vefSel.length ? vefSel : undefined,
           dataVencimentoCp:    cab.data_vencimento_cp || nfEdit.data_vencimento_cp,
           formaPagamento:      cab.forma_pagamento || (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
@@ -1939,6 +1944,7 @@ export default function ModalNf({
 
   // ── Abrir modal de devolução ──────────────────────────────
   async function abrirDevolucao(nf: NfEntrada) {
+    if (nf.entrega_status === "pendente") { alert(`A NF ${nf.numero} ainda aguarda a confirmação de entrega: não há estoque para devolver. Confirme a entrega em Notas Pendentes de Confirmação, ou estorne a NF.`); return; }
     setDevNfOrig(nf);
     setDevIeOrigem(nf.ie_produtor ?? null);
     setDevMunicipioOrigem(null);
@@ -4283,7 +4289,7 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && (
                         <button data-arato-button="secondary" onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
-                      {nfEdit && nfEdit.status === "processada" && podeDevolverNf(nfEdit.tipo_entrada) && (
+                      {nfEdit && nfEdit.status === "processada" && nfEdit.entrega_status !== "pendente" && podeDevolverNf(nfEdit.tipo_entrada) && (
                         <button data-arato-button="secondary" onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
@@ -4297,7 +4303,14 @@ export default function ModalNf({
                       )}
                     </div>
                     {!viewOnly && (
-                      <div style={{ display: "flex", gap: 10 }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        {confirmacaoEntregaAtiva && nfEdit?.status !== "processada" && itens.some(i => i.tipo_apropiacao !== "vef") && (
+                          <label title="A NF entra e vai para o Contas a Pagar, mas o estoque só é lançado depois de confirmar a entrega na fazenda (Documentos Fiscais → Notas Pendentes de Confirmação)."
+                            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#7A5200", cursor: "pointer" }}>
+                            <input type="checkbox" checked={enviarAprovacao} onChange={e => setEnviarAprovacao(e.target.checked)} />
+                            Enviar para Aprovação
+                          </label>
+                        )}
                         <button data-arato-button="secondary" style={btnR} onClick={async () => {
                           // NF já processada NÃO volta a pendente direto (deixava título e estoque lançados): reabrir = estornar
                           if (nfEdit?.status === "processada") { await estornarNFClick(nfEdit); return; }

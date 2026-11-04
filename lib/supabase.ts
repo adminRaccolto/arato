@@ -1393,6 +1393,11 @@ export type NfEntrada = {
   valor_icms_deson?: number;   // ICMS desonerado (<ICMSTot><vICMSDeson>) — reduz o total abaixo do valor dos produtos
   xml_storage_path?: string;
   processado_por?: string;
+  // Confirmação de entrega (Seção 409): pendente = CP lançado, estoque só depois de confirmar
+  entrega_status?: "pendente" | "confirmada" | null;
+  entrega_data?: string | null;
+  entrega_confirmada_por?: string | null;
+  entrega_opts?: { vefNfIds?: string[] } | null;
   created_at?: string;
 };
 

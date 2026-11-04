@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-y",
+    data: "03/11/2026",
+    titulo: "NF de entrada: Enviar para Aprovação",
+    modulos: ["Documentos Fiscais", "Estoque"],
+    itens: [
+      { tipo: "novidade", texto: "Para contas com a opção ativada: ao processar a NF, marque Enviar para Aprovação quando a mercadoria ainda não chegou. A NF entra e vai para o Contas a Pagar, mas o estoque só é lançado depois de confirmar a entrega no novo painel Notas Pendentes de Confirmação. Sem marcar, tudo segue como hoje." },
+    ],
+  },
+  {
     versao: "2026.11.03-x",
     data: "03/11/2026",
     titulo: "NF-e: número de nota já usado",

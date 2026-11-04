@@ -101,7 +101,7 @@ Máquinas: Máquinas e Veículos · Abastecimento de Máquinas · Manutenções 
 Algodão (add-on opcional): Safra & Operações · Monitoramento de Bicudo · Colheita & Módulos · Algodoeira/Beneficiamento · HVI & Qualidade · Posição de Algodão
 
 ### Documentos Fiscais
-Notas de Entrada: Notas de Terceiro (/fiscal/documentos) · Notas Próprias · Retorno de Insumo · Retorno de Máquinas e Equipamentos · Retorno de Produto Agrícola
+Notas de Entrada: Notas de Terceiro (/fiscal/documentos) · Notas Pendentes de Confirmação (/fiscal/notas-pendentes-entrega, só com a opção ativa na conta) · Notas Próprias · Retorno de Insumo · Retorno de Máquinas e Equipamentos · Retorno de Produto Agrícola
 Notas de Saída: Notas de Venda · Notas de Transferência · Remessa
 Transporte: CT-e · MDF-e
 
@@ -335,6 +335,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 **IA — Lançar Apólice de Seguro (30/10/2026)**: add-on liberado pela Raccolto em Admin → Módulos (ia_apolice). Em Financeiro → Seguros aparece o quadro \"Lançar Apólice com IA\": envie o PDF da apólice; a IA lê nº da apólice, seguradora, corretora e contato, ramo (máquinas, automóvel, rural, patrimonial, vida, responsabilidade civil), bem segurado, importância segurada, prêmio total, vigência e as parcelas do prêmio, e abre o formulário preenchido. Máquina/veículo é vinculado ao cadastro pelo chassi, placa ou nº de série; seguro rural, à fazenda pelo local do risco; seguro de vida, ao produtor pelo CPF. Franquia, coberturas e segurado ficam na observação. Confira e clique em Salvar: as parcelas do prêmio viram Contas a Pagar com a operação gerencial do ramo, igual ao lançamento manual. O PDF não é anexado sozinho: depois de salvar, anexe na aba Anexo.
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
+
+**Enviar para Aprovação na NF de entrada (03/11/2026)**: opção por conta, ativada pela equipe Raccolto em Admin → Módulos (NF de Entrada — Enviar para Aprovação); o padrão é desligada e o seletor nem aparece. Com ela ligada, ao processar a NF aparece o seletor "Enviar para Aprovação", sempre desmarcado. Sem marcar, a NF segue o processo normal. Marcado, a NF fica processada e o Contas a Pagar nasce na hora, mas nada físico é lançado: estoque, princípio ativo, bomba, manutenção e abastecimento da NF, e a baixa do faturamento de entrega futura, ficam para a confirmação. A NF aparece em Documentos Fiscais → Notas Pendentes de Confirmação, com os dias de espera. Em "Confirmar entrega" o usuário informa a data da entrega, que vira a data da movimentação de estoque; o CP não muda. Enquanto aguarda, ela não conta como entrega no Pedido de Compra e não pode ser devolvida (não há estoque); pode ser estornada normalmente. Requer a Seção 409.
 
 **Recusa por número já usado (03/11/2026)**: se a SEFAZ responde que o número já existe, a nota não foi emitida. A chave citada na mensagem é da nota antiga, e não deve ser registrada como nota nova. O sistema tenta os números seguintes. Se continuar recusando, ajuste o próximo número da IE em Parâmetros → Fiscal para depois do último usado.
 

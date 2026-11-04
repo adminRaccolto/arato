@@ -2948,82 +2948,12 @@ export async function outraCopiaProcessadaDaNf(nfId: string): Promise<{ numero: 
   return { numero: String(achada.numero ?? ""), fazenda: (faz?.nome as string | undefined) ?? null };
 }
 
-export async function processarNfEntrada(
-  nfId: string,
-  fazenda_id: string,
-  itens: NfEntradaItem[],
-  valorTotal: number,
-  emitente: string,
-  dataEntrada: string,
-  emitenteCnpj?: string,
-  opts?: {
-    nfeNumero?: string;
-    dataVencimentoCp?: string;
-    formaPagamento?: string;
-    tipoEntrada?: string;
-    anoSafraId?: string;
-    cicloId?: string;
-    operacaoGerencialId?: string;
-    centroCustoId?: string;
-    pedidoCompraId?: string;
-    produtorId?: string;
-    maquinaId?: string;
-    parcelas?: { data: string; valor: number }[];
-    /** Forma de pagamento Cartão de Crédito: os títulos nascem no cartão (status 'cartao', na fatura do mês). */
-    cartaoId?: string;
-    /** false = sem CP: CFOP genérico 5949/6949 que o usuário disse não ser compra, ou OG habilitada só para Notas Fiscais
-     *  (sem Contas a Pagar/Receber). Sem resposta, gera CP. */
-    gerarCp?: boolean;
-    /** Remessa de entrega futura: NFs de simples faturamento (VEF) que esta remessa baixa. Sem escolha, as do fornecedor. */
-    vefNfIds?: string[];
-  },
+// Parte física do processamento da NF: estoque, princípio ativo, manutenção, abastecimento, terceiros, entrega futura e bomba.
+// Sem CP: quem chama cuida do financeiro. Roda ao processar ou, na NF enviada para aprovação, ao confirmar a entrega.
+async function lancarItensDaNf(
+  nfId: string, fazenda_id: string, itens: NfEntradaItem[], valorTotal: number, emitente: string, dataEntrada: string,
+  cnpjRaw: string, cnpjFmt: string, vefNfIds?: string[],
 ): Promise<void> {
-  // Normaliza CNPJ do emitente para dígitos puros — o XML entrega sem máscara,
-  // mas pessoas.cpf_cnpj pode estar salvo com ou sem máscara dependendo da origem.
-  // A busca usa OR das duas formas para cobrir ambos os casos.
-  const cnpjRaw = (emitenteCnpj ?? "").replace(/\D/g, "");
-  const cnpjFmt = cnpjRaw.length === 14
-    ? cnpjRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
-    : cnpjRaw.length === 11
-      ? cnpjRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
-      : cnpjRaw;
-
-  // Trava contra duplicação real (caso NF 26967, set/2026): a limpeza "antes de
-  // recriar" nos chamadores (processarNF, Estornar) filtrava só por
-  // nf_entrada_item_id — se uma movimentação ficasse órfã (item apagado/id
-  // ausente no meio de uma falha), nenhuma limpeza a encontrava de novo, e cada
-  // nova tentativa empilhava mais estoque e mais CP em vez de substituir.
-  // Defesa aqui, na função que de fato cria os dados: apaga qualquer resíduo já
-  // ligado a esta NF (por nf_entrada_id, que nunca fica nulo) antes de inserir
-  // qualquer coisa nova — não depende de o chamador lembrar de limpar direito.
-  // NF já processada nunca é processada de novo por aqui: processar duas vezes (lote repetido, clique duplo,
-  // tela desatualizada) empilhava estoque e título. Para refazer, a NF precisa ser estornada antes (volta a pendente).
-  let nfVinc: Record<string, string | null> = {};
-  {
-    const { data: nfSt } = await supabase.from("nf_entradas").select("status, numero, operacao_gerencial_id, centro_custo_id, ano_safra_id, ciclo_id").eq("id", nfId).maybeSingle();
-    nfVinc = (nfSt ?? {}) as Record<string, string | null>;
-    if (nfSt?.status === "processada") {
-      throw new Error(`NF ${nfSt.numero ?? ""} já está processada. Para processar de novo, estorne antes (reverte estoque e financeiro).`);
-    }
-  }
-  // A mesma NF (outra cópia: SIEG × XML × manual) já processada em qualquer fazenda da conta: recusa ANTES de lançar
-  // estoque ou CP. O banco também recusa (Seção 362), mas só no fim, quando estoque/título já teriam sido criados.
-  {
-    const copia = await outraCopiaProcessadaDaNf(nfId);
-    if (copia) throw new Error(`Esta NF (nº ${copia.numero}) já foi processada em outra cópia${copia.fazenda ? `, na fazenda ${copia.fazenda}` : ""}. Abra a NF já processada em vez de processar de novo; esta cópia pode ser excluída.`);
-  }
-  await limparMovimentacoesEFinanceiroDaNf(nfId);
-  // Classificação do CP: a informada na tela ou, sem ela, a que a própria NF já guarda (antes o CP — principalmente o de
-  // Empresa/PJ — saía sem operação gerencial, safra, ciclo e centro de custo quando o chamador não repassava esses campos).
-  const ogEfetiva     = opts?.operacaoGerencialId || nfVinc.operacao_gerencial_id || undefined;
-  const ccEfetivo     = opts?.centroCustoId       || nfVinc.centro_custo_id       || undefined;
-  const safraEfetiva  = opts?.anoSafraId          || nfVinc.ano_safra_id          || undefined;
-  const cicloEfetivo  = opts?.cicloId             || nfVinc.ciclo_id              || undefined;
-
-  // Produtor do CP: o informado na tela ou, sem ele, o do CPF/CNPJ do destinatário da NF (antes ficava em branco
-  // em todo CP de NF processada sem escolher o produtor, e o relatório/filtro por produtor perdia o título).
-  const produtorEfetivo = opts?.produtorId || (await resolverProdutorDaNf(nfId, fazenda_id).catch(() => null)) || undefined;
-
   // Fator que ajusta o custo de cada item pro que será REALMENTE pago: valorTotal (o parâmetro,
   // já líquido de IPI/ST/FCP-ST/DIFAL/Desconto/ICMS Desonerado do cabeçalho — é o que vira Conta a
   // Pagar) dividido pela soma bruta dos itens (que é só o valor dos produtos, sem esses ajustes).
@@ -3238,13 +3168,13 @@ export async function processarNfEntrada(
       // cada baixa (Seção 387) para o estorno devolver o saldo e para o saldo a entregar por faturamento.
       let q = supabase.from("estoque_terceiros").select("id, nf_entrada_id, insumo_id, quantidade_saldo, quantidade_original, created_at")
         .eq("insumo_id", item.insumo_id).in("status", ["aberto", "parcial"]);
-      if (opts?.vefNfIds?.length) q = q.in("nf_entrada_id", opts.vefNfIds);
+      if (vefNfIds?.length) q = q.in("nf_entrada_id", vefNfIds);
       else {
         q = q.eq("fazenda_id", fazenda_id);
         if (cnpjRaw) q = q.or(`terceiro_cnpj.eq.${cnpjRaw},terceiro_cnpj.eq.${cnpjFmt}`);
       }
       const { data: saldosVef } = await q.order("created_at", { ascending: true });
-      const { baixas } = alocarRemessa((saldosVef ?? []) as SaldoVef[], [{ item_id: item.id, insumo_id: item.insumo_id, quantidade: Number(item.quantidade) }], opts?.vefNfIds);
+      const { baixas } = alocarRemessa((saldosVef ?? []) as SaldoVef[], [{ item_id: item.id, insumo_id: item.insumo_id, quantidade: Number(item.quantidade) }], vefNfIds);
       for (const bx of baixas) {
         const reg = (saldosVef ?? []).find(x => x.id === bx.estoque_terceiro_id)!;
         const novoSaldo = Math.max(0, Math.round((Number(reg.quantidade_saldo) - bx.quantidade) * 10000) / 10000);
@@ -3289,6 +3219,90 @@ export async function processarNfEntrada(
           .eq("id", item.bomba_id);
       }
     }
+  }
+}
+
+export async function processarNfEntrada(
+  nfId: string,
+  fazenda_id: string,
+  itens: NfEntradaItem[],
+  valorTotal: number,
+  emitente: string,
+  dataEntrada: string,
+  emitenteCnpj?: string,
+  opts?: {
+    nfeNumero?: string;
+    dataVencimentoCp?: string;
+    formaPagamento?: string;
+    tipoEntrada?: string;
+    anoSafraId?: string;
+    cicloId?: string;
+    operacaoGerencialId?: string;
+    centroCustoId?: string;
+    pedidoCompraId?: string;
+    produtorId?: string;
+    maquinaId?: string;
+    parcelas?: { data: string; valor: number }[];
+    /** Forma de pagamento Cartão de Crédito: os títulos nascem no cartão (status 'cartao', na fatura do mês). */
+    cartaoId?: string;
+    /** false = sem CP: CFOP genérico 5949/6949 que o usuário disse não ser compra, ou OG habilitada só para Notas Fiscais
+     *  (sem Contas a Pagar/Receber). Sem resposta, gera CP. */
+    gerarCp?: boolean;
+    /** Remessa de entrega futura: NFs de simples faturamento (VEF) que esta remessa baixa. Sem escolha, as do fornecedor. */
+    vefNfIds?: string[];
+    /** Enviar para Aprovação: gera o CP agora; o estoque só entra em confirmarEntregaNf. */
+    aguardarEntrega?: boolean;
+  },
+): Promise<void> {
+  // Normaliza CNPJ do emitente para dígitos puros — o XML entrega sem máscara,
+  // mas pessoas.cpf_cnpj pode estar salvo com ou sem máscara dependendo da origem.
+  // A busca usa OR das duas formas para cobrir ambos os casos.
+  const cnpjRaw = (emitenteCnpj ?? "").replace(/\D/g, "");
+  const cnpjFmt = cnpjRaw.length === 14
+    ? cnpjRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+    : cnpjRaw.length === 11
+      ? cnpjRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+      : cnpjRaw;
+
+  // Trava contra duplicação real (caso NF 26967, set/2026): a limpeza "antes de
+  // recriar" nos chamadores (processarNF, Estornar) filtrava só por
+  // nf_entrada_item_id — se uma movimentação ficasse órfã (item apagado/id
+  // ausente no meio de uma falha), nenhuma limpeza a encontrava de novo, e cada
+  // nova tentativa empilhava mais estoque e mais CP em vez de substituir.
+  // Defesa aqui, na função que de fato cria os dados: apaga qualquer resíduo já
+  // ligado a esta NF (por nf_entrada_id, que nunca fica nulo) antes de inserir
+  // qualquer coisa nova — não depende de o chamador lembrar de limpar direito.
+  // NF já processada nunca é processada de novo por aqui: processar duas vezes (lote repetido, clique duplo,
+  // tela desatualizada) empilhava estoque e título. Para refazer, a NF precisa ser estornada antes (volta a pendente).
+  let nfVinc: Record<string, string | null> = {};
+  {
+    const { data: nfSt } = await supabase.from("nf_entradas").select("status, numero, operacao_gerencial_id, centro_custo_id, ano_safra_id, ciclo_id").eq("id", nfId).maybeSingle();
+    nfVinc = (nfSt ?? {}) as Record<string, string | null>;
+    if (nfSt?.status === "processada") {
+      throw new Error(`NF ${nfSt.numero ?? ""} já está processada. Para processar de novo, estorne antes (reverte estoque e financeiro).`);
+    }
+  }
+  // A mesma NF (outra cópia: SIEG × XML × manual) já processada em qualquer fazenda da conta: recusa ANTES de lançar
+  // estoque ou CP. O banco também recusa (Seção 362), mas só no fim, quando estoque/título já teriam sido criados.
+  {
+    const copia = await outraCopiaProcessadaDaNf(nfId);
+    if (copia) throw new Error(`Esta NF (nº ${copia.numero}) já foi processada em outra cópia${copia.fazenda ? `, na fazenda ${copia.fazenda}` : ""}. Abra a NF já processada em vez de processar de novo; esta cópia pode ser excluída.`);
+  }
+  await limparMovimentacoesEFinanceiroDaNf(nfId);
+  // Classificação do CP: a informada na tela ou, sem ela, a que a própria NF já guarda (antes o CP — principalmente o de
+  // Empresa/PJ — saía sem operação gerencial, safra, ciclo e centro de custo quando o chamador não repassava esses campos).
+  const ogEfetiva     = opts?.operacaoGerencialId || nfVinc.operacao_gerencial_id || undefined;
+  const ccEfetivo     = opts?.centroCustoId       || nfVinc.centro_custo_id       || undefined;
+  const safraEfetiva  = opts?.anoSafraId          || nfVinc.ano_safra_id          || undefined;
+  const cicloEfetivo  = opts?.cicloId             || nfVinc.ciclo_id              || undefined;
+
+  // Produtor do CP: o informado na tela ou, sem ele, o do CPF/CNPJ do destinatário da NF (antes ficava em branco
+  // em todo CP de NF processada sem escolher o produtor, e o relatório/filtro por produtor perdia o título).
+  const produtorEfetivo = opts?.produtorId || (await resolverProdutorDaNf(nfId, fazenda_id).catch(() => null)) || undefined;
+
+  // Enviada para aprovação: o estoque (e o que depende da mercadoria chegar) fica para confirmarEntregaNf.
+  if (!opts?.aguardarEntrega) {
+    await lancarItensDaNf(nfId, fazenda_id, itens, valorTotal, emitente, dataEntrada, cnpjRaw, cnpjFmt, opts?.vefNfIds);
   }
 
   // ── Pessoa: lookup por CNPJ ou auto-cria fornecedor ──────────────────────
@@ -3370,6 +3384,10 @@ export async function processarNfEntrada(
   const temOutros  = itens.some(i => !["vef","remessa"].includes(i.tipo_apropiacao));
 
   const nfUpdates: Record<string, unknown> = { status: "processada", data_entrada: dataEntrada };
+  if (opts?.aguardarEntrega) {
+    nfUpdates.entrega_status = "pendente";
+    nfUpdates.entrega_opts = opts.vefNfIds?.length ? { vefNfIds: opts.vefNfIds } : null;
+  }
   if (pessoaId) nfUpdates.pessoa_id = pessoaId;
   if (opts?.dataVencimentoCp) nfUpdates.data_vencimento_cp = opts.dataVencimentoCp;
   if (opts?.formaPagamento)   nfUpdates.forma_pagamento    = opts.formaPagamento;
@@ -3637,6 +3655,32 @@ export async function verificarExclusaoNf(nfId: string): Promise<{
   return { lancamento: lanc ?? null };
 }
 
+// Confirma que a NF enviada para aprovação chegou na fazenda: lança o estoque. O CP já existe desde o processamento.
+// A troca pendente→confirmada vem primeiro: dois cliques (ou duas pessoas) não lançam o estoque duas vezes.
+export async function confirmarEntregaNf(nfId: string, dataEntrega: string, confirmadoPor?: string | null): Promise<void> {
+  const { data: reservada, error: eRes } = await supabase.from("nf_entradas")
+    .update({ entrega_status: "confirmada", entrega_data: dataEntrega, entrega_confirmada_por: confirmadoPor ?? null })
+    .eq("id", nfId).eq("entrega_status", "pendente").eq("status", "processada")
+    .select("id, fazenda_id, valor_total, emitente_nome, emitente_cnpj, entrega_opts, pedido_compra_id");
+  if (eRes) throw eRes;
+  const nf = reservada?.[0];
+  if (!nf) throw new Error("Esta NF não está mais aguardando confirmação. Atualize a tela.");
+  try {
+    const { data: itens, error: eIt } = await supabase.from("nf_entrada_itens").select("*").eq("nf_entrada_id", nfId);
+    if (eIt) throw eIt;
+    const cnpjRaw = String(nf.emitente_cnpj ?? "").replace(/\D/g, "");
+    const cnpjFmt = cnpjRaw.length === 14
+      ? cnpjRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+      : cnpjRaw.length === 11 ? cnpjRaw.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : cnpjRaw;
+    await lancarItensDaNf(nfId, nf.fazenda_id as string, (itens ?? []) as NfEntradaItem[], Number(nf.valor_total ?? 0),
+      String(nf.emitente_nome ?? ""), dataEntrega, cnpjRaw, cnpjFmt, (nf.entrega_opts as { vefNfIds?: string[] } | null)?.vefNfIds);
+  } catch (e) {
+    await supabase.from("nf_entradas").update({ entrega_status: "pendente", entrega_data: null, entrega_confirmada_por: null }).eq("id", nfId);
+    throw e;
+  }
+  if (nf.pedido_compra_id) await recalcularEntregaPedidoFiscal(nf.pedido_compra_id as string);
+}
+
 // Exclui NF e reverte todas as movimentações associadas
 export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise<void> {
   // 1. Itens da NF
@@ -3721,6 +3765,8 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   // 5. Itens + volta status para pendente (pronta para reprocessar)
   await falharSeErro(supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId), "excluir nf_entrada_itens");
   await supabase.from("nf_entradas").update({ status: "pendente" }).eq("id", nfId);
+  // Em separado: sem a Seção 409 a coluna não existe, e isso não pode impedir o estorno
+  await supabase.from("nf_entradas").update({ entrega_status: null, entrega_data: null, entrega_confirmada_por: null, entrega_opts: null }).eq("id", nfId).not("entrega_status", "is", null);
 
   // Estorno reverte a entrega — pedido fiscal pode voltar de "entregue"/
   // "parcialmente_entregue" pra "aprovado".
@@ -5570,9 +5616,10 @@ export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | u
   // apontando pra ele, então esse gate continua protegendo registrarEntrega/
   // pedidos_compra_entregas de ser pisado por este recálculo.
   const { data: nfsVinculadas } = await supabase.from("nf_entradas")
-    .select("id, status").eq("pedido_compra_id", pedido_id);
+    .select("*").eq("pedido_compra_id", pedido_id);
   if (!nfsVinculadas?.length) return; // pedido manual de verdade — nunca recebeu NF
-  const nfIds = nfsVinculadas.filter(n => n.status === "processada").map(n => n.id);
+  // NF aguardando confirmação ainda não chegou na fazenda: não conta como entrega do pedido
+  const nfIds = nfsVinculadas.filter(n => n.status === "processada" && n.entrega_status !== "pendente").map(n => n.id);
 
   let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number; unidade: string | null }[] = [];
   if (nfIds.length) {
