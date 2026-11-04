@@ -36,3 +36,10 @@
     [data-arato-grid] > thead > .arato-grid-column-filters > th { position:static; }
   }
 }
+
+/* Formulário longo em tela: campos da mesma altura e menos espaço entre eles (CT-e, 04/11/2026) */
+html [data-arato-dialog][data-arato-compacto=true] :is(input:not([type=checkbox]):not([type=radio]),select) { min-height:32px !important; height:32px !important; padding:5px 9px !important; border-radius:8px !important; font-size:13px !important; }
+html [data-arato-dialog][data-arato-compacto=true] textarea { padding:6px 9px !important; border-radius:8px !important; font-size:13px !important; }
+html [data-arato-dialog][data-arato-compacto=true] .input-data-calendario input { min-height:0 !important; height:auto !important; padding:0 !important; border:0 !important; }
+html [data-arato-dialog][data-arato-compacto=true] [data-arato-label=true] { margin-bottom:3px !important; }
+html [data-arato-dialog][data-arato-compacto=true] [data-arato-fields=true] { gap:10px !important; }

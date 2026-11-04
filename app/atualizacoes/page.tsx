@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-p",
+    data: "04/11/2026",
+    titulo: "CT-e: tela mais compacta e com os endereços",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Campos mais próximos, Remetente e Destinatário lado a lado, e o endereço de Emitente, Remetente e Destinatário como vai no XML." },
+      { tipo: "correcao", texto: "Ao reabrir um CT-e, os seletores de Remetente e Destinatário mostram quem já está escolhido." },
+    ],
+  },
+  {
     versao: "2026.11.04-o",
     data: "04/11/2026",
     titulo: "CT-e: código do município do emitente sem depender da internet",

@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Endereços na tela do CT-e (04/11/2026)**: abaixo de Emitente, Remetente e Destinatário aparece o endereço como vai no XML. É só leitura: para corrigir, altere o cadastro (Cadastros, Empresas, para a transportadora; Pessoas ou Produtores, para os demais). Remetente ou Destinatário sem endereço no cadastro saem como "ZONA RURAL", "S/N". Expedidor, Recebedor e Tomador (Outros) continuam com endereço digitado no próprio CT-e.
+
 **XML de CT-e e MDF-e (04/11/2026)**: a partir desta data, o arquivo guardado de cada CT-e e MDF-e autorizado traz o documento assinado e o protocolo. Os emitidos antes guardam só o protocolo; a autorização deles na SEFAZ não muda.
 
 **CT-e e código do município do emitente (04/11/2026)**: se o cadastro da transportadora tem o nome do município sem o código IBGE, o sistema acha o código pela cidade e UF, na tabela oficial guardada no próprio Arato. Se não reconhecer a cidade, avisa antes de transmitir e o número do CT-e não é consumido: confira a cidade e a UF em Cadastros, Empresas, ou informe o Código IBGE em Parâmetros do Sistema, Fiscal. Os campos de IBGE da tela do CT-e são da origem e do destino, não do emitente. Uma rejeição 215 ("Falha no Schema XML") aponta dado em formato inválido no XML, e não diz qual campo.

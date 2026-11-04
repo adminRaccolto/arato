@@ -119,6 +119,22 @@ interface IeCompleta {
   municipio_ibge?: string; cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string;
 }
 
+interface EnderecoCte { logradouro: string; numero: string; bairro: string; cep: string; municipio: string; uf: string; ibge: string; }
+
+// Endereço como vai no XML. Só leitura: a correção é feita no cadastro, para valer também nos próximos documentos.
+function EnderecoNoXml({ endereco, aviso }: { endereco: EnderecoCte | null; aviso?: string }) {
+  if (!endereco) return null;
+  const e = endereco;
+  const cep = e.cep.replace(/\D/g, "").replace(/^(\d{5})(\d{3})$/, "$1-$2");
+  return (
+    <div style={{ gridColumn: "1 / -1", background: "var(--bg-tag)", borderRadius: 8, padding: "7px 10px", fontSize: 12, color: "var(--text-1)", lineHeight: 1.5 }}>
+      <div><span style={{ color: "var(--text-3)" }}>Endereço: </span>{e.logradouro || "Não informado"}{e.numero ? `, ${e.numero}` : ""}{e.bairro ? ` · ${e.bairro}` : ""}{cep ? ` · CEP ${cep}` : ""}</div>
+      <div><span style={{ color: "var(--text-3)" }}>Município: </span>{e.municipio || "Não informado"}{e.uf ? `/${e.uf}` : ""}{e.ibge ? ` · IBGE ${e.ibge}` : ""}</div>
+      {aviso && !e.logradouro && <div style={{ color: "#7B4A00", marginTop: 3 }}>{aviso}</div>}
+    </div>
+  );
+}
+
 // Expedidor / Recebedor — participantes opcionais do CT-e (grupos <exped>/<receb>; tomador 1/2).
 type ParticCte = { nome: string; cnpj: string; ie: string; logradouro: string; numero: string; bairro: string; cep: string; municipio: string; uf: string; ibge: string };
 const PARTIC_VAZIO = (): ParticCte => ({ nome: "", cnpj: "", ie: "", logradouro: "", numero: "", bairro: "", cep: "", municipio: "", uf: "MT", ibge: "" });
@@ -820,10 +836,19 @@ function CtePageInner() {
       motorista_nome: c.motorista_nome ?? "", motorista_cpf: c.motorista_cpf ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
     });
-    setRemetenteSelUI("");
+    // Reabrir mostra quem está no CT-e: produtor não tem id gravado, é reconhecido pelo CPF/CNPJ
+    const docIgual = (x?: string | null, y?: string | null) => !!x && (x ?? "").replace(/\D/g, "") === (y ?? "").replace(/\D/g, "");
+    const opcaoDoCombo = (id?: string | null, doc?: string | null) => {
+      if (id && pessoas.some(p => p.id === id)) return `pessoa:${id}`;
+      const prod = produtores.find(p => docIgual(p.cpf_cnpj, doc));
+      if (prod) return `produtor:${prod.id}`;
+      const pessoa = pessoas.find(p => docIgual(p.cpf_cnpj, doc));
+      return pessoa ? `pessoa:${pessoa.id}` : "";
+    };
+    setRemetenteSelUI(opcaoDoCombo(c.remetente_id, c.remetente_cnpj));
     setMostrarExp(false); setMostrarRec(false);
     setIesRemetente([]);
-    setDestinatarioSelUI("");
+    setDestinatarioSelUI(opcaoDoCombo(c.destinatario_id, c.destinatario_cnpj));
     setIesDestinatario([]);
     setErr("");
     setModal(true);
@@ -877,6 +902,56 @@ function CtePageInner() {
     }
     return ies[0]; // sem IE informada ou sem match — melhor esforço, primeira ativa
   }
+
+  // ── Endereços que vão no XML (só leitura): mesma origem usada ao transmitir ──
+  const [enderecoEmit, setEnderecoEmit] = useState<EnderecoCte | null>(null);
+  const [enderecoRem, setEnderecoRem] = useState<EnderecoCte | null>(null);
+  const [enderecoDest, setEnderecoDest] = useState<EnderecoCte | null>(null);
+
+  useEffect(() => {
+    if (!modal || !form.emitente_id) { setEnderecoEmit(null); return; }
+    let ativo = true;
+    (async () => {
+      const { data: e } = await supabase.from("empresas").select("logradouro, numero, bairro, cep, municipio, municipio_ibge, estado, cpf_cnpj").eq("id", form.emitente_id).maybeSingle();
+      const digits = (e?.cpf_cnpj ?? form.emitente_cnpj ?? "").replace(/\D/g, "");
+      const ids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+      const { data: cfgRow } = digits && ids.length
+        ? await supabase.from("configuracoes_modulo").select("config").in("fazenda_id", ids).eq("modulo", `fiscal_emp_${digits}`).limit(1).maybeSingle()
+        : { data: null };
+      const c = (cfgRow?.config ?? {}) as Record<string, string>;
+      const municipio = e?.municipio || c.municipio_nome || "", uf = e?.estado || c.uf_emitente || "";
+      const { ibgeDoMunicipio } = await import("../../../lib/fiscal/municipios-ibge");
+      if (ativo) setEnderecoEmit({
+        logradouro: e?.logradouro || c.logradouro || "", numero: e?.numero || c.numero || "", bairro: e?.bairro || c.bairro || "", cep: e?.cep || c.cep || "",
+        municipio, uf, ibge: e?.municipio_ibge || c.municipio_ibge || ibgeDoMunicipio(uf, municipio),
+      });
+    })().catch(() => { if (ativo) setEnderecoEmit(null); });
+    return () => { ativo = false; };
+  }, [modal, form.emitente_id, form.emitente_cnpj, fazendaId, fazendaIds]);
+
+  const enderecoDoParticipante = useCallback(async (id: string, doc: string, ie: string, municipio: string, uf: string, ibge: string): Promise<EnderecoCte | null> => {
+    const pessoa = pessoas.find(p => p.id === id);
+    const pelaIe = pessoa || !/^(\d{11}|\d{14})$/.test(doc.replace(/\D/g, "")) ? null : await resolverEnderecoPorCnpjIe(doc, ie);
+    const o = pessoa ?? pelaIe;
+    return { logradouro: o?.logradouro || "ZONA RURAL", numero: o?.numero || "S/N", bairro: o?.bairro || "ZONA RURAL", cep: o?.cep || "", municipio: o?.municipio || municipio, uf: (pessoa?.estado ?? pelaIe?.estado) || uf, ibge: o?.municipio_ibge || ibge };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pessoas]);
+
+  useEffect(() => {
+    if (!modal) return;
+    let ativo = true;
+    enderecoDoParticipante(form.remetente_id, form.remetente_cnpj, form.remetente_ie, form.municipio_origem, form.uf_origem, form.ibge_origem)
+      .then(e => { if (ativo) setEnderecoRem(e); }).catch(() => {});
+    return () => { ativo = false; };
+  }, [modal, enderecoDoParticipante, form.remetente_id, form.remetente_cnpj, form.remetente_ie, form.municipio_origem, form.uf_origem, form.ibge_origem]);
+
+  useEffect(() => {
+    if (!modal) return;
+    let ativo = true;
+    enderecoDoParticipante(form.destinatario_id, form.destinatario_cnpj, form.destinatario_ie, form.municipio_destino, form.uf_destino, form.ibge_destino)
+      .then(e => { if (ativo) setEnderecoDest(e); }).catch(() => {});
+    return () => { ativo = false; };
+  }, [modal, enderecoDoParticipante, form.destinatario_id, form.destinatario_cnpj, form.destinatario_ie, form.municipio_destino, form.uf_destino, form.ibge_destino]);
 
   // ── Auto-fill remetente — atalho combinado (Produtores + Pessoas/terceiros) ──
   // ctes.remetente_id só aceita pessoas(id) (FK ctes_remetente_id_fkey). Quando o atalho vem de
@@ -1979,7 +2054,7 @@ function CtePageInner() {
 
       {modal && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1060, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div data-arato-dialog="page" data-arato-compacto="true" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1180, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2102,6 +2177,7 @@ function CtePageInner() {
                         </option>
                       ))}
                     </SelectField>
+                    {form.emitente_id && <div style={{ display: "grid", marginTop: 8 }}><EnderecoNoXml endereco={enderecoEmit} aviso="Sem endereço no cadastro: o XML sai com “Nao informado”, bairro “Centro” e CEP padrão. Complete em Cadastros → Empresas." /></div>}
                   </div>
                 )}
               </div>
@@ -2146,7 +2222,9 @@ function CtePageInner() {
                 <input value={form.natureza_operacao} maxLength={60} onChange={e => setForm(f => ({ ...f, natureza_operacao: e.target.value }))} style={inp} />
               </div>
 
-              {/* ── Remetente ── */}
+              {/* ── Remetente e Destinatário lado a lado ── */}
+              <div data-arato-fields="true" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: 12, alignItems: "start" }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div data-arato-dialog-body="true" style={divider}>Remetente</div>
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>Selecionar Remetente (Produtores ou Pessoas/terceiros cadastrados)</label>
@@ -2196,62 +2274,9 @@ function CtePageInner() {
                 )}
               </div>
 
-              {/* ── Expedidor / Recebedor (opcionais) ── */}
-              {(["exp", "rec", "tom"] as const).map(k => {
-                const titulo = k === "exp" ? "Expedidor" : k === "rec" ? "Recebedor" : "Tomador do serviço (Outros)";
-                const tipoK: TomadorTipo = k === "exp" ? "expedidor" : k === "rec" ? "recebedor" : "outros";
-                const pt = form[k];
-                const aberto = pt.nome !== "" || (k === "exp" ? mostrarExp : k === "rec" ? mostrarRec : mostrarTom) || form.tomador_tipo === tipoK;
-                const setP = (patch: Partial<ParticCte>) => setForm(f => ({ ...f, [k]: { ...f[k], ...patch } }));
-                const escolher = (v: string) => {
-                  if (!v) return;
-                  const [tipo, id] = v.split(":");
-                  const o = (tipo === "produtor" ? produtores.find(x => x.id === id) : pessoas.find(x => x.id === id)) as Record<string, string> | undefined;
-                  if (!o) return;
-                  setP({ nome: o.nome ?? "", cnpj: o.cpf_cnpj ?? "", ie: o.inscricao_est ?? "", logradouro: o.logradouro ?? "", numero: o.numero ?? "", bairro: o.bairro ?? "", cep: o.cep ?? "", municipio: o.municipio ?? "", uf: o.estado ?? "MT", ibge: o.municipio_ibge ?? "" });
-                };
-                return (
-                  <div key={k} style={{ gridColumn: "1 / -1" }}>
-                    {!aberto ? (
-                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => k === "exp" ? setMostrarExp(true) : k === "rec" ? setMostrarRec(true) : setMostrarTom(true)}
-                        style={{ padding: "6px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
-                        + Informar {k === "tom" ? "Tomador (Outros)" : titulo} (opcional)
-                      </OperationalButton>
-                    ) : (
-                      <div data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
-                        <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <strong style={{ fontSize: 12, color: "var(--text-1)" }}>{titulo}</strong>
-                          <OperationalButton data-arato-button="secondary" type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === tipoK ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : k === "rec" ? setMostrarRec(false) : setMostrarTom(false); }}
-                            style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>remover</OperationalButton>
-                        </div>
-                        <SelectBusca value="" onChange={escolher} placeholder={`— Selecionar ${titulo} (Produtores ou Pessoas) —`} style={inp}
-                          options={[
-                            ...produtores.map(x => ({ value: `produtor:${x.id}`, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}`, group: "Produtores cadastrados" })),
-                            ...pessoas.map(x => ({ value: `pessoa:${x.id}`, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}`, group: "Pessoas cadastradas (terceiros)" })),
-                          ]} />
-                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8, marginTop: 8 }}>
-                          <div><label data-arato-label="true" style={lbl}>Razão Social / Nome</label><input value={pt.nome} onChange={e => setP({ nome: e.target.value })} style={inp} /></div>
-                          <div><label data-arato-label="true" style={lbl}>CNPJ/CPF</label><input value={pt.cnpj} onChange={e => setP({ cnpj: e.target.value })} style={inp} /></div>
-                          <div><label data-arato-label="true" style={lbl}>Inscrição Estadual</label><input value={pt.ie} onChange={e => setP({ ie: e.target.value })} style={inp} placeholder="Apenas dígitos" /></div>
-                        </div>
-                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 70px 1fr 1fr", gap: 8, marginTop: 8 }}>
-                          <div><label data-arato-label="true" style={lbl}>Logradouro</label><input value={pt.logradouro} onChange={e => setP({ logradouro: e.target.value })} style={inp} /></div>
-                          <div><label data-arato-label="true" style={lbl}>Nº</label><input value={pt.numero} onChange={e => setP({ numero: e.target.value })} style={inp} /></div>
-                          <div><label data-arato-label="true" style={lbl}>Bairro</label><input value={pt.bairro} onChange={e => setP({ bairro: e.target.value })} style={inp} /></div>
-                          <div><label data-arato-label="true" style={lbl}>CEP</label><input value={pt.cep} onChange={e => setP({ cep: e.target.value })} style={inp} /></div>
-                        </div>
-                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 70px 1fr", gap: 8, marginTop: 8 }}>
-                          <div><label data-arato-label="true" style={lbl}>Município</label><input value={pt.municipio} onChange={e => setP({ municipio: e.target.value, ibge: "" })} style={inp} /></div>
-                          <div><label data-arato-label="true" style={lbl}>UF</label><SelectField value={pt.uf} onChange={e => setP({ uf: e.target.value, ibge: "" })} style={inp}>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</SelectField></div>
-                          <div><label data-arato-label="true" style={lbl}>Cód. IBGE (auto)</label><input value={pt.ibge} onChange={e => setP({ ibge: e.target.value })} style={inp} placeholder="preenche ao transmitir" /></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* ── Destinatário ── */}
+                  <EnderecoNoXml endereco={enderecoRem} />
+                </div>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div data-arato-dialog-body="true" style={divider}>Destinatário</div>
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 <label data-arato-label="true" style={lbl}>Selecionar Destinatário (Produtores ou Pessoas/terceiros cadastrados)</label>
@@ -2297,6 +2322,65 @@ function CtePageInner() {
                   <input value={form.destinatario_ie} onChange={e => setForm(f => ({ ...f, destinatario_ie: e.target.value }))} style={inp} placeholder="Apenas dígitos" />
                 )}
               </div>
+
+                  <EnderecoNoXml endereco={enderecoDest} />
+                </div>
+              </div>
+
+              {/* ── Expedidor / Recebedor (opcionais) ── */}
+              {(["exp", "rec", "tom"] as const).map(k => {
+                const titulo = k === "exp" ? "Expedidor" : k === "rec" ? "Recebedor" : "Tomador do serviço (Outros)";
+                const tipoK: TomadorTipo = k === "exp" ? "expedidor" : k === "rec" ? "recebedor" : "outros";
+                const pt = form[k];
+                const aberto = pt.nome !== "" || (k === "exp" ? mostrarExp : k === "rec" ? mostrarRec : mostrarTom) || form.tomador_tipo === tipoK;
+                const setP = (patch: Partial<ParticCte>) => setForm(f => ({ ...f, [k]: { ...f[k], ...patch } }));
+                const escolher = (v: string) => {
+                  if (!v) return;
+                  const [tipo, id] = v.split(":");
+                  const o = (tipo === "produtor" ? produtores.find(x => x.id === id) : pessoas.find(x => x.id === id)) as Record<string, string> | undefined;
+                  if (!o) return;
+                  setP({ nome: o.nome ?? "", cnpj: o.cpf_cnpj ?? "", ie: o.inscricao_est ?? "", logradouro: o.logradouro ?? "", numero: o.numero ?? "", bairro: o.bairro ?? "", cep: o.cep ?? "", municipio: o.municipio ?? "", uf: o.estado ?? "MT", ibge: o.municipio_ibge ?? "" });
+                };
+                return (
+                  <div key={k} style={{ gridColumn: aberto ? "1 / -1" : "auto" }}>
+                    {!aberto ? (
+                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => k === "exp" ? setMostrarExp(true) : k === "rec" ? setMostrarRec(true) : setMostrarTom(true)}
+                        style={{ padding: "6px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+                        + Informar {k === "tom" ? "Tomador (Outros)" : titulo} (opcional)
+                      </OperationalButton>
+                    ) : (
+                      <div data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
+                        <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <strong style={{ fontSize: 12, color: "var(--text-1)" }}>{titulo}</strong>
+                          <OperationalButton data-arato-button="secondary" type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === tipoK ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : k === "rec" ? setMostrarRec(false) : setMostrarTom(false); }}
+                            style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>remover</OperationalButton>
+                        </div>
+                        <SelectBusca value="" onChange={escolher} placeholder={`— Selecionar ${titulo} (Produtores ou Pessoas) —`} style={inp}
+                          options={[
+                            ...produtores.map(x => ({ value: `produtor:${x.id}`, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}`, group: "Produtores cadastrados" })),
+                            ...pessoas.map(x => ({ value: `pessoa:${x.id}`, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}`, group: "Pessoas cadastradas (terceiros)" })),
+                          ]} />
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8, marginTop: 8 }}>
+                          <div><label data-arato-label="true" style={lbl}>Razão Social / Nome</label><input value={pt.nome} onChange={e => setP({ nome: e.target.value })} style={inp} /></div>
+                          <div><label data-arato-label="true" style={lbl}>CNPJ/CPF</label><input value={pt.cnpj} onChange={e => setP({ cnpj: e.target.value })} style={inp} /></div>
+                          <div><label data-arato-label="true" style={lbl}>Inscrição Estadual</label><input value={pt.ie} onChange={e => setP({ ie: e.target.value })} style={inp} placeholder="Apenas dígitos" /></div>
+                        </div>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 70px 1fr 1fr", gap: 8, marginTop: 8 }}>
+                          <div><label data-arato-label="true" style={lbl}>Logradouro</label><input value={pt.logradouro} onChange={e => setP({ logradouro: e.target.value })} style={inp} /></div>
+                          <div><label data-arato-label="true" style={lbl}>Nº</label><input value={pt.numero} onChange={e => setP({ numero: e.target.value })} style={inp} /></div>
+                          <div><label data-arato-label="true" style={lbl}>Bairro</label><input value={pt.bairro} onChange={e => setP({ bairro: e.target.value })} style={inp} /></div>
+                          <div><label data-arato-label="true" style={lbl}>CEP</label><input value={pt.cep} onChange={e => setP({ cep: e.target.value })} style={inp} /></div>
+                        </div>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 70px 1fr", gap: 8, marginTop: 8 }}>
+                          <div><label data-arato-label="true" style={lbl}>Município</label><input value={pt.municipio} onChange={e => setP({ municipio: e.target.value, ibge: "" })} style={inp} /></div>
+                          <div><label data-arato-label="true" style={lbl}>UF</label><SelectField value={pt.uf} onChange={e => setP({ uf: e.target.value, ibge: "" })} style={inp}>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</SelectField></div>
+                          <div><label data-arato-label="true" style={lbl}>Cód. IBGE (auto)</label><input value={pt.ibge} onChange={e => setP({ ibge: e.target.value })} style={inp} placeholder="preenche ao transmitir" /></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* ── Percurso: Origem e Destino na mesma linha ── */}
               <div data-arato-dialog-body="true" style={divider}>Percurso</div>
