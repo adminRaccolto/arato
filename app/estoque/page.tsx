@@ -12,7 +12,7 @@ import { supabase } from "../../lib/supabase";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
   listarMovimentacoes, listarDepositosDasTransferencias, criarMovimentacaoManual, transferirEntreDepositos,
-  listarMovimentacoesRel,
+  listarMovimentacoesRelComDepositos,
   listarSaldoPorDeposito,
   listarDepositos, listarFazendasDaConta,
   listarBombas,
@@ -621,7 +621,7 @@ export default function Estoque() {
   useEffect(() => {
     if (!fazAtiva) return;
     if (aba === "movimentacoes") {
-      listarMovimentacoesRel(fazLeitura).then(setMovsRel).catch(e => setErro(e.message));
+      listarMovimentacoesRelComDepositos(fazLeitura).then(setMovsRel).catch(e => setErro(e.message));
       listarMovimentacoesPA(fazLeitura).then(setMovsPA).catch(() => {});
     }
     if (aba === "nf_entrada")    listarNfEntradas(fazLeitura).then(setNfEntradas).catch(e => setErro(e.message));
@@ -670,7 +670,7 @@ export default function Estoque() {
       });
       registrarLog(fazAtiva!, "insert", "estoque", `Transferência entre depósitos: ${insNome} — ${qtd} de ${orig.nome} para ${dest.nome}`,
         { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: "transferencia", quantidade: qtd, origem: orig.nome, destino: dest.nome, observacao: fMov.observacao } });
-      const [ins3, movsRel3] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRel(fazLeitura)]);
+      const [ins3, movsRel3] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRelComDepositos(fazLeitura)]);
       setInsumos(ins3); setMovsRel(movsRel3);
       listarSaldoPorDeposito(fazLeitura).then(setSaldoPorDeposito).catch(() => {});
       setModalMov(false);
@@ -690,7 +690,7 @@ export default function Estoque() {
       `${tipoLabel}: ${insNome} — ${fMov.tipo === "ajuste" ? `saldo ajustado para ${qtdNova}` : `${qtd} unid.`}`,
       { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: fMov.tipo, motivo: fMov.motivo, quantidade: qtd, observacao: fMov.observacao } }
     );
-    const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRel(fazLeitura)]);
+    const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRelComDepositos(fazLeitura)]);
     setInsumos(ins2); setMovsRel(movsRelNovo);
     setModalMov(false);
     setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", deposito_destino_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
@@ -1382,6 +1382,7 @@ export default function Estoque() {
                       const corStatus: Record<NfEntrada["status"], [string,string]> = {
                         digitando:  ["#FFF3E0","#7B4A00"],
                         pendente:   ["#FAEEDA","#633806"],
+                        transferencia: ["#D5E8F5","#0B2D50"],
                         processada: ["#E8E8E8","#0D0D0D"],
                         cancelada:  ["#FCEBEB","#791F1F"],
                       };
@@ -1398,7 +1399,7 @@ export default function Estoque() {
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{nf.data_emissao.split("-").reverse().join("/")}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(nf.valor_total)}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(nf.status.charAt(0).toUpperCase()+nf.status.slice(1), bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(nf.status === "transferencia" ? "Transferência" : nf.status.charAt(0).toUpperCase()+nf.status.slice(1), bg, cl)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{nf.natureza || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => verDetalheNf(nf)}>Ver itens</OperationalButton>
@@ -1506,7 +1507,10 @@ export default function Estoque() {
                               ? <span style={{ color: m.quantidade >= 0 ? "#111111" : "#E24B4A" }}>{m.quantidade >= 0 ? "+" : ""}{fmtNum(m.quantidade)} {m.insumo_unidade} <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 400 }}>(ajuste)</span></span>
                               : <span style={{ color: m.tipo === "entrada" ? "#111111" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {m.insumo_unidade}</span>}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.deposito_nome ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
+                            {m.deposito_nome ?? "—"}
+                            {!modoTodas && m.fazenda_id !== fazAtiva && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Saldo de: {nomeFaz(m.fazenda_id) || "outra fazenda"}</div>}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
                             {m.ciclo_descricao || m.safra || "—"}
                           </td>

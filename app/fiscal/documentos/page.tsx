@@ -149,6 +149,8 @@ const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] =
   // NF de compra devolvida por inteiro (continua processada por dentro — estoque e custos seguem contando a compra e a devolução)
   { v: "devolvida",  label: "Devolvida",  bg: "#FBF3E0", color: "#7A4300" },
   { v: "cancelada",  label: "Cancelada",  bg: "#FCEBEB", color: "#791F1F" },
+  // NF de transferência emitida no Arato que voltou pelo SIEG: estoque já movimentado, nada a processar (Seção 414)
+  { v: "transferencia", label: "Transferência", bg: "#D5E8F5", color: "#0B2D50" },
 ];
 const TIPO_ENTRADA_OPCOES: { v: string; label: string }[] =
   Object.entries(TIPO_ENTRADA_META).map(([v, m]) => ({ v, label: m.label }));

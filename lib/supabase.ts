@@ -1352,7 +1352,9 @@ export type NfEntrada = {
   valor_total: number;
   natureza?: string;
   cfop?: string;
-  status: "digitando" | "pendente" | "processada" | "cancelada";
+  // "transferencia": NF de transferência emitida no Arato; o estoque já foi movimentado pela transferência (Seção 414)
+  status: "digitando" | "pendente" | "processada" | "cancelada" | "transferencia";
+  transferencia_estoque_id?: string | null;
   xml_content?: string;
   lancamento_id?: string;
   emp_lancamento_id?: string;   // CP gerado em empresa_lancamentos (NF para CNPJ de empresa)

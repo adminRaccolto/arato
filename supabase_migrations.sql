@@ -19450,3 +19450,112 @@ UPDATE operacoes_fiscais
  WHERE cfop_interno = '5555' AND cfop_externo = '6555' AND icms_cst_interno = '041' AND icms_cst_externo = '041';
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 414 — NF de transferência emitida no Arato não fica pendente em Notas de Terceiro
+--   O estoque já foi movimentado pela transferência. A nota volta pelo SIEG e, processada, daria entrada em dobro.
+--   Vale para qualquer forma de entrada da nota (SIEG, XML) e para a transferência emitida depois de a nota já estar aqui.
+--   Ao rodar, liga as notas pendentes que já existem; não mexe em estoque nem em financeiro.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS transferencia_estoque_id uuid REFERENCES transferencias_estoque(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_transf_estoque_nf_chave ON transferencias_estoque(nf_chave) WHERE nf_chave IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_transf_estoque_nf_destino_chave ON transferencias_estoque(nf_destino_chave) WHERE nf_destino_chave IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_nf(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v          nf_entradas%ROWTYPE;
+  v_conta_id uuid;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM nf_entradas WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'nf_entradas';
+    RETURN;
+  END IF;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  -- NF de compra devolvida por inteiro: continua 'processada' em nf_entradas (estoque/custos/relatórios), mas o grid
+  -- de Documentos Fiscais mostra "Devolvida"
+  v_status_norm := CASE
+    WHEN v.status = 'processada' AND v.devolucao_situacao = 'total' THEN 'devolvida'
+    WHEN v.status = 'cancelada' THEN 'cancelada' WHEN v.status = 'processada' THEN 'processada'
+    WHEN v.status = 'transferencia' THEN 'transferencia' ELSE 'pendente' END;
+
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at,
+    destinatario_nome, destinatario_cnpj, data_entrada, tipo_entrada, origem_doc,
+    duplicatas_xml, processado_por
+  ) VALUES (
+    v.id, 'nf_entradas', 'NF', v.fazenda_id, v_conta_id, v.numero, v.serie, v.chave_acesso, v.data_emissao,
+    v.emitente_nome, v.emitente_cnpj, v.valor_total, v.status, v_status_norm,
+    v.cfop, v.natureza, v.observacao, v.lancamento_id, v.created_at, now(),
+    v.nome_destinatario, v.cnpj_destino, v.data_entrada, v.tipo_entrada, v.origem,
+    to_jsonb(v.duplicatas_xml), v.processado_por
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now(),
+    destinatario_nome = EXCLUDED.destinatario_nome, destinatario_cnpj = EXCLUDED.destinatario_cnpj,
+    data_entrada = EXCLUDED.data_entrada, tipo_entrada = EXCLUDED.tipo_entrada, origem_doc = EXCLUDED.origem_doc,
+    duplicatas_xml = EXCLUDED.duplicatas_xml, processado_por = EXCLUDED.processado_por;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_nf_entradas_liga_transferencia() RETURNS trigger AS $$
+DECLARE v_id uuid;
+BEGIN
+  IF NEW.chave_acesso IS NULL OR coalesce(NEW.status, 'pendente') NOT IN ('pendente', 'digitando') THEN RETURN NEW; END IF;
+  SELECT id INTO v_id FROM transferencias_estoque
+   WHERE (nf_chave = NEW.chave_acesso OR nf_destino_chave = NEW.chave_acesso) AND status <> 'cancelada'
+   LIMIT 1;
+  IF FOUND THEN
+    NEW.status := 'transferencia';
+    NEW.transferencia_estoque_id := v_id;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+-- Processar esta nota daria entrada em dobro: a trava fica no banco para valer em qualquer tela.
+CREATE OR REPLACE FUNCTION fn_nf_transferencia_nao_processa() RETURNS trigger AS $$
+BEGIN
+  IF OLD.status = 'transferencia' AND NEW.status IN ('processada', 'pendente', 'digitando') THEN
+    RAISE EXCEPTION 'Esta nota é de uma transferência emitida no Arato e o estoque já foi movimentado por ela. Não precisa ser processada.';
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nf_transferencia_nao_processa ON nf_entradas;
+CREATE TRIGGER trg_nf_transferencia_nao_processa BEFORE UPDATE OF status ON nf_entradas
+  FOR EACH ROW EXECUTE FUNCTION fn_nf_transferencia_nao_processa();
+
+DROP TRIGGER IF EXISTS trg_nf_entradas_liga_transferencia ON nf_entradas;
+CREATE TRIGGER trg_nf_entradas_liga_transferencia BEFORE INSERT ON nf_entradas
+  FOR EACH ROW EXECUTE FUNCTION fn_nf_entradas_liga_transferencia();
+
+CREATE OR REPLACE FUNCTION fn_transferencia_liga_nf_entrada() RETURNS trigger AS $$
+BEGIN
+  IF NEW.status = 'cancelada' THEN RETURN NEW; END IF;
+  UPDATE nf_entradas
+     SET status = 'transferencia', transferencia_estoque_id = NEW.id
+   WHERE status IN ('pendente', 'digitando')
+     AND chave_acesso IN (NEW.nf_chave, NEW.nf_destino_chave);
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_transferencia_liga_nf_entrada ON transferencias_estoque;
+CREATE TRIGGER trg_transferencia_liga_nf_entrada AFTER INSERT OR UPDATE OF nf_chave, nf_destino_chave ON transferencias_estoque
+  FOR EACH ROW EXECUTE FUNCTION fn_transferencia_liga_nf_entrada();
+
+UPDATE nf_entradas n
+   SET status = 'transferencia', transferencia_estoque_id = t.id
+  FROM transferencias_estoque t
+ WHERE n.status IN ('pendente', 'digitando')
+   AND t.status <> 'cancelada'
+   AND n.chave_acesso IS NOT NULL
+   AND n.chave_acesso IN (t.nf_chave, t.nf_destino_chave);
+COMMIT;
+NOTIFY pgrst, 'reload schema';

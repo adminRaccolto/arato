@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-t",
+    data: "04/11/2026",
+    titulo: "Transferências: movimentações pelo depósito e notas do SIEG já reconhecidas",
+    modulos: ["Estoque", "Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A aba Movimentações da fazenda agora mostra também o que passou por um depósito dela, mesmo quando o saldo do produto está em outra fazenda. Essas linhas indicam de qual fazenda é o saldo." },
+      { tipo: "correcao", texto: "A nota de transferência emitida no Arato que volta pelo SIEG deixa de ficar pendente e aparece como Transferência em Documentos Fiscais, sem opção de processar. Isso evita dar entrada em dobro no estoque." },
+    ],
+  },
+  {
     versao: "2026.11.04-s",
     data: "04/11/2026",
     titulo: "Transferências com texto claro nas movimentações de estoque",

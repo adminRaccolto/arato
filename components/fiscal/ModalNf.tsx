@@ -2599,7 +2599,8 @@ export default function ModalNf({
   // Remessa), que continuam funcionando normalmente por serem overlays
   // separados, fora da área travada abaixo. Sem toggle "Editar": editar de
   // verdade exige Estornar primeiro, não é uma trava que se destrava sozinha.
-  const viewOnly = nfEdit?.status === "processada";
+  const notaDeTransferencia = nfEdit?.status === "transferencia";
+  const viewOnly = nfEdit?.status === "processada" || notaDeTransferencia;
   const lockStyle: React.CSSProperties = viewOnly ? { pointerEvents: "none", opacity: 0.6 } : {};
 
   // Apropriação Direta: a Operação Gerencial escolhida no cabeçalho decide como
@@ -2679,7 +2680,12 @@ export default function ModalNf({
                   </div>
                 )}
               </div>}
-              {viewOnly && (
+              {notaDeTransferencia && (
+                <div style={{ padding: "8px 14px", marginBottom: 12, background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, fontSize: 12, color: "#0B2D50" }}>
+                  🔁 Nota de transferência emitida no Arato. O estoque já foi movimentado pela transferência em Estoque → Transferências; esta nota não precisa ser processada.
+                </div>
+              )}
+              {viewOnly && !notaDeTransferencia && (
                 <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
                   🔒 NF já processada — somente leitura. Para editar cabeçalho/itens, use <strong>↺ Estornar</strong> primeiro (reverte estoque e financeiro); Devolver, Reclassificar e Emitir Remessa continuam disponíveis normalmente.
                 </div>

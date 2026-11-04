@@ -723,6 +723,30 @@ export async function listarMovimentacoesRel(fazenda_id: string | string[], insu
   return out;
 }
 
+/**
+ * Movimentações para conferência da aba Movimentações: as da fazenda e também as que passaram por um depósito dela,
+ * mesmo em nome de outra fazenda (a transferência tira o saldo da fazenda que o tem, mas o produto sai do depósito físico).
+ * Só exibição: saldo e Kardex continuam contando por fazenda.
+ */
+export async function listarMovimentacoesRelComDepositos(fazenda_id: string | string[]): Promise<import("./supabase").RelMovimentacaoEstoque[]> {
+  if (Array.isArray(fazenda_id)) return listarMovimentacoesRel(fazenda_id);
+  const { data: deps, error: eDeps } = await supabase.from("depositos").select("id").eq("fazenda_id", fazenda_id);
+  if (eDeps) throw eDeps;
+  const depIds = (deps ?? []).map(d => d.id as string);
+  if (!depIds.length) return listarMovimentacoesRel(fazenda_id);
+  const out: import("./supabase").RelMovimentacaoEstoque[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase.from("rel_movimentacoes_estoque").select("*")
+      .or(`fazenda_id.eq.${fazenda_id},deposito_id.in.(${depIds.join(",")})`)
+      .order("data", { ascending: false }).order("id", { ascending: true })
+      .range(de, de + 999);
+    if (error) throw error;
+    out.push(...((data ?? []) as import("./supabase").RelMovimentacaoEstoque[]));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
 // Saldo de semente por lote — o saldo "de vitrine" do insumo é sempre o total
 // agregado (insumos.estoque); esta função calcula a composição por trás dele,
 // somando entradas e subtraindo saídas de movimentacoes_estoque agrupado por
