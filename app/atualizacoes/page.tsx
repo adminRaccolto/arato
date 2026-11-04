@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-i",
+    data: "04/11/2026",
+    titulo: "NF-e: textos de venda só em nota de venda",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Os textos fiscais configurados no emitente (ICMS diferido, base reduzida e Funrural) saíam também em remessa, retorno, transferência e devolução. Agora só entram em nota de venda. O texto complementar livre continua em todas as notas." },
+    ],
+  },
+  {
     versao: "2026.11.04-h",
     data: "04/11/2026",
     titulo: "Devolução de bem de terceiro: corrigir nota rejeitada",

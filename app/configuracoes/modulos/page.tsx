@@ -1623,7 +1623,7 @@ function ParametrosSistemaContent() {
 
                         {/* Base reduzida interestaduais */}
                         <div>
-                          {campo("Texto base reduzida — operações interestaduais (CFOP 6xxx) — deixe vazio para não incluir",
+                          {campo("Texto base reduzida — vendas interestaduais (CFOP 6xxx) — deixe vazio para não incluir",
                             txta({
                               rows: 2,
                               value: String(c.inf_cpl_base_reduzida ?? ""),

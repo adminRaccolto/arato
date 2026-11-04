@@ -16,6 +16,7 @@ import type { NFeInput, EmitenteCfg } from "./builder";
 import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesmoMunicipio, documentoDoModulo } from "./identidade-fiscal";
 import { configComIdentidade, buscarTitularCadastro, produtoresDoDocumento } from "./titular-cadastro";
 import { mensagemNumeroEmUso, numeroJaEmUso } from "./numero-em-uso";
+import { usaTextosDeVenda } from "./textos-automaticos";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
 
 export type { NFeInput, EmitenteCfg };
@@ -608,13 +609,14 @@ export async function emitirNFe(
   const cfopInterestadual = cfopPrimario.startsWith("6");
   const partesInfCpl: string[] = [];
   if (confg.inf_cpl_padrao) partesInfCpl.push(String(confg.inf_cpl_padrao).trim());
-  if (cfopInterno && confg.icms_diferido_ativo === "true") {
+  const textosDeVenda = usaTextosDeVenda(input.itens.map(i => i.cfop), input.finNFe);
+  if (textosDeVenda && cfopInterno && confg.icms_diferido_ativo === "true") {
     const txt = confg.inf_cpl_icms_diferido?.trim() || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.";
     partesInfCpl.push(txt);
-  } else if (cfopInterestadual && confg.inf_cpl_base_reduzida) {
+  } else if (textosDeVenda && cfopInterestadual && confg.inf_cpl_base_reduzida) {
     partesInfCpl.push(String(confg.inf_cpl_base_reduzida).trim());
   }
-  if (confg.funrural_retido === "true") {
+  if (textosDeVenda && confg.funrural_retido === "true") {
     const txt = confg.inf_cpl_funrural?.trim() || "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.";
     partesInfCpl.push(txt);
   }
