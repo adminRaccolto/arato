@@ -5,7 +5,7 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
@@ -18,6 +18,8 @@ import { supabase } from "../../../lib/supabase";
 import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo, ProdutorIE } from "../../../lib/supabase";
 import ProdutorCombo from "../../../components/ProdutorCombo";
 import { fmtNcm, ncmPadraoDoProduto, produtoDoContrato } from "../../../lib/fiscal/ncm-produtos";
+import { ehRascunho, montarRascunhoDuplicado, podeDuplicarNota } from "../../../lib/fiscal/duplicar-nota";
+import { precoKgDoContrato } from "../../../lib/contratos/preco-nf";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
 // cfop_tipo liga cada natureza à tabela textos_legais_uf no banco.
@@ -143,6 +145,8 @@ const FVENDA_INICIAL = {
   romaneio_numero: "", // nº do romaneio para obs da NF
   nf_ref_chave:    "", // chave da NF referenciada (<NFref>) — obrigatória em 6.923 e entrega futura
   nf_ref_numero:   "", // número legível da NF referenciada
+  faturamento_direto: false, // NF do contrato sem romaneio
+  peso_aproximado:    false, // peso informado à mão, a conferir na balança de destino
 };
 
 const FRETES = [
@@ -226,6 +230,16 @@ function FaturamentoInner() {
   const [textosUF,    setTextosUF]     = useState<Record<string, string>>({});
   // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
+  // Rascunho aberto no formulário (cópia de NF emitida): salvar e emitir gravam nesta mesma linha, sem criar outra
+  const [rascunhoId, setRascunhoId] = useState<string | null>(null);
+  const [rascunhoOrigem, setRascunhoOrigem] = useState("");
+  const [salvandoRascunho, setSalvandoRascunho] = useState(false);
+  // Faturar direto, sem romaneio
+  const [pesoDireto, setPesoDireto] = useState("");
+  const [pesoAproximado, setPesoAproximado] = useState(true);
+  const [precoContrato, setPrecoContrato] = useState<{ precoKg: number; aviso: string } | null>(null);
+  // IE que o formulário deve assumir quando as IEs do produtor carregarem (do contrato ou do rascunho)
+  const ieAlvo = useRef<string | null>(null);
   // Módulos fiscais disponíveis para a fazenda emitente (fiscal_pf_xxx / fiscal_emp_xxx)
   const [fiscalModulos, setFiscalModulos] = useState<{modulo: string; config: Record<string,string>}[]>([]);
   // IEs do produtor selecionado (produtor rural pode ter múltiplas IEs — uma por propriedade)
@@ -245,7 +259,7 @@ function FaturamentoInner() {
     // Captura deep-link antes de carregar (URL params ficam disponíveis só no client)
     const romId  = searchParams.get("romaneio_id");
     const contrId = searchParams.get("contrato_id");
-    if (romId && contrId) setDeepLinkPendente({ romaneio_id: romId, contrato_id: contrId });
+    if (contrId) setDeepLinkPendente({ romaneio_id: romId ?? "", contrato_id: contrId });
 
     Promise.all([
       listarFazendasDaConta(contaId, fazendaId),  // todas as fazendas da conta
@@ -324,6 +338,11 @@ function FaturamentoInner() {
     const contrato = contratos.find(c => c.id === contrato_id);
     if (!contrato) return;
     setDeepLinkPendente(null); // executa só uma vez
+    if (!romaneio_id) { // Vindo do contrato: abre direto a escolha entre romaneio e faturamento direto
+      abrirModal();
+      selecionarContrato(contrato);
+      return;
+    }
     // Carrega romaneios do contrato e abre o wizard já no romaneio correto
     supabase.from("romaneios").select("*").eq("contrato_id", contrato_id).order("data", { ascending: false })
       .then(({ data }) => {
@@ -339,17 +358,35 @@ function FaturamentoInner() {
         setNfeItens([]); setAvisoProdutoNf("");
         setTabNFe("produtor");
         setModalAberto(true);
-        preencherDeRomaneio(rom);
+        // O contrato vai como argumento: o estado recém-definido ainda não está disponível aqui
+        void preencherDoContrato(contrato, { romaneio: rom as Romaneio, kg: rom.peso_classificado_kg ?? rom.peso_liquido_kg ?? 0 });
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deepLinkPendente, loading, contratos]);
+
+  // Duplicar vindo do Monitor de NF-e: cria o rascunho uma vez só, depois que os cadastros carregaram
+  const duplicarFeito = useRef(false);
+  useEffect(() => {
+    const id = searchParams.get("duplicar");
+    if (!id || loading || duplicarFeito.current) return;
+    duplicarFeito.current = true;
+    window.history.replaceState(null, "", "/comercial/faturamento");
+    supabase.from("notas_fiscais").select("*").eq("id", id).maybeSingle().then(({ data }) => {
+      if (data && podeDuplicarNota(data as NotaFiscal)) void duplicarNota(data as NotaFiscal);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, searchParams]);
 
   // Carrega IEs do produtor selecionado (pode ter múltiplas — uma por propriedade no MT)
   useEffect(() => {
     if (!fVenda.produtor_id) { setIesProdutor([]); return; }
     listarIEsDoProdutor(fVenda.produtor_id).then(list => {
       setIesProdutor(list);
-      if (list.length === 1) fv({ ie_id: list[0].id });
+      const alvo = ieAlvo.current;
+      ieAlvo.current = null;
+      const daNota = alvo ? list.find(ie => ie.id === alvo || ie.inscricao_estadual === alvo) : undefined;
+      if (daNota) fv({ ie_id: daNota.id });
+      else if (list.length === 1) fv({ ie_id: list[0].id });
       else fv({ ie_id: "" });
     }).catch(() => setIesProdutor([]));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -370,6 +407,8 @@ function FaturamentoInner() {
     setErroForm(null);
     setFazNFe(fazendaId ?? ""); // provisório: passa a ser a fazenda da IE escolhida
     setRetornoOrigemId(null);
+    setRascunhoId(null); setRascunhoOrigem("");
+    setPesoDireto(""); setPesoAproximado(true); setPrecoContrato(null);
     setModalAberto(true);
   }
 
@@ -396,21 +435,51 @@ function FaturamentoInner() {
       .eq("contrato_id", contrato.id)
       .order("data", { ascending: false });
     setRomaneios(data ?? []);
+    setPesoDireto(""); setPesoAproximado(true); setPrecoContrato(null);
     setPasso("romaneio");
+    setPrecoContrato(await carregarPrecoKg(contrato));
+  }
+
+  // Preço por kg da NF: pelo item do contrato; contrato em dólar converte para reais
+  async function carregarPrecoKg(contrato: Contrato) {
+    const { data: itens } = await supabase.from("contrato_itens").select("produto, unidade, quantidade, valor_total").eq("contrato_id", contrato.id);
+    let ptax: number | null = null;
+    if (contrato.moeda === "USD" && !contrato.cotacao_usd) {
+      const r = await fetch(`/api/financeiro/ptax?data=${hojeLocal()}`).then(x => x.json()).catch(() => null) as { ptax?: number | null } | null;
+      ptax = r?.ptax ?? null;
+    }
+    return precoKgDoContrato(contrato, itens ?? [], kgSaca(contrato.produto), ptax);
+  }
+
+  // NFs deste contrato faturadas sem romaneio: a carga, quando chegar como romaneio, não pode ser faturada de novo
+  const notasDiretasDoContrato = (contratoId: string) => notas.filter(n => {
+    const dj = (n.dados_nf_json ?? {}) as Record<string, unknown>;
+    return dj.contrato_id === contratoId && dj.faturamento_direto === true && n.status === "autorizada";
+  });
+
+  function faturarDireto() {
+    const kg = parseFloat(pesoDireto.replace(/\./g, "").replace(",", ".")) || 0;
+    if (!contratoSelecionado || kg <= 0) return;
+    void preencherDoContrato(contratoSelecionado, { kg, direto: true, aproximado: pesoAproximado });
   }
 
   // ── Pré-preencher de contrato + romaneio (em kg) ──────────────────────────
   function preencherDeRomaneio(romaneio: Romaneio) {
-    const contrato = contratoSelecionado!;
+    void preencherDoContrato(contratoSelecionado!, { romaneio, kg: romaneio.peso_classificado_kg ?? romaneio.peso_liquido_kg ?? 0 });
+  }
+
+  async function preencherDoContrato(contrato: Contrato, origem: { romaneio?: Romaneio; kg: number; direto?: boolean; aproximado?: boolean }) {
+    const romaneio = origem.romaneio;
     const comprador = pessoas.find(p => p.id === contrato.pessoa_id);
     const cfopRaw  = contrato.cfop ?? "6.501";
     const cfopNorm = cfopRaw.includes(".") ? cfopRaw : cfopRaw.replace(/^(\d)(\d{3})$/, "$1.$2");
     const nat = NATUREZAS_VENDA.find(n => n.codigo.replace(/\./g,"").slice(0,4) === cfopNorm.replace(/\./g,"").slice(0,4));
 
-    // Peso classificado (após descontos) é o peso a faturar em kg
-    const pesoKg     = romaneio.peso_classificado_kg ?? romaneio.peso_liquido_kg ?? 0;
-    // Preço do contrato já está em R$/kg — usar diretamente
-    const precoKg    = contrato.preco ?? 0;
+    // No romaneio, o peso classificado (após descontos); no faturamento direto, o peso informado
+    const pesoKg     = origem.kg;
+    // contratos.preco é por saca: o preço por kg vem do item do contrato (e em reais, se o contrato for em dólar)
+    const preco      = await carregarPrecoKg(contrato);
+    const precoKg    = preco.precoKg;
     const valorTotal = +(pesoKg * precoKg).toFixed(2);
 
     const hoje  = hojeLocal();
@@ -437,29 +506,37 @@ function FaturamentoInner() {
       comprador:       comprador?.nome ?? contrato.comprador ?? "",
       propriedade:     contrato.propriedade ?? "",
       // Transportador — vem do romaneio
-      placa:           romaneio.placa ?? "",
-      peso_bruto:      aplicarMascara(String(Math.round((romaneio.peso_bruto_kg ?? 0) * 100))),
+      placa:           romaneio?.placa ?? "",
+      peso_bruto:      aplicarMascara(String(Math.round((romaneio?.peso_bruto_kg ?? pesoKg) * 100))),
       peso_liquido:    aplicarMascara(String(Math.round(pesoKg * 100))),
       especie:         "Granel",
       data_emissao:    hoje,
       data_saida:      hoje,
       hora_saida:      agora,
       contrato_numero: contrato.numero ?? "",
-      romaneio_id:     romaneio.id,
-      romaneio_numero: romaneio.numero ?? "",
+      romaneio_id:     romaneio?.id ?? "",
+      romaneio_numero: romaneio?.numero ?? "",
+      faturamento_direto: origem.direto === true,
+      peso_aproximado:    origem.aproximado === true,
     });
+    ieAlvo.current = contrato.ie_id ?? null;
 
     // Item único em kg — peso classificado após descontos
     // precoKg pode ter 3-4 casas decimais (ex: R$0,013/kg para milho R$0,78/sc÷60kg)
     // não usar aplicarMascara (trunca para 2 casas) — formatar diretamente com 4 casas
-    const precoKgFmt = precoKg.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+    const precoKgFmt = precoKg.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 10 });
     const cadProd = produtoDoContrato(prodAgricolas.filter(p => (p as { ativo?: boolean }).ativo !== false), contrato.produto_agricola_id, contrato.produto);
     const ncmCad = fmtNcm(cadProd?.ncm);
     const ncmRef = ncmPadraoDoProduto(contrato.produto)?.ncm;
     const produtoNf = { nome: cadProd?.nome ?? contrato.produto, ncm: ncmCad || ncmRef || "1201.90.00" };
-    setAvisoProdutoNf(!cadProd
+    const diretas = romaneio ? notasDiretasDoContrato(contrato.id) : [];
+    const avisoProduto = !cadProd
       ? `"${contrato.produto}" não está em Cadastros → Produtos Agrícolas: o NCM ${produtoNf.ncm} é o de referência${ncmRef ? "" : " (soja — confira!)"}. Cadastre o produto para a NF sair pelo cadastro.`
-      : !ncmCad ? `"${cadProd.nome}" está sem NCM no cadastro: usado ${produtoNf.ncm} de referência${ncmRef ? "" : " (soja — confira!)"}. Preencha o NCM em Cadastros → Produtos Agrícolas.` : "");
+      : !ncmCad ? `"${cadProd.nome}" está sem NCM no cadastro: usado ${produtoNf.ncm} de referência${ncmRef ? "" : " (soja — confira!)"}. Preencha o NCM em Cadastros → Produtos Agrícolas.` : "";
+    setAvisoProdutoNf([
+      diretas.length ? `Este contrato já tem NF faturada sem romaneio (nº ${diretas.map(n => n.numero).join(", ")}): confira se esta carga já não foi faturada.` : "",
+      preco.aviso, avisoProduto,
+    ].filter(Boolean).join(" "));
     setNfeItens([{
       id: crypto.randomUUID(),
       tipo_item: "Produto",
@@ -495,6 +572,98 @@ function FaturamentoInner() {
     setPasso("form");
   }
 
+  // ── Duplicar NF: a cópia nasce como rascunho e abre para edição. Nada vai à SEFAZ até clicar em Emitir. ──
+  async function duplicarNota(nota: NotaFiscal) {
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    let numeracao: { numero: string; serie?: string | null } = { numero: "RASCUNHO" };
+    try {
+      const rn = await fetch("/api/fiscal/numeracao-nfe", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: nota.fazenda_id, modulo_key: dj.modulo_key, emit_ie_override: dj.emit_ie || undefined }) });
+      if (rn.ok) {
+        const n = await rn.json() as { serie: string | null; numero: number | null };
+        if (n.numero != null) numeracao = { numero: String(n.numero).padStart(6, "0"), serie: n.serie };
+      }
+    } catch { /* o número definitivo é reservado na transmissão */ }
+    try {
+      const nova = await criarNotaFiscal(montarRascunhoDuplicado(nota, numeracao, hojeLocal()) as Omit<NotaFiscal, "id" | "created_at">);
+      setNotas(p => [nova, ...p]);
+      abrirRascunho(nova);
+    } catch (e) { alert(`Não foi possível duplicar a NF: ${(e as { message?: string })?.message ?? String(e)}`); }
+  }
+
+  function abrirRascunho(nota: NotaFiscal) {
+    const hoje  = hojeLocal();
+    const agora = new Date().toTimeString().slice(0, 8);
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const txt = (k: string) => String(dj[k] ?? "");
+    const num = (k: string) => aplicarMascara(String(Math.round(Number(dj[k] ?? 0) * 100))) || "0,00";
+    const emitDoc = txt("emit_cnpj").replace(/\D/g, "");
+    const produtorId = txt("produtor_id") || produtores.find(p => emitDoc && p.cpf_cnpj?.replace(/\D/g, "") === emitDoc)?.id || "";
+    ieAlvo.current = txt("ie_id") || txt("emit_ie") || null;
+    const contrato = contratos.find(c => c.id === dj.contrato_id) ?? null;
+    setContratoSelecionado(contrato);
+    setFazNFe(nota.fazenda_id);
+    setTipoAvulsa("venda");
+    setRetornoOrigemId(null);
+    setRascunhoId(nota.id);
+    setRascunhoOrigem(txt("duplicada_de_numero"));
+    setFVenda({
+      ...FVENDA_INICIAL,
+      produtor_id: produtorId,
+      ie_id: txt("ie_id") || iesProdutor.find(ie => ie.inscricao_estadual === txt("emit_ie"))?.id || "",
+      destinatario: nota.destinatario ?? "", cnpj: nota.cnpj_destinatario ?? "",
+      dest_tipo_pessoa: (dj.dest_tipo_pessoa as "fisica" | "juridica") ?? "juridica",
+      dest_ie: txt("dest_ie"), dest_endereco: txt("dest_endereco"), dest_numero: txt("dest_numero"), dest_bairro: txt("dest_bairro"),
+      dest_cep: txt("dest_cep"), dest_fone: txt("dest_fone"), dest_cidade: txt("dest_cidade"), dest_uf: txt("dest_uf"), dest_municipio_ibge: txt("dest_municipio_ibge"),
+      cfop: nota.cfop, natureza_texto: nota.natureza ?? "", observacao: nota.observacao ?? "",
+      data_emissao: hoje, data_saida: hoje, hora_saida: agora,
+      frete_conta: txt("frete_conta") || FVENDA_INICIAL.frete_conta,
+      transportadora: txt("transportadora"), transp_cpf_cnpj: txt("transp_cpf_cnpj"), transp_ie: txt("transp_ie"),
+      transp_endereco: txt("transp_endereco"), transp_numero: txt("transp_numero"), transp_cidade: txt("transp_cidade"),
+      placa: txt("placa"), uf_placa: txt("uf_placa"), peso_bruto: num("peso_bruto"), peso_liquido: num("peso_liquido"), especie: txt("especie"),
+      local_entrega: txt("local_entrega"), contrato_numero: txt("contrato_numero"),
+      faturamento_direto: dj.faturamento_direto === true, peso_aproximado: dj.peso_aproximado === true,
+    });
+    setNfeItens((nota.itens_json ?? []).map(i => ({
+      id: crypto.randomUUID(), tipo_item: "Produto", item: i.item, ncm: i.ncm,
+      quantidade: String(i.quantidade), unidade: i.unidade.toLowerCase(),
+      valor_unitario: i.valor_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 10 }),
+      valor_total: i.valor_total, valor_financeiro: i.valor_total, cclass_trib: "",
+    })));
+    setAvisoProdutoNf("");
+    setTabNFe("produtor");
+    setErroForm(null);
+    setPasso("form");
+    setModalAberto(true);
+  }
+
+  async function salvarRascunhoNota() {
+    if (!rascunhoId) return;
+    if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
+    if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
+    setSalvandoRascunho(true); setErroForm(null);
+    try {
+      const { payload } = await montarPayloadNota();
+      const { data, error } = await supabase.from("notas_fiscais").update({
+        ...payload,
+        dados_nf_json: { ...payload.dados_nf_json, rascunho: true, duplicada_de_numero: rascunhoOrigem || undefined },
+      }).eq("id", rascunhoId).eq("status", "em_digitacao").select().single();
+      if (error) throw error;
+      setNotas(p => p.map(n => n.id === rascunhoId ? data as NotaFiscal : n));
+      setModalAberto(false);
+    } catch (e) {
+      setErroForm((e as { message?: string })?.message ?? "Erro ao salvar o rascunho.");
+    } finally { setSalvandoRascunho(false); }
+  }
+
+  async function excluirRascunho(nota: NotaFiscal) {
+    if (!ehRascunho(nota)) return;
+    if (!(await confirmarAcao({ titulo: "Excluir rascunho", mensagem: `Excluir o rascunho da NF para ${nota.destinatario ?? "este destinatário"}? Ele nunca foi transmitido à SEFAZ.`, perigo: true, textoConfirmar: "Excluir" }))) return;
+    const { error } = await supabase.from("notas_fiscais").delete().eq("id", nota.id).eq("status", "em_digitacao");
+    if (error) { alert(`Não foi possível excluir: ${error.message}`); return; }
+    setNotas(p => p.filter(n => n.id !== nota.id));
+  }
+
   // ── Retorno de Armazém Geral — a partir de uma NF de Remessa já autorizada ──
   // Espelha CFOP, destinatário e itens da remessa de origem; referencia a NF
   // original via nf_ref_chave/numero (NFref no XML) para o retorno ser rastreável.
@@ -513,6 +682,7 @@ function FaturamentoInner() {
     setContratoSelecionado(null);
     setTipoAvulsa("retorno");
     setRetornoOrigemId(nota.id);
+    setRascunhoId(null); setRascunhoOrigem("");
     setFVenda({
       ...FVENDA_INICIAL,
       produtor_id:         produtorMatch?.id ?? "",
@@ -572,6 +742,124 @@ function FaturamentoInner() {
   }]);
 
   // ── Emitir nota ───────────────────────────────────────────────────────────
+  // Mesma nota para emitir e para salvar o rascunho
+  async function montarPayloadNota() {
+    const fazEmissao = fazNFe || fazendaId || "";
+    const produtor = produtores.find(p => p.id === fVenda.produtor_id);
+    const valorTotal = nfeItens.reduce((s, i) => s + i.valor_total, 0);
+
+    // Encontra o módulo fiscal do emitente:
+    // 1º) match exato pelo CPF/CNPJ do produtor
+    // 2º) qualquer módulo com certificado e CPF configurados (evita módulos vazios/corrompidos)
+    // 3º) primeiro da lista (último recurso)
+    const cpfCnpjDigits = produtor?.cpf_cnpj?.replace(/\D/g, "") ?? "";
+    const moduloValido = (m: {modulo:string; config: Record<string,string>}) =>
+      !!(m.config?.cpf_cnpj_emitente && m.config?.cert_a1_path);
+    const moduloFiscal =
+      fiscalModulos.find(m => cpfCnpjDigits && m.modulo.endsWith(cpfCnpjDigits)) ??
+      fiscalModulos.find(moduloValido) ??
+      fiscalModulos[0];
+    const emit = moduloFiscal?.config ?? {};
+
+    // Numeração prévia: série e próximo número vêm de Parâmetros → Fiscal do emitente/IE que vai
+    // emitir (o número definitivo é reservado na transmissão). Antes gravava série "1" e a
+    // contagem local de notas, que não tinham nada a ver com a configuração do cliente.
+    let numPrevia: { serie: string | null; numero: number | null } = { serie: null, numero: null };
+    if (moduloFiscal) {
+      try {
+        const rn = await fetch("/api/fiscal/numeracao-nfe", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fazenda_id: fazEmissao, modulo_key: moduloFiscal.modulo,
+            emit_ie_override: fVenda.ie_id ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual : undefined,
+          }),
+        });
+        if (rn.ok) numPrevia = await rn.json();
+      } catch { /* sem prévia: cai no comportamento antigo abaixo */ }
+    }
+    const pendentesMesmaSerie = notas.filter(n => n.tipo === "saida" && n.status === "em_digitacao" && n.serie === numPrevia.serie).length;
+    const payload: Omit<NotaFiscal, "id" | "created_at"> = {
+      fazenda_id:        fazEmissao,
+      tipo:              "saida",
+      status:            "em_digitacao",
+      numero:            numPrevia.numero != null
+        ? String(numPrevia.numero + pendentesMesmaSerie).padStart(6, "0")
+        : String(notas.filter(n => n.tipo === "saida").length + 1).padStart(6, "0"),
+      serie:             numPrevia.serie ?? (fVenda.serie || "1"),
+      data_emissao:      fVenda.data_emissao,
+      destinatario:      fVenda.destinatario,
+      cnpj_destinatario: fVenda.cnpj || undefined,
+      cfop:              fVenda.cfop,
+      natureza:          fVenda.natureza_texto,
+      valor_total:       valorTotal,
+      observacao:        [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
+      auto:              false,
+      itens_json: nfeItens.map(i => ({
+        item:           i.item,
+        ncm:            i.ncm,
+        cfop:           fVenda.cfop,
+        unidade:        i.unidade.toUpperCase(),
+        quantidade:     parseFloat(i.quantidade) || 0,
+        valor_unitario: desmascarar(i.valor_unitario),
+        valor_total:    i.valor_total,
+      })),
+      dados_nf_json: {
+        modulo_key:      moduloFiscal?.modulo ?? "",
+        emit_razao:      emit.razao_social ?? "",
+        emit_cnpj:       emit.cpf_cnpj_emitente ?? "",
+        emit_ie:         emit.ie_emitente ?? "",
+        emit_endereco:   emit.logradouro ?? "",
+        emit_numero:     emit.numero ?? "",
+        emit_bairro:     emit.bairro ?? "",
+        emit_municipio:  emit.municipio_nome ?? "",
+        emit_uf:         emit.uf_emitente ?? "",
+        emit_cep:        emit.cep ?? "",
+        emit_fone:       emit.fone ?? "",
+        dest_tipo_pessoa:     fVenda.dest_tipo_pessoa,
+        dest_ie:              fVenda.dest_ie,
+        dest_endereco:        fVenda.dest_endereco,
+        dest_numero:          fVenda.dest_numero,
+        dest_bairro:          fVenda.dest_bairro,
+        dest_cep:             fVenda.dest_cep,
+        dest_fone:            fVenda.dest_fone,
+        dest_cidade:          fVenda.dest_cidade,
+        dest_uf:              fVenda.dest_uf,
+        dest_municipio_ibge:  fVenda.dest_municipio_ibge,
+        frete_conta:     fVenda.frete_conta,
+        transportadora:  fVenda.transportadora,
+        placa:           fVenda.placa,
+        uf_placa:        fVenda.uf_placa,
+        peso_bruto:      desmascarar(fVenda.peso_bruto),
+        peso_liquido:    desmascarar(fVenda.peso_liquido),
+        especie:         fVenda.especie,
+        contrato_numero: fVenda.contrato_numero,
+        // Contrato com recebimento por carga: a NF autorizada abate o CR do contrato e vira CR próprio
+        ...(contratoSelecionado && fVenda.contrato_numero && fVenda.contrato_numero === (contratoSelecionado.numero ?? "") ? {
+          contrato_id: contratoSelecionado.id,
+          recebimento_por_carga: contratoSelecionado.recebimento_por_carga === true || undefined,
+        } : {}),
+        romaneio_numero: fVenda.romaneio_numero,
+        romaneio_id:     fVenda.romaneio_id || undefined,
+        faturamento_direto: fVenda.faturamento_direto || undefined,
+        peso_aproximado:    fVenda.peso_aproximado || undefined,
+        // Para a cópia da nota voltar com produtor, IE e transporte
+        produtor_id:     fVenda.produtor_id || undefined,
+        ie_id:           fVenda.ie_id || undefined,
+        transp_cpf_cnpj: fVenda.transp_cpf_cnpj || undefined,
+        transp_ie:       fVenda.transp_ie || undefined,
+        transp_endereco: fVenda.transp_endereco || undefined,
+        transp_numero:   fVenda.transp_numero || undefined,
+        transp_cidade:   fVenda.transp_cidade || undefined,
+        data_saida:      fVenda.data_saida,
+        hora_saida:      fVenda.hora_saida,
+        nf_ref_chave:    fVenda.nf_ref_chave || undefined,
+        nf_ref_numero:   fVenda.nf_ref_numero || undefined,
+        local_entrega:   fVenda.local_entrega || undefined,
+      },
+    };
+    return { payload, moduloFiscal };
+  }
+
   async function emitirNota() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir nota)", perigo: false }))) return;
     const fazEmissao = fazNFe || fazendaId || "";
@@ -583,110 +871,18 @@ function FaturamentoInner() {
     if (!fVenda.dest_municipio_ibge) { setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
     setEmitindo(true); setErroForm(null);
     try {
-      const produtor = produtores.find(p => p.id === fVenda.produtor_id);
-      const valorTotal = nfeItens.reduce((s, i) => s + i.valor_total, 0);
+      const { payload, moduloFiscal } = await montarPayloadNota();
+      if (contratoSelecionado && nfeItens.some(i => !(i.valor_total > 0))) { setErroForm("Item da nota sem valor: confira o preço e a quantidade."); return; }
 
-      // Encontra o módulo fiscal do emitente:
-      // 1º) match exato pelo CPF/CNPJ do produtor
-      // 2º) qualquer módulo com certificado e CPF configurados (evita módulos vazios/corrompidos)
-      // 3º) primeiro da lista (último recurso)
-      const cpfCnpjDigits = produtor?.cpf_cnpj?.replace(/\D/g, "") ?? "";
-      const moduloValido = (m: {modulo:string; config: Record<string,string>}) =>
-        !!(m.config?.cpf_cnpj_emitente && m.config?.cert_a1_path);
-      const moduloFiscal =
-        fiscalModulos.find(m => cpfCnpjDigits && m.modulo.endsWith(cpfCnpjDigits)) ??
-        fiscalModulos.find(moduloValido) ??
-        fiscalModulos[0];
-      const emit = moduloFiscal?.config ?? {};
-
-      // Numeração prévia: série e próximo número vêm de Parâmetros → Fiscal do emitente/IE que vai
-      // emitir (o número definitivo é reservado na transmissão). Antes gravava série "1" e a
-      // contagem local de notas, que não tinham nada a ver com a configuração do cliente.
-      let numPrevia: { serie: string | null; numero: number | null } = { serie: null, numero: null };
-      if (moduloFiscal) {
-        try {
-          const rn = await fetch("/api/fiscal/numeracao-nfe", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fazenda_id: fazEmissao, modulo_key: moduloFiscal.modulo,
-              emit_ie_override: fVenda.ie_id ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual : undefined,
-            }),
-          });
-          if (rn.ok) numPrevia = await rn.json();
-        } catch { /* sem prévia: cai no comportamento antigo abaixo */ }
+      // Rascunho (cópia de NF emitida): grava na mesma linha, sem deixar o rascunho para trás
+      let nova: NotaFiscal;
+      if (rascunhoId) {
+        const { data: atual, error: eRasc } = await supabase.from("notas_fiscais").update(payload).eq("id", rascunhoId).select().single();
+        if (eRasc) throw eRasc;
+        nova = atual as NotaFiscal;
+      } else {
+        nova = await criarNotaFiscal(payload);
       }
-      const pendentesMesmaSerie = notas.filter(n => n.tipo === "saida" && n.status === "em_digitacao" && n.serie === numPrevia.serie).length;
-      const payload: Omit<NotaFiscal, "id" | "created_at"> = {
-        fazenda_id:        fazEmissao,
-        tipo:              "saida",
-        status:            "em_digitacao",
-        numero:            numPrevia.numero != null
-          ? String(numPrevia.numero + pendentesMesmaSerie).padStart(6, "0")
-          : String(notas.filter(n => n.tipo === "saida").length + 1).padStart(6, "0"),
-        serie:             numPrevia.serie ?? (fVenda.serie || "1"),
-        data_emissao:      fVenda.data_emissao,
-        destinatario:      fVenda.destinatario,
-        cnpj_destinatario: fVenda.cnpj || undefined,
-        cfop:              fVenda.cfop,
-        natureza:          fVenda.natureza_texto,
-        valor_total:       valorTotal,
-        observacao:        [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
-        auto:              false,
-        itens_json: nfeItens.map(i => ({
-          item:           i.item,
-          ncm:            i.ncm,
-          cfop:           fVenda.cfop,
-          unidade:        i.unidade.toUpperCase(),
-          quantidade:     parseFloat(i.quantidade) || 0,
-          valor_unitario: desmascarar(i.valor_unitario),
-          valor_total:    i.valor_total,
-        })),
-        dados_nf_json: {
-          modulo_key:      moduloFiscal?.modulo ?? "",
-          emit_razao:      emit.razao_social ?? "",
-          emit_cnpj:       emit.cpf_cnpj_emitente ?? "",
-          emit_ie:         emit.ie_emitente ?? "",
-          emit_endereco:   emit.logradouro ?? "",
-          emit_numero:     emit.numero ?? "",
-          emit_bairro:     emit.bairro ?? "",
-          emit_municipio:  emit.municipio_nome ?? "",
-          emit_uf:         emit.uf_emitente ?? "",
-          emit_cep:        emit.cep ?? "",
-          emit_fone:       emit.fone ?? "",
-          dest_tipo_pessoa:     fVenda.dest_tipo_pessoa,
-          dest_ie:              fVenda.dest_ie,
-          dest_endereco:        fVenda.dest_endereco,
-          dest_numero:          fVenda.dest_numero,
-          dest_bairro:          fVenda.dest_bairro,
-          dest_cep:             fVenda.dest_cep,
-          dest_fone:            fVenda.dest_fone,
-          dest_cidade:          fVenda.dest_cidade,
-          dest_uf:              fVenda.dest_uf,
-          dest_municipio_ibge:  fVenda.dest_municipio_ibge,
-          frete_conta:     fVenda.frete_conta,
-          transportadora:  fVenda.transportadora,
-          placa:           fVenda.placa,
-          uf_placa:        fVenda.uf_placa,
-          peso_bruto:      desmascarar(fVenda.peso_bruto),
-          peso_liquido:    desmascarar(fVenda.peso_liquido),
-          especie:         fVenda.especie,
-          contrato_numero: fVenda.contrato_numero,
-          // Contrato com recebimento por carga: a NF autorizada abate o CR do contrato e vira CR próprio
-          ...(contratoSelecionado && fVenda.contrato_numero && fVenda.contrato_numero === (contratoSelecionado.numero ?? "") ? {
-            contrato_id: contratoSelecionado.id,
-            recebimento_por_carga: contratoSelecionado.recebimento_por_carga === true || undefined,
-          } : {}),
-          romaneio_numero: fVenda.romaneio_numero,
-          romaneio_id:     fVenda.romaneio_id || undefined,
-          data_saida:      fVenda.data_saida,
-          hora_saida:      fVenda.hora_saida,
-          nf_ref_chave:    fVenda.nf_ref_chave || undefined,
-          nf_ref_numero:   fVenda.nf_ref_numero || undefined,
-          local_entrega:   fVenda.local_entrega || undefined,
-        },
-      };
-
-      const nova = await criarNotaFiscal(payload);
 
       // Atualiza o romaneio com o nfe_numero para que o DANFE possa reconstruir os itens
       if (fVenda.romaneio_id) {
@@ -806,7 +1002,7 @@ function FaturamentoInner() {
         }
       }
 
-      setNotas(p => [nova, ...p]);
+      setNotas(p => [nova, ...p.filter(n => n.id !== nova.id)]);
       if (nova.status === "autorizada") await vincularCargaContrato(nova);
 
       // Retorno de Armazém Geral autorizado — marca a Remessa de origem como retornada
@@ -820,6 +1016,7 @@ function FaturamentoInner() {
 
       const ehVendaOrdem    = contratoSelecionado?.venda_a_ordem === true;
       const ehEntregaFutura = fVenda.cfop === "6.117";
+      if (nova.status === "autorizada") { setRascunhoId(null); setRascunhoOrigem(""); }
       setNfEmitida({ numero: nova.numero, chave: nova.chave_acesso ?? undefined, cfop: fVenda.cfop, venda_a_ordem: ehVendaOrdem, entrega_futura: ehEntregaFutura });
 
       if (erroSefaz) {
@@ -1340,11 +1537,18 @@ function FaturamentoInner() {
                   <OperationalButton data-arato-button="primary" style={{ ...btnV, marginTop:12, fontSize:12 }} onClick={abrirModal}>Emitir a primeira nota</OperationalButton>
                 </td></tr>
               ) : notasFiltradas.map(nota => {
-                const st = corStatus(nota.status);
+                const rasc = ehRascunho(nota);
+                const st = rasc ? { bg: "#E8EBF2", color: "#1A4870", label: "Rascunho", icone: "○" } : corStatus(nota.status);
+                const djLinha = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
                 return (
                   <tr key={nota.id} style={{ borderBottom:"0.5px solid #F0F2F6" }}>
                     <td style={{ padding:"10px 14px", fontSize:13, fontWeight:600, color:"#111111" }}>
                       {nota.numero} <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>Série {nota.serie}</span>
+                      {djLinha.faturamento_direto === true && (
+                        <span title="Faturada do contrato sem romaneio" style={{ display:"block", fontSize:10, fontWeight:600, color:"#7A5200" }}>
+                          {djLinha.peso_aproximado === true ? "Direto · peso aproximado" : "Direto, sem romaneio"}
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding:"10px 14px", fontSize:12 }}>{fmtData(nota.data_emissao)}</td>
                     <td style={{ padding:"10px 14px", fontSize:13 }}>{nota.destinatario ?? "—"}</td>
@@ -1357,11 +1561,34 @@ function FaturamentoInner() {
                     </td>
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
+                        {!rasc && (
                         <OperationalButton data-arato-button="secondary"
                           style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#111111", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           DANFE
                         </OperationalButton>
+                        )}
+                        {podeDuplicarNota(nota) && (
+                          <OperationalButton data-arato-button="secondary" title="Cria uma cópia em rascunho para editar. Nada é transmitido à SEFAZ até você emitir."
+                            style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#111111", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
+                            onClick={() => duplicarNota(nota)}>
+                            ⧉ Duplicar
+                          </OperationalButton>
+                        )}
+                        {rasc && (
+                          <OperationalButton data-arato-button="primary"
+                            style={{ padding:"4px 10px", fontSize:11, background:"#C9921B", color:"#fff", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
+                            onClick={() => abrirRascunho(nota)}>
+                            ✏ Editar e transmitir
+                          </OperationalButton>
+                        )}
+                        {rasc && (
+                          <OperationalButton data-arato-button="danger"
+                            style={{ padding:"4px 10px", fontSize:11, background:"#FCEBEB", color:"#791F1F", border:"0.5px solid #E24B4A50", borderRadius:6, cursor:"pointer" }}
+                            onClick={() => excluirRascunho(nota)}>
+                            Excluir
+                          </OperationalButton>
+                        )}
                         {["6.905","5.905","6905","5905"].includes(nota.cfop) && (
                           (nota.dados_nf_json as Record<string, unknown> | undefined)?.retornada ? (
                             <span style={{ padding:"4px 10px", fontSize:11, background:"#F1EFE8", color:"#666", borderRadius:6, whiteSpace:"nowrap" }}>
@@ -1375,7 +1602,7 @@ function FaturamentoInner() {
                             </OperationalButton>
                           )
                         )}
-                        {nota.status === "em_digitacao" && (
+                        {nota.status === "em_digitacao" && !rasc && (
                           <OperationalButton data-arato-button="primary"
                             style={{ padding:"4px 10px", fontSize:11, background:"#2A2A2A", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
@@ -1439,7 +1666,7 @@ function FaturamentoInner() {
                             Transmitir
                           </OperationalButton>
                         )}
-                        {["autorizada","em_digitacao"].includes(nota.status) && (
+                        {["autorizada","em_digitacao"].includes(nota.status) && !rasc && (
                           <OperationalButton data-arato-button="danger"
                             style={{ padding:"4px 10px", fontSize:11, background:"#FCEBEB", color:"#791F1F", border:"0.5px solid #E24B4A50", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
@@ -1638,15 +1865,15 @@ function FaturamentoInner() {
                 <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</OperationalButton>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)", display:"flex", alignItems:"center", gap:10 }}>
-                    Selecionar Carga (Romaneio)
+                    Faturar a partir do romaneio ou direto
                     {contratoSelecionado.venda_a_ordem && (
                       <span style={{ fontSize:11, background:"#E8E8E8", color:"#0D0D0D", padding:"3px 10px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
                     )}
                   </div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>
                     Contrato <strong>{contratoSelecionado.numero}</strong> · {contratoSelecionado.comprador} · {contratoSelecionado.produto}
-                    &nbsp;· R$ {(contratoSelecionado.preco ?? 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}/sc
-                    &nbsp;= R$ {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto)).toLocaleString("pt-BR", { minimumFractionDigits:4 })}/kg
+                    &nbsp;· {contratoSelecionado.moeda === "USD" ? "US$" : "R$"} {(contratoSelecionado.preco ?? 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}
+                    {precoContrato && <>&nbsp;= R$ {precoContrato.precoKg.toLocaleString("pt-BR", { minimumFractionDigits:4, maximumFractionDigits:4 })}/kg</>}
                   </div>
                   {contratoSelecionado.venda_a_ordem && (
                     <div style={{ marginTop:8, background:"#F2F2F2", border:"0.5px solid #93C5FD", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#1E40AF" }}>
@@ -1657,11 +1884,33 @@ function FaturamentoInner() {
               </div>
 
               <div style={{ overflowY:"auto", flex:1 }}>
+                {/* Faturar direto: emissão por peso aproximado, sem romaneio */}
+                <div style={{ padding:"14px 24px", background:"#FBF3E0", borderBottom:"0.5px solid var(--border-table)" }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:"#7A5200", marginBottom:8 }}>Faturar direto, sem romaneio</div>
+                  <div style={{ display:"flex", alignItems:"flex-end", gap:14, flexWrap:"wrap" }}>
+                    <div>
+                      <label data-arato-label="true" style={{ display:"block", fontSize:11, color:"#555", marginBottom:3 }}>Peso a faturar (kg)</label>
+                      <input style={{ ...inp, width:150 }} inputMode="decimal" placeholder="Ex.: 37.000" value={pesoDireto} onChange={e => setPesoDireto(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") faturarDireto(); }} />
+                    </div>
+                    <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"#555", paddingBottom:8, cursor:"pointer" }}>
+                      <input type="checkbox" checked={pesoAproximado} onChange={e => setPesoAproximado(e.target.checked)} /> Peso aproximado
+                    </label>
+                    <OperationalButton data-arato-button="primary" disabled={!(parseFloat(pesoDireto.replace(/\./g, "").replace(",", ".")) > 0)} onClick={faturarDireto}
+                      style={{ padding:"8px 16px", fontSize:12, fontWeight:600, background:"#C9921B", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", opacity: parseFloat(pesoDireto.replace(/\./g, "").replace(",", ".")) > 0 ? 1 : 0.5 }}>
+                      Continuar →
+                    </OperationalButton>
+                  </div>
+                  {precoContrato?.aviso && <div style={{ fontSize:11, color:"#7A5200", marginTop:8 }}>{precoContrato.aviso}</div>}
+                  {notasDiretasDoContrato(contratoSelecionado.id).length > 0 && (
+                    <div style={{ fontSize:11, color:"#791F1F", marginTop:8 }}>
+                      Já faturado sem romaneio neste contrato: NF {notasDiretasDoContrato(contratoSelecionado.id).map(n => n.numero).join(", ")}. Confira para não faturar a mesma carga pelo romaneio.
+                    </div>
+                  )}
+                </div>
                 {romaneios.length === 0 ? (
-                  <div data-arato-statistic="display" style={{ padding:40, textAlign:"center" }}>
-                    <div style={{ fontSize:32, marginBottom:12 }}>🚛</div>
-                    <div style={{ fontSize:14, color:"var(--text-2)", fontWeight:600, marginBottom:8 }}>Nenhum romaneio registrado para este contrato</div>
-                    <div style={{ fontSize:12, color:"var(--text-3)" }}>Registre as cargas em Comercial → Contratos de Grãos antes de emitir a NF-e.</div>
+                  <div data-arato-statistic="display" style={{ padding:28, textAlign:"center", fontSize:12, color:"var(--text-3)" }}>
+                    Nenhum romaneio registrado para este contrato.
                   </div>
                 ) : (
                   <>
@@ -1716,7 +1965,7 @@ function FaturamentoInner() {
                           </div>
                           <div style={{ flex:"0 0 130px", textAlign:"right" }}>
                             <div style={{ fontSize:13, fontWeight:700, color:"var(--text-1)" }}>
-                              {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto) * pesoKg).toLocaleString("pt-BR", { style:"currency", currency:"BRL" })}
+                              {((precoContrato?.precoKg ?? 0) * pesoKg).toLocaleString("pt-BR", { style:"currency", currency:"BRL" })}
                             </div>
                             <div style={{ fontSize:10, color:"var(--text-3)" }}>valor da carga</div>
                           </div>
@@ -1745,7 +1994,7 @@ function FaturamentoInner() {
 
               {/* Barra de título */}
               <div style={{ background:"#111111", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</OperationalButton>
+                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => rascunhoId ? setModalAberto(false) : setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</OperationalButton>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
                     {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
@@ -1753,6 +2002,8 @@ function FaturamentoInner() {
                   <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
                     {fVenda.destinatario ? `Destinatário: ${fVenda.destinatario}` : "Preencha os dados da nota"}
                     {fVenda.contrato_numero && " · dados pré-carregados do contrato"}
+                    {fVenda.faturamento_direto && (fVenda.peso_aproximado ? " · sem romaneio, peso aproximado" : " · sem romaneio")}
+                    {rascunhoId && ` · Rascunho${rascunhoOrigem ? ` duplicado da NF ${rascunhoOrigem}` : ""}: nada foi transmitido à SEFAZ`}
                   </div>
                 </div>
                 <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"0.5px solid rgba(255,255,255,0.3)", color:"rgba(255,255,255,0.7)", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer" }} onClick={() => setModalAberto(false)}>✕ Fechar</OperationalButton>
@@ -1853,7 +2104,12 @@ function FaturamentoInner() {
                     }}>
                     Próxima aba →
                   </OperationalButton>
-                  <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo}>
+                  {rascunhoId && (
+                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={salvarRascunhoNota} disabled={salvandoRascunho || emitindo}>
+                      {salvandoRascunho ? "Salvando…" : "Salvar rascunho"}
+                    </OperationalButton>
+                  )}
+                  <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo || salvandoRascunho}>
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
                   </OperationalButton>
                 </div>

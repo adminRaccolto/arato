@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.03-z",
+    data: "03/11/2026",
+    titulo: "Notas de Venda: duplicar nota e faturar contrato sem romaneio",
+    modulos: ["Documentos Fiscais", "Comercial"],
+    itens: [
+      { tipo: "novidade", texto: "Botão Duplicar nas NF-e de venda: cria uma cópia em rascunho, sem transmitir. Edite o que for preciso e clique em Emitir NF-e quando estiver pronto. A cópia não leva chave, protocolo nem romaneio da nota original." },
+      { tipo: "novidade", texto: "Ao faturar um contrato, escolha entre a partir do romaneio ou direto, informando o peso, com a opção Peso aproximado. O contrato ganhou o botão Faturar." },
+      { tipo: "correcao", texto: "A NF por contrato usava o preço da saca como se fosse o preço do quilo, e contrato em dólar saía sem converter para reais. Agora o preço por kg vem do item do contrato, em reais." },
+      { tipo: "correcao", texto: "O botão Faturar do romaneio, no contrato, abria a tela sem carregar a nota. Corrigido." },
+    ],
+  },
+  {
     versao: "2026.11.03-y",
     data: "03/11/2026",
     titulo: "NF de entrada: Enviar para Aprovação",

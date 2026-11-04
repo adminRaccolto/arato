@@ -12,6 +12,7 @@ import TopNav from "../../components/TopNav";
 import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica, listarDepositos, buscarDepositoTerceiroPorCnpj } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
+import { podeDuplicarNota } from "../../lib/fiscal/duplicar-nota";
 import type { NotaFiscal, Produtor, ProdutorIE, Pessoa, Deposito } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
@@ -540,7 +541,7 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
@@ -549,6 +550,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
   onRetransmitir?: (n: NotaFiscal) => void;
   onManifestarNF?: (n: NotaFiscal) => void;
   onCorrigir?: (n: NotaFiscal) => void;
+  onDuplicar?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -655,6 +657,15 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                               style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
                               Emitir Complementar
+                            </OperationalButton>
+                          )}
+                          {onDuplicar && podeDuplicarNota(nota) && (
+                            <OperationalButton data-arato-button="secondary"
+                              onClick={(e) => { e.stopPropagation(); onDuplicar(nota); }}
+                              title="Cria uma cópia em rascunho nas Notas de Venda. Nada é transmitido até você emitir."
+                              style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                            >
+                              ⧉ Duplicar
                             </OperationalButton>
                           )}
                           {onCorrigir && (
@@ -1656,6 +1667,11 @@ function FiscalInner() {
         }),
       });
 
+      // Rascunho transmitido virou a nota acima: não fica para trás para ser transmitido de novo
+      if (retransmitindoNota?.status === "em_digitacao" && (retransmitindoNota.dados_nf_json as Record<string,unknown>)?.rascunho === true) {
+        await supabase.from("notas_fiscais").delete().eq("id", retransmitindoNota.id).eq("status", "em_digitacao");
+      }
+
       // Se era uma NF de Remessa (originada de NF de Entrada), salva vínculo
       const nfEntradaOrigem = remessaModo?.nf_entrada_id
         ?? ((retransmitindoNota?.dados_nf_json as Record<string,unknown>)?.nf_entrada_id as string | undefined);
@@ -2130,6 +2146,7 @@ function FiscalInner() {
                     onRetransmitir={abrirRetransmit}
                     onManifestarNF={maniTestarNF}
                     onCorrigir={abrirModalCorrecao}
+                    onDuplicar={n => router.push(`/comercial/faturamento?duplicar=${n.id}`)}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>

@@ -1869,6 +1869,12 @@ export default function Contratos() {
                                 <td style={{ padding:"10px 12px", textAlign:"right" }}>
                                   <div style={{ display:"flex", gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
                                     <OperationalButton data-arato-button="secondary" style={{ padding:"3px 9px", border:"0.5px solid var(--border-table)", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c, false)}>Abrir</OperationalButton>
+                                    {c.tipo === "venda" && c.status !== "encerrado" && c.status !== "cancelado" && (
+                                      <a href={`/comercial/faturamento?contrato_id=${c.id}`} title="Emitir NF-e deste contrato: a partir do romaneio ou direto, por peso aproximado"
+                                        style={{ padding:"3px 9px", border:"0.5px solid #1A487050", borderRadius:5, background:"#D5E8F5", fontSize:11, color:"#0B2D50", textDecoration:"none", whiteSpace:"nowrap" }}>
+                                        Faturar
+                                      </a>
+                                    )}
                                     {c.status !== "encerrado" && c.status !== "cancelado" && (
                                       <OperationalButton data-arato-button="secondary" style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
                                         onClick={async () => {
