@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**CT-e e código do município do emitente (04/11/2026)**: se o cadastro da transportadora tem o nome do município sem o código IBGE, o sistema busca o código pelo nome. Se não encontrar, avisa antes de transmitir e o número do CT-e não é consumido: preencha o endereço em Cadastros, Empresas. Uma rejeição 215 ("Falha no Schema XML") aponta dado em formato inválido no XML, e não diz qual campo.
+
 **Operações Gerenciais nos seletores (04/11/2026)**: cada Operação Gerencial aparece uma vez em Lançamento de Tesouraria, Operações de Tesouraria, Estoque e Auditoria de Classificação; vale a versão do cliente, não o modelo do sistema. Duas operações do mesmo cliente com o mesmo código, mas nomes diferentes, são cadastros distintos: nesse caso, altere o código de uma delas.
 
 **Sugestões da conciliação (04/11/2026)**: a sugestão compara valor e data e, antes deles, o nome de quem recebeu, quando a descrição da linha do banco o traz. Cada título é sugerido a uma linha só. Título de salário não é sugerido para linha com o nome de outra pessoa e, sem nome confirmado na linha, nunca concilia sozinho: fica como sugestão para o usuário conferir. O bloqueio por nome vale só para salário; para os demais títulos, o nome só dá prioridade. Conciliações já gravadas não mudam. Se a linha não sugere título, use "Vincular" normalmente.

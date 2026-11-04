@@ -4,6 +4,15 @@ const nomeMunicipio = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]
 // Sem um dos nomes não há o que comparar: vale como o mesmo município.
 export const mesmoMunicipio = (a?: string | null, b?: string | null) => !a || !b || nomeMunicipio(a) === nomeMunicipio(b);
 
+/** Código IBGE do município pelo nome, sem diferenciar acento ou maiúscula. */
+export const ibgePeloNome = (lista: { id: number; nome: string }[], nome?: string | null): string => {
+  if (!nome) return "";
+  const achado = lista.find(m => nomeMunicipio(m.nome) === nomeMunicipio(nome));
+  return achado ? String(achado.id) : "";
+};
+
+export const ibgeValido = (valor?: string | null) => /^\d{7}$/.test(valor ?? "");
+
 export interface TitularCadastro {
   nome: string;
   cpf_cnpj?: string | null;

@@ -16,6 +16,7 @@ import { transmitirCTe } from "./transmitter";
 import { cancelarCTe as registrarCancelamentoCTe, enviarCartaCorrecaoCTe, type CorrecaoCTeItem } from "./evento";
 import { pfxParaPem }   from "../nfe/signer";
 import { resolverConfigCTe } from "./config";
+import { ibgeValido } from "../nfe/identidade-fiscal";
 import type { CTeInput, EmitenteCTe } from "./builder";
 
 export type { CTeInput, EmitenteCTe };
@@ -326,6 +327,12 @@ export async function emitirCTe(
   catch (e) { return { sucesso: false, cStat: "502", xMotivo: String(e) }; }
   const pem = pfxParaPem(pfxBuffer, certSenha);
 
+  // Antes de reservar o número: sem o código do município a SEFAZ devolve só "Falha no Schema" e o número se perde
+  const ibgeEmitente = fc.municipio_ibge || confg.municipio_ibge || "";
+  if (!ibgeValido(ibgeEmitente)) {
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Falta o código IBGE do município do emitente. Preencha o endereço da transportadora em Cadastros → Empresas e tente de novo." };
+  }
+
   // 4. Número sequencial
   // Incrementa o número sequencial na fazenda onde o registro cte_emp_* REALMENTE está gravado
   // (resolved.cteFazendaId) — pode ser diferente da fazenda que está emitindo agora, já que os
@@ -340,8 +347,8 @@ export async function emitirCTe(
     logradouro:     fc.logradouro         ?? confg.logradouro         ?? "",
     numero:         fc.numero             ?? confg.numero             ?? "S/N",
     bairro:         fc.bairro             ?? confg.bairro             ?? "",
-    municipio_ibge: fc.municipio_ibge     ?? confg.municipio_ibge     ?? "5106224",
-    municipio_nome: fc.municipio_nome     ?? fc.municipio ?? confg.municipio_nome ?? confg.municipio ?? "Nova Mutum",
+    municipio_ibge: ibgeEmitente,
+    municipio_nome: fc.municipio_nome || fc.municipio || confg.municipio_nome || confg.municipio || "Nova Mutum",
     uf:             fc.uf_emitente        ?? confg.uf_emitente        ?? "MT",
     cep:            fc.cep               ?? confg.cep               ?? "00000000",
     fone:           fc.fone              ?? confg.fone,

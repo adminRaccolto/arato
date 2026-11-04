@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aplicarIdentidadeTitular, documentoDoModulo, escolherModuloUnico, type TitularCadastro } from "./identidade-fiscal.ts";
+import { aplicarIdentidadeTitular, documentoDoModulo, escolherModuloUnico, ibgePeloNome, ibgeValido, type TitularCadastro } from "./identidade-fiscal.ts";
 
 const CPF = "31020674091";
 const titular: TitularCadastro = { nome: "Flávio", cpf_cnpj: "310.206.740-91", inscricao_est: "132354195", logradouro: "Rua A", numero: "10", bairro: "Centro", municipio: "Canarana", municipio_ibge: "5102702", estado: "MT", cep: "78640-000", telefone: "66" };
@@ -72,4 +72,13 @@ test("emitente padrão: único da fazenda, ou único do cliente", () => {
   assert.equal(escolherModuloUnico(linhas([["fiscal_pf_1", "a"], ["fiscal_pf_2", "b"]]), "a"), "fiscal_pf_1");
   assert.equal(escolherModuloUnico(linhas([["fiscal_pf_1", "b"], ["fiscal_pf_1", "c"]]), "a"), "fiscal_pf_1");
   assert.equal(escolherModuloUnico([], "a"), "");
+});
+
+test("código IBGE do emitente sai do nome do município, sem diferenciar acento ou maiúscula", () => {
+  const lista = [{ id: 5106224, nome: "Nova Mutum" }, { id: 5107925, nome: "Sorriso" }];
+  assert.equal(ibgePeloNome(lista, "NOVA MUTUM"), "5106224");
+  assert.equal(ibgePeloNome(lista, "Cuiabá"), "");
+  assert.equal(ibgePeloNome(lista, ""), "");
+  assert.equal(ibgeValido("5106224"), true);
+  assert.equal(ibgeValido(""), false);
 });

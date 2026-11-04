@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-m",
+    data: "04/11/2026",
+    titulo: "CT-e: rejeição 215 por falta do código do município",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Transportadora com o município cadastrado sem o código IBGE tinha o CT-e rejeitado com \"Falha no Schema XML\". Agora o código é buscado pelo nome do município. Se não for encontrado, a tela avisa antes de usar um número de CT-e." },
+    ],
+  },
+  {
     versao: "2026.11.04-l",
     data: "04/11/2026",
     titulo: "Operações Gerenciais sem repetição nos seletores",

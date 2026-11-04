@@ -1,6 +1,6 @@
 // Identidade do emitente vem do cadastro. Leitura única para NF-e, CT-e e MDF-e.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { aplicarIdentidadeTitular, documentoDoModulo, somenteDigitos, type TitularCadastro } from "./identidade-fiscal";
+import { aplicarIdentidadeTitular, documentoDoModulo, ibgePeloNome, ibgeValido, somenteDigitos, type TitularCadastro } from "./identidade-fiscal";
 
 function formatarDocumento(digitos: string): string {
   if (digitos.length === 11) return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
@@ -33,10 +33,23 @@ export async function buscarTitularCadastro(db: SupabaseClient, fazendaIds: stri
   return ([...produtores].sort((a, b) => (a.nome ?? "").length - (b.nome ?? "").length)[0] as TitularCadastro | undefined) ?? null;
 }
 
+// Cadastro com o nome do município e sem o código: o CT-e levava o código vazio e a SEFAZ recusava com a rejeição 215 (04/11/2026).
+// Fora do ar, a API do IBGE não bloqueia aqui: quem emite avisa que falta o código.
+async function completarIbgeDoMunicipio(config: Record<string, string>): Promise<Record<string, string>> {
+  if (ibgeValido(config.municipio_ibge) || !config.municipio_nome) return config;
+  try {
+    const uf = (config.uf_emitente || "MT").toUpperCase();
+    const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+    if (!r.ok) return config;
+    const ibge = ibgePeloNome(await r.json() as { id: number; nome: string }[], config.municipio_nome);
+    return ibge ? { ...config, municipio_ibge: ibge } : config;
+  } catch { return config; }
+}
+
 // Sem documento na chave (configurações antigas), a configuração fica como está.
 export async function configComIdentidade(db: SupabaseClient, fazendaIds: string[], modulo: string, config: Record<string, string>): Promise<Record<string, string>> {
   const documento = documentoDoModulo(modulo);
   if (!documento) return config;
   const titular = await buscarTitularCadastro(db, fazendaIds, somenteDigitos(documento));
-  return aplicarIdentidadeTitular(config, documento, titular);
+  return completarIbgeDoMunicipio(aplicarIdentidadeTitular(config, documento, titular));
 }
