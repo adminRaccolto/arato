@@ -332,7 +332,7 @@ export async function emitirCTe(
   // Antes de reservar o número: sem o código do município a SEFAZ devolve só "Falha no Schema" e o número se perde
   const ibgeEmitente = fc.municipio_ibge || confg.municipio_ibge || "";
   if (!ibgeValido(ibgeEmitente)) {
-    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Falta o código IBGE do município do emitente. Preencha o endereço da transportadora em Cadastros → Empresas e tente de novo." };
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "O município do emitente não foi reconhecido. Confira a cidade e a UF em Cadastros → Empresas, ou informe o Código IBGE em Parâmetros do Sistema → Fiscal, e tente de novo." };
   }
 
   // 4. Número sequencial

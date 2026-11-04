@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aplicarIdentidadeTitular, documentoDoModulo, escolherModuloUnico, ibgePeloNome, ibgeValido, type TitularCadastro } from "./identidade-fiscal.ts";
+import { aplicarIdentidadeTitular, documentoDoModulo, escolherModuloUnico, ibgeValido, type TitularCadastro } from "./identidade-fiscal.ts";
 
 const CPF = "31020674091";
 const titular: TitularCadastro = { nome: "Flávio", cpf_cnpj: "310.206.740-91", inscricao_est: "132354195", logradouro: "Rua A", numero: "10", bairro: "Centro", municipio: "Canarana", municipio_ibge: "5102702", estado: "MT", cep: "78640-000", telefone: "66" };
@@ -74,11 +74,7 @@ test("emitente padrão: único da fazenda, ou único do cliente", () => {
   assert.equal(escolherModuloUnico([], "a"), "");
 });
 
-test("código IBGE do emitente sai do nome do município, sem diferenciar acento ou maiúscula", () => {
-  const lista = [{ id: 5106224, nome: "Nova Mutum" }, { id: 5107925, nome: "Sorriso" }];
-  assert.equal(ibgePeloNome(lista, "NOVA MUTUM"), "5106224");
-  assert.equal(ibgePeloNome(lista, "Cuiabá"), "");
-  assert.equal(ibgePeloNome(lista, ""), "");
+test("código IBGE precisa ter 7 dígitos", () => {
   assert.equal(ibgeValido("5106224"), true);
   assert.equal(ibgeValido(""), false);
 });

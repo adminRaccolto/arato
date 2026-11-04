@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-o",
+    data: "04/11/2026",
+    titulo: "CT-e: código do município do emitente sem depender da internet",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O CT-e parava com aviso de código IBGE do emitente mesmo com a cidade cadastrada. Agora o código vem de uma tabela oficial guardada no sistema." },
+    ],
+  },
+  {
     versao: "2026.11.04-n",
     data: "04/11/2026",
     titulo: "CT-e e MDF-e: XML completo no arquivo",
