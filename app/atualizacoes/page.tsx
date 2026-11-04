@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-e",
+    data: "04/11/2026",
+    titulo: "Devolução de bem de terceiro com CST 050",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "A NF-e de devolução de bem do ativo de terceiro (CFOP 5.555/6.555) agora sai com CST 050, ICMS com suspensão." },
+    ],
+  },
+  {
     versao: "2026.11.04-d",
     data: "04/11/2026",
     titulo: "Folha: previsões de salário sem duplicar",

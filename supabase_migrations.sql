@@ -19431,10 +19431,22 @@ COMMIT;
 NOTIFY pgrst, 'reload schema';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════
--- Seção 411 — Folha: só uma execução por vez refaz as previsões
+-- Seção 412 — Folha: só uma execução por vez refaz as previsões
 --   Duas execuções simultâneas deixavam previsões de salário soltas no CP e no fluxo de caixa.
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 BEGIN;
 ALTER TABLE folha_pagamento ADD COLUMN IF NOT EXISTS previsoes_sync_em timestamptz;
+COMMIT;
+NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 413 — Devolução de bem do ativo de terceiro (5555/6555) com CST 050
+--   Rode depois da Seção 411. Só troca as operações que ainda estão no padrão anterior (CST 041).
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+UPDATE operacoes_fiscais
+   SET icms_cst_interno = '050', icms_cst_externo = '050',
+       inf_cpl_template = replace(inf_cpl_template, 'ICMS não tributado (CST 41).', 'ICMS com suspensão (CST 50).')
+ WHERE cfop_interno = '5555' AND cfop_externo = '6555' AND icms_cst_interno = '041' AND icms_cst_externo = '041';
 COMMIT;
 NOTIFY pgrst, 'reload schema';

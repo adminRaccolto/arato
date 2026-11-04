@@ -22,10 +22,10 @@ test("remessa 5905 com 051 escolhido: sai ICMS51 diferido sobre o valor líquido
   assert.match(xml, /<infCpl>TEXTO DO USUARIO<\/infCpl>/);
 });
 
-test("devolução de bem de terceiro 6555: sem ICMS, finalidade de devolução e NF referenciada", () => {
+test("devolução de bem de terceiro 6555: CST 50, finalidade de devolução e NF referenciada", () => {
   const b = base();
   const { xml } = buildNFe({ ...b, finNFe: "4", nfe_ref: "15260605054903000179558900042830431651288716", itens: b.itens.map(i => ({ ...i, cfop: "6555" })) });
-  assert.match(xml, /<ICMS40><orig>0<\/orig><CST>41<\/CST><\/ICMS40>/);
+  assert.match(xml, /<ICMS40><orig>0<\/orig><CST>50<\/CST><\/ICMS40>/);
   assert.doesNotMatch(xml, /<ICMS00>/);
   assert.match(xml, /<finNFe>4<\/finNFe>/);
   assert.match(xml, /<refNFe>15260605054903000179558900042830431651288716<\/refNFe>/);

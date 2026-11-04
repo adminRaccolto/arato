@@ -14,7 +14,7 @@ export async function comTravaDaFolha<T>(
 ): Promise<T> {
   for (let i = 0; i < TRAVA_TENTATIVAS; i++) {
     const r = await reservar();
-    if (r === "sem_coluna") return fn(); // Seção 411 ainda não rodada: segue sem trava
+    if (r === "sem_coluna") return fn(); // Seção 412 ainda não rodada: segue sem trava
     if (r === "reservada") {
       try { return await fn(); } finally { await liberar(); }
     }

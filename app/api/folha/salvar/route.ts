@@ -267,7 +267,7 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
       data_vencimento: vencimento, data_lancamento: hoje,
     });
     if (error) throw new Error(`Previsão ${it.nome_funcionario}: ${error.message}`);
-    // Só liga se a linha estiver livre: outra execução já ligou um título (sem a Seção 411), este é o excedente
+    // Só liga se a linha estiver livre: outra execução já ligou um título (sem a Seção 412), este é o excedente
     const { data: ligou } = await sb.from("folha_funcionarios").update({ cp_lancamento_id: lanc?.id ?? null }).eq("id", it.id).is("cp_lancamento_id", null).select("id");
     if (!ligou?.length) {
       if (lanc?.id) await falharSeErro(sb.from("lancamentos").delete().eq("id", lanc.id).eq("natureza", "previsao"), "excluir previsão excedente");

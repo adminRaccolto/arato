@@ -293,7 +293,7 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
   }
 
   if (CFOPS_DEVOLUCAO_BEM_TERCEIRO.has(prefix)) {
-    return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
+    return { cst: "50", xml: () => `<ICMS40><orig>0</orig><CST>50</CST></ICMS40>` };
   }
 
   if (prefix === "5905" || prefix === "6905" || prefix === "5934" || prefix === "6934") {

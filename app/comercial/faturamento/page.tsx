@@ -1449,7 +1449,7 @@ function FaturamentoInner() {
               {fVenda.nf_ref_chave && fVenda.nf_ref_chave.length !== 44 && (
                 <div style={{ fontSize:10, color:"#E24B4A", marginTop:3 }}>Chave deve ter 44 dígitos ({fVenda.nf_ref_chave.length} digitados)</div>
               )}
-              <div style={{ fontSize:11, color:"#7A5A12", marginTop:8 }}>A nota sai com finalidade de devolução e CST 041 (sem ICMS). Não movimenta estoque nem gera Contas a Receber.</div>
+              <div style={{ fontSize:11, color:"#7A5A12", marginTop:8 }}>A nota sai com finalidade de devolução e CST 050 (ICMS com suspensão). Não movimenta estoque nem gera Contas a Receber.</div>
             </div>
           )}
           {(fVenda.cfop === "6.923" || fVenda.cfop === "6.117") && (
