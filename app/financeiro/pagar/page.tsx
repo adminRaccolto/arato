@@ -493,6 +493,10 @@ export default function ContasAPagarPage() {
   const quemBaixou = useQuemBaixou(linhas.filter(l => l.status_normalizado === "baixado" || l.status_normalizado === "parcial").slice(0, 1500).map(l => l.id));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP)
     && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
+  // Borderô pago fica fora do filtro Aberto, com os títulos dentro dele: sem avisar, parece que sumiram
+  const borderosPagosOcultos = fStatus.size === 0 || fStatus.has("baixado") ? [] : todosBorderos.filter(b => resumoBordero(b).status === "baixado"
+    && filtrarBordero(b, resultado ?? [], { ...filtrosCP, status: new Set(["baixado"]) })
+    && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
@@ -1931,6 +1935,16 @@ export default function ContasAPagarPage() {
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
         </OperationalFilters>
+
+        {borderosPagosOcultos.length > 0 && (
+          <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "6px 12px", marginBottom: 10, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)" }}>
+            <span>{borderosPagosOcultos.length === 1 ? "1 borderô pago não aparece" : `${borderosPagosOcultos.length} borderôs pagos não aparecem`} com este filtro de status.</span>
+            <OperationalButton data-arato-button="secondary" onClick={() => setFStatus(p => new Set([...p, "baixado"]))}
+              style={{ padding: "3px 10px", fontSize: 11, border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer" }}>
+              Mostrar pagos
+            </OperationalButton>
+          </div>
+        )}
 
         {erro && (
           <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#791F1F" }}>

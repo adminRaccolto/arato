@@ -63,8 +63,9 @@ export function itensDoBordero<T extends TituloGrid>(b: PagamentoLote, titulos: 
   return titulos.filter(t => t.lote_id === b.id || vinculos.has(chaveTitulo(t.origem_tabela, t.id)));
 }
 export function vencimentoBordero(b: PagamentoLote, titulos: TituloGrid[]) {
+  // Sem vencimento nem títulos (borderô antigo cujos títulos sumiram) vale a data do pagamento: senão o filtro de período o escondia sempre
   return b.data_vencimento || itensDoBordero(b, titulos).map(t => t.data_vencimento)
-    .filter((d): d is string => !!d).sort().at(-1) || null;
+    .filter((d): d is string => !!d).sort().at(-1) || b.data_pagamento || null;
 }
 export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: FiltrosCP) {
   if (f.origens.size && !(b.itens ?? []).some(i => f.origens.has(i.origem_tabela ?? "lancamentos"))) return false;

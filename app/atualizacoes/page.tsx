@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-f",
+    data: "04/11/2026",
+    titulo: "Contas a Pagar: borderôs pagos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Quando há borderô pago fora da lista por causa do filtro de status, o Contas a Pagar avisa quantos são e oferece o botão Mostrar pagos." },
+      { tipo: "correcao", texto: "Borderô pago sem vencimento e sem títulos na lista não some mais: ele aparece pela data do pagamento." },
+    ],
+  },
+  {
     versao: "2026.11.04-e",
     data: "04/11/2026",
     titulo: "Devolução de bem de terceiro com CST 050",
