@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarFazendasDaConta } from "../../../lib/db";
+import { listarFazendasDaConta, listarOperacoesGerenciais, ogDaLista } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
 import { ModalLancamentoMutuo, PainelMutuos, useMutuos } from "../../../components/financeiro/LancamentoMutuo";
@@ -37,7 +37,7 @@ interface LancTesoura {
 }
 // Rótulo de conta bancária — mesmo critério do modal de novo lançamento (valor gravado em conta_bancaria)
 const contaLabelTesoura = (c: ContaBancariaMin) => c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.id;
-interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
+interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; ids_equivalentes?: string[]; }
 
 interface OpTesoura {
   id: string; fazenda_id: string; nome: string;
@@ -156,7 +156,8 @@ export default function TesourariaPage() {
       })(),
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, tipo_conta, fazenda_id").in("fazenda_id", fazendaIds),
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
+      // Uma OG por classificação (a do cliente antes do modelo global): a consulta direta trazia as duas cópias no seletor
+      listarOperacoesGerenciais(fazAtiva).then(lista => ({ data: lista.filter(o => !o.inativo) as OgMin[] }), () => ({ data: [] as OgMin[] })),
     ]);
 
     setLancamentos(lb ?? []);
@@ -537,7 +538,7 @@ export default function TesourariaPage() {
                       ...f,
                       tipo_op: e.target.value,
                       // Auto-preenche OG se a op custom tiver vínculo
-                      og_id: opCustom?.operacao_gerencial_id ?? f.og_id,
+                      og_id: ogDaLista(ogs, opCustom?.operacao_gerencial_id)?.id ?? opCustom?.operacao_gerencial_id ?? f.og_id,
                     }));
                   }} style={inp}>
                     <optgroup label="Operações Padrão">

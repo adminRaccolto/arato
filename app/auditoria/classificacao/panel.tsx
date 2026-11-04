@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { listarOperacoesGerenciais } from "../../../lib/db";
 
 type RegraMap = {
   id: string;
@@ -85,9 +86,8 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
   // Carrega OGs para seleção de correção
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
-      .or(`fazenda_id.eq.${fazendaId},fazenda_id.is.null`).eq("inativo", false).order("classificacao")
-      .then(({ data }) => setOgsDisponiveis((data ?? []) as { id: string; descricao: string; classificacao: string }[]));
+    // Uma OG por classificação, só do cliente: "fazenda_id is null" trazia a cópia do cliente, o modelo global e, para a equipe Raccolto, as OGs de outras contas
+    listarOperacoesGerenciais(fazendaId).then(lista => setOgsDisponiveis(lista.filter(o => !o.inativo))).catch(() => {});
   }, [fazendaId]);
 
   const rodarAuditoria = useCallback(async () => {

@@ -6,14 +6,14 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
-import { listarFazendasDaConta } from "../../../../lib/db";
+import { listarFazendasDaConta, listarOperacoesGerenciais, ogDaLista } from "../../../../lib/db";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
-interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
+interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; ids_equivalentes?: string[]; }
 
 interface OpTesoura {
   id: string; fazenda_id: string; nome: string;
@@ -69,11 +69,12 @@ export default function OperacoesTesourariaPage() {
     if (!fazAtiva) return;
     const [{ data: opData }, { data: ogData }] = await Promise.all([
       supabase.from("operacoes_tesouraria").select("*").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("operacoes_gerenciais").select("id,classificacao,descricao,tipo").or(`conta_id.eq.${contaId},and(fazenda_id.is.null,conta_id.is.null)`).neq("inativo", true).order("classificacao"),
+      // Uma OG por classificação (a do cliente antes do modelo global): a consulta direta trazia as duas cópias no seletor
+      listarOperacoesGerenciais(fazAtiva).then(lista => ({ data: lista.filter(o => !o.inativo) as OgMin[] }), () => ({ data: [] as OgMin[] })),
     ]);
     setOps(opData ?? []);
     setOgs(ogData ?? []);
-  }, [fazAtiva, fazendaIds, contaId]);
+  }, [fazAtiva, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -86,7 +87,7 @@ export default function OperacoesTesourariaPage() {
 
   function abrirEditar(op: OpTesoura) {
     setOpEdit(op);
-    setForm({ nome: op.nome, tipo: op.tipo, categoria: op.categoria ?? "", observacao: op.observacao ?? "", og_id: op.operacao_gerencial_id ?? "" });
+    setForm({ nome: op.nome, tipo: op.tipo, categoria: op.categoria ?? "", observacao: op.observacao ?? "", og_id: ogDaLista(ogs, op.operacao_gerencial_id)?.id ?? op.operacao_gerencial_id ?? "" });
     setErr("");
     setModalOp(true);
   }
@@ -186,7 +187,7 @@ export default function OperacoesTesourariaPage() {
               <tbody>
                 {ops.map((op, i) => {
                   const tm = TIPO_META[op.tipo] ?? TIPO_META.ambos;
-                  const og = ogs.find(g => g.id === op.operacao_gerencial_id);
+                  const og = ogDaLista(ogs, op.operacao_gerencial_id);
                   return (
                     <tr key={op.id} style={{ borderBottom: i < ops.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                       <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{op.nome}</td>

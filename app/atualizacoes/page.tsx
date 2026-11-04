@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-l",
+    data: "04/11/2026",
+    titulo: "Operações Gerenciais sem repetição nos seletores",
+    modulos: ["Financeiro", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Tesouraria, Operações de Tesouraria, Estoque e Auditoria de Classificação mostravam cada Operação Gerencial duas vezes. Agora aparece uma só, a do cliente." },
+    ],
+  },
+  {
     versao: "2026.11.04-k",
     data: "04/11/2026",
     titulo: "Conciliação: salários pelo nome de quem recebeu",

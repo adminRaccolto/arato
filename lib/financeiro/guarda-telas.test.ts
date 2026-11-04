@@ -92,3 +92,12 @@ test("NFS-e de Empresa: checagem de CP existente compara o prestador, não só o
   for (const f of ["components/fiscal/ModalNfServico.tsx", "app/compras/nf-servico/page.tsx"])
     assert.ok(le(f).includes(`qJaEmp.eq("pessoa_id", cab.prestador_id)`), f);
 });
+
+// Achado 04/11/2026: seletores que liam operacoes_gerenciais direto mostravam cada OG duas vezes (cópia do cliente + modelo global)
+test("seletores de OG usam a lista com uma OG por classificação", () => {
+  for (const tela of ["app/financeiro/tesouraria/page.tsx", "app/financeiro/tesouraria/operacoes/page.tsx", "app/estoque/page.tsx", "app/auditoria/classificacao/panel.tsx"]) {
+    const src = readFileSync(tela, "utf8");
+    assert.ok(src.includes("listarOperacoesGerenciais("), `${tela}: deve usar listarOperacoesGerenciais`);
+    assert.ok(!/from\("operacoes_gerenciais"\)\s*\.select\([^)]*\)\s*\.or\(/.test(src), `${tela}: não deve listar OGs com consulta direta`);
+  }
+});

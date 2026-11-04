@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Operações Gerenciais nos seletores (04/11/2026)**: cada Operação Gerencial aparece uma vez em Lançamento de Tesouraria, Operações de Tesouraria, Estoque e Auditoria de Classificação; vale a versão do cliente, não o modelo do sistema. Duas operações do mesmo cliente com o mesmo código, mas nomes diferentes, são cadastros distintos: nesse caso, altere o código de uma delas.
+
 **Sugestões da conciliação (04/11/2026)**: a sugestão compara valor e data e, antes deles, o nome de quem recebeu, quando a descrição da linha do banco o traz. Cada título é sugerido a uma linha só. Título de salário não é sugerido para linha com o nome de outra pessoa e, sem nome confirmado na linha, nunca concilia sozinho: fica como sugestão para o usuário conferir. O bloqueio por nome vale só para salário; para os demais títulos, o nome só dá prioridade. Conciliações já gravadas não mudam. Se a linha não sugere título, use "Vincular" normalmente.
 
 **Textos automáticos da NF-e (04/11/2026)**: os textos de ICMS diferido, base reduzida e Funrural, de Parâmetros → Fiscal, só entram em nota de venda: CFOPs 5.1xx/6.1xx (exceto transferência 5151/5152/6151/6152), 5.4xx/6.4xx, 5501/5502/6501/6502 e 5922/6922. Não entram em remessa, retorno, transferência, 5949/6949 nem em NF com finalidade de devolução. O "texto complementar livre" do emitente continua em todas as notas. NF-e já autorizada não muda.

@@ -30,6 +30,7 @@ import {
   listarInsumosParaConta,
   normalizarNomeInsumo,
   listarDuplicadosRevisados, marcarDuplicadoRevisado, reabrirDuplicadoRevisado,
+  listarOperacoesGerenciais,
 } from "../../lib/db";
 import type { DuplicadoRevisado } from "../../lib/db";
 import { gruposDuplicados as agruparDuplicados } from "../../lib/estoque/duplicados";
@@ -604,9 +605,8 @@ export default function Estoque() {
     listarPessoasDaConta(fazAtiva).then(setPessoas).catch(() => {});
     listarPASaldos(fazLeitura).then(setPASaldos).catch(() => {});
     listarCentrosCustoGeral(fazAtiva).then(setCentros).catch(() => {});
-    supabase.from("operacoes_gerenciais").select("id, descricao, classificacao")
-      .or(`fazenda_id.eq.${fazAtiva},fazenda_id.is.null`).eq("inativo", false).eq("tipo", "despesa").order("classificacao")
-      .then(({ data }) => setOgsNf((data ?? []) as { id: string; descricao: string; classificacao: string }[]));
+    // Uma OG por classificação, só do cliente: "fazenda_id is null" trazia a cópia do cliente, o modelo global e, para a equipe Raccolto, as OGs de outras contas
+    listarOperacoesGerenciais(fazAtiva).then(lista => setOgsNf(lista.filter(o => !o.inativo && o.tipo === "despesa"))).catch(() => {});
   }, [fazAtiva, chaveLeitura, contaId]);  // eslint-disable-line
 
   useEffect(() => {
