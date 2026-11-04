@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dataLocalAgora, dataParaIso, exibirData, mascararData } from "./input-data";
+import { dataLocalAgora, dataParaIso, exibirData, mascararData } from "./input-data.ts";
 
 test("digitação contínua acrescenta barras sem exigir mudança de segmento", () => {
   const etapas = ["0", "09", "09/1", "09/10", "09/10/2", "09/10/20", "09/10/202", "09/10/2026"];
@@ -60,4 +60,12 @@ test("dia além do fim do mês vira o último dia (31/09 → 30/09)", async () =
   assert.equal(corrigirFimDoMes("30/09/2026"), null);
   assert.equal(corrigirFimDoMes("32/09/2026"), null);
   assert.equal(corrigirFimDoMes("31/09/20"), null);
+});
+
+test("ano digitado errado não vira data", () => {
+  assert.equal(dataParaIso("25/10/0026"), "");
+  assert.equal(dataParaIso("10/07/0206"), "");
+  assert.equal(dataParaIso("10/2026", "month"), "2026-10");
+  assert.equal(dataParaIso("10/0026", "month"), "");
+  assert.equal(dataParaIso("15/03/1975"), "1975-03-15");
 });

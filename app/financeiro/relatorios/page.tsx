@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { rotuloPrevisaoFluxo } from "../../../lib/financeiro/previsoes";
 import { aplicarPadraoRelatorio } from "../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
@@ -768,7 +770,7 @@ function FinanceiroRelatoriosInner() {
                     <td style="padding:7px 10px;text-align:right;font-weight:700;font-size:11px;color:${diaUltSaldo >= 0 ? "#111" : "#E24B4A"}">${fmtV(diaUltSaldo)}</td>
                   </tr>`;
                 const detalhes = diaRows.map(r => {
-                  const origLabel = r.origem_lancamento ? (ORIG_LABEL[r.origem_lancamento] ?? r.origem_lancamento) : TIPO_LABEL[r.tipo_row];
+                  const origLabel = r.tipo_row === "previsao" ? rotuloPrevisaoFluxo(r.origem_lancamento) : r.origem_lancamento ? (ORIG_LABEL[r.origem_lancamento] ?? r.origem_lancamento) : TIPO_LABEL[r.tipo_row];
                   return `<tr style="border-bottom:0.5px solid #F0F3FA">
                     <td style="padding:5px 10px 5px 20px;font-size:10px;color:#888;white-space:nowrap">${new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}</td>
                     <td style="padding:5px 10px;font-size:11px;color:#444;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fornecedor || "—"}</td>
@@ -959,6 +961,20 @@ function FinanceiroRelatoriosInner() {
                 const lanPrevisoes  = lansFiltMoeda.filter(l =>
                   (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.natureza === "previsao"
                 );
+
+                // Previsões em aberto vencidas antes do período: a regra é o gestor dar nova data ou efetivar, então não somam
+                // no saldo sozinhas, mas a tela avisa. Mesmos filtros de produtor, conta e moeda do relatório.
+                const previsoesVencidas = !filtro.inicio ? [] : lancamentos.filter(l => {
+                  if (l.natureza !== "previsao" || l.status === "baixado" || l.status === "cancelado") return false;
+                  if ((l.data_vencimento ?? "") >= filtro.inicio) return false;
+                  if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
+                  if (filtro.contasSel.length > 0 && l.conta_bancaria && !contasEfetivasIds.has(l.conta_bancaria)) return false;
+                  const m = l.moeda === "barter" ? "barter" : (l.moeda ?? "BRL");
+                  return filtro.moedasSel.length > 0 ? filtro.moedasSel.includes(m) : m !== "barter";
+                });
+                const valorPrevisoesVencidas = previsoesVencidas.reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const vencidasDaTela = previsoesVencidas.filter(l => !!l.previsao_gasto_id).length;
+                const valorPrevisoesPeriodo = lanPrevisoes.reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
 
                 const rows: FlowRow[] = [];
                 // Realizados — sempre incluídos (exceto quando tipoVis = "previsto")
@@ -1415,6 +1431,20 @@ function FinanceiroRelatoriosInner() {
                         </OperationalFilters>
                       )}
 
+                      {filtro.tipoVis !== "realizado" && incluirPrevisoes && lanPrevisoes.length > 0 && (
+                        <div className="no-print" style={{ padding: "8px 16px", background: "#F0FDF4", borderBottom: "0.5px solid var(--border-row)", fontSize: 12, color: "#166534" }}>
+                          <strong>{lanPrevisoes.length} {lanPrevisoes.length === 1 ? "previsão" : "previsões"}</strong> neste período, {fmtBRL(valorPrevisoesPeriodo, 2)}, já {lanPrevisoes.length === 1 ? "incluída" : "incluídas"} nas saídas e no saldo. Os dias com previsão têm a marca <strong>prev</strong>; clique no dia para ver.
+                        </div>
+                      )}
+                      {filtro.tipoVis !== "realizado" && previsoesVencidas.length > 0 && (
+                        <div className="no-print" style={{ padding: "8px 16px", background: "#FBF3E0", borderBottom: "0.5px solid var(--border-row)", fontSize: 12, color: "#7A5200" }}>
+                          ⚠ <strong>{previsoesVencidas.length} {previsoesVencidas.length === 1 ? "previsão vencida" : "previsões vencidas"}</strong>, {fmtBRL(valorPrevisoesVencidas, 2)}, fora deste saldo. Decida se dá nova data ou efetiva:{" "}
+                          {vencidasDaTela > 0 && <Link href="/financeiro/previsoes?aba=vencidas" style={{ color: "#7A5200", fontWeight: 600 }}>{vencidasDaTela} em Previsão de Gastos</Link>}
+                          {vencidasDaTela > 0 && previsoesVencidas.length > vencidasDaTela && " · "}
+                          {previsoesVencidas.length > vencidasDaTela && <Link href="/financeiro/pagar" style={{ color: "#7A5200", fontWeight: 600 }}>{previsoesVencidas.length - vencidasDaTela} no Contas a Pagar</Link>}
+                        </div>
+                      )}
+
                       {/* KPIs */}
                       <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)" }}>
                         {[
@@ -1460,7 +1490,7 @@ function FinanceiroRelatoriosInner() {
                                 const diaUltSaldo = diaRows[diaRows.length - 1].saldo;
                                 const expandido  = mesesExpandidos.has(dia);
                                 const temSim     = diaRows.some(r => r.tipo_row === "simulacao");
-                                const temPrev    = diaRows.some(r => r.tipo_row === "previsao" && !r.origem_lancamento);
+                                const temPrev    = diaRows.some(r => r.tipo_row === "previsao");
                                 return (
                                   <React.Fragment key={dia}>
                                     <tr
@@ -1495,6 +1525,7 @@ function FinanceiroRelatoriosInner() {
                                           <td style={{ padding: "6px 14px" }}>
                                             {isSim  && <span style={{ fontSize: 10, background: "#EDE9FE", color: "#7C3AED", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Simulação</span>}
                                             {!isSim && (() => {
+                                              if (isPrev) return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>{rotuloPrevisaoFluxo(r.origem_lancamento)}</span>;
                                               const orig = r.origem_lancamento;
                                               const ORIG_MAP: Record<string, { label: string; bg: string; color: string }> = {
                                                 pedido_compra:       { label: "Pedido de Compra",    bg: "#FBF3E0", color: "#7A5A12" },
@@ -1507,12 +1538,12 @@ function FinanceiroRelatoriosInner() {
                                                 cron:                { label: "Automático",           bg: "#DCFCE7", color: "#166534" },
                                                 transporte:          { label: "Transporte",           bg: "#F0F9FF", color: "#0369A1" },
                                                 apoio_financeiro:    { label: "Apoio Financeiro",     bg: "#FEF3C7", color: "#92400E" },
+                                                folha:               { label: "Folha",                bg: "#F1F5F9", color: "#475569" },
                                               };
                                               if (orig && ORIG_MAP[orig]) {
                                                 const o = ORIG_MAP[orig];
                                                 return <span style={{ fontSize: 10, background: o.bg, color: o.color, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>{o.label}</span>;
                                               }
-                                              if (isPrev) return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>;
                                               if (isPend) return <span style={{ fontSize: 10, background: "#F1F5F9", color: "#475569", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
                                               if (isReal) return <span style={{ fontSize: 10, background: "#F1F5F9", color: "#475569", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
                                               return null;
@@ -1591,6 +1622,7 @@ function FinanceiroRelatoriosInner() {
                         // ambos: baixados sempre; pendentes só se toggle ativo
                         return l.status === "baixado" || incluirPrevisoes;
                       });
+                      const prevNoMensal = lanVis.filter(l => l.natureza === "previsao" && l.status !== "baixado");
                       type CellM = { real: number; prev: number; sim: number };
                       type CatRowM = { cat: string; tipo: "receber" | "pagar"; meses: CellM[] };
                       const catMapM = new Map<string, CatRowM>();
@@ -1670,6 +1702,7 @@ function FinanceiroRelatoriosInner() {
                           <OperationalFilters data-arato-filters="true" className="no-print" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                             <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                               Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
+                              {prevNoMensal.length > 0 && <strong style={{ color: "#166534" }}> · inclui {prevNoMensal.length} {prevNoMensal.length === 1 ? "previsão" : "previsões"}, {fmtBRL(prevNoMensal.reduce((t, l) => t + paraBRLRel(l, cotacaoUSD), 0), 2)}</strong>}
                             </div>
                             <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                               <OperationalButton data-arato-button="toggle" onClick={() => setIncluirPrevisoes(v => !v)}
@@ -1965,6 +1998,7 @@ function FinanceiroRelatoriosInner() {
                           {barraFiltros}
                           <div style={{ padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)", fontSize: 11, color: "var(--text-2)" }}>
                             Visão plurianual · {anosPresentes.join(", ")}
+                            {lanVisA.some(l => l.natureza === "previsao") && <strong style={{ color: "#166534" }}> · inclui {lanVisA.filter(l => l.natureza === "previsao").length} previsões, {fmtBRL(lanVisA.filter(l => l.natureza === "previsao").reduce((t, l) => t + paraBRLRel(l, cotacaoUSD), 0), 2)}</strong>}
                             {(anualInicio || anualFim) && <> · Vencimento: {anualInicio || "…"} → {anualFim || "…"}</>}
                             {" · "}{descFiltroStatus}
                           </div>

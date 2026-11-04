@@ -63,6 +63,10 @@ export default function PrevisaoGastosPage() {
   const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   const hoje = hojeLocal();
   const [aba, setAba] = useState<Aba>("previsoes");
+  // O aviso do Fluxo de Caixa abre direto nas vencidas
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("aba") === "vencidas") setAba("vencidas");
+  }, []);
   const [previsoes, setPrevisoes] = useState<Previsao[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [msg, setMsg] = useState("");

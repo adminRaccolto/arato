@@ -33,7 +33,7 @@ export function dataParaIso(display: string, tipo: TipoData = "date", validar = 
   if (tipo === "month") {
     if (nums.length !== 6) return "";
     const mes = nums.slice(0, 2), ano = nums.slice(2);
-    if (validar && (Number(ano) < 1 || Number(mes) < 1 || Number(mes) > 12)) return "";
+    if (validar && (Number(ano) < 1900 || Number(mes) < 1 || Number(mes) > 12)) return "";
     return `${ano}-${mes}`;
   }
   if (nums.length !== (tipo === "date" ? 8 : 12)) return "";
@@ -43,7 +43,8 @@ export function dataParaIso(display: string, tipo: TipoData = "date", validar = 
     const a = Number(ano), m = Number(mes), d = Number(dia);
     const bissexto = a % 4 === 0 && (a % 100 !== 0 || a % 400 === 0);
     const diasNoMes = [31, bissexto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if (a < 1 || m < 1 || m > 12 || d < 1 || d > diasNoMes[m - 1]) return "";
+    // Ano abaixo de 1900 é digitação errada (26/09/0026 gravava título no ano 26 e ele sumia dos relatórios)
+    if (a < 1900 || m < 1 || m > 12 || d < 1 || d > diasNoMes[m - 1]) return "";
     if (tipo === "datetime-local" && (Number(hora) > 23 || Number(minuto) > 59)) return "";
   }
   const data = `${ano}-${mes}-${dia}`;

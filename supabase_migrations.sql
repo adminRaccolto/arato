@@ -19385,3 +19385,16 @@ ALTER TABLE nf_entradas ADD CONSTRAINT nf_entradas_entrega_status_check CHECK (e
 CREATE INDEX IF NOT EXISTS idx_nf_entradas_entrega_pendente ON nf_entradas(fazenda_id) WHERE entrega_status = 'pendente';
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 410 — Vencimento de título com ano válido
+--   Rode ANTES: node --env-file=.env.local scripts/corrigir-datas-titulos.mjs --aplicar
+--   Títulos com ano 0026 somem de todo relatório por período. NOT VALID: vale para toda gravação nova, em qualquer tela.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+ALTER TABLE lancamentos DROP CONSTRAINT IF EXISTS lancamentos_vencimento_ano_valido;
+ALTER TABLE lancamentos ADD CONSTRAINT lancamentos_vencimento_ano_valido CHECK (data_vencimento IS NULL OR data_vencimento >= '2000-01-01') NOT VALID;
+ALTER TABLE empresa_lancamentos DROP CONSTRAINT IF EXISTS empresa_lancamentos_vencimento_ano_valido;
+ALTER TABLE empresa_lancamentos ADD CONSTRAINT empresa_lancamentos_vencimento_ano_valido CHECK (data_vencimento IS NULL OR data_vencimento >= '2000-01-01') NOT VALID;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

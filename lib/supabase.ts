@@ -294,6 +294,7 @@ export type LogSistema = {
 export type Lancamento = {
   serie?: string;   // série do documento (NF/boleto)
   id: string;
+  previsao_gasto_id?: string | null; // título de previsão ligado à tela Previsão de Gastos (Seção 352)
   fazenda_id: string;
   tipo: "receber" | "pagar";
   moeda: "BRL" | "USD" | "barter";

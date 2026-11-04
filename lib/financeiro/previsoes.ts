@@ -109,3 +109,8 @@ export function previstoRealizado(previsoes: PrevisaoAgg[], titulos: TituloRealA
   for (const l of mapa.values()) l.desvio = r2(l.previsto - l.realizado);
   return [...mapa.values()].sort((a, b) => a.og.localeCompare(b.og) || a.mes.localeCompare(b.mes));
 }
+
+// Fluxo de caixa: previsão aparece sempre como previsão, seja qual for a origem do título; a origem só complementa.
+export function rotuloPrevisaoFluxo(origem?: string | null): string {
+  return origem === "folha" ? "Previsão · Folha" : origem === "recorrencia" ? "Previsão · Recorrente" : "Previsão";
+}

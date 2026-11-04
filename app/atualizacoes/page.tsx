@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-a",
+    data: "04/11/2026",
+    titulo: "Fluxo de Caixa: previsões identificadas e aviso de vencidas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "As previsões já somavam no Fluxo de Caixa Previsto, mas não dava para reconhecê-las: o dia não trazia a marca prev e parte delas aparecia como Manual. Agora a tela informa quantas previsões e qual valor estão no período, marca os dias e identifica cada linha como Previsão." },
+      { tipo: "novidade", texto: "Aviso no Fluxo de Caixa com as previsões vencidas que estão fora do saldo, com link para decidir." },
+      { tipo: "correcao", texto: "Data com ano digitado errado, como 25/10/0026, não é mais aceita nos campos de data nem na gravação de títulos." },
+    ],
+  },
+  {
     versao: "2026.11.03-aa",
     data: "03/11/2026",
     titulo: "NF aproximada: romaneio do recebedor e NF complementar",
