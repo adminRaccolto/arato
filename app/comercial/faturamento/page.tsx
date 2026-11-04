@@ -1322,6 +1322,12 @@ function FaturamentoInner() {
             <label data-arato-label="true" style={lbl}>CFOP</label>
             <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
+          {ehDevolucaoBem(fVenda.cfop) && (
+            <div>
+              <label data-arato-label="true" style={lbl}>CST do ICMS (automático)</label>
+              <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value="050 — Suspensão" readOnly />
+            </div>
+          )}
           {["5.556","6.556"].includes(fVenda.cfop) && (<>
             <div>
               <label data-arato-label="true" style={lbl}>Redução da base (%) *</label>
