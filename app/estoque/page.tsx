@@ -11,7 +11,7 @@ import InputNumerico from "../../components/InputNumerico";
 import { supabase } from "../../lib/supabase";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
-  listarMovimentacoes, criarMovimentacaoManual, transferirEntreDepositos,
+  listarMovimentacoes, listarDepositosDasTransferencias, criarMovimentacaoManual, transferirEntreDepositos,
   listarMovimentacoesRel,
   listarSaldoPorDeposito,
   listarDepositos, listarFazendasDaConta,
@@ -34,6 +34,7 @@ import {
 } from "../../lib/db";
 import type { DuplicadoRevisado } from "../../lib/db";
 import { gruposDuplicados as agruparDuplicados } from "../../lib/estoque/duplicados";
+import { ordenarCronologico, textoDoMotivo, type DepositosDaTransferencia } from "../../lib/estoque/rotulo-transferencia";
 import { useAuth } from "../../components/AuthProvider";
 import type {
   Insumo, MovimentacaoEstoque, RelMovimentacaoEstoque,
@@ -352,6 +353,7 @@ export default function Estoque() {
   const [filtroDepDropOpen, setFiltroDepDropOpen] = useState(false);
   const [relDataInicio, setRelDataInicio] = useState(() => { const d = new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); });
   const [relMovs, setRelMovs]     = useState<MovimentacaoEstoque[]>([]);
+  const [depositosTrf, setDepositosTrf] = useState<Map<string, DepositosDaTransferencia>>(new Map());
   // Saldo real por depósito — calculado a partir de movimentacoes_estoque (view
   // saldo_insumo_deposito), não do campo fixo insumos.deposito_id/estoque. Ver
   // Seção 251 — "Saldo por Depósito" era o único lugar do sistema que nunca
@@ -608,6 +610,13 @@ export default function Estoque() {
     // Uma OG por classificação, só do cliente: "fazenda_id is null" trazia a cópia do cliente, o modelo global e, para a equipe Raccolto, as OGs de outras contas
     listarOperacoesGerenciais(fazAtiva).then(lista => setOgsNf(lista.filter(o => !o.inativo && o.tipo === "despesa"))).catch(() => {});
   }, [fazAtiva, chaveLeitura, contaId]);  // eslint-disable-line
+
+  // Todas as fazendas da conta: a outra ponta da transferência costuma estar em outra fazenda
+  const idsFazendasConta = fazendasConta.map(f => f.id).join(",");
+  useEffect(() => {
+    if (!idsFazendasConta) return;
+    listarDepositosDasTransferencias(idsFazendasConta.split(",")).then(setDepositosTrf).catch(() => {});
+  }, [idsFazendasConta]);
 
   useEffect(() => {
     if (!fazAtiva) return;
@@ -1491,7 +1500,7 @@ export default function Estoque() {
                               ? badge("⚙ Ajuste","#FBF3E0","#7A5A12")
                               : m.tipo === "entrada" ? badge("▲ Entrada","#E8E8E8","#0D0D0D") : badge("▼ Saída","#FCEBEB","#791F1F")}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.motivo ? MOTIVO_LABEL[m.motivo] ?? m.motivo : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.motivo ? MOTIVO_LABEL[m.motivo] ?? textoDoMotivo(m.motivo, depositosTrf) : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>
                             {isAdj
                               ? <span style={{ color: m.quantidade >= 0 ? "#111111" : "#E24B4A" }}>{m.quantidade >= 0 ? "+" : ""}{fmtNum(m.quantidade)} {m.insumo_unidade} <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 400 }}>(ajuste)</span></span>
@@ -1599,7 +1608,7 @@ export default function Estoque() {
                 type KardexRow = { insumo: Insumo; movs: (MovimentacaoEstoque & { saldo: number })[]; totalE: number; totalS: number; saldoFinal: number; saldoInicial: number };
                 const grupos: KardexRow[] = insumosFiltrados
                   .map(ins => {
-                    const mIns = movsFiltr.filter(m => m.insumo_id === ins.id).slice().reverse(); // cronológico
+                    const mIns = ordenarCronologico(movsFiltr.filter(m => m.insumo_id === ins.id));
 
                     // Saldo inicial real: soma das movimentações ANTES do período (não usa ins.estoque que pode estar dessincronizado)
                     const antesIns = kardexMovsAntes.filter(m =>
@@ -1789,7 +1798,7 @@ export default function Estoque() {
                                         if (m.motivo === "baixa_perda") return <span style={{ fontSize: 12, color: "#E24B4A" }}>⚠ Perda</span>;
                                         if (m.motivo === "ajuste_saldo") return <span style={{ fontSize: 12, color: "#7A5A12" }}>⚙ Ajuste de saldo</span>;
                                         if (m.motivo === "inventario") return <span style={{ fontSize: 12, color: "#7A5A12" }}>📦 Inventário</span>;
-                                        return <span style={{ fontSize: 12, color: "var(--text-3)" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? m.motivo ?? "—"}</span>;
+                                        return <span style={{ fontSize: 12, color: "var(--text-3)" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? textoDoMotivo(m.motivo, depositosTrf) ?? "—"}</span>;
                                       })();
                                       return (
                                         <tr key={m.id} style={{ borderBottom: mi < g.movs.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: isAdj2 ? "#FFFDF5" : undefined }}>
@@ -1853,7 +1862,7 @@ export default function Estoque() {
                     const ins = insumos.find(x => x.id === relInsumoId)!;
                     if (!ins) return null;
                     // saldo acumulado do mais antigo ao mais recente
-                    const ordered = [...relMovs].reverse();
+                    const ordered = ordenarCronologico(relMovs);
                     let saldo = 0;
                     const rows = ordered.map(m => {
                       const delta = m.tipo === "entrada" ? m.quantidade : -m.quantidade;
@@ -1878,7 +1887,7 @@ export default function Estoque() {
                                   <tr key={m.id} style={{ borderBottom: i < rows.length-1 ? "0.5px solid var(--border-row)" : "none" }}>
                                     <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.tipo === "entrada" ? badge("▲ Entrada","#E8E8E8","#0D0D0D") : badge("▼ Saída","#FCEBEB","#791F1F")}</td>
-                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.motivo ?? "—"}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{textoDoMotivo(m.motivo, depositosTrf) ?? "—"}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.tipo === "entrada" ? "#111111" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins.unidade}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(m.saldo)} {ins.unidade}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
@@ -2392,7 +2401,7 @@ export default function Estoque() {
                                                             {m.tipo === "entrada" ? "▲ Entrada" : m.tipo === "saida" ? "▼ Saída" : "↕ Ajuste"}
                                                           </span>
                                                         </td>
-                                                        <td style={{ padding: "6px 10px", color: "var(--text-2)" }}>{m.motivo ?? "—"}</td>
+                                                        <td style={{ padding: "6px 10px", color: "var(--text-2)" }}>{textoDoMotivo(m.motivo, depositosTrf) ?? "—"}</td>
                                                         <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600, color: delta >= 0 ? "#166534" : "#E24B4A" }}>
                                                           {delta >= 0 ? "+" : ""}{fmtNum(delta)} {a.insumo.unidade}
                                                         </td>

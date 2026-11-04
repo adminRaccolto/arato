@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-s",
+    data: "04/11/2026",
+    titulo: "Transferências com texto claro nas movimentações de estoque",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "O motivo da transferência agora diz o depósito da outra ponta: \"recebido de Depósito Santa Rita\" na entrada e \"enviado para Depósito Insumos - Oasis\" na saída. Vale também para as transferências antigas." },
+      { tipo: "correcao", texto: "No Kardex e no histórico por item, os movimentos do mesmo dia seguem a ordem em que foram gravados, com a saída da transferência antes da entrada. O saldo linha a linha deixa de oscilar; o saldo final não muda." },
+    ],
+  },
+  {
     versao: "2026.11.04-r",
     data: "04/11/2026",
     titulo: "Estorno de borderô mantém o borderô; filtro de data no extrato",

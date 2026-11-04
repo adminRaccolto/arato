@@ -9,6 +9,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 import { supabase } from "../../../lib/supabase";
+import { listarDepositosDasTransferencias } from "../../../lib/db";
+import { ordenarCronologico, textoDoMotivo, type DepositosDaTransferencia } from "../../../lib/estoque/rotulo-transferencia";
 import type { Insumo, MovimentacaoEstoque } from "../../../lib/supabase";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -77,6 +79,7 @@ export default function Kardex() {
   const [carregando,   setCarregando]   = useState(false);
   const [gerado,       setGerado]       = useState(false);
   const [excluindo,    setExcluindo]    = useState<Set<string>>(new Set());
+  const [depositosTrf, setDepositosTrf] = useState<Map<string, DepositosDaTransferencia>>(new Map());
 
   // Carrega insumos e depósitos de TODAS as fazendas da conta
   const fazendaIdsKey = fazendaIds.join(",");
@@ -88,6 +91,7 @@ export default function Kardex() {
     supabase.from("depositos").select("id,nome")
       .in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setDepositos(data ?? []));
+    listarDepositosDasTransferencias(fazendaIds).then(setDepositosTrf).catch(() => {});
   }, [fazendaIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const insumosFiltrados = insumos.filter(i =>
@@ -132,7 +136,7 @@ export default function Kardex() {
     let saldo_qty   = 0;
     let custo_total = 0;
 
-    for (const m of (antes ?? []) as MovComCiclo[]) {
+    for (const m of ordenarCronologico((antes ?? []) as MovComCiclo[])) {
       const unit = m.custo_unitario_na_baixa ?? m.valor_unitario ?? 0;
       if (m.tipo === "entrada") {
         custo_total = custo_total + m.quantidade * unit;
@@ -165,7 +169,7 @@ export default function Kardex() {
 
     let cm = cm_inicial;
 
-    for (const m of (periodo ?? []) as MovComCiclo[]) {
+    for (const m of ordenarCronologico((periodo ?? []) as MovComCiclo[])) {
       const unit = m.custo_unitario_na_baixa ?? m.valor_unitario ?? cm;
       // nf_ref precisa ser o ID (nf_entrada_id) — é isso que a resolução em
       // lote logo abaixo (nfIds/nfMap) usa pra buscar o número real em
@@ -185,7 +189,7 @@ export default function Kardex() {
           id:            m.id,
           data:          m.data.slice(0, 10),
           documento:     nf_ref ?? m.motivo ?? "—",
-          operacao:      labelMotivo(m.motivo ?? "entrada"),
+          operacao:      labelMotivo(m.motivo ?? "entrada", depositosTrf),
           tipo:          "entrada",
           motivo:        m.motivo,
           nf_ref,
@@ -210,7 +214,7 @@ export default function Kardex() {
           id:            m.id,
           data:          m.data.slice(0, 10),
           documento:     nf_ref ?? m.operacao ?? "—",
-          operacao:      labelMotivo(m.motivo ?? "saida"),
+          operacao:      labelMotivo(m.motivo ?? "saida", depositosTrf),
           tipo:          "saida",
           motivo:        m.motivo,
           nf_ref,
@@ -270,7 +274,7 @@ export default function Kardex() {
     setLinhas(resultado);
     setCarregando(false);
     setGerado(true);
-  }, [fazendaIdsKey, insumoId, dataIni, dataFim, depositoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaIdsKey, insumoId, dataIni, dataFim, depositoId, depositosTrf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── resumo ────────────────────────────────────────────────────────────────
   const totalEntradas   = linhas.reduce((s, l) => s + l.entrada_total, 0);
@@ -698,7 +702,7 @@ function origemDocumentoTexto(l: LinhaKardex): string {
   return l.obs?.slice(0, 50) ?? "—";
 }
 
-function labelMotivo(motivo: string): string {
+function labelMotivo(motivo: string, depositosTrf: Map<string, DepositosDaTransferencia>): string {
   const map: Record<string, string> = {
     compra:        "Compra",
     ajuste_saldo:  "Ajuste de Saldo",
@@ -711,7 +715,7 @@ function labelMotivo(motivo: string): string {
     entrada:       "Entrada",
     saida:         "Saída",
   };
-  return map[motivo] ?? motivo;
+  return map[motivo] ?? textoDoMotivo(motivo, depositosTrf) ?? motivo;
 }
 
 // ─── estilos inline ──────────────────────────────────────────────────────────

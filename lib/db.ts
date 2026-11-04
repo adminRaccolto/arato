@@ -18,6 +18,7 @@ import { alocarRemessa, statusSaldoVef, type SaldoVef } from "./estoque/entrega-
 import { hojeLocal } from "./data-local";
 import { atualizarSituacaoDevolucao, compensarDevolucao } from "./fiscal/devolucao-compensacao";
 import { supabase } from "./supabase";
+import type { DepositosDaTransferencia } from "./estoque/rotulo-transferencia";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
 import { vencimentoSalario } from "./folha-calculo";
@@ -666,6 +667,35 @@ export async function listarMovimentacoes(fazenda_id: string | string[], insumo_
     if (error) throw error;
     out.push(...((data ?? []) as MovimentacaoEstoque[]));
     if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
+/** Nomes dos depósitos de origem e destino de cada transferência, por número (TRF-...), para os textos das telas de estoque. */
+export async function listarDepositosDasTransferencias(fazendaIds: string[]): Promise<Map<string, DepositosDaTransferencia>> {
+  const out = new Map<string, DepositosDaTransferencia>();
+  if (!fazendaIds.length) return out;
+  const transferencias: { numero: string; deposito_origem_id: string | null; deposito_destino_id: string | null }[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase.from("transferencias_estoque")
+      .select("numero,deposito_origem_id,deposito_destino_id")
+      .in("fazenda_origem_id", fazendaIds).order("id").range(de, de + 999);
+    if (error) throw error;
+    transferencias.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  const ids = [...new Set(transferencias.flatMap(t => [t.deposito_origem_id, t.deposito_destino_id]).filter((id): id is string => !!id))];
+  const nomes = new Map<string, string>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.from("depositos").select("id,nome").in("id", ids.slice(i, i + 200));
+    if (error) throw error;
+    for (const d of data ?? []) nomes.set(d.id, d.nome);
+  }
+  for (const t of transferencias) {
+    out.set(t.numero, {
+      origem: t.deposito_origem_id ? nomes.get(t.deposito_origem_id) : null,
+      destino: t.deposito_destino_id ? nomes.get(t.deposito_destino_id) : null,
+    });
   }
   return out;
 }

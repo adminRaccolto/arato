@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Texto das transferências no estoque (04/11/2026)**: nas movimentações, no Kardex e no histórico por item, a entrada de uma transferência aparece como \"recebido de [depósito de origem]\" e a saída como \"enviado para [depósito de destino]\". No mesmo dia, os movimentos seguem a ordem de gravação, com a saída antes da entrada, então o saldo por linha não oscila. O sinal é o do depósito da própria linha: a saída é negativa na origem e a entrada é positiva no destino.
+
 **Estorno de borderô (04/11/2026)**: Estornar desfaz só o pagamento. O borderô volta a ficar em aberto, com os mesmos títulos, e pode ser pago de novo. Pagamentos feitos antes de o título entrar no borderô são preservados, e as linhas do extrato ligadas aos títulos voltam a ficar pendentes para conciliar. Para desfazer o agrupamento, use Cancelar no borderô já estornado. Título pago em borderô não é reaberto sozinho: use Estornar no borderô.
 
 **Filtro de data no Extrato OFX (04/11/2026)**: na Conciliação Bancária, o painel do extrato tem filtro Data, de/até, que limita as linhas mostradas sem alterar o que foi importado.
