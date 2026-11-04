@@ -37,6 +37,7 @@ export async function buscarConfEmitente(
                         // sem isso, o endereço mesclado abaixo podia vir de uma IE DIFERENTE da
                         // impressa na nota (achado real 23/09/2026: NF saiu com a IE certa mas
                         // endereço de outro estabelecimento do mesmo produtor).
+  opcoes?: { eventoDeNotaEmitida?: boolean }, // cancelamento e CC-e: a nota já existe, só precisam do certificado e do CPF/CNPJ
 ): Promise<Record<string, string> | null> {
   // certificado_a1_* precisa ser buscado na conta inteira, não só na fazenda
   // recebida — o upload (Fiscal → Certificado Digital ou o card de emitente
@@ -153,7 +154,8 @@ export async function buscarConfEmitente(
         }
       }
       const ieAlvo = ieOverride || cfg.ie_emitente || "";
-      const ieEscolhida = selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
+      // Titular com várias IEs não pode ficar sem cancelar: o evento não usa IE (achado 04/11/2026, NF 1/923)
+      const ieEscolhida = opcoes?.eventoDeNotaEmitida ? null : selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
       if (ieEscolhida) {
         const titular = prodRows?.find(p => p.id === ieEscolhida.produtor_id);
         if (!titular?.nome) throw new Error("Nome do titular da IE não encontrado no cadastro do produtor.");
@@ -817,7 +819,7 @@ export async function cancelarNFeEmitida(
   protocoloAutorizacao: string,
   justificativa: string,
 ): Promise<ResultadoCancelamento> {
-  const confg = await buscarConfEmitente(fazendaId, moduloKey);
+  const confg = await buscarConfEmitente(fazendaId, moduloKey, undefined, { eventoDeNotaEmitida: true });
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada para cancelamento` };
 
   const certPath = confg.cert_a1_path;
@@ -882,7 +884,7 @@ export async function corrigirNFeEmitida(
   textoCorrecao: string,
   nSeqEvento: number,
 ): Promise<ResultadoCorrecao> {
-  const confg = await buscarConfEmitente(fazendaId, moduloKey);
+  const confg = await buscarConfEmitente(fazendaId, moduloKey, undefined, { eventoDeNotaEmitida: true });
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada`, nSeqEvento };
 
   const certPath = confg.cert_a1_path;

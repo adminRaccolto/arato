@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Cancelamento e CC-e com várias IEs (04/11/2026)**: cancelar ou corrigir NF-e não exige escolher a inscrição estadual, mesmo com titular de várias IEs. Na emissão, a escolha da IE continua obrigatória.
+
 **Endereços na tela do CT-e (04/11/2026)**: abaixo de Emitente, Remetente e Destinatário aparece o endereço como vai no XML. É só leitura: para corrigir, altere o cadastro (Cadastros, Empresas, para a transportadora; Pessoas ou Produtores, para os demais). Remetente ou Destinatário sem endereço no cadastro saem como "ZONA RURAL", "S/N". Expedidor, Recebedor e Tomador (Outros) continuam com endereço digitado no próprio CT-e.
 
 **XML de CT-e e MDF-e (04/11/2026)**: a partir desta data, o arquivo guardado de cada CT-e e MDF-e autorizado traz o documento assinado e o protocolo. Os emitidos antes guardam só o protocolo; a autorização deles na SEFAZ não muda.

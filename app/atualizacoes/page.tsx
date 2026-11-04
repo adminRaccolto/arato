@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-q",
+    data: "04/11/2026",
+    titulo: "Cancelamento e CC-e de quem tem várias IEs",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Cancelar ou corrigir NF-e de titular com várias inscrições estaduais falhava com \"Selecione a IE da operação\". Esses eventos não dependem da IE e voltam a funcionar." },
+    ],
+  },
+  {
     versao: "2026.11.04-p",
     data: "04/11/2026",
     titulo: "CT-e: tela mais compacta e com os endereços",
