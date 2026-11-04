@@ -19398,3 +19398,34 @@ ALTER TABLE empresa_lancamentos DROP CONSTRAINT IF EXISTS empresa_lancamentos_ve
 ALTER TABLE empresa_lancamentos ADD CONSTRAINT empresa_lancamentos_vencimento_ano_valido CHECK (data_vencimento IS NULL OR data_vencimento >= '2000-01-01') NOT VALID;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 411 — Operação fiscal 5555/6555: devolução de bem do ativo de terceiro
+--   Completa o cadastro das fazendas existentes sem alterar operações já configuradas.
+--   Novas fazendas podem carregar esta operação em Carregar Operações Padrão (MT).
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+INSERT INTO operacoes_fiscais (
+  fazenda_id, nome, descricao, grupo, cfop_interno, cfop_externo,
+  icms_cst_interno, icms_cst_externo, icms_aliq, icms_base_reduzida_pct,
+  pis_cst, pis_aliq, cofins_cst, cofins_aliq,
+  ibs_cbs_imune, ibs_cbs_reducao_pct, inf_cpl_template, ativa
+)
+SELECT
+  f.id,
+  'Devolução de Bem do Ativo Imobilizado de Terceiro',
+  'Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento. CFOP 5555 (interno) / 6555 (interestadual). Referencie a NF-e de origem; não é devolução de compra de material de uso ou consumo.',
+  'Devoluções', '5555', '6555',
+  '041', '041', 0, 100,
+  '08', 0, '08', 0,
+  false, 100,
+  'Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento — NF-e nº [NF_ORIGEM]. Operação sem venda. ICMS não tributado (CST 41).',
+  true
+FROM fazendas f
+WHERE NOT EXISTS (
+  SELECT 1 FROM operacoes_fiscais op
+  WHERE op.fazenda_id = f.id
+    AND (op.cfop_interno = '5555' OR op.cfop_externo = '6555')
+);
+COMMIT;
+NOTIFY pgrst, 'reload schema';

@@ -405,6 +405,17 @@ const OPERACOES_PRESETS: OpPreset[] = [
     ativa: true,
   },
   {
+    nome: "Devolução de Bem do Ativo Imobilizado de Terceiro",
+    descricao: "Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento. CFOP 5555 (interno) / 6555 (interestadual). Referencie a NF-e de origem; não é devolução de compra de material de uso ou consumo.",
+    cfop_interno: "5555", cfop_externo: "6555",
+    icms_cst_interno: "041", icms_cst_externo: "041",
+    icms_aliq: 0, icms_base_reduzida_pct: 100,
+    pis_cst: "08", pis_aliq: 0, cofins_cst: "08", cofins_aliq: 0,
+    ibs_cbs_imune: false, ibs_cbs_reducao_pct: 100,
+    inf_cpl_template: "Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento — NF-e nº [NF_ORIGEM]. Operação sem venda. ICMS não tributado (CST 41).",
+    ativa: true,
+  },
+  {
     nome: "Devolução de Compra — Uso/Consumo (CST 020)",
     descricao: "Devolução de compra de material de uso ou consumo. CFOP 5556/6556, ICMS CST 020 (base de cálculo reduzida): ajuste o percentual de base e a alíquota conforme a operação de origem. Na NF de devolução (Documentos Fiscais, Devolver) a redução da base é informada por item.",
     cfop_interno: "5556", cfop_externo: "6556",
