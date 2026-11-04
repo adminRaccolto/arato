@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-d",
+    data: "04/11/2026",
+    titulo: "Folha: previsões de salário sem duplicar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar ou replicar a folha enquanto a lista era aberta podia criar previsões de salário repetidas no Contas a Pagar e no Fluxo de Caixa. Abrir a lista não refaz mais as previsões, e só uma operação por vez atualiza cada folha." },
+    ],
+  },
+  {
     versao: "2026.11.04-c",
     data: "04/11/2026",
     titulo: "Notas de Venda: devolução de bem de terceiro (CFOP 5.555/6.555)",

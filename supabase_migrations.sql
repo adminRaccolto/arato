@@ -19429,3 +19429,12 @@ WHERE NOT EXISTS (
 );
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 411 — Folha: só uma execução por vez refaz as previsões
+--   Duas execuções simultâneas deixavam previsões de salário soltas no CP e no fluxo de caixa.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+ALTER TABLE folha_pagamento ADD COLUMN IF NOT EXISTS previsoes_sync_em timestamptz;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

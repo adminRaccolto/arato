@@ -1,6 +1,7 @@
 import { falharSeErro } from "../../../../lib/db-util";
 import { buscarPaginado } from "../../../../lib/buscar-paginado";
 import { tituloDaLinha } from "../../../../lib/folha/titulo-linha";
+import { comTravaDaFolha, TRAVA_VALIDADE_MS } from "../../../../lib/folha/trava-previsoes";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
@@ -172,6 +173,24 @@ async function ressincronizarFolhasDoFuncionario(sb: any, funcionarioId: string 
  *  linhas gravadas — chamado ao salvar a folha e ao reabri-la. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
+  await comTravaDaFolha(
+    async () => {
+      // Trava vencida (execução que morreu no meio) não segura a folha para sempre
+      const vencida = new Date(Date.now() - TRAVA_VALIDADE_MS).toISOString();
+      const { data, error } = await sb.from("folha_pagamento").update({ previsoes_sync_em: new Date().toISOString() })
+        .eq("id", folhaId).or(`previsoes_sync_em.is.null,previsoes_sync_em.lt.${vencida}`).select("id");
+      if (error) {
+        if (error.code === "42703" || error.code === "PGRST204") return "sem_coluna";
+        throw error;
+      }
+      return data?.length ? "reservada" : "ocupada";
+    },
+    () => sb.from("folha_pagamento").update({ previsoes_sync_em: null }).eq("id", folhaId),
+    () => refazerPrevisoesFolha(sb, folhaId),
+  );
+}
+
+async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
   const { data: folha } = await sb.from("folha_pagamento").select("*").eq("id", folhaId).maybeSingle();
   if (!folha || folha.status === "fechado") return;
   const { fazenda_id, empresa_id, competencia } = folha as { fazenda_id: string; empresa_id: string | null; competencia: string };
@@ -213,6 +232,8 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
   await apagarPrevisoesDaFolha(sb, folhaId);
   if (antigos.length) {
     await falharSeErro(sb.from("lancamentos").delete().in("id", antigos).eq("natureza", "previsao").not("status", "in", "(baixado,parcial)"), "excluir previsões da folha");
+    const soltos = antigos.filter(a => !pagos.has(a));
+    if (soltos.length) await sb.from("folha_funcionarios").update({ cp_lancamento_id: null }).eq("folha_id", folhaId).in("cp_lancamento_id", soltos);
   }
   const { data: fazRow } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
   const contaFolha = (fazRow?.conta_id as string | undefined) ?? null;
@@ -246,7 +267,12 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
       data_vencimento: vencimento, data_lancamento: hoje,
     });
     if (error) throw new Error(`Previsão ${it.nome_funcionario}: ${error.message}`);
-    await sb.from("folha_funcionarios").update({ cp_lancamento_id: lanc?.id ?? null }).eq("id", it.id);
+    // Só liga se a linha estiver livre: outra execução já ligou um título (sem a Seção 411), este é o excedente
+    const { data: ligou } = await sb.from("folha_funcionarios").update({ cp_lancamento_id: lanc?.id ?? null }).eq("id", it.id).is("cp_lancamento_id", null).select("id");
+    if (!ligou?.length) {
+      if (lanc?.id) await falharSeErro(sb.from("lancamentos").delete().eq("id", lanc.id).eq("natureza", "previsao"), "excluir previsão excedente");
+      continue;
+    }
     await registrarPrevisaoFolha(sb, {
       conta_id: contaFolha, fazenda_id, produtor_id: it.produtor_id ?? vinculo[it.funcionario_id]?.produtor_id ?? null,
       empresa_id: empresa_id ?? vinculo[it.funcionario_id]?.empresa_id ?? null, og_id: ogSalario,
@@ -378,10 +404,8 @@ export async function POST(req: Request) {
           .in("folha_id", folhaIds)
           .order("id")
           .range(de, ate));
-        const semPrevisao = new Set<string>();
         (counts ?? []).forEach((row: any) => {
           countMap[row.folha_id] = (countMap[row.folha_id] ?? 0) + 1;
-          if (!row.cp_lancamento_id) semPrevisao.add(row.folha_id);
         });
         // Salários já baixados no CP, por folha fechada
         const fechadas = new Set((data ?? []).filter((f: { status: string }) => f.status === "fechado").map((f: { id: string }) => f.id));
@@ -392,31 +416,6 @@ export async function POST(req: Request) {
           for (const l of ls ?? []) baixados.add(l.id);
         }
         for (const row of linhasFechadas) if (baixados.has(row.cp_lancamento_id as string)) pagosMap[row.folha_id] = (pagosMap[row.folha_id] ?? 0) + 1;
-        // Folha em rascunho gerada antes da previsão no CP: lança as previsões na primeira listagem (uma vez só,
-        // depois as linhas já ficam ligadas aos títulos). Falha aqui nunca derruba a listagem.
-        // Rascunhos lançados antes da Previsão de Gastos (Seção 352): títulos de previsão sem linha no módulo
-        const rascunhos = (data ?? []).filter((f: any) => f.status === "rascunho");
-        const { error: semTabela } = await sb.from("previsoes_gasto").select("id", { head: true, count: "exact" }).limit(1);
-        if (!semTabela && rascunhos.length) {
-          const titulosPorFolha = new Map<string, string>();
-          (counts ?? []).forEach((row: any) => { if (row.cp_lancamento_id && rascunhos.some((f: any) => f.id === row.folha_id)) titulosPorFolha.set(row.cp_lancamento_id, row.folha_id); });
-          const ids = [...titulosPorFolha.keys()];
-          const ogOk = new Map<string, boolean>();
-          for (let i = 0; i < ids.length; i += 200) {
-            const { data: ls } = await sb.from("lancamentos").select("id, previsao_gasto_id").in("id", ids.slice(i, i + 200));
-            for (const l of ls ?? []) {
-              if (l.previsao_gasto_id) continue;
-              const fid = titulosPorFolha.get(l.id)!;
-              const faz = rascunhos.find((f: any) => f.id === fid)?.fazenda_id as string;
-              if (!ogOk.has(faz)) ogOk.set(faz, !!(await resolverOgPorClassificacao(sb, faz, "2.01.01.10.001")));
-              if (ogOk.get(faz)) semPrevisao.add(fid);
-            }
-          }
-        }
-        const pendentes = (data ?? []).filter((f: any) => f.status === "rascunho" && semPrevisao.has(f.id)).slice(0, 60);
-        for (let i = 0; i < pendentes.length; i += 6) {
-          await Promise.all(pendentes.slice(i, i + 6).map((f: any) => sincronizarPrevisoesFolha(sb, f.id).catch(() => undefined)));
-        }
       }
       const result = (data ?? []).map((f: any) => ({
         ...f,
