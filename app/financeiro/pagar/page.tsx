@@ -786,6 +786,7 @@ export default function ContasAPagarPage() {
 
   // ── Reabrir ──────────────────────────────────────────────────
   async function reabrir(l: RelLancamento) {
+    if (l.lote_id) { setErro(`"${l.descricao}" foi pago em borderô. Para desfazer a baixa, use Estornar no borderô.`); return; }
     if (!confirm(`Reabrir "${l.descricao}"? Volta pra em aberto/vencido.`)) return;
     try {
       if (l.origem_tabela === "lancamentos") {
@@ -1707,7 +1708,7 @@ export default function ContasAPagarPage() {
   }
 
   async function estornarBorderoAction(b: PagamentoLote) {
-    if (!confirm(`Estornar o pagamento do borderô "${b.descricao}"? Os pagamentos deste borderô serão desfeitos e os títulos ficarão sem borderô. Pagamentos anteriores serão preservados.`)) return;
+    if (!confirm(`Estornar o pagamento do borderô "${b.descricao}"? O pagamento é desfeito e o borderô volta a ficar em aberto, com os mesmos títulos. Pagamentos anteriores são preservados. Para desfazer o borderô, use Cancelar depois.`)) return;
     try {
       await estornarBordero(b.id);
       await Promise.all([carregar(), carregarBorderos()]);

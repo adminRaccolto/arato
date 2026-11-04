@@ -1295,7 +1295,7 @@ export async function cancelarBordero(lote_id: string): Promise<void> {
   await chamarBorderoAcao({ acao: "cancelar", lote_id });
 }
 
-/** Estorna um borderô já confirmado/pago: reverte os lançamentos para em_aberto e exclui o lote. */
+/** Estorna um borderô já pago: desfaz o pagamento e ele volta a pendente, com os mesmos títulos. */
 export async function estornarBordero(lote_id: string): Promise<void> {
   await chamarBorderoAcao({ acao: "estornar", lote_id });
 }

@@ -1295,7 +1295,7 @@ export default function ContasAReceberPage() {
   }
 
   async function estornarBorderoAction(b: PagamentoLote) {
-    if (!confirm(`Estornar o recebimento do borderô "${b.descricao}"? Os títulos voltam a ficar em aberto, sem conta/data de recebimento.`)) return;
+    if (!confirm(`Estornar o recebimento do borderô "${b.descricao}"? O recebimento é desfeito e o borderô volta a ficar em aberto, com os mesmos títulos. Para desfazer o borderô, use Cancelar depois.`)) return;
     try {
       await estornarBordero(b.id);
       await Promise.all([carregar(), carregarBorderos()]);

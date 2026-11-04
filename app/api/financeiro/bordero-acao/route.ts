@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { estornarBorderoComSaldo } from "../../../../lib/financeiro/estornar-bordero";
+import { desvincularExtrato } from "../../../../lib/financeiro/desvincular-extrato";
 import { confirmarBorderoComSaldo } from "../../../../lib/financeiro/confirmar-bordero";
 import { resumoBordero } from "../../../../lib/financeiro/saldo-bordero";
 import type { PagamentoLote } from "../../../../lib/supabase";
@@ -79,9 +80,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── ESTORNAR — borderô já pago; reverte os lançamentos pra em_aberto/pendente ─
+    // ── ESTORNAR — desfaz o pagamento; o borderô volta a pendente com os mesmos títulos ─
     if (acao === "estornar") {
-      await estornarBorderoComSaldo(sb, lote_id);
+      // Pagamento desfeito: as linhas do extrato ligadas aos títulos voltam a ficar pendentes
+      await desvincularExtrato(sb, await estornarBorderoComSaldo(sb, lote_id));
       return NextResponse.json({ ok: true });
     }
 

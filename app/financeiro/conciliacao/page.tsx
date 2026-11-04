@@ -364,6 +364,8 @@ function ConciliacaoInner() {
   const [filtroPend, setFiltroPend] = useState(() => searchParams.get("pendentes") === "true");
   const [busca, setBusca]           = useState("");
   const [buscaValor, setBuscaValor] = useState("");
+  const [ofxDe, setOfxDe]           = useState("");
+  const [ofxAte, setOfxAte]         = useState("");
 
   // Visão dentro do extrato aberto: linhas do OFX (padrão) ou CP/CR em aberto
   // cruzadas com o extrato atual (pra achar quem já está no banco mas ainda
@@ -1922,6 +1924,8 @@ function ConciliacaoInner() {
   // ── Filtros ────────────────────────────────────────────────────────────────
   const linhasFiltradas = (extrato?.linhas ?? []).filter(l => {
     if (filtroPend && l.conciliado) return false;
+    if (ofxDe && l.data < ofxDe) return false;
+    if (ofxAte && l.data > ofxAte) return false;
     if (busca) {
       const q = busca.toLowerCase();
       if (!l.descricao.toLowerCase().includes(q) && !l.id.toLowerCase().includes(q)) return false;
@@ -3667,6 +3671,13 @@ function ConciliacaoInner() {
                     style={{ flex: "1 1 130px", minWidth: 110, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <input placeholder="Valor…" value={buscaValor} onChange={e => setBuscaValor(e.target.value)}
                     style={{ width: 84, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }} title="Filtra as linhas do extrato por data">
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</span>
+                    <InputData type="date" value={ofxDe} onChange={e => setOfxDe(e.target.value)} style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>até</span>
+                    <InputData type="date" value={ofxAte} onChange={e => setOfxAte(e.target.value)} style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
+                    {(ofxDe || ofxAte) && <OperationalButton data-arato-button="secondary" onClick={() => { setOfxDe(""); setOfxAte(""); }} style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer" }}>Limpar</OperationalButton>}
+                  </span>
                   <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                     <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} /> Só pendentes
                   </label>

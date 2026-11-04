@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-r",
+    data: "04/11/2026",
+    titulo: "Estorno de borderô mantém o borderô; filtro de data no extrato",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Estornar um borderô pago desfaz só o pagamento: ele volta a ficar em aberto, com os mesmos títulos, e pode ser pago de novo. As linhas do extrato ligadas a ele voltam a ficar pendentes. Para desfazer o borderô, use Cancelar depois do estorno." },
+      { tipo: "melhoria", texto: "Conciliação Bancária: o Extrato OFX ganhou filtro por data." },
+    ],
+  },
+  {
     versao: "2026.11.04-q",
     data: "04/11/2026",
     titulo: "Cancelamento e CC-e de quem tem várias IEs",

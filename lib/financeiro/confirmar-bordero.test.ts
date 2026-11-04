@@ -171,24 +171,39 @@ test("estorno do borderô parcial libera PF/PJ e preserva pagamento feito antes 
   Object.assign(b.tabelas.lancamentos[0], { valor: 1500, valor_pago: 500, status: "parcial" });
   await pagar(b.db, 2500);
   await estornarBorderoComSaldo(b.db, "b1");
-  assert.equal(b.tabelas.pagamento_lotes.length, 0);
-  assert.equal(b.tabelas.pagamento_lote_itens.length, 0);
-  assert.deepEqual(b.originais().map(o => o.valor_pago), [500, 0, 0, 0]);
+  assert.equal(b.lote().status, "pendente");
+  assert.equal(b.lote().valor_pago, null);
+  assert.equal(b.tabelas.pagamento_lote_itens.length, 4);
+  assert.deepEqual(b.originais().map(o => o.valor_pago), [500, null, null, null]);
   assert.deepEqual(b.originais().map(o => o.status), ["parcial", "em_aberto", "em_aberto", "pendente"]);
-  assert.ok(b.originais().every(o => o.lote_id === null));
+  assert.ok(b.originais().every(o => o.lote_id === "b1"));
 });
 test("estorno desfaz todos os pagamentos acumulados do borderô e seus encargos", async () => {
   const b = banco();
   await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, valor_juros: 50, valor_desconto: 100 });
   await confirmarBorderoComSaldo(b.db, "b1", "2026-10-08", "conta2", { valor_pago: 1500, valor_juros: 30, valor_desconto: 50 });
   await estornarBorderoComSaldo(b.db, "b1");
-  assert.ok(b.originais().every(o => o.valor_pago === 0 && o.valor_juros === 0 && o.valor_desconto === 0 && o.conta_bancaria === null));
+  assert.ok(b.originais().every(o => o.valor_pago === null && o.valor_juros === null && o.valor_desconto === null && o.conta_bancaria === null));
 });
-test("falha ao excluir o cabeçalho no estorno mantém os pagamentos e vínculos", async () => {
+test("falha ao gravar o cabeçalho no estorno mantém os pagamentos e vínculos", async () => {
   const b = banco(); await pagar(b.db, 2500);
   const antes = structuredClone(b.tabelas); b.falhas.cabecalho = true;
   await assert.rejects(estornarBorderoComSaldo(b.db, "b1"), /Falha simulada/);
   assert.deepEqual(b.tabelas, antes);
+});
+
+test("borderô estornado pode ser pago de novo, inteiro ou em parte", async () => {
+  const receber = banco(); await pagar(receber.db, 4000);
+  await estornarBorderoComSaldo(receber.db, "b1");
+  await pagar(receber.db, 4000);
+  assert.equal(receber.lote().valor_pago, 4000);
+  assert.deepEqual(receber.originais().map(o => o.status), ["baixado", "baixado", "baixado", "pago"]);
+
+  const aPagar = banco("pagar"); await pagar(aPagar.db, 4000);
+  await estornarBorderoComSaldo(aPagar.db, "b1");
+  await confirmarBorderoComSaldo(aPagar.db, "b1", "2026-10-09", "conta1", { valor_pago: 2000 });
+  assert.equal(aPagar.lote().valor_pago, 2000);
+  assert.equal(aPagar.lote().status, "pago");
 });
 
 test("baixa parcial atribui novo vencimento somente ao saldo do borderô", async () => {
