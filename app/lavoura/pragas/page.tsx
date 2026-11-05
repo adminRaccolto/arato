@@ -176,12 +176,12 @@ export default function PragasPage() {
     setLoading(true);
     const [{ data: regs }, { data: tal }, { data: cic }, { data: recsData }] = await Promise.all([
       supabase.from("monitoramento_pragas")
-        .select("*, talhoes(nome), ciclos(cultura, anos_safra(ano))")
+        .select("*, talhoes(nome), ciclos(cultura, anos_safra(descricao))")
         .in("fazenda_id", fazendaIds)
         .order("created_at", { ascending: false })
         .limit(500),
       supabase.from("talhoes").select("id, nome, area_ha, fazenda_id").in("fazenda_id", fazendaIds).order("nome"),
-      supabase.from("ciclos").select("id, cultura, anos_safra(ano)").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
+      supabase.from("ciclos").select("id, cultura, anos_safra(descricao)").in("fazenda_id", fazendaIds).order("created_at", { ascending: false }),
       supabase.from("recomendacoes").select("id, tipo, agronomo_nome, data_recomendacao").in("fazenda_id", fazendaIds).order("data_recomendacao", { ascending: false }).limit(50),
     ]);
 
@@ -189,7 +189,7 @@ export default function PragasPage() {
       ...r,
       talhao_nome: (r.talhoes as { nome: string } | null)?.nome,
       ciclo_nome:  r.ciclos
-        ? `${(r.ciclos as Record<string, unknown>).cultura} ${((r.ciclos as Record<string, unknown>).anos_safra as { ano: string } | null)?.ano ?? ""}`
+        ? `${(r.ciclos as Record<string, unknown>).cultura} ${((r.ciclos as Record<string, unknown>).anos_safra as { descricao: string } | null)?.descricao ?? ""}`
         : undefined,
     })) as Monitoramento[];
 
@@ -408,7 +408,7 @@ export default function PragasPage() {
                 <option value="">Todos os ciclos</option>
                 {ciclos.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
+                    {c.cultura} {(c as unknown as { anos_safra?: { descricao: string } | null }).anos_safra?.descricao ?? ""}
                   </option>
                 ))}
               </SelectField>
@@ -648,7 +648,7 @@ export default function PragasPage() {
                     <option value="">Sem vínculo</option>
                     {ciclos.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
+                        {c.cultura} {(c as unknown as { anos_safra?: { descricao: string } | null }).anos_safra?.descricao ?? ""}
                       </option>
                     ))}
                   </SelectField>

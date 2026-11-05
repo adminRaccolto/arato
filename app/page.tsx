@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../lib/data-local";
 import {useOperationalPresentation} from '../components/arato-layout/presentation-mode';
 
 import { OperationalButton, OperationalFilters } from "../components/OperationalUI";
@@ -161,7 +162,7 @@ export default function Dashboard() {
         const [cpRes, contratoRes, cicloRes, insumoRes, pessoaRes] = await Promise.all([
           supabase.from("lancamentos").select("id, descricao, valor, tipo").in("fazenda_id", fazendaIds).ilike("descricao", `%${q}%`).in("status", ["em_aberto", "vencido", "vencendo"]).limit(3),
           supabase.from("contratos").select("id, numero_contrato, cliente").in("fazenda_id", fazendaIds).or(`numero_contrato.ilike.%${q}%,cliente.ilike.%${q}%`).limit(3),
-          supabase.from("ciclos").select("id, nome, cultura").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("ciclos").select("id, descricao, cultura").in("fazenda_id", fazendaIds).ilike("descricao", `%${q}%`).limit(3),
           supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
           supabase.from("pessoas").select("id, nome, cpf_cnpj").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
         ]);
@@ -173,7 +174,7 @@ export default function Dashboard() {
           res.push({ id: `cnt-${r.id}`, categoria: "Contrato", titulo: r.numero_contrato || r.cliente || "Contrato", subtitulo: r.cliente, link: "/contratos", cor: "#C9921B" });
         }
         for (const r of cicloRes.data ?? []) {
-          res.push({ id: `cic-${r.id}`, categoria: "Ciclo", titulo: r.nome, subtitulo: r.cultura, link: "/lavoura", cor: "#16A34A" });
+          res.push({ id: `cic-${r.id}`, categoria: "Ciclo", titulo: r.descricao, subtitulo: r.cultura, link: "/lavoura", cor: "#16A34A" });
         }
         for (const r of insumoRes.data ?? []) {
           res.push({ id: `ins-${r.id}`, categoria: "Insumo", titulo: r.nome, subtitulo: r.categoria, link: "/estoque", cor: "#111111" });
@@ -276,7 +277,8 @@ export default function Dashboard() {
       supabase.from("ciclos")
         .select("id", { count: "exact", head: true })
         .in("fazenda_id", fazendaIds)
-        .eq("status", "ativo"),
+        .lte("data_inicio", hojeLocal())
+        .gte("data_fim", hojeLocal()),
 
       // Seguros de máquinas vencendo em 30 dias
       supabase.from("maquinas")

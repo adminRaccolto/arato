@@ -170,9 +170,18 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => {
     if (!fazId) return;
-    sb.from("ciclos").select("id,descricao,cultura,area_ha,produtividade_esperada_sc_ha,anos_safra(descricao)").eq("fazenda_id", fazId).order("created_at", { ascending: false })
+    sb.from("ciclos").select("id,descricao,cultura,area_plantada_ha,produtividade_esperada_sc_ha,anos_safra(descricao)").eq("fazenda_id", fazId).order("created_at", { ascending: false })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(({ data }: { data: any[] | null }) => { if (data) setCiclos(data.map((c: any) => ({ ...c, ano_safra: c.anos_safra?.[0] }))); });
+      .then(async ({ data }: { data: any[] | null }) => {
+        if (!data) return;
+        // A área costuma estar nos talhões do ciclo, não no cadastro do ciclo
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: talhoes } = await sb.from("ciclo_talhoes").select("ciclo_id,area_plantada_ha").in("ciclo_id", data.map((c: any) => c.id));
+        const areaTalhoes = new Map<string, number>();
+        for (const t of (talhoes ?? []) as { ciclo_id: string; area_plantada_ha: number | null }[]) areaTalhoes.set(t.ciclo_id, (areaTalhoes.get(t.ciclo_id) ?? 0) + Number(t.area_plantada_ha ?? 0));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setCiclos(data.map((c: any) => ({ ...c, area_ha: Number(c.area_plantada_ha) || areaTalhoes.get(c.id) || 0, ano_safra: c.anos_safra ?? undefined })));
+      });
     sb.from("estrutura_despesa_hedge").select("*").eq("fazenda_id", fazId).eq("ativo", true).then(({ data }) => { if (data) setDespesas(data); });
     // Carrega curva_mercado globalmente (independente de ciclo) para auto-fill do Precificador
     sb.from("curva_mercado").select("*").or(`fazenda_id.eq.${fazId},fazenda_id.is.null`).order("data_referencia", { ascending: false }).limit(500)

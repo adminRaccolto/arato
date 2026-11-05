@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-u",
+    data: "04/11/2026",
+    titulo: "Ciclos de produção voltam a aparecer em Pragas, Hedge e no Painel",
+    modulos: ["Lavoura", "Comercial", "Painel"],
+    itens: [
+      { tipo: "correcao", texto: "Pragas e Doenças: a lista de registros e o seletor de ciclo voltam a carregar." },
+      { tipo: "correcao", texto: "Hedge: o seletor de ciclo volta a carregar, com a área plantada do ciclo." },
+      { tipo: "correcao", texto: "Painel: a busca geral volta a encontrar ciclos, e o contador mostra os ciclos ativos na data de hoje." },
+    ],
+  },
+  {
     versao: "2026.11.04-t",
     data: "04/11/2026",
     titulo: "Transferências: movimentações pelo depósito e notas do SIEG já reconhecidas",
