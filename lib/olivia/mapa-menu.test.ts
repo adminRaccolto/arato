@@ -36,3 +36,10 @@ test("base de conhecimento e prompt só citam caminhos que existem", () => {
   const prompt = readFileSync("lib/olivia/prompt.ts", "utf8");
   assert.deepEqual(rotasInvalidas(prompt, NAV), []);
 });
+
+test("Olívia em produção usa o modelo aprovado pela bateria e cache na parte fixa", () => {
+  const rota = readFileSync("app/api/suporte/chat/route.ts", "utf8");
+  assert.match(rota, /MODELO_OLIVIA = "claude-haiku-5-5"/);
+  assert.match(rota, /cache_control: \{ type: "ephemeral" \}/);
+  assert.ok(rota.indexOf("cache_control") < rota.indexOf("contextoDinamico) system.push"), "contexto da fazenda vem depois do cache");
+});

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { CONHECIMENTO_OLIVIA } from "../../../../lib/conhecimento-olivia";
 import { SYSTEM_PROMPT } from "../../../../lib/olivia/prompt";
 import { montarMapaMenu, rotasInvalidas } from "../../../../lib/olivia/mapa-menu";
 import { NAV } from "../../../../lib/navigation";
 import { exigirAcessoFazenda, exigirLogin } from "../../../../lib/api-auth";
+
+const MODELO_OLIVIA = "claude-haiku-5-5";
+const MODELO_RESERVA = "claude-haiku-4-5-20251001";
 
 type MensagemChat = { role: "user" | "assistant"; content: string };
 
@@ -87,54 +91,54 @@ export async function POST(req: NextRequest) {
 
     // Busca contexto dinâmico da fazenda para personalizar respostas
     const contextoDinamico = fazenda_id ? await buscarContextoFazenda(fazenda_id) : "";
-    const systemPromptCompleto = SYSTEM_PROMPT + "\n\n---\n\n" + CONHECIMENTO_OLIVIA + contextoDinamico
-      + "\n\n---\n\n## Mapa oficial do menu (vale sobre qualquer outro trecho)\n" + montarMapaMenu(NAV);
+    // A parte fixa fica em cache: a Olívia lê a base inteira a cada pergunta. O contexto da fazenda muda, então vem depois.
+    const system: Anthropic.TextBlockParam[] = [{
+      type: "text",
+      text: `${SYSTEM_PROMPT}\n\n---\n\n${CONHECIMENTO_OLIVIA}\n\n---\n\n## Mapa oficial do menu (vale sobre qualquer outro trecho)\n${montarMapaMenu(NAV)}`,
+      cache_control: { type: "ephemeral" },
+    }];
+    if (contextoDinamico) system.push({ type: "text", text: contextoDinamico });
 
-    const perguntar = (conversa: MensagemChat[]) => fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 2048,
-        system: systemPromptCompleto,
-        messages: conversa.map(m => ({ role: m.role, content: m.content })),
-      }),
-    });
-    const textoDe = async (r: Response) => {
-      const d = await r.json() as { content: Array<{ type: string; text?: string }> };
-      // Pode vir bloco "thinking" antes do "text" — busca o primeiro text block
-      return d.content?.find(b => b.type === "text")?.text ?? "";
+    const client = new Anthropic({ apiKey });
+    let modelo = MODELO_OLIVIA;
+    const perguntar = async (conversa: MensagemChat[]) => {
+      const params = { max_tokens: 8000, system, messages: conversa.map(m => ({ role: m.role, content: m.content })) };
+      try {
+        return await client.messages.create({ ...params, model: modelo });
+      } catch (err) {
+        // Chave sem acesso ao modelo: o cliente continua atendido pelo modelo anterior
+        if (modelo !== MODELO_RESERVA && (err instanceof Anthropic.NotFoundError || err instanceof Anthropic.PermissionDeniedError)) {
+          console.error(`[olivia] sem acesso a ${modelo}, usando ${MODELO_RESERVA}:`, err.message);
+          modelo = MODELO_RESERVA;
+          return client.messages.create({ ...params, model: modelo });
+        }
+        throw err;
+      }
     };
+    const textoDe = (r: Anthropic.Message) => r.content.flatMap(b => b.type === "text" ? [b.text] : []).join("\n");
 
     const response = await perguntar(mensagens);
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("Anthropic API error:", response.status, err);
-      return NextResponse.json({ error: `Erro na API de IA (${response.status})` }, { status: 500 });
-    }
-
-    let resposta = await textoDe(response) || "Não consegui gerar uma resposta.";
+    console.info("[olivia] tokens", modelo, JSON.stringify(response.usage));
+    let resposta = textoDe(response) || "Não consegui gerar uma resposta.";
 
     // Conferência antes de chegar ao cliente: caminho que não existe no menu volta para ser corrigido uma vez
     const erradas = rotasInvalidas(resposta, NAV);
     if (erradas.length) {
       console.warn("[olivia] caminho inexistente na resposta:", erradas.join(" | "));
-      const refeita = await perguntar([...mensagens, { role: "assistant", content: resposta }, {
-        role: "user",
-        content: `Revisão interna, não mencione isto: estes caminhos não existem no menu: ${erradas.join("; ")}. Reescreva a resposta inteira usando só caminhos do Mapa oficial do menu. Se a tela não estiver no Mapa, diga que não encontrou.`,
-      }]);
-      if (refeita.ok) {
-        const texto = await textoDe(refeita);
+      // Se a revisão falhar, fica a primeira resposta em vez de deixar o cliente sem nenhuma
+      try {
+        const refeita = await perguntar([...mensagens, { role: "assistant", content: resposta }, {
+          role: "user",
+          content: `Revisão interna, não mencione isto: estes caminhos não existem no menu: ${erradas.join("; ")}. Reescreva a resposta inteira usando só caminhos do Mapa oficial do menu. Se a tela não estiver no Mapa, diga que não encontrou.`,
+        }]);
+        const texto = textoDe(refeita);
         if (texto) {
           resposta = texto;
           const seguem = rotasInvalidas(texto, NAV);
           if (seguem.length) console.warn("[olivia] caminho inexistente após revisão:", seguem.join(" | "));
         }
+      } catch (err) {
+        console.error("[olivia] revisão de rota falhou:", err);
       }
     }
 

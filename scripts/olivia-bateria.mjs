@@ -1,5 +1,5 @@
 // Bateria de perguntas da Olívia: pergunta, corrige e mostra a nota. Gasta créditos da API.
-//   node --no-warnings --env-file=.env.local scripts/olivia-bateria.mjs [--modelo=claude-haiku-5-5] [--effort=low] [--ids=a,b] [--saida=arq.json]
+//   node --no-warnings --env-file=.env.local scripts/olivia-bateria.mjs [--modelo=claude-opus-5-5] [--effort=low] [--ids=a,b] [--saida=arq.json]
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "node:fs";
 import { SYSTEM_PROMPT } from "../lib/olivia/prompt.ts";
@@ -8,7 +8,7 @@ import { NAV } from "../lib/navigation.ts";
 import { montarMapaMenu, rotasInvalidas } from "../lib/olivia/mapa-menu.ts";
 
 const arg = n => process.argv.find(a => a.startsWith(`--${n}=`))?.split("=").slice(1).join("=");
-const modelo = arg("modelo") ?? "claude-haiku-4-5-20251001";
+const modelo = arg("modelo") ?? "claude-haiku-5-5";
 const effort = arg("effort");
 const ids = arg("ids")?.split(",");
 const bateria = JSON.parse(readFileSync(new URL("../lib/olivia/bateria.json", import.meta.url), "utf8")).filter(q => !ids || ids.includes(q.id));
