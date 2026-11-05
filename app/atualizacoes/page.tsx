@@ -15,6 +15,7 @@ const RELEASES = [
       { tipo: "correcao", texto: "A Olívia passa a usar o menu real do sistema e não indica mais telas que mudaram de lugar. Toda resposta é conferida antes de chegar a você." },
       { tipo: "melhoria", texto: "A Olívia passou para um modelo mais novo, que acertou mais nos testes e custa menos por pergunta." },
       { tipo: "melhoria", texto: "A Olívia ganhou um guia passo a passo das tarefas mais comuns, com os nomes de botão e aba de cada tela." },
+      { tipo: "melhoria", texto: "O manual da Olívia foi reorganizado por assunto, sem repetições, para ela achar a regra certa com mais facilidade." },
       { tipo: "melhoria", texto: "Como lançar NFS-e: a Olívia explica as duas situações, a nota que já chegou pelo SIEG (processar em Notas de Terceiro) e a nota que precisa ser lançada à mão." },
     ],
   },
