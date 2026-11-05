@@ -743,6 +743,8 @@ Os títulos do antigo são baixados somando exatamente o valor da quitação; ju
 **Previsões repetidas antigas:** criadas antes de 04/11/2026, podem existir no Contas a Pagar como títulos sem ligação com a folha. Não some esses valores como salário a pagar e encaminhe à equipe Raccolto.
 
 ### Cadastros: pessoas, produtores, fazendas, empresas
+**Cadastro de pessoa incompleto:** cadastro criado por importação, SIEG ou telas secundárias é completado sozinho em até 15 minutos, com código IBGE e, para CNPJ, dados da Receita. Só preenche campo vazio. CPF sem CEP nem cidade continua precisando de digitação. Em Cadastros → Pessoas e Entidades, o botão Buscar segue disponível para um cadastro específico.
+
 **Sem fazenda ativa:** o sistema não guarda "fazenda ativa" por usuário; o ativo é o cliente. A fazenda não é perguntada nos lançamentos, vem do que o usuário escolhe:
 - **Produtor:** contratos, consórcios, CP/CR do produtor, NF de entrada.
 - **Empresa:** CP/CR e folha de empresa.

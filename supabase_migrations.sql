@@ -19924,3 +19924,23 @@ CREATE POLICY "pagamentos_raccotlo" ON pagamentos FOR ALL
 UPDATE planos SET preco_mensal = CASE id WHEN 'essencial' THEN 387 WHEN 'gestao' THEN 1197 WHEN 'performance' THEN 1787 ELSE preco_mensal END;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 417 — Completar cadastros de pessoas em lotes
+-- =============================================================================
+-- Marca quem já foi tratado, para cada lote seguir de onde o anterior parou. rotinas_sistema guarda se a rotina está
+-- ligada para os cadastros antigos. Só o servidor lê e grava essa tabela.
+ALTER TABLE pessoas
+  ADD COLUMN IF NOT EXISTS ibge_consultado_em timestamptz,
+  ADD COLUMN IF NOT EXISTS receita_consultada_em timestamptz,
+  ADD COLUMN IF NOT EXISTS receita_erro text;
+
+CREATE TABLE IF NOT EXISTS rotinas_sistema (
+  id               text PRIMARY KEY,
+  ativa            boolean NOT NULL DEFAULT false,
+  ultima_execucao  timestamptz,
+  ultimo_resultado jsonb
+);
+ALTER TABLE rotinas_sistema ENABLE ROW LEVEL SECURITY;
+
+NOTIFY pgrst, 'reload schema';

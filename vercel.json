@@ -41,6 +41,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/completar-pessoas",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/auditoria-consistencia",
       "schedule": "30 9 * * *"
     }

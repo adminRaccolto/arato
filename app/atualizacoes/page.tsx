@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-d",
+    data: "05/11/2026",
+    titulo: "Cadastros de pessoas completos sozinhos",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Pessoa criada por importação, SIEG ou outras telas passa a ter código IBGE e, no caso de CNPJ, os dados da Receita preenchidos automaticamente. Só campos vazios são preenchidos." },
+      { tipo: "novidade", texto: "A equipe Raccolto pode completar os cadastros antigos em lotes, com prévia, e vê a lista de empresas não ativas na Receita." },
+    ],
+  },
+  {
     versao: "2026.11.05-c",
     data: "05/11/2026",
     titulo: "Área de gestão da Raccolto atualizada",
