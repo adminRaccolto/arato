@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ajustarVinculosParaFk, caixaDoBordero, ehLinhaSaldo, linhaMudou, pagoSemExtrato } from "./conciliacao.ts";
+import { ajustarVinculosParaFk, caixaDoBordero, ehLinhaSaldo, linhaMudou, linhasAlteradas, pagoSemExtrato } from "./conciliacao.ts";
 
 test("título de Empresa (fora de lancamentos) vai só para lancamento_ids e lancamento_id fica nulo", () => {
   const rows = [{ lancamento_id: "emp-1", lancamento_ids: null as string[] | null }];
@@ -96,4 +96,13 @@ test("reimportação com FITID novo: mesma transação não entra de novo, por c
 test("linha de saldo do extrato não é transação; descrições normais com 'saldo' continuam", () => {
   for (const d of ["SALDO TOTAL DISPONÍVEL DIA", "SALDO ANTERIOR", "Saldo Anterior", "SALDO DO DIA", "SDO CTA/APL"]) assert.equal(ehLinhaSaldo(d), true, d);
   for (const d of ["SALDO REFERENTE A ALUGUEL DA CAMIONETE", "PIX RECEBIDO SALDO", "PAGAMENTO SALDO DEVEDOR", "RESGATE APLICACAO", "", null]) assert.equal(ehLinhaSaldo(d), false, String(d));
+});
+
+test("linhasAlteradas: só a linha conciliada nesta ação é regravada, a de outro usuário fica como está", () => {
+  const a = { id: "a", conciliado: false };
+  const b = { id: "b", conciliado: false };
+  const depois = [{ ...a }, { ...b, conciliado: true }];
+  assert.deepEqual(linhasAlteradas([a, b], depois), [{ id: "b", conciliado: true }]);
+  assert.deepEqual(linhasAlteradas([a, b], [a, b]), []);
+  assert.deepEqual(linhasAlteradas([a], [a, b]), [b]);
 });

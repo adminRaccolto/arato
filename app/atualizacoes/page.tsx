@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-b",
+    data: "05/11/2026",
+    titulo: "Conciliação: título pago em mais de uma linha do banco",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Título já baixado e pago em duas ou mais linhas do extrato volta a aceitar todas elas. Depois da primeira, ele mostra quanto falta vincular nas abas Baixados e CP/CR abertos." },
+      { tipo: "correcao", texto: "Quando duas pessoas conciliam a mesma conta ao mesmo tempo, a tela de uma não desfaz mais o que a outra acabou de conciliar." },
+    ],
+  },
+  {
     versao: "2026.11.05-a",
     data: "05/11/2026",
     titulo: "Olívia indica as telas do menu atual",

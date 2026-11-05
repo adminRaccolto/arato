@@ -13,7 +13,7 @@ import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarCentrosCustoGeralDaConta, listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
-import { caixaDoBordero, ehLinhaSaldo, pagoSemExtrato } from "../../../lib/financeiro/conciliacao";
+import { caixaDoBordero, ehLinhaSaldo, linhasAlteradas, pagoSemExtrato } from "../../../lib/financeiro/conciliacao";
 import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -1139,7 +1139,9 @@ function ConciliacaoInner() {
       // reflete exatamente o que o usuário acabou de decidir, sem comparar
       // com o que já existia.
       const fazUpd = (contas.find(c => c.id === upd.conta_id) as { fazenda_id?: string | null } | undefined)?.fazenda_id || fazendaId!;
-      const okSync = await syncExtratoTransacoes(fazUpd, upd.conta_id || null, upd.conta_nome, upd.linhas, upd.id, "acao");
+      // Só o que esta ação mudou: a linha que outro usuário conciliou depois que esta tela abriu não volta a pendente
+      const linhasDaAcao = extratoAnterior?.id === upd.id ? linhasAlteradas(extratoAnterior.linhas, upd.linhas) : upd.linhas;
+      const okSync = await syncExtratoTransacoes(fazUpd, upd.conta_id || null, upd.conta_nome, linhasDaAcao, upd.id, "acao");
       if (!okSync) {
         // O lançamento já foi baixado/conciliado pela API, mas extrato_transacoes (o que a
         // tela lê ao reabrir) não foi atualizada. Repetir a ação é seguro (idempotente).
@@ -1976,6 +1978,21 @@ function ConciliacaoInner() {
     if (!ln.conciliado) continue;
     for (const id of (ln.lancamento_ids?.length ? ln.lancamento_ids : ln.lancamento_id ? [ln.lancamento_id] : [])) origemPorLanc.set(id, ln.origem_vinculo ?? "anterior");
   }
+  // Título já baixado, pago em mais de uma linha do banco: quanto do pago ainda falta ligar. Só conta depois da 1ª linha
+  // e fora de borderô; diferença abaixo de R$ 1 é arredondamento, não outra linha. O gatilho do banco marca o título como
+  // conciliado já na 1ª linha, então a marca sozinha não diz se terminou.
+  const linhasPorTitulo = new Map<string, { valor: number; titulos: number }[]>();
+  for (const ln of extrato?.linhas ?? []) {
+    if (!ln.conciliado) continue;
+    const idsLn = ln.lancamento_ids?.length ? ln.lancamento_ids : ln.lancamento_id ? [ln.lancamento_id] : [];
+    for (const id of idsLn) linhasPorTitulo.set(id, [...(linhasPorTitulo.get(id) ?? []), { valor: ln.valor, titulos: idsLn.length }]);
+  }
+  const faltaVincular = (l: Lancamento) => {
+    const ligadas = linhasPorTitulo.get(l.id);
+    if (!ligadas || l.status !== "baixado" || l.lote_id) return 0;
+    const falta = pagoSemExtrato(Number(l.valor_pago ?? l.valor), ligadas);
+    return falta >= 1 ? falta : 0;
+  };
   const ORIGEM_LANC: Record<string, { label: string; bg: string; cor: string }> = {
     exato:    { label: "Automático",      bg: "#F1F3F6", cor: "#555" },
     regra:    { label: "Regra",           bg: "#F1F3F6", cor: "#555" },
@@ -1990,7 +2007,7 @@ function ConciliacaoInner() {
   const loteDe = (l: Lancamento) => (l.lote_id ? lotes.get(l.lote_id) : undefined);
   const itemDoLote = (l: Lancamento) => loteDe(l)?.itens.find(i => i.lancamento_id === l.id);
   // Quanto a linha do banco deve cobrir por este lançamento: no borderô é o valor do item; fora dele, o que falta pagar
-  const valorParaLinha = (l: Lancamento) => { const it = itemDoLote(l); return it ? Number(it.valor_pago) : valorRestante(l); };
+  const valorParaLinha = (l: Lancamento) => { const it = itemDoLote(l); return it ? Number(it.valor_pago) : faltaVincular(l) || valorRestante(l); };
   // Soma do que os lançamentos selecionados cobrem: cada borderô entra uma vez, pelo que saiu do banco
   const valorDaSelecao = (sel: Lancamento[]) => {
     const vistos = new Set<string>();
@@ -2021,7 +2038,7 @@ function ConciliacaoInner() {
     return out;
   };
   // Borderô vale o que saiu do banco (principal + juros + multa − desconto), não a soma das NFs dentro dele
-  const valorLinhaSis = (r: LinhaSis) => (r.lote ? caixaDoBordero(r.lote) : valorRestante(r.l));
+  const valorLinhaSis = (r: LinhaSis) => (r.lote ? caixaDoBordero(r.lote) : faltaVincular(r.l) || valorRestante(r.l));
   const receberLinhaSis = (r: LinhaSis) => (r.lote ? r.lote.tipo === "receber" : r.l.tipo === "receber");
   const selecionadaLinhaSis = (r: LinhaSis) => r.comps.length > 0 && r.comps.every(c => lancsSel.has(c.id));
   const alternarLinhaSis = (r: LinhaSis) => setLancsSel(prev => {
@@ -2035,7 +2052,7 @@ function ConciliacaoInner() {
   const lancConciliadosLista = lancamentos
     .filter(l => (l.status === "baixado" || origemPorLanc.has(l.id)) && passaTipo(l) && (buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_baixa ?? l.data_vencimento)))
     .sort((a, b) => (b.data_baixa ?? b.data_vencimento).localeCompare(a.data_baixa ?? a.data_vencimento));
-  const linhaConciliada = (r: LinhaSis) => r.comps.every(c => c.conciliado || origemPorLanc.has(c.id));
+  const linhaConciliada = (r: LinhaSis) => r.comps.every(c => !faltaVincular(c) && (c.conciliado || origemPorLanc.has(c.id)));
   const linhasConciliados = agruparLotes(lancConciliadosLista).filter(r =>
     filtroBaixados === "todos" || (filtroBaixados === "conciliados") === linhaConciliada(r));
 
@@ -2060,8 +2077,9 @@ function ConciliacaoInner() {
   const baseAbertos = lancamentos.filter(l => {
     if (l.status === "cancelado" || !passaTipo(l)) return false;
     const lt = l.status === "baixado" ? loteDe(l) : undefined;
-    if (l.status === "baixado" && (!lt || lt.conciliado || l.conciliado)) return false;
-    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(lt ? (lt.data_pagamento ?? l.data_baixa ?? l.data_vencimento) : l.data_vencimento);
+    const falta = faltaVincular(l) > 0;
+    if (l.status === "baixado" && !falta && (!lt || lt.conciliado || l.conciliado)) return false;
+    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(lt ? (lt.data_pagamento ?? l.data_baixa ?? l.data_vencimento) : falta ? (l.data_baixa ?? l.data_vencimento) : l.data_vencimento);
   });
   const linhasAbertos = (() => {
     let rows = agruparLotes(baseAbertos);
@@ -2286,6 +2304,7 @@ function ConciliacaoInner() {
           <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
             <div style={{ fontWeight: 700, color: negativo && !cinza ? COR_NEG : "var(--text-1)" }}>{negativo ? "−" : "+"}{fmtBRL(valorMostrado)}</div>
             {!lt && ehParcial(l) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>saldo {fmtBRL(valorRestante(l))}</div>}
+            {!lt && faltaVincular(l) > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: "#A16207" }}>falta vincular {fmtBRL(faltaVincular(l))}</div>}
             {!lt && partes.get(l.id)?.parcial && <div style={{ fontSize: 10, fontWeight: 700, color: "#A16207" }}>parcial</div>}
             {lt?.pagamento_parcial && <div style={{ fontSize: 10, fontWeight: 700, color: "#A16207" }}>parcial</div>}
           </div>
@@ -3638,7 +3657,7 @@ function ConciliacaoInner() {
                   return (
                     <div style={{ padding: "6px 14px", fontSize: 11, display: "flex", justifyContent: "space-between", gap: 8, background: "var(--bg-page)", color: "var(--text-2)", borderTop: "0.5px solid var(--border)" }}>
                       <span>Linha {fmtBRL(linhaAtiva.valor)} · Lançamentos {fmtBRL(esperado)}</span>
-                      <strong style={{ color: ok || parcial ? "var(--text-1)" : "#A93226" }}>{ok ? "Diferença R$ 0,00" : parcial ? `Baixa parcial — saldo ficará ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
+                      <strong style={{ color: ok || parcial ? "var(--text-1)" : "#A93226" }}>{ok ? "Diferença R$ 0,00" : parcial ? `${sel[0].status === "baixado" ? "Parte do pago — faltará vincular" : "Baixa parcial — saldo ficará"} ${fmtBRL(Math.abs(dif))}` : `Diferença ${fmtBRL(Math.abs(dif))} — exige motivo`}</strong>
                     </div>
                   );
                 })()}

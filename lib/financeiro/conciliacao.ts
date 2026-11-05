@@ -80,6 +80,15 @@ export function pagoSemExtrato(valorPago: number, linhasVinculadas: { valor: num
   return centavos(Math.max(0, valorPago - coberto));
 }
 
+/**
+ * Só as linhas que esta ação mudou. Mandar o extrato inteiro fazia uma tela aberta há mais tempo regravar como pendentes
+ * as linhas que outro usuário acabou de conciliar na mesma conta.
+ */
+export function linhasAlteradas<L extends { id: string }>(antes: readonly L[], depois: readonly L[]): L[] {
+  const anteriores = new Map(antes.map(l => [l.id, JSON.stringify(l)]));
+  return depois.filter(l => anteriores.get(l.id) !== JSON.stringify(l));
+}
+
 type TransacaoExtrato = { data: string; valor: number; descricao: string | null; tipo?: string | null };
 const chaveConteudo = (t: TransacaoExtrato) =>
   [t.data.slice(0, 10), Math.round(Math.abs(Number(t.valor)) * 100), (t.tipo ?? "").toLowerCase(),
