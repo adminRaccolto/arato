@@ -19574,3 +19574,193 @@ UPDATE nf_entradas n
    AND n.chave_acesso IN (t.nf_chave, t.nf_destino_chave);
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 415 — Gratificações em títulos separados no CP, com adiantamentos próprios
+--   Novos lançamentos geram CP na mesma transação. Pendentes antigos usam Lançar no CP.
+--   Não converte automaticamente gratificações que já possam estar em salários pagos.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+ALTER TABLE adiantamentos_salario ADD COLUMN IF NOT EXISTS descontado_gratificacao_cp numeric(14,2) NOT NULL DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION fn_recalcular_gratificacoes_cp(p_funcionario uuid, p_competencia text)
+RETURNS void LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  p record; a record; t lancamentos%ROWTYPE;
+  adiantado numeric := 0; restante numeric := 0; total_cp numeric := 0; liquido numeric; aplicado numeric;
+BEGIN
+  IF p_funcionario IS NULL OR p_competencia IS NULL THEN RETURN; END IF;
+  PERFORM id FROM funcionarios WHERE id = p_funcionario FOR UPDATE;
+  SELECT coalesce(sum(valor), 0) INTO total_cp FROM funcionarios_premiacoes
+    WHERE funcionario_id = p_funcionario AND mes_referencia = p_competencia AND lancamento_id IS NOT NULL;
+  -- Inclui a parte já alocada ao CP mesmo quando o residual do adiantamento foi descontado no salário.
+  SELECT coalesce(sum(CASE WHEN status = 'pendente' THEN valor ELSE descontado_gratificacao_cp END), 0)
+    INTO adiantado FROM adiantamentos_salario
+    WHERE funcionario_id = p_funcionario AND competencia_ref = p_competencia
+      AND tipo = 'gratificacao' AND status <> 'cancelado';
+  restante := least(adiantado, total_cp);
+  FOR p IN SELECT * FROM funcionarios_premiacoes
+    WHERE funcionario_id = p_funcionario AND mes_referencia = p_competencia AND lancamento_id IS NOT NULL
+    ORDER BY created_at, id
+  LOOP
+    aplicado := least(restante, p.valor);
+    liquido := p.valor - aplicado;
+    restante := restante - aplicado;
+    SELECT * INTO STRICT t FROM lancamentos WHERE id = p.lancamento_id FOR UPDATE;
+    IF t.valor IS DISTINCT FROM liquido THEN
+      IF coalesce(t.valor_pago, 0) > 0 OR t.status IN ('baixado','parcial') OR t.lote_id IS NOT NULL OR coalesce(t.conciliado, false) THEN
+        RAISE EXCEPTION 'A gratificação já tem pagamento, conciliação ou borderô. Estorne no CP antes de alterar seus adiantamentos.';
+      END IF;
+      UPDATE lancamentos SET valor = liquido,
+        status = CASE WHEN liquido = 0 THEN 'cancelado' WHEN t.valor = 0 AND t.status = 'cancelado' THEN 'em_aberto' ELSE t.status END
+        WHERE id = t.id;
+    END IF;
+  END LOOP;
+  restante := least(adiantado, total_cp);
+  FOR a IN SELECT * FROM adiantamentos_salario
+    WHERE funcionario_id = p_funcionario AND competencia_ref = p_competencia AND tipo = 'gratificacao'
+    ORDER BY created_at, id
+  LOOP
+    aplicado := CASE WHEN a.status = 'cancelado' THEN 0
+      WHEN a.status = 'descontado' THEN least(restante, a.descontado_gratificacao_cp)
+      ELSE least(restante, a.valor) END;
+    restante := restante - aplicado;
+    UPDATE adiantamentos_salario SET descontado_gratificacao_cp = aplicado
+      WHERE id = a.id AND descontado_gratificacao_cp IS DISTINCT FROM aplicado;
+  END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION fn_gratificacao_cp_antes()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  f funcionarios%ROWTYPE; t lancamentos%ROWTYPE; og uuid; conta uuid; titulo uuid;
+  comp text; total_premios numeric; total_adis numeric;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM id FROM funcionarios WHERE id = OLD.funcionario_id FOR UPDATE;
+  ELSE
+    SELECT * INTO STRICT f FROM funcionarios WHERE id = NEW.funcionario_id FOR UPDATE;
+    IF NEW.mes_referencia !~ '^\d{4}-(0[1-9]|1[0-2])$' OR NEW.valor <= 0 THEN
+      RAISE EXCEPTION 'Informe uma competência válida e valor maior que zero.';
+    END IF;
+  END IF;
+  IF TG_OP <> 'INSERT' AND OLD.lancamento_id IS NOT NULL THEN
+    SELECT * INTO STRICT t FROM lancamentos WHERE id = OLD.lancamento_id FOR UPDATE;
+    IF TG_OP = 'UPDATE' AND (NEW.funcionario_id, NEW.mes_referencia, NEW.valor, NEW.descricao, NEW.data_pagamento)
+        IS NOT DISTINCT FROM (OLD.funcionario_id, OLD.mes_referencia, OLD.valor, OLD.descricao, OLD.data_pagamento) THEN
+      NEW.lancamento_id := OLD.lancamento_id; NEW.lancado_financeiro := true;
+      RETURN NEW;
+    END IF;
+    IF coalesce(t.valor_pago, 0) > 0 OR t.status IN ('baixado','parcial') OR t.lote_id IS NOT NULL OR coalesce(t.conciliado, false) THEN
+      RAISE EXCEPTION 'A gratificação já tem pagamento, conciliação ou borderô. Estorne no CP antes de editar ou excluir.';
+    END IF;
+    IF TG_OP = 'UPDATE' AND (NEW.funcionario_id, NEW.mes_referencia) IS DISTINCT FROM (OLD.funcionario_id, OLD.mes_referencia) THEN
+      RAISE EXCEPTION 'Exclua a gratificação em aberto e lance novamente para trocar funcionário ou competência.';
+    END IF;
+  END IF;
+  IF TG_OP <> 'INSERT' THEN
+    SELECT coalesce(sum(valor), 0) INTO total_adis FROM adiantamentos_salario
+      WHERE funcionario_id = OLD.funcionario_id AND competencia_ref = OLD.mes_referencia AND tipo = 'gratificacao' AND status <> 'cancelado';
+    SELECT coalesce(sum(valor), 0) INTO total_premios FROM funcionarios_premiacoes
+      WHERE funcionario_id = OLD.funcionario_id AND mes_referencia = OLD.mes_referencia AND id <> OLD.id;
+    IF TG_OP = 'UPDATE' AND NEW.funcionario_id = OLD.funcionario_id AND NEW.mes_referencia = OLD.mes_referencia THEN
+      total_premios := total_premios + NEW.valor;
+    END IF;
+    IF total_premios < total_adis THEN
+      RAISE EXCEPTION 'A gratificação não pode ficar abaixo dos adiantamentos já lançados. Ajuste os adiantamentos primeiro.';
+    END IF;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    -- O título é excluído no AFTER, depois que a premiação deixa de referenciá-lo.
+    RETURN OLD;
+  END IF;
+  IF NOT coalesce(NEW.lancado_financeiro, false) AND NEW.lancamento_id IS NULL THEN RETURN NEW; END IF;
+  IF TG_OP = 'UPDATE' AND OLD.lancamento_id IS NULL AND EXISTS (
+    SELECT 1 FROM folha_funcionarios ff JOIN folha_pagamento fp ON fp.id = ff.folha_id
+    WHERE ff.funcionario_id = NEW.funcionario_id AND fp.competencia = NEW.mes_referencia AND coalesce(ff.gratificacao, 0) > 0
+  ) THEN
+    RAISE EXCEPTION 'Esta competência já tem gratificação incluída no salário. Retire o valor da folha e salve ou reprocesse antes de lançar o título separado.';
+  END IF;
+  NEW.fazenda_id := f.fazenda_id;
+  NEW.data_pagamento := coalesce(NEW.data_pagamento, (to_date(NEW.mes_referencia || '-01', 'YYYY-MM-DD') + interval '1 month 4 days')::date);
+  SELECT conta_id INTO conta FROM fazendas WHERE id = f.fazenda_id;
+  SELECT o.id INTO og FROM operacoes_gerenciais o
+    WHERE NOT coalesce(o.inativo, false) AND o.tipo = 'despesa'
+      AND (o.descricao ILIKE '%gratifica%' OR o.classificacao = '2.01.01.10.001')
+      AND (o.fazenda_id = f.fazenda_id OR o.conta_id = conta
+        OR (o.conta_id IS NULL AND o.fazenda_id IS NULL)
+        OR o.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = conta))
+    ORDER BY (o.descricao ILIKE '%gratifica%') DESC, (o.fazenda_id = f.fazenda_id) DESC NULLS LAST, o.id LIMIT 1;
+  titulo := CASE WHEN TG_OP = 'UPDATE' THEN OLD.lancamento_id ELSE NULL END;
+  IF titulo IS NULL THEN
+    INSERT INTO lancamentos (fazenda_id, empresa_id, produtor_id, funcionario_id, tipo, natureza,
+      descricao, categoria, valor, moeda, status, data_vencimento, data_lancamento, origem_lancamento, operacao_gerencial_id)
+    VALUES (f.fazenda_id, f.empresa_id, f.produtor_id, f.id, 'pagar', 'real',
+      'Gratificação ' || NEW.mes_referencia || ' — ' || f.nome || ' — ' || NEW.descricao,
+      'Pessoal / Gratificações', NEW.valor, 'BRL', 'em_aberto', NEW.data_pagamento,
+      (now() AT TIME ZONE 'America/Cuiaba')::date, 'folha', og)
+    RETURNING id INTO titulo;
+  ELSE
+    UPDATE lancamentos SET descricao = 'Gratificação ' || NEW.mes_referencia || ' — ' || f.nome || ' — ' || NEW.descricao,
+      data_vencimento = NEW.data_pagamento, operacao_gerencial_id = og WHERE id = titulo;
+  END IF;
+  NEW.lancamento_id := titulo; NEW.lancado_financeiro := true;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION fn_gratificacao_cp_depois()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.lancamento_id IS NOT NULL THEN DELETE FROM lancamentos WHERE id = OLD.lancamento_id; END IF;
+    PERFORM fn_recalcular_gratificacoes_cp(OLD.funcionario_id, OLD.mes_referencia);
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalcular_gratificacoes_cp(NEW.funcionario_id, NEW.mes_referencia);
+  IF TG_OP = 'UPDATE' AND (OLD.funcionario_id, OLD.mes_referencia) IS DISTINCT FROM (NEW.funcionario_id, NEW.mes_referencia) THEN
+    PERFORM fn_recalcular_gratificacoes_cp(OLD.funcionario_id, OLD.mes_referencia);
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION fn_adiantamento_gratificacao_cp()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF TG_OP <> 'INSERT' AND OLD.tipo = 'gratificacao' THEN
+    PERFORM fn_recalcular_gratificacoes_cp(OLD.funcionario_id, OLD.competencia_ref);
+  END IF;
+  IF TG_OP <> 'DELETE' AND NEW.tipo = 'gratificacao' THEN
+    PERFORM fn_recalcular_gratificacoes_cp(NEW.funcionario_id, NEW.competencia_ref);
+  END IF;
+  RETURN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_gratificacao_cp_antes ON funcionarios_premiacoes;
+CREATE TRIGGER trg_gratificacao_cp_antes BEFORE INSERT OR UPDATE OR DELETE ON funcionarios_premiacoes
+  FOR EACH ROW EXECUTE FUNCTION fn_gratificacao_cp_antes();
+DROP TRIGGER IF EXISTS trg_gratificacao_cp_depois ON funcionarios_premiacoes;
+CREATE TRIGGER trg_gratificacao_cp_depois AFTER INSERT OR UPDATE OR DELETE ON funcionarios_premiacoes
+  FOR EACH ROW EXECUTE FUNCTION fn_gratificacao_cp_depois();
+DROP TRIGGER IF EXISTS trg_adiantamento_gratificacao_cp ON adiantamentos_salario;
+CREATE TRIGGER trg_adiantamento_gratificacao_cp AFTER INSERT OR DELETE OR UPDATE OF valor, tipo, status, funcionario_id, competencia_ref ON adiantamentos_salario
+  FOR EACH ROW EXECUTE FUNCTION fn_adiantamento_gratificacao_cp();
+
+-- Cancela o adiantamento e seu CP na mesma transação: uma gratificação paga pode impedir o recálculo.
+CREATE OR REPLACE FUNCTION fn_cancelar_adiantamento_gratificacao_cp(p_id uuid)
+RETURNS void LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE a adiantamentos_salario%ROWTYPE; t lancamentos%ROWTYPE;
+BEGIN
+  SELECT * INTO STRICT a FROM adiantamentos_salario WHERE id = p_id FOR UPDATE;
+  IF a.tipo <> 'gratificacao' THEN RAISE EXCEPTION 'Este adiantamento não é de gratificação.'; END IF;
+  IF a.status = 'descontado' THEN RAISE EXCEPTION 'O adiantamento já foi descontado no salário. Reabra a folha antes de cancelar.'; END IF;
+  IF a.lancamento_id IS NOT NULL THEN
+    SELECT * INTO STRICT t FROM lancamentos WHERE id = a.lancamento_id FOR UPDATE;
+    IF coalesce(t.valor_pago, 0) > 0 OR t.status IN ('baixado','parcial') OR t.lote_id IS NOT NULL OR coalesce(t.conciliado, false) THEN
+      RAISE EXCEPTION 'O CP do adiantamento já tem pagamento, conciliação ou borderô. Estorne antes de cancelar.';
+    END IF;
+  END IF;
+  UPDATE adiantamentos_salario SET status = 'cancelado', lancamento_id = NULL WHERE id = p_id;
+  IF a.lancamento_id IS NOT NULL THEN DELETE FROM lancamentos WHERE id = a.lancamento_id; END IF;
+END $$;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

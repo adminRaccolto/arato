@@ -1,4 +1,5 @@
 "use client";
+import { descontoNoSalario } from "../../../lib/folha/gratificacoes";
 import { planilhaFormatada } from "../../../lib/relatorios/xlsx-estilo";
 import { rotuloPagamentoFolha } from "../../../lib/folha/titulo-linha";
 import { hojeLocal } from "../../../lib/data-local";
@@ -107,6 +108,7 @@ interface Adiantamento {
   lancamento_id?: string;
   status: "pendente" | "descontado" | "cancelado";
   tipo?: "salario" | "gratificacao" | "devolucao";
+  descontado_gratificacao_cp?: number;
   created_at?: string;
 }
 type PlanoCorrecao = { tipo: "atualizar" | "pagar_diferenca" | "descontar" | "pendente"; nome: string; competencia: string; diferenca: number; antes: number; depois: number };
@@ -119,6 +121,8 @@ interface Premiacao {
   descricao: string;
   valor: number;
   lancado_financeiro: boolean;
+  lancamento_id?: string | null;
+  data_pagamento?: string | null;
   created_at?: string;
 }
 
@@ -448,7 +452,7 @@ export default function FolhaPagamentoPage() {
               a.status === "pendente" &&
               a.funcionario_id === i.funcionario_id
             )
-            .reduce((s, a) => s + a.valor, 0);
+            .reduce((s, a) => s + descontoNoSalario(a), 0);
           base.adiantamento = adi;  // vem só da aba Adiantamentos (pendentes da competência ou sem competência)
         }
         return base;
@@ -507,7 +511,7 @@ export default function FolhaPagamentoPage() {
       const adisComp = adiantamentos.filter(
         a => (!a.competencia_ref || a.competencia_ref === fComp) && a.status === "pendente"
       );
-      const premsComp = premiacoes.filter(p => p.mes_referencia === fComp);
+      const premsComp = premiacoes.filter(p => p.mes_referencia === fComp && !p.lancamento_id);
       const funcs: FolhaFunc[] = funcionarios.map(f => {
         const base = f.salario_base ?? 0;
         const grat = premsComp
@@ -515,7 +519,7 @@ export default function FolhaPagamentoPage() {
           .reduce((s, p) => s + p.valor, 0);
         const adi  = adisComp
           .filter(a => a.funcionario_id === f.id)
-          .reduce((s, a) => s + a.valor, 0);
+          .reduce((s, a) => s + descontoNoSalario(a), 0);
         return recalc({
           ...pctsEncargos(f),
           funcionario_id: f.id,
@@ -976,6 +980,7 @@ export default function FolhaPagamentoPage() {
           id: premEdit.id,
           funcionario_id: premEdit.funcionario_id,
           mes_referencia: premEdit.mes_referencia,
+          data_pagamento: premEdit.data_pagamento || null,
           descricao: premEdit.descricao,
           valor: premEdit.valor,
         });
@@ -986,10 +991,11 @@ export default function FolhaPagamentoPage() {
           fazenda_id: fazendaId,
           funcionario_id: premEdit.funcionario_id,
           mes_referencia: premEdit.mes_referencia,
+          data_pagamento: premEdit.data_pagamento || null,
           descricao: premEdit.descricao,
           valor: premEdit.valor,
         });
-        setMsg("Gratificação registrada.");
+        setMsg("Gratificação registrada no Contas a Pagar.");
       }
       setModalPrem(false);
       setPremEdit({});
@@ -999,6 +1005,17 @@ export default function FolhaPagamentoPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function lancarPremiacaoCp(id: string) {
+    if (!(await confirmarAcao({ titulo: "Lançar gratificação no CP", mensagem: "Gerar o título separado desta gratificação no Contas a Pagar?", perigo: false }))) return;
+    setSaving(true);
+    try {
+      await apiFolha({ operacao: "lancar_premiacao_cp", id });
+      setMsg("Gratificação lançada no Contas a Pagar.");
+      await carregar();
+    } catch (e: unknown) { setMsg(e instanceof Error ? e.message : String(e)); }
+    finally { setSaving(false); }
   }
 
   async function excluirPremiacao(id: string) {
@@ -1344,7 +1361,7 @@ export default function FolhaPagamentoPage() {
                         <td style={{ ...S.td, color:"#888" }}>{a.descricao || "—"}</td>
                         <td style={S.td}>
                           <span style={{ fontSize:11, fontWeight:700, color:ADI_COLOR[a.status], background:ADI_COLOR[a.status]+"18", borderRadius:4, padding:"2px 8px" }}>
-                            {ADI_LABEL[a.status]}
+                            {a.status === "pendente" && Number(a.descontado_gratificacao_cp) >= a.valor ? "Abatido na gratificação (CP)" : ADI_LABEL[a.status]}
                           </span>
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
@@ -1467,7 +1484,7 @@ export default function FolhaPagamentoPage() {
                 <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr>
-                      {["Funcionário","Mês Ref.","Descrição","Valor","Incluída na Folha",""].map(h=>(
+                      {["Funcionário","Mês Ref.","Descrição","Valor","Vencimento","Contas a Pagar",""].map(h=>(
                         <th key={h} style={S.th}>{h}</th>
                       ))}
                     </tr>
@@ -1479,16 +1496,18 @@ export default function FolhaPagamentoPage() {
                         <td style={S.td}>{nomeMes(p.mes_referencia)}</td>
                         <td style={S.td}>{p.descricao}</td>
                         <td style={{ ...S.td, fontWeight:700, color:"#C9921B", fontVariantNumeric:"tabular-nums" }}>{moeda(p.valor)}</td>
+                        <td style={S.td}>{p.data_pagamento ? p.data_pagamento.split("-").reverse().join("/") : "—"}</td>
                         <td style={S.td}>
-                          {p.lancado_financeiro
+                          {p.lancamento_id
                             ? <span style={{ fontSize:11, color:"#16A34A", fontWeight:700 }}>✓ Sim</span>
                             : <span style={{ fontSize:11, color:"#888" }}>Pendente</span>}
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
-                          {!p.lancado_financeiro && (<>
-                            <OperationalButton data-arato-button="secondary" onClick={()=>{ setPremEdit({ id: p.id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, descricao: p.descricao, valor: p.valor }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</OperationalButton>
+                          {!p.lancamento_id && <OperationalButton data-arato-button="secondary" disabled={saving} onClick={()=>lancarPremiacaoCp(p.id)} style={{ ...S.btn("#1A4870"), marginRight:8 }}>Lançar no CP</OperationalButton>}
+                          <>
+                            <OperationalButton data-arato-button="secondary" onClick={()=>{ setPremEdit({ id: p.id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, descricao: p.descricao, valor: p.valor, data_pagamento: p.data_pagamento }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</OperationalButton>
                             <OperationalButton data-arato-button="secondary" onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</OperationalButton>
-                          </>)}
+                          </>
                         </td>
                       </tr>
                     ))}
@@ -1671,8 +1690,18 @@ export default function FolhaPagamentoPage() {
                                   {moeda(f.salario_base)}
                                 </td>
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
-                                  <input type="number" value={f.gratificacao} disabled={!editavel} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)}
-                                    style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.gratificacao > 0 ? "#C9921B" : "#DDE2EE", fontSize:12, ...(!editavel ? { background:"#F1F2F4", color:"#888" } : {}) }} />
+                                  {f.gratificacao > 0 && <>
+                                    <input type="number" min="0" value={f.gratificacao} disabled={!editavel} title="Valor já incluído no salário. Zere e salve ou reprocesse a folha para transferi-lo ao CP separado."
+                                      onChange={e=>setFuncField(idx,"gratificacao",Math.max(0, parseFloat(e.target.value)||0))}
+                                      style={{ ...S.inp, width:80, textAlign:"right", borderColor:"#C9921B", fontSize:12 }} />
+                                    <div style={{ fontSize:10, color:"#888" }}>Incluída no salário</div>
+                                  </>}
+                                  {f.funcionario_id && <>
+                                    <div style={{ fontSize:11, color:"#7B4A00" }} title="Gratificações em títulos separados no Contas a Pagar">
+                                      {moeda(premiacoes.filter(p=>p.funcionario_id === f.funcionario_id && p.mes_referencia === folhaEdit.competencia && p.lancamento_id).reduce((s,p)=>s + p.valor,0))} no CP
+                                    </div>
+                                    <OperationalButton data-arato-button="secondary" onClick={()=>{ setPremEdit({ funcionario_id: f.funcionario_id!, mes_referencia: folhaEdit.competencia }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:11, padding:0 }}>+ Gratificação</OperationalButton>
+                                  </>}
                                 </td>
                                 {/* ── Horas extras: horas 50% e 100%; valor (salário ÷ 220 h) + DSR entram no bruto ── */}
                                 <td style={{ ...S.td, padding:"4px 6px", whiteSpace:"nowrap" }}>
@@ -2039,7 +2068,7 @@ export default function FolhaPagamentoPage() {
               <div>
                 <label data-arato-label="true" style={S.label}>{adiEdit.tipo === "gratificacao" ? "Competência da gratificação *" : "Descontar na competência"}</label>
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
-                <span style={{ fontSize:11, color:"#888" }}>{adiEdit.tipo === "gratificacao" ? "Mês da gratificação adiantada; o valor é descontado na folha desse mês" : "Mês onde o valor será descontado do salário"}</span>
+                <span style={{ fontSize:11, color:"#888" }}>{adiEdit.tipo === "gratificacao" ? "Mês da gratificação; o valor é abatido do título separado no CP" : "Mês onde o valor será descontado do salário"}</span>
                 {adiEdit.tipo === "gratificacao" && adiEdit.funcionario_id && adiEdit.competencia_ref && (
                   <div style={{ marginTop:6, fontSize:11, color: adiGratInfo.lancada > 0 ? "#0B2D50" : "#791F1F" }}>
                     {adiGratInfo.lancada > 0
@@ -2107,6 +2136,10 @@ export default function FolhaPagamentoPage() {
                   <label data-arato-label="true" style={S.label}>Valor (R$) *</label>
                   <input type="number" value={premEdit.valor??""} onChange={e=>setPremEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" />
                 </div>
+              </div>
+              <div>
+                <label data-arato-label="true" style={S.label}>Vencimento no CP</label>
+                <InputData value={premEdit.data_pagamento ?? vencimentoSalario(premEdit.mes_referencia || compAtual())} onChange={e=>setPremEdit(p=>({...p,data_pagamento:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
               </div>
               <div>
                 <label data-arato-label="true" style={S.label}>Descrição *</label>

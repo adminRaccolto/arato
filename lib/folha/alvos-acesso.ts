@@ -41,6 +41,7 @@ export function alvosFolha(operacao: string, p: P): AlvosFolha | null {
     case "editar_premiacao":
       a.premiacoes = ids(p.id); a.funcionarios = ids(p.funcionario_id); break;
     case "excluir_premiacao":
+    case "lancar_premiacao_cp":
       a.premiacoes = ids(p.id); break;
     default:
       return null;

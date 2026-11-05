@@ -11,6 +11,7 @@ test("operação por id confere o registro, não só a fazenda informada", () =>
   assert.deepEqual(a.folhas, ["folha-1"]);
   assert.deepEqual(a.fazendas, ["faz-1"]);
   assert.deepEqual(alvosFolha("excluir_premiacao", { id: "p" })!.premiacoes, ["p"]);
+  assert.deepEqual(alvosFolha("lancar_premiacao_cp", { id: "p" })!.premiacoes, ["p"]);
   assert.deepEqual(alvosFolha("cancelar_adiantamento", { id: "a" })!.adiantamentos, ["a"]);
 });
 

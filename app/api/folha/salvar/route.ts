@@ -1,3 +1,4 @@
+import { descontoNoSalario } from "../../../../lib/folha/gratificacoes";
 import { falharSeErro } from "../../../../lib/db-util";
 import { buscarPaginado } from "../../../../lib/buscar-paginado";
 import { tituloDaLinha } from "../../../../lib/folha/titulo-linha";
@@ -204,10 +205,10 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
   // CP (ex.: R$ 3.864,33 em vez de R$ 3.164,33 com adiantamento de R$ 700), mesmo a folha mostrando o desconto.
   const funcIds = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
   if (funcIds.length) {
-    const { data: adis } = await sb.from("adiantamentos_salario").select("funcionario_id, valor")
+    const { data: adis } = await sb.from("adiantamentos_salario").select("*")
       .eq("status", "pendente").in("funcionario_id", funcIds).or(`competencia_ref.eq.${competencia},competencia_ref.is.null`);
     const soma: Record<string, number> = {};
-    for (const a of adis ?? []) soma[a.funcionario_id] = (soma[a.funcionario_id] ?? 0) + Number(a.valor ?? 0);
+    for (const a of adis ?? []) soma[a.funcionario_id] = (soma[a.funcionario_id] ?? 0) + descontoNoSalario(a);
     for (const it of (itens ?? []) as any[]) {
       if (!it.funcionario_id) continue;
       const pend = Math.round((soma[it.funcionario_id] ?? 0) * 100) / 100;
@@ -568,9 +569,9 @@ export async function POST(req: Request) {
       {
         const somaPend: Record<string, number> = {};
         if (funcIds.length) {
-          const { data: adis } = await sb.from("adiantamentos_salario").select("id, funcionario_id, valor, competencia_ref")
+          const { data: adis } = await sb.from("adiantamentos_salario").select("*")
             .in("funcionario_id", funcIds).eq("status", "pendente").or(`competencia_ref.eq.${competencia},competencia_ref.is.null`);
-          for (const a of (adis ?? []) as any[]) { somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + Number(a.valor ?? 0); pendentesUsados.push(a.id); }
+          for (const a of (adis ?? []) as any[]) { somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + descontoNoSalario(a); if (descontoNoSalario(a) > 0) pendentesUsados.push(a.id); }
         }
         for (const r of novas) {
           const jaDescontado = Number(antigaPor.get(chave(r))?.adiantamento ?? 0);
@@ -741,13 +742,17 @@ export async function POST(req: Request) {
       const liqAntes: Record<string, number> = {};
       for (const it of (itens ?? []) as any[]) liqAntes[it.id] = liquidoItem(it);
       const funcIdsFolha = (itens ?? []).map((it: any) => it.funcionario_id).filter(Boolean) as string[];
+      const adiIdsDescontar: string[] = [];
       if (funcIdsFolha.length > 0) {
         const { data: adisPend } = await sb.from("adiantamentos_salario")
-          .select("funcionario_id, valor, competencia_ref")
+          .select("*")
           .eq("status", "pendente").in("funcionario_id", funcIdsFolha)
           .or(`competencia_ref.eq.${competencia},competencia_ref.is.null`);
         const somaPend: Record<string, number> = {};
-        for (const a of adisPend ?? []) somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + Number(a.valor ?? 0);
+        for (const a of adisPend ?? []) {
+          somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + descontoNoSalario(a);
+          if (descontoNoSalario(a) > 0) adiIdsDescontar.push(a.id);
+        }
         for (const it of (itens ?? []) as any[]) {
           const pend = Math.round((somaPend[it.funcionario_id] ?? 0) * 100) / 100;
           if (it.funcionario_id && Math.abs(pend - (it.adiantamento ?? 0)) > 0.005) {
@@ -910,18 +915,10 @@ export async function POST(req: Request) {
         if (inssLanc?.id) await sb.from("folha_pagamento").update({ cp_inss_patronal_id: inssLanc.id }).eq("id", id);
       }
 
-      // Marca como "descontado" SOMENTE os adiantamentos cujo funcionário
-      // tem adiantamento > 0 na folha — evita marcar adiantamentos não incluídos.
-      const funcIdsComAdiantamento = (itens ?? [])
-        .filter((it: any) => (it.adiantamento ?? 0) > 0 && it.funcionario_id)
-        .map((it: any) => it.funcionario_id as string);
-
-      if (funcIdsComAdiantamento.length > 0) {
-        await sb.from("adiantamentos_salario")
-          .update({ status: "descontado" })
-          .eq("status", "pendente")
-          .or(`competencia_ref.eq.${competencia},competencia_ref.is.null`)
-          .in("funcionario_id", funcIdsComAdiantamento);
+      // Só os adiantamentos com saldo efetivamente descontado no salário mudam de status.
+      if (adiIdsDescontar.length) {
+        await falharSeErro(sb.from("adiantamentos_salario").update({ status: "descontado" })
+          .eq("status", "pendente").in("id", adiIdsDescontar), "descontar adiantamentos da folha");
       }
 
       // Atualiza status da folha
@@ -1322,9 +1319,15 @@ export async function POST(req: Request) {
       // Busca lancamento_id vinculado antes de cancelar
       const { data: adi } = await sb
         .from("adiantamentos_salario")
-        .select("lancamento_id, funcionario_id")
+        .select("lancamento_id, funcionario_id, tipo")
         .eq("id", id)
         .single();
+      if (adi?.tipo === "gratificacao") {
+        const { error } = await sb.rpc("fn_cancelar_adiantamento_gratificacao_cp", { p_id: id });
+        if (error) throw error;
+        await ressincronizarFolhasDoFuncionario(sb, adi.funcionario_id);
+        return NextResponse.json({ ok: true });
+      }
       // Exclui o CP se não estiver baixado
       if (adi?.lancamento_id) {
         const { data: lanc } = await sb
@@ -1343,34 +1346,48 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    if (["salvar_premiacao", "editar_premiacao", "lancar_premiacao_cp"].includes(operacao)) {
+      const { error } = await sb.from("adiantamentos_salario").select("descontado_gratificacao_cp").limit(0);
+      if (error) throw new Error("Aplique a Seção 415 do supabase_migrations.sql para lançar gratificações separadas no CP.");
+    }
+    if (operacao === "lancar_premiacao_cp") {
+      const { data, error } = await sb.from("funcionarios_premiacoes").update({ lancado_financeiro: true }).eq("id", payload.id).select("funcionario_id").single();
+      if (error) throw error;
+      await ressincronizarFolhasDoFuncionario(sb, data.funcionario_id);
+      return NextResponse.json({ ok: true });
+    }
+
     // ─── salvar_premiacao ─────────────────────────────────────────────────────
     if (operacao === "salvar_premiacao") {
-      const { fazenda_id: fazendaPayload, funcionario_id, mes_referencia, descricao, valor } = payload as any;
+      const { fazenda_id: fazendaPayload, funcionario_id, mes_referencia, descricao, valor, data_pagamento } = payload as any;
       const { data: funcFaz } = await sb.from("funcionarios").select("fazenda_id").eq("id", funcionario_id).maybeSingle();
       const fazenda_id: string = await fazendaDoMesmoCliente(sb, funcFaz?.fazenda_id as string | undefined, fazendaPayload);
       const { error } = await sb.from("funcionarios_premiacoes").insert({
-        fazenda_id, funcionario_id, mes_referencia, descricao,
-        valor, lancado_financeiro: false,
+        fazenda_id, funcionario_id, mes_referencia, descricao, data_pagamento: data_pagamento || null,
+        valor, lancado_financeiro: true,
       });
       if (error) throw error;
+      await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
       return NextResponse.json({ ok: true });
     }
 
     // ─── editar_premiacao ─────────────────────────────────────────────────────
     if (operacao === "editar_premiacao") {
-      const { id, funcionario_id, mes_referencia, descricao, valor } = payload as any;
+      const { id, funcionario_id, mes_referencia, descricao, valor, data_pagamento } = payload as any;
       const { error } = await sb.from("funcionarios_premiacoes").update({
-        funcionario_id, mes_referencia, descricao, valor,
+        funcionario_id, mes_referencia, descricao, valor, data_pagamento: data_pagamento || null, lancado_financeiro: true,
       }).eq("id", id);
       if (error) throw error;
+      await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
       return NextResponse.json({ ok: true });
     }
 
     // ─── excluir_premiacao ────────────────────────────────────────────────────
     if (operacao === "excluir_premiacao") {
       const { id } = payload as { id: string };
-      const { error } = await sb.from("funcionarios_premiacoes").delete().eq("id", id);
+      const { data, error } = await sb.from("funcionarios_premiacoes").delete().eq("id", id).select("funcionario_id").single();
       if (error) throw error;
+      await ressincronizarFolhasDoFuncionario(sb, data.funcionario_id);
       return NextResponse.json({ ok: true });
     }
 

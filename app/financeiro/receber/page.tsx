@@ -8,6 +8,7 @@ import EntryOutline from '../../../components/arato-layout/EntryOutline';
 import { motivoBloqueioExclusao, notaDoTitulo } from "../../../lib/financeiro/bloqueio-exclusao";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
+import { carregarUsuariosTitulos } from "../../../lib/financeiro/usuarios-titulos";
 import { textoQuemBaixou, useQuemBaixou } from "../../../lib/financeiro/quem-baixou";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
@@ -79,6 +80,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 
 type RelLancamento = {
+  usuario_origem?: string | null;
   id: string;
   origem_tabela: string;
   pessoa_id?: string | null;
@@ -215,6 +217,7 @@ const COLS_GRID_CR: ColDef[] = [
   { key: "conta", label: "Conta" },
   { key: "nf", label: "Nº NF" },
   { key: "lancado", label: "Lançado via" },
+  { key: "usuario", label: "Usuário" },
   { key: "observacao", label: "Observação" },
   { key: "status", label: "Status" },
 ];
@@ -346,11 +349,11 @@ export default function ContasAReceberPage() {
       }
       // Carga mais nova já começou (ex.: chegou a conta do usuário depois da 1ª carga só da fazenda): esta é descartada
       if (seq !== cargaSeq.current) return;
-      const cots = await carregarCotacoesUSD(supabase, regs);
+      const [comUsuarios, cots] = await Promise.all([carregarUsuariosTitulos(supabase, regs), carregarCotacoesUSD(supabase, regs)]);
       if (seq !== cargaSeq.current) return;
       ultimaCarga.current = Date.now();
       setCotacoes(cots);
-      setResultado(regs);
+      setResultado(comUsuarios);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
     } finally {
@@ -443,14 +446,14 @@ export default function ContasAReceberPage() {
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
     baixa: fmtData(l.data_baixa), moeda: l.moeda ?? "", conta: l.conta_bancaria_nome ?? "", nf: l.nfe_numero ?? "",
-    lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
+    usuario: l.usuario_origem ?? "", lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
     status: STATUS_OPCOES.find(x => x.v === statusExibido(l.status_normalizado, l.data_vencimento))?.label ?? "",
   } as Record<string, string>)[k] ?? "";
   // Colunas com filtro de texto no cabeçalho (as mesmas que textoColuna sabe ler) e o exemplo de cada uma
   const COLUNAS_TEXTO_FILTRO: Record<string, string> = {
     origem: "PF / PJ", produtor: "produtor", numero: "nº", pessoa: "nome", descricao: "descrição", operacao: "operação",
     safra: "safra", ciclo: "ciclo", cc: "centro de custo", lancamento: "dd/mm", vencimento: "dd/mm", venc_orig: "dd/mm",
-    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", observacao: "obs.", status: "status",
+    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
   const passaColunas = (l: RelLancamento) => Object.entries(filtrosCol).every(([k, f]) => {
     if (!f.trim() || k === "pessoa") return true;   // Cliente: pela busca no banco (nome e descrição)
@@ -1781,6 +1784,7 @@ export default function ContasAReceberPage() {
                     conta: cel(info?.conta ?? "—"),
                     nf: cel("—"),
                     lancado: cel("Borderô", { color: "#888" }),
+                    usuario: cel([...new Set(itensDoBordero(b, resultado ?? []).map(l => l.usuario_origem).filter(Boolean))].join(", ") || "—"),
                     observacao: cel(b.descricao ?? "—", { color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }),
                     acoes: <td style={{ textAlign: "right" }}><OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopBordero({ b, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton></td>,
                     status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? "Borderô recebido" : res.status === "parcial" ? "Borderô parcial" : "Borderô pendente"}</span>),
@@ -1873,6 +1877,7 @@ export default function ContasAReceberPage() {
                   nf: (
                     <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? "—"}</td>
                   ),
+                  usuario: (<td style={{ padding: "7px 10px" }}>{l.usuario_origem ?? "—"}</td>),
                   lancado: (
                     <td style={{ padding: "7px 10px", color: "#888" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "—"}</td>
                   ),

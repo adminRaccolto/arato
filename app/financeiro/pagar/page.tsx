@@ -10,6 +10,7 @@ import type { VeiculoUnificado } from "../../../lib/db";
 import ModalVincularNf from "../../../components/financeiro/ModalVincularNf";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
+import { carregarUsuariosTitulos } from "../../../lib/financeiro/usuarios-titulos";
 import { textoQuemBaixou, useQuemBaixou } from "../../../lib/financeiro/quem-baixou";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
 import { casaFiltroNumero, casaFiltroTexto } from "../../../lib/financeiro/filtro-colunas";
@@ -80,6 +81,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 
 type RelLancamento = {
+  usuario_origem?: string | null;
   id: string;
   origem_tabela: string;
   fazenda_id: string | null;
@@ -248,6 +250,7 @@ const COLS_GRID_CP: ColDef[] = [
   { key: "conta", label: "Conta" },
   { key: "nf", label: "Nº NF" },
   { key: "lancado", label: "Lançado via" },
+  { key: "usuario", label: "Usuário" },
   { key: "observacao", label: "Observação" },
   { key: "status", label: "Status" },
 ];
@@ -372,7 +375,7 @@ export default function ContasAPagarPage() {
         registros.push(...((data ?? []) as RelLancamento[]));
         if (!data || data.length < 1000) break;
       }
-      const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros), carregarCotacoesUSD(supabase, registros)]);
+      const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros).then(t => carregarUsuariosTitulos(supabase, t)), carregarCotacoesUSD(supabase, registros)]);
       if (seq !== cargaSeq.current) return;
       ultimaCarga.current = Date.now();
       setCotacoes(cots);
@@ -457,14 +460,14 @@ export default function ContasAPagarPage() {
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
     baixa: fmtData(l.data_baixa), moeda: l.moeda ?? "", conta: l.conta_bancaria_nome ?? "", nf: l.nfe_numero ?? "",
-    lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
+    usuario: l.usuario_origem ?? "", lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
     status: STATUS_OPCOES.find(x => x.v === statusExibido(l.status_normalizado, l.data_vencimento))?.label ?? "",
   } as Record<string, string>)[k] ?? "";
   // Colunas com filtro de texto no cabeçalho (as mesmas que textoColuna sabe ler) e o exemplo de cada uma
   const COLUNAS_TEXTO_FILTRO: Record<string, string> = {
     origem: "PF / PJ", produtor: "produtor", numero: "nº", pessoa: "nome", descricao: "descrição", operacao: "operação",
     safra: "safra", ciclo: "ciclo", cc: "centro de custo", lancamento: "dd/mm", vencimento: "dd/mm", venc_orig: "dd/mm",
-    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", observacao: "obs.", status: "status",
+    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
   const passaColunas = (l: RelLancamento) => Object.entries(filtrosCol).every(([k, f]) => {
     if (!f.trim() || k === "pessoa") return true;   // Fornecedor/Cliente: pela busca (nome, emitente da NF, descrição)
@@ -2266,6 +2269,7 @@ export default function ContasAPagarPage() {
                     conta: cel(info?.conta ?? "—"),
                     nf: cel("—"),
                     lancado: cel("Borderô", { color: "#888" }),
+                    usuario: cel([...new Set(itensDoBordero(b, resultado ?? []).map(l => l.usuario_origem).filter(Boolean))].join(", ") || "—"),
                     observacao: cel(b.descricao ?? "—", { color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }),
                     acoes: <td style={{ textAlign: "right" }}><OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopBordero({ b, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton></td>,
                     status: cel(<span style={{ fontSize: 10, fontWeight: 700, background: pago ? "#DCFCE7" : "#FDE9BB", color: corTexto, padding: "2px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{pago ? (b.pagamento_parcial ? "Borderô pago · parcial" : "Borderô pago") : parcial ? "Borderô parcial" : "Borderô pendente"}</span>),
@@ -2361,6 +2365,7 @@ export default function ContasAPagarPage() {
                   nf: (
                     <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? "—"}</td>
                   ),
+                  usuario: (<td style={{ padding: "7px 10px" }}>{l.usuario_origem ?? "—"}</td>),
                   lancado: (
                     <td style={{ padding: "7px 10px", color: "#888" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "—"}</td>
                   ),
