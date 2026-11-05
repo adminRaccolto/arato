@@ -639,7 +639,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // Add-ons opcionais são opt-in: sem override explícito true em conta_modulos = bloqueado.
     // Isso garante que desabilitar um add-on no painel admin sempre remove o item do TopNav,
     // mesmo que a conta não tenha plano configurado (trial/implantação sem pacote).
-    const ADDON_MODULES = ["algodao", "cerealista", "sementes", "pecuaria", "empresas", "ia_cedula", "nf_confirmacao_entrega"];
+    const ADDON_MODULES = ["algodao", "cerealista", "sementes", "pecuaria", "ia_cedula", "nf_confirmacao_entrega"];
     if (ADDON_MODULES.includes(modulo)) return false;
     // Sem plano configurado na conta: acesso liberado (implantação inicial / trial sem pacote)
     if (!planoAtual) return true;

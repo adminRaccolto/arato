@@ -17,7 +17,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titulo: "Cadastrar Talhões",
     subtitulo: "Divida sua fazenda em talhões — a unidade básica de plantio",
     instrucoes: [
-      "Acesse Cadastros → Fazendas & Talhões no menu.",
+      "Acesse Cadastros → Fazendas e Talhões.",
       "Clique na sua fazenda para expandi-la e depois em '+ Novo Talhão'.",
       "Informe o nome do talhão (ex: T1, Talhão Norte), a área em hectares e o tipo de solo.",
       "Adicione as coordenadas GPS para georreferenciamento (opcional, mas recomendado).",
@@ -60,7 +60,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titulo: "Cadastrar Safra e Ciclo",
     subtitulo: "Defina o período agrícola e a cultura que será plantada",
     instrucoes: [
-      "Acesse Cadastros → Safras.",
+      "Acesse Produção → Safras e Ciclos.",
       "Crie um Ano Safra (ex: 2024/2025) — representa o período agrícola anual.",
       "Dentro do ano safra, crie um Ciclo informando a cultura (Soja, Milho, Algodão) e o talhão.",
       "Cada ciclo é uma cultura específica em um ano safra. Você pode ter vários ciclos por ano (ex: Soja 1ª + Milho 2ª safrinha).",
@@ -82,7 +82,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titulo: "Cadastrar Pessoas",
     subtitulo: "Registre fornecedores, prestadores e parceiros da fazenda",
     instrucoes: [
-      "Acesse Cadastros → Pessoas.",
+      "Acesse Cadastros → Pessoas e Entidades.",
       "Cadastre fornecedores de insumos, prestadores de serviço, transportadoras e arrendantes.",
       "Informe nome, CPF/CNPJ, e-mail e telefone. Adicione os dados bancários para facilitar os pagamentos.",
       "Pessoas são usadas em contas a pagar, pedidos de compra, contratos de arrendamento e emissão de NF-e.",
@@ -108,7 +108,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titulo: "Cadastrar Insumos",
     subtitulo: "Monte o catálogo de produtos que você usa na fazenda",
     instrucoes: [
-      "Acesse Cadastros → Insumos.",
+      "Acesse Cadastros → Catálogo de Insumos.",
       "Cadastre sementes, fertilizantes, defensivos agrícolas e outros insumos.",
       "Informe nome, categoria, unidade de medida e custo médio por unidade.",
       "Insumos são usados nos pedidos de compra, operações de lavoura (plantio, adubação, pulverização) e controle de estoque.",
@@ -151,7 +151,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titulo: "Configurar Parâmetros Fiscais",
     subtitulo: "Prepare o sistema para emissão de NF-e e documentos fiscais",
     instrucoes: [
-      "Acesse Configurações → Parâmetros do Sistema → aba Fiscal.",
+      "Acesse Configurações → Parâmetros Fiscais (NF-e) → aba Fiscal.",
       "Informe o CNPJ do emitente, Inscrição Estadual, Inscrição Municipal (se houver), UF e código IBGE do município.",
       "Defina o ambiente: Homologação para testes, Produção para notas reais.",
       "Configure o Regime Tributário (CRT): Simples Nacional, Lucro Presumido ou Lucro Real.",

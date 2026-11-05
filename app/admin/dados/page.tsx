@@ -3,6 +3,7 @@ import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { GRUPOS_LIMPEZA, chaveLimpeza, type GrupoLimpeza } from "../../../lib/admin/limpeza";
 
 type Aba = "excluir_cliente" | "limpar_dados" | "manutencao";
 
@@ -13,117 +14,22 @@ type ContaInfo = {
   fazendas: { id: string; nome: string; municipio: string; estado: string }[];
 };
 
-type SubItem = {
-  id: string;
-  label: string;
-  icon: string;
-  countTables: string[];
-  deleteTables: string[];
-  aviso?: string;
-  extraFiltro?: Record<string, string>; // filtros adicionais além de fazenda_id
-  // Ações de UPDATE executadas após os deletes (ex: zeramento de estoque)
-  updateActions?: Array<{ table: string; set: Record<string, unknown>; extraFiltro?: Record<string, string> }>;
-};
-
-type Grupo = {
-  id: string;
-  label: string;
-  icon: string;
-  cor: string;
-  bg: string;
-  subitens: SubItem[];
-};
-
 type ResultGrupo = { label: string; ok: boolean; deletados: number; erros: string[] };
+type Grupo = GrupoLimpeza;
+const GRUPOS = GRUPOS_LIMPEZA;
 
-const GRUPOS: Grupo[] = [
-  {
-    id: "financeiro", label: "Financeiro", icon: "💰", cor: "#E24B4A", bg: "#FFF0F0",
-    subitens: [
-      { id: "lancamentos",    label: "Lançamentos CP/CR",        icon: "📄", countTables: ["lancamentos"],        deleteTables: ["pagamento_lote_itens","pagamento_lotes","lancamentos"] },
-      { id: "contratos_fin",  label: "Contratos Financeiros",     icon: "🏦", countTables: ["contratos_financeiros"], deleteTables: ["parcelas_pagamento","contratos_financeiros"] },
-      { id: "mutuo",          label: "Mútuo entre Empresas",      icon: "↔️", countTables: ["mutuos"],              deleteTables: ["pagamentos_mutuo","mutuos"] },
-      { id: "consorcios",     label: "Consórcios",                icon: "🎯", countTables: ["consorcios"],          deleteTables: ["parcelas_consorcio","consorcios"] },
-      { id: "seguros",        label: "Apólices de Seguro",        icon: "🛡️", countTables: ["apolices_seguro"],    deleteTables: ["pagamentos_premio_seguro","sinistros_seguro","apolices_seguro"] },
-      { id: "taxas",          label: "Taxas Bancárias",           icon: "🏛️", countTables: ["taxas_bancarias"],    deleteTables: ["taxas_bancarias"] },
-    ],
-  },
-  {
-    id: "comercial", label: "Comercialização", icon: "📋", cor: "#C9921B", bg: "#FBF3E0",
-    subitens: [
-      { id: "contratos",  label: "Contratos de Venda/Compra",    icon: "📝", countTables: ["contratos"],          deleteTables: ["contrato_itens","contratos"] },
-      { id: "romaneios",  label: "Romaneios",                    icon: "⚖️", countTables: ["romaneios"],          deleteTables: ["romaneios"] },
-      { id: "expedicao",  label: "Expedição · CT-e · MDF-e",    icon: "🚛", countTables: ["cargas_expedicao"],   deleteTables: ["cargas_expedicao","ctes","mdfes"] },
-    ],
-  },
-  {
-    id: "lavoura", label: "Lavoura", icon: "🌾", cor: "#16A34A", bg: "#DCFCE7",
-    subitens: [
-      { id: "plantios",      label: "Plantios",               icon: "🌱", countTables: ["plantios"],          deleteTables: ["plantios"] },
-      { id: "pulverizacoes", label: "Pulverizações",          icon: "💨", countTables: ["pulverizacoes"],     deleteTables: ["pulverizacoes"] },
-      { id: "colheitas",     label: "Colheitas",              icon: "🚜", countTables: ["colheitas"],         deleteTables: ["colheitas"] },
-      { id: "adubacoes",     label: "Adubações de Base",      icon: "🌿", countTables: ["adubacoes_base"],    deleteTables: ["adubacoes_base"] },
-      { id: "correcoes",     label: "Correções de Solo",      icon: "🪨", countTables: ["correcoes_solo"],    deleteTables: ["correcoes_solo"] },
-      { id: "orcamentos",    label: "Orçamentos de Safra",    icon: "📊", countTables: ["orcamentos"],        deleteTables: ["orcamento_itens","orcamentos"] },
-      { id: "monitoramento", label: "Monitoramento de Pragas",icon: "🐛", countTables: ["monitoramento_pragas"], deleteTables: ["monitoramento_pragas"] },
-    ],
-  },
-  {
-    id: "arrendamentos", label: "Arrendamentos", icon: "📜", cor: "#6B7280", bg: "#F3F4F6",
-    subitens: [
-      { id: "arrendamentos", label: "Contratos de Arrendamento", icon: "📋", countTables: ["arrendamentos"], deleteTables: ["arrendamento_pagamentos","arrendamento_matriculas","arrendamentos"] },
-    ],
-  },
-  {
-    id: "estoque", label: "Estoque & Compras", icon: "📦", cor: "#444444", bg: "#F2F2F2",
-    subitens: [
-      { id: "nf_entradas",    label: "NFs de Entrada",                    icon: "🧾", countTables: ["nf_entradas"],          deleteTables: ["nf_entrada_itens","nf_entradas"] },
-      { id: "movimentacoes",  label: "Movimentações de Estoque",          icon: "📈", countTables: ["movimentacoes_estoque"], deleteTables: ["movimentacoes_estoque"] },
-      { id: "pedidos",        label: "Pedidos de Compra",                 icon: "🛒", countTables: ["pedidos_compra"],        deleteTables: ["pedidos_compra_itens","pedidos_compra"] },
-      { id: "insumos_est",    label: "Cadastro de Insumos",               icon: "🌱", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "insumo" }, aviso: "Exclua Movimentações de Estoque antes — movimentações referenciam insumos." },
-      { id: "itens_gerais_est", label: "Itens Gerais (peças/materiais)", icon: "🔩", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "produto" }, aviso: "Exclua Movimentações de Estoque antes — movimentações referenciam itens." },
-      { id: "zeramento",      label: "Zeramento de Estoque",              icon: "🔢", countTables: ["insumos"], deleteTables: [], aviso: "Define estoque = 0 em todos os itens sem apagar os registros do cadastro.", updateActions: [{ table: "insumos", set: { estoque: 0 } }] },
-    ],
-  },
-  {
-    id: "cadastros", label: "Cadastros", icon: "👤", cor: "#7C3AED", bg: "#F5F3FF",
-    subitens: [
-      { id: "pessoas",        label: "Pessoas",                 icon: "👥", countTables: ["pessoas"],    deleteTables: ["pessoas"],    aviso: "Exclua Financeiro e Comercial antes — registros financeiros referenciam Pessoas." },
-      { id: "produtores",     label: "Produtores",              icon: "🧑‍🌾", countTables: ["produtores"], deleteTables: ["produtores"] },
-      { id: "insumos_cat",    label: "Insumos (sementes/defensivos/fertilizantes)", icon: "🌱", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "insumo" }, aviso: "Exclua Estoque antes — movimentações referenciam insumos." },
-      { id: "itens_gerais",   label: "Itens Gerais (peças/materiais/consumo)",      icon: "📦", countTables: ["insumos"], deleteTables: ["insumos"], extraFiltro: { tipo: "produto" }, aviso: "Exclua Estoque antes — movimentações referenciam itens." },
-      { id: "maquinas",       label: "Máquinas & Veículos",     icon: "🚜", countTables: ["maquinas"],   deleteTables: ["abastecimentos","historico_manutencao","maquinas"] },
-      { id: "depositos",      label: "Depósitos / Silos",       icon: "🏚️", countTables: ["depositos"],  deleteTables: ["depositos"] },
-    ],
-  },
-  {
-    id: "auxiliares", label: "Tabelas Auxiliares", icon: "📋", cor: "#6366F1", bg: "#EEF2FF",
-    subitens: [
-      { id: "grupos_insumos",        label: "Grupos & Subgrupos de Insumo",   icon: "📂", countTables: ["grupos_insumos"],        deleteTables: ["subgrupos_insumos","grupos_insumos"] },
-      { id: "centros_custo",         label: "Centros de Custo",               icon: "🎯", countTables: ["centros_custo"],         deleteTables: ["centros_custo"] },
-      { id: "categorias_lancamento", label: "Categorias de Lançamento",       icon: "🏷️", countTables: ["categorias_lancamento"], deleteTables: ["categorias_lancamento"] },
-      { id: "tipos_pessoa",          label: "Tipos de Pessoa",                icon: "👤", countTables: ["tipos_pessoa"],          deleteTables: ["tipos_pessoa"] },
-      { id: "operacoes_gerenciais",  label: "Operações Gerenciais (plano)",   icon: "⚙️", countTables: ["operacoes_gerenciais"],  deleteTables: ["operacoes_gerenciais"] },
-      { id: "padroes_classificacao", label: "Padrões de Classificação",       icon: "⚖️", countTables: ["padroes_classificacao"], deleteTables: ["padroes_classificacao"] },
-    ],
-  },
-  {
-    id: "estrutura", label: "Estrutura", icon: "🗺️", cor: "#0D0D0D", bg: "#E8E8E8",
-    subitens: [
-      { id: "talhoes",    label: "Talhões",             icon: "📐", countTables: ["talhoes"],          deleteTables: ["talhoes"],          aviso: "Exclua Lavoura antes — operações de lavoura dependem de talhões." },
-      { id: "ciclos",     label: "Ciclos de Produção",  icon: "🔄", countTables: ["ciclos"],            deleteTables: ["ciclos"],           aviso: "Exclua Lavoura antes — operações dependem de ciclos." },
-      { id: "anos_safra", label: "Anos Safra",           icon: "📅", countTables: ["anos_safra"],        deleteTables: ["anos_safra"] },
-      { id: "matriculas", label: "Matrículas de Imóvel", icon: "🏛️", countTables: ["matriculas_imoveis"], deleteTables: ["matriculas_imoveis"] },
-    ],
-  },
-];
+const subKey = chaveLimpeza;
 
-function subKey(grupoId: string, subId: string) { return `${grupoId}/${subId}`; }
-
-function isErroBenigno(msg: string) {
-  const m = msg.toLowerCase();
-  return m.includes("does not exist") || m.includes("relation") || m.includes("no rows") || m.includes("pgrst116");
+async function postAdmin(rota: string, corpo: unknown): Promise<{ ok: boolean; json: Record<string, unknown> }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(rota, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+    body: JSON.stringify(corpo),
+  });
+  return { ok: res.ok, json: await res.json().catch(() => ({})) };
 }
+
 
 export default function DadosAdminPage() {
   const { raccotloGestor } = useAuth();
@@ -196,34 +102,17 @@ export default function DadosAdminPage() {
 
   // ─── Carregar contagens (por sub-item) ───────────────────────────────
   async function carregarContagens() {
-    const contaObj = contas.find(c => c.id === contaLimpar);
-    if (!contaObj || !fazendaLimpar) return;
-    const fazIds = fazendaLimpar === "todas" ? contaObj.fazendas.map(f => f.id) : [fazendaLimpar];
-    if (!fazIds.length) return;
+    if (!contaLimpar || !fazendaLimpar) return;
     setCarregandoContagens(true);
     setContagens({});
+    const chaves = GRUPOS.flatMap(g => g.subitens.map(sub => subKey(g.id, sub.id)));
+    const { ok, json } = await postAdmin("/api/admin/limpeza", { conta_id: contaLimpar, fazenda_id: fazendaLimpar, chaves, aplicar: false });
     const novo: Record<string, number> = {};
-    for (const grupo of GRUPOS) {
-      for (const sub of grupo.subitens) {
-        let total = 0;
-        for (const table of sub.countTables) {
-          for (const fId of fazIds) {
-            try {
-              let q = supabase.from(table).select("id", { count: "exact", head: true }).eq("fazenda_id", fId);
-              if (sub.extraFiltro) {
-                for (const [k, v] of Object.entries(sub.extraFiltro)) q = q.eq(k, v);
-              }
-              const { count } = await q;
-              total += count ?? 0;
-            } catch { /* tabela pode não existir */ }
-          }
-        }
-        novo[subKey(grupo.id, sub.id)] = total;
-      }
-    }
+    if (ok) for (const r of json.resultados as { chave: string; contar: number }[]) novo[r.chave] = r.contar;
+    else setResultadoLimpeza([{ label: "Contagem", ok: false, deletados: 0, erros: [String(json.error ?? "Não foi possível contar os registros.")] }]);
     setContagens(novo);
     setCarregandoContagens(false);
-    setResultadoLimpeza(null);
+    if (ok) setResultadoLimpeza(null);
   }
 
   // ─── Executar limpeza seletiva ────────────────────────────────────────
@@ -235,57 +124,16 @@ export default function DadosAdminPage() {
     setResultadoLimpeza(null);
     const fazIds = fazendaLimpar === "todas" ? contaObj.fazendas.map(f => f.id) : [fazendaLimpar];
     const resultados: ResultGrupo[] = [];
-    for (const grupo of GRUPOS) {
-      for (const sub of grupo.subitens) {
-        if (!subSelecionados.has(subKey(grupo.id, sub.id))) continue;
-        const erros: string[] = [];
-        let deletados = 0;
-        for (const table of sub.deleteTables) {
-          for (const fId of fazIds) {
-            try {
-              let q = supabase.from(table).delete({ count: "exact" }).eq("fazenda_id", fId);
-              if (sub.extraFiltro) {
-                for (const [k, v] of Object.entries(sub.extraFiltro)) q = q.eq(k, v);
-              }
-              const { error, count } = await q;
-              if (error) { if (!isErroBenigno(error.message)) erros.push(`${table}: ${error.message}`); }
-              else deletados += count ?? 0;
-            } catch { /* tabela inexistente */ }
-          }
-        }
-        // Zeramento via API route (service_role — zera insumos + pa_saldos sem JWT issues)
-        if (sub.id === "zeramento") {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const res = await fetch("/api/admin/zeramento-estoque", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-              body: JSON.stringify({ fazenda_ids: fazIds }),
-            });
-            const json = await res.json() as { ok: boolean; total: number; erros?: string[] };
-            if (!json.ok) erros.push(...(json.erros ?? ["Erro no zeramento"]));
-            else deletados += json.total;
-          } catch (e) {
-            erros.push(e instanceof Error ? e.message : "Erro ao chamar zeramento");
-          }
-        } else if (sub.updateActions) {
-          for (const action of sub.updateActions) {
-            for (const fId of fazIds) {
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                let q: any = supabase.from(action.table).update(action.set, { count: "exact" }).eq("fazenda_id", fId);
-                if (action.extraFiltro) {
-                  for (const [k, v] of Object.entries(action.extraFiltro)) q = q.eq(k, v);
-                }
-                const { error, count } = await q;
-                if (error && !isErroBenigno(error.message)) erros.push(`${action.table} (zeramento): ${error.message}`);
-                else deletados += count ?? 0;
-              } catch { /* tabela inexistente */ }
-            }
-          }
-        }
-        resultados.push({ label: `${grupo.label} · ${sub.label}`, ok: erros.length === 0, deletados, erros });
-      }
+    // Na ordem do catálogo: cada item é uma gravação. Se um não puder sair, ele fica inteiro e os outros seguem.
+    const chaves = GRUPOS.flatMap(g => g.subitens.map(sub => subKey(g.id, sub.id))).filter(k => subSelecionados.has(k));
+    const { ok, json } = await postAdmin("/api/admin/limpeza", { conta_id: contaLimpar, fazenda_id: fazendaLimpar, chaves, aplicar: true, confirmacao: "CONFIRMO" });
+    if (!ok) resultados.push({ label: "Limpeza", ok: false, deletados: 0, erros: [String(json.error ?? "Erro na limpeza.")] });
+    else for (const r of json.resultados as { label: string; ok: boolean; total: number; erro?: string }[]) {
+      resultados.push({ label: r.label, ok: r.ok, deletados: r.total, erros: r.erro ? [r.erro] : [] });
+    }
+    if (chaves.some(k => k.endsWith("/zeramento"))) {
+      const z = await postAdmin("/api/admin/zeramento-estoque", { fazenda_ids: fazIds, aplicar: true });
+      resultados.push({ label: "Estoque & Compras · Zeramento de Estoque", ok: !!z.json.ok, deletados: Number(z.json.total ?? 0), erros: (z.json.erros as string[] | undefined) ?? (z.ok ? [] : [String(z.json.error ?? "Erro no zeramento")]) });
     }
     setResultadoLimpeza(resultados);
     setSubSelecionados(new Set());
@@ -301,24 +149,21 @@ export default function DadosAdminPage() {
     setDeletandoCliente(true);
     setResultadoCliente(null);
     try {
-      for (const faz of contaObj.fazendas) {
-        const { error } = await supabase.from("fazendas").delete().eq("id", faz.id);
-        if (error) throw new Error(`Erro ao excluir fazenda "${faz.nome}": ${error.message}`);
-      }
-      await supabase.from("produtores").delete().eq("conta_id", contaObj.id);
-      try { await supabase.from("perfis").update({ conta_id: null, fazenda_id: null }).eq("conta_id", contaObj.id); } catch { /* coluna pode não existir */ }
-      const { error: errConta } = await supabase.from("contas").delete().eq("id", contaObj.id);
-      if (errConta) throw new Error(`Erro ao excluir conta: ${errConta.message}`);
-      setResultadoCliente({
-        ok: true,
-        msg: `Cliente "${contaObj.nome}" excluído com sucesso. ${contaObj.fazendas.length} fazenda(s) removidas. Usuários de autenticação permanecem no Supabase — exclua-os em Authentication → Users se necessário.`,
-      });
+      const previa = await postAdmin("/api/admin/cancelar-cliente", { conta_id: contaObj.id, acao: "previa" });
+      if (!previa.ok) throw new Error(String(previa.json.error ?? "Não foi possível ler os dados do cliente."));
+      const maiores = Object.entries(previa.json.tabelas as Record<string, number>).sort((a, b) => b[1] - a[1]).slice(0, 8)
+        .map(([t, n]) => `• ${t}: ${n}`).join("\n");
+      if (!window.confirm(`Serão apagados ${previa.json.total} registro(s), ${previa.json.fazendas} fazenda(s) e ${previa.json.usuarios} login(s) de "${contaObj.nome}". Uma cópia é guardada antes.\n\nOs maiores:\n${maiores}\n\nContinuar?`)) return;
+      const { ok, json } = await postAdmin("/api/admin/cancelar-cliente", { conta_id: contaObj.id, acao: "excluir", confirmacao: confirmaTexto });
+      if (!ok) throw new Error(String(json.error ?? "Erro na exclusão."));
+      setResultadoCliente({ ok: true, msg: `Cliente "${contaObj.nome}" excluído. ${json.registros} registro(s) e ${json.users_removidos} login(s) removidos. Cópia em backups/${json.backup}.` });
       setContaSelecionada(""); setConfirmaTexto("");
       await carregarContas();
     } catch (e) {
-      setResultadoCliente({ ok: false, msg: String(e) });
+      setResultadoCliente({ ok: false, msg: `Nada foi excluído. ${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      setDeletandoCliente(false);
     }
-    setDeletandoCliente(false);
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────
@@ -416,7 +261,7 @@ export default function DadosAdminPage() {
                       ))}
                     </div>
                   )}
-                  <div style={{ marginTop: 10, fontSize: 11, color: "#999" }}>Usuários de autenticação NÃO são excluídos — remova-os em Supabase → Authentication se necessário.</div>
+                  <div style={{ marginTop: 10, fontSize: 11, color: "#999" }}>Só exclui cliente com acesso cancelado ou em teste. Antes de apagar, guarda uma cópia em backups. Se algo não puder sair, nada é apagado. Os logins do cliente saem junto; arquivos no Storage (XML, PDF) ficam.</div>
                 </div>
                 <div data-arato-panel="true" style={{ ...card, padding: "18px 22px" }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>Para confirmar, digite exatamente o nome da conta:</div>

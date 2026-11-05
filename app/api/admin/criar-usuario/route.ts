@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend } from "resend";
 import { exigirAcessoFazenda, exigirAcessoConta, exigirRaccoltoAdmin } from "../../../../lib/api-auth";
+import { PLANOS_DEFAULT, type PlanoId } from "../../../../lib/planos";
 
 function adminClient() {
   return createClient(
@@ -50,6 +51,21 @@ export async function POST(req: Request) {
         .eq("id", fazenda_id)
         .maybeSingle();
       contaIdFinal = (faz as { conta_id?: string } | null)?.conta_id ?? null;
+    }
+
+    // Limite de usuários do plano: vale para o cliente; a equipe Raccolto pode passar dele numa implantação.
+    if (contaIdFinal && (await exigirRaccoltoAdmin(req))) {
+      const { data: contaPlano } = await supabase.from("contas").select("pacote").eq("id", contaIdFinal).maybeSingle();
+      const limite = PLANOS_DEFAULT[contaPlano?.pacote as PlanoId]?.limite_usuarios ?? null;
+      if (limite !== null) {
+        const { data: daConta } = await supabase.from("perfis").select("user_id, role, produto").eq("conta_id", contaIdFinal);
+        const atuais = (daConta ?? []).filter(p => p.produto !== "campo" && !String(p.role ?? "").startsWith("raccotlo"));
+        const { data: { users: comEmail } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+        const jaEhDaConta = comEmail.some(u => u.email?.toLowerCase() === String(user_email).toLowerCase() && atuais.some(p => p.user_id === u.id));
+        if (!jaEhDaConta && atuais.length >= limite) {
+          return NextResponse.json({ ok: false, error: `O plano permite ${limite} usuários e a conta já tem ${atuais.length}. Fale com a Raccolto para ampliar.` }, { status: 409 });
+        }
+      }
     }
 
     // Determinar role antes da criação para incluir no user_metadata

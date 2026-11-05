@@ -19764,3 +19764,163 @@ BEGIN
 END $$;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 416 — Área de gestão: excluir cliente e limpar dados na estrutura por cliente
+-- =============================================================================
+-- A exclusão apagava uma lista fixa de 30 tabelas e não conferia o resultado. Agora as tabelas vêm do próprio banco
+-- (toda tabela com fazenda_id/conta_id e as tabelas-filhas ligadas a elas), tudo roda numa transação só e, se sobrar
+-- qualquer linha, nada é apagado. audit_log e logs_sistema ficam, como histórico.
+-- A tabela `planos` passa a repetir os preços do código (lib/planos.ts), que é o que as telas mostram.
+
+CREATE OR REPLACE FUNCTION fn_admin_alvos_cliente(p_incluir_conta boolean DEFAULT true)
+RETURNS TABLE(tabela text, filtro text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  WITH base AS (
+    SELECT c.oid, c.relname::text AS nome,
+           EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'fazenda_id' AND NOT a.attisdropped) AS tem_faz,
+           EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'conta_id'   AND NOT a.attisdropped) AS tem_conta
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+       AND c.relname NOT IN ('contas','fazendas','perfis','audit_log','logs_sistema')
+  ),
+  dono AS (
+    SELECT oid, nome, concat_ws(' OR ',
+             CASE WHEN tem_faz THEN 'fazenda_id = ANY($2)' END,
+             CASE WHEN tem_conta AND p_incluir_conta THEN 'conta_id = $1' END) AS filtro
+      FROM base WHERE tem_faz OR tem_conta
+  ),
+  pais AS (
+    SELECT oid, filtro FROM dono WHERE filtro <> ''
+    UNION ALL SELECT 'fazendas'::regclass::oid, 'id = ANY($2)'
+    UNION ALL SELECT 'contas'::regclass::oid, CASE WHEN p_incluir_conta THEN 'id = $1' ELSE 'false' END
+  ),
+  -- Tabela sem fazenda_id/conta_id: alcançada pela chave estrangeira que aponta para uma tabela do cliente.
+  -- Chave com ON DELETE SET NULL/DEFAULT não torna a linha "do cliente".
+  filhas AS (
+    SELECT b.nome, string_agg(format('%I IN (SELECT %I FROM %s WHERE %s)', fa.attname, pa.attname, f.confrelid::regclass, p.filtro), ' OR ') AS filtro
+      FROM pg_constraint f
+      JOIN base b ON b.oid = f.conrelid AND NOT b.tem_faz AND NOT b.tem_conta
+      JOIN pais p ON p.oid = f.confrelid
+      JOIN pg_attribute fa ON fa.attrelid = f.conrelid  AND fa.attnum = f.conkey[1]
+      JOIN pg_attribute pa ON pa.attrelid = f.confrelid AND pa.attnum = f.confkey[1]
+     WHERE f.contype = 'f' AND cardinality(f.conkey) = 1 AND f.confdeltype NOT IN ('n','d')
+     GROUP BY b.nome
+  )
+  SELECT nome, filtro FROM dono WHERE filtro <> ''
+  UNION ALL SELECT nome, filtro FROM filhas;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_excluir_cliente(p_conta uuid, p_aplicar boolean DEFAULT false)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public SET statement_timeout = '280s' AS $$
+DECLARE
+  v_faz uuid[]; v_usuarios uuid[]; v_contagem jsonb := '{}'::jsonb; v_total bigint := 0;
+  r record; n bigint; v_passe int; v_erros jsonb;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM contas WHERE id = p_conta) THEN RAISE EXCEPTION 'Cliente não encontrado.'; END IF;
+  SELECT coalesce(array_agg(id), '{}') INTO v_faz FROM fazendas WHERE conta_id = p_conta;
+  SELECT coalesce(array_agg(user_id), '{}') INTO v_usuarios FROM perfis WHERE conta_id = p_conta AND coalesce(role, '') NOT LIKE 'raccotlo%';
+
+  FOR r IN SELECT * FROM fn_admin_alvos_cliente(true) LOOP
+    EXECUTE format('SELECT count(*) FROM %I WHERE %s', r.tabela, r.filtro) INTO n USING p_conta, v_faz;
+    IF n > 0 THEN v_contagem := v_contagem || jsonb_build_object(r.tabela, n); v_total := v_total + n; END IF;
+  END LOOP;
+
+  IF NOT p_aplicar THEN
+    RETURN jsonb_build_object('tabelas', v_contagem, 'total', v_total, 'fazendas', cardinality(v_faz), 'usuarios', cardinality(v_usuarios));
+  END IF;
+
+  UPDATE perfis SET fazenda_id = NULL WHERE fazenda_id = ANY(v_faz) AND coalesce(role, '') LIKE 'raccotlo%';
+  DELETE FROM perfis WHERE conta_id = p_conta OR fazenda_id = ANY(v_faz);
+
+  -- Uma tabela pode depender de outra: repete até não sobrar nada ou não haver mais como avançar.
+  FOR v_passe IN 1..15 LOOP
+    v_erros := '{}'::jsonb; n := 0;
+    FOR r IN SELECT * FROM fn_admin_alvos_cliente(true) LOOP
+      BEGIN
+        EXECUTE format('DELETE FROM %I WHERE %s', r.tabela, r.filtro) USING p_conta, v_faz;
+      EXCEPTION WHEN OTHERS THEN
+        v_erros := v_erros || jsonb_build_object(r.tabela, SQLERRM);
+      END;
+    END LOOP;
+    FOR r IN SELECT * FROM fn_admin_alvos_cliente(true) LOOP
+      EXECUTE format('SELECT count(*) FROM %I WHERE %s', r.tabela, r.filtro) INTO v_total USING p_conta, v_faz;
+      n := n + v_total;
+    END LOOP;
+    EXIT WHEN n = 0;
+  END LOOP;
+  IF n > 0 THEN
+    RAISE EXCEPTION 'Exclusão desfeita, nada foi apagado. Ainda restam % registro(s): %', n, v_erros::text;
+  END IF;
+
+  DELETE FROM fazendas WHERE id = ANY(v_faz);
+  DELETE FROM contas WHERE id = p_conta;
+  RETURN jsonb_build_object('tabelas', v_contagem, 'usuarios', to_jsonb(v_usuarios), 'fazendas', cardinality(v_faz));
+END $$;
+
+-- Cópia de uma tabela do cliente, em páginas, para o backup feito antes de excluir.
+CREATE OR REPLACE FUNCTION fn_cliente_exportar(p_conta uuid, p_tabela text, p_inicio int, p_limite int)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public SET statement_timeout = '120s' AS $$
+DECLARE v_faz uuid[]; v_filtro text; v jsonb;
+BEGIN
+  SELECT coalesce(array_agg(id), '{}') INTO v_faz FROM fazendas WHERE conta_id = p_conta;
+  SELECT filtro INTO v_filtro FROM fn_admin_alvos_cliente(true) WHERE tabela = p_tabela;
+  IF v_filtro IS NULL THEN RETURN '[]'::jsonb; END IF;
+  EXECUTE format('SELECT coalesce(jsonb_agg(to_jsonb(t)), ''[]'') FROM (SELECT * FROM %I WHERE %s ORDER BY ctid LIMIT %s OFFSET %s) t',
+                 p_tabela, v_filtro, p_limite, p_inicio) INTO v USING p_conta, v_faz;
+  RETURN v;
+END $$;
+
+-- Limpeza seletiva: conta (prévia) ou apaga as tabelas informadas, na ordem dada. Falhou = nada é apagado.
+CREATE OR REPLACE FUNCTION fn_limpar_dados(p_conta uuid, p_fazendas uuid[], p_incluir_conta boolean, p_tabelas text[], p_filtro jsonb, p_aplicar boolean)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public SET statement_timeout = '280s' AS $$
+DECLARE
+  v_tabela text; v_filtro text; v_extra text := ''; k text; n bigint; v_contagem jsonb := '{}'::jsonb; v_total bigint := 0;
+BEGIN
+  IF EXISTS (SELECT 1 FROM unnest(p_fazendas) f WHERE f NOT IN (SELECT id FROM fazendas WHERE conta_id = p_conta)) THEN
+    RAISE EXCEPTION 'Fazenda não pertence a este cliente.';
+  END IF;
+  FOR k IN SELECT jsonb_object_keys(coalesce(p_filtro, '{}'::jsonb)) LOOP
+    v_extra := v_extra || format(' AND %I = %L', k, p_filtro ->> k);
+  END LOOP;
+  FOREACH v_tabela IN ARRAY p_tabelas LOOP
+    SELECT filtro INTO v_filtro FROM fn_admin_alvos_cliente(p_incluir_conta) WHERE tabela = v_tabela;
+    IF v_filtro IS NULL THEN CONTINUE; END IF;
+    IF p_aplicar THEN
+      BEGIN
+        EXECUTE format('DELETE FROM %I WHERE (%s)%s', v_tabela, v_filtro, v_extra) USING p_conta, p_fazendas;
+        GET DIAGNOSTICS n = ROW_COUNT;
+      EXCEPTION WHEN foreign_key_violation THEN
+        RAISE EXCEPTION 'Não dá para apagar "%": existem outros registros ligados a ele. %', v_tabela, SQLERRM;
+      END;
+    ELSE
+      EXECUTE format('SELECT count(*) FROM %I WHERE (%s)%s', v_tabela, v_filtro, v_extra) INTO n USING p_conta, p_fazendas;
+    END IF;
+    IF n > 0 THEN v_contagem := v_contagem || jsonb_build_object(v_tabela, n); v_total := v_total + n; END IF;
+  END LOOP;
+  RETURN jsonb_build_object('tabelas', v_contagem, 'total', v_total);
+END $$;
+
+REVOKE ALL ON FUNCTION fn_admin_alvos_cliente(boolean) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_excluir_cliente(uuid, boolean) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_cliente_exportar(uuid, text, int, int) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_limpar_dados(uuid, uuid[], boolean, text[], jsonb, boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION fn_admin_alvos_cliente(boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION fn_excluir_cliente(uuid, boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION fn_cliente_exportar(uuid, text, int, int) TO service_role;
+GRANT EXECUTE ON FUNCTION fn_limpar_dados(uuid, uuid[], boolean, text[], jsonb, boolean) TO service_role;
+
+-- Gestor da Raccolto também enxerga e registra cobrança
+DROP POLICY IF EXISTS "assinaturas_raccotlo" ON assinaturas;
+CREATE POLICY "assinaturas_raccotlo" ON assinaturas FOR ALL
+  USING (EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor')));
+DROP POLICY IF EXISTS "pagamentos_raccotlo" ON pagamentos;
+CREATE POLICY "pagamentos_raccotlo" ON pagamentos FOR ALL
+  USING (EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor')));
+
+UPDATE planos SET preco_mensal = CASE id WHEN 'essencial' THEN 387 WHEN 'gestao' THEN 1197 WHEN 'performance' THEN 1787 ELSE preco_mensal END;
+
+NOTIFY pgrst, 'reload schema';

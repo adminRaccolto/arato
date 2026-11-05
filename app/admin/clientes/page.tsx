@@ -505,36 +505,34 @@ export default function ClientesPage() {
 
   // ── Excluir conta permanentemente ─────────────────────────────────────────
   async function excluirConta(c: ClienteAdmin) {
-    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir conta)", perigo: true }))) return;
-    const confirmacao = window.prompt(
-      `ATENÇÃO — EXCLUSÃO PERMANENTE\n\nEsta ação APAGA TODOS os dados de "${c.nome}" (fazendas, lançamentos, contratos, etc.) e NÃO pode ser desfeita.\n\nDigite o nome do cliente para confirmar:`
-    );
-    if (confirmacao !== c.nome) {
-      if (confirmacao !== null) alert("Nome não confere. Exclusão cancelada.");
-      return;
-    }
+    if (c._sem_conta) { alert("Este cliente não tem conta ligada. Fale com o desenvolvedor antes de excluir."); return; }
     setAcaoLoading(c.id);
     try {
-      const payload: Record<string, unknown> = { acao: "excluir" };
-      if (c._sem_conta) {
-        // Sem conta — usa fazenda_ids diretamente
-        payload.fazenda_ids = c._fazendas_prod.map(f => f.id);
-      } else {
-        payload.conta_id = c.id;
-        // Passa também os fazenda_ids para garantir cascade completo
-        if (c._fazendas_prod.length > 0) {
-          payload.fazenda_ids = c._fazendas_prod.map(f => f.id);
-        }
+      const chamar = async (corpo: Record<string, unknown>) => {
+        const res = await fetch("/api/admin/cancelar-cliente", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conta_id: c.id, ...corpo }),
+        });
+        return { ok: res.ok, json: await res.json() };
+      };
+      const previa = await chamar({ acao: "previa" });
+      if (!previa.ok) { alert("Erro: " + previa.json.error); return; }
+      const maiores = Object.entries(previa.json.tabelas as Record<string, number>).sort((a, b) => b[1] - a[1]).slice(0, 8)
+        .map(([t, n]) => `• ${t}: ${n}`).join("\n");
+      if (!["cancelado", "inativo", "trial"].includes(String(previa.json.status))) {
+        alert(`"${c.nome}" está em uso (${previa.json.status}). Cancele o acesso antes de excluir.`);
+        return;
       }
-      const res = await fetch("/api/admin/cancelar-cliente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) { alert("Erro: " + json.error); return; }
+      const confirmacao = window.prompt(
+        `ATENÇÃO: EXCLUSÃO PERMANENTE\n\nSerão apagados ${previa.json.total} registro(s) de "${c.nome}", ${previa.json.fazendas} fazenda(s) e ${previa.json.usuarios} login(s). Uma cópia é guardada antes.\n\nOs maiores:\n${maiores}\n\nDigite o nome exato do cliente para confirmar:`
+      );
+      if (confirmacao !== c.nome) {
+        if (confirmacao !== null) alert("Nome não confere. Exclusão cancelada.");
+        return;
+      }
+      const { ok, json } = await chamar({ acao: "excluir", confirmacao });
+      if (!ok) { alert("Nada foi excluído. " + json.error); return; }
       setClientes(cs => cs.filter(x => x.id !== c.id));
-      alert(`"${c.nome}" excluído permanentemente. ${json.users_removidos} usuário(s) removido(s).`);
+      alert(`"${c.nome}" excluído. ${json.registros} registro(s) e ${json.users_removidos} login(s) removidos.\nCópia guardada em: backups/${json.backup}${json.falhas_login?.length ? `\n\nLogins que não saíram: ${json.falhas_login.join("; ")}` : ""}`);
     } catch (e) {
       alert("Erro de conexão: " + String(e));
     } finally {

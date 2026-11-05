@@ -234,7 +234,7 @@ const MODULOS_LABEL: Record<string, string> = {
   fin_contratos: "Contratos Financeiros", fin_tesouraria: "Tesouraria", fin_seguros: "Seguros",
   transporte: "CT-e / MDF-e", usuarios: "Gestão de Usuários",
   fiscal_nfe: "Emissão NF-e (SEFAZ)", fiscal_sped: "SPED ECD / LCDPR",
-  bi: "BI — Raccotlo Intelligence",
+  bi: "BI — Raccolto Intelligence",
 };
 
 const ORDEM_PLANOS: PlanoId[] = ["essencial", "gestao", "performance"];

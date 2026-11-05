@@ -3,6 +3,7 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { criarClienteCompleto } from "../../../../lib/criarClienteCompleto";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get("origin") ?? "";
@@ -42,7 +43,7 @@ async function autorizado(req: Request): Promise<{ ok: boolean; motivo: string; 
       const { data: perfil } = await supabaseAdmin
         .from("perfis").select("role, parceiro_id").eq("user_id", user.id).single();
       console.log("[admin-auth] cookie user:", user.email, "role:", perfil?.role);
-      if (perfil?.role === "raccotlo") return { ok: true, motivo: "cookie" };
+      if (isRaccotloAdmin(perfil?.role, user.email)) return { ok: true, motivo: "cookie" };
       if (perfil?.role === "bpo" && perfil?.parceiro_id) return { ok: true, motivo: "cookie-bpo", parceiroId: perfil.parceiro_id };
       return { ok: false, motivo: `role='${perfil?.role}' não autorizado (cookie user: ${user.email})` };
     }
@@ -60,7 +61,7 @@ async function autorizado(req: Request): Promise<{ ok: boolean; motivo: string; 
     .from("perfis").select("role, parceiro_id").eq("user_id", user.id).single();
 
   console.log("[admin-auth] bearer user:", user.email, "role:", perfil?.role);
-  if (perfil?.role === "raccotlo") return { ok: true, motivo: "bearer" };
+  if (isRaccotloAdmin(perfil?.role, user.email)) return { ok: true, motivo: "bearer" };
   if (perfil?.role === "bpo" && perfil?.parceiro_id) return { ok: true, motivo: "bearer-bpo", parceiroId: perfil.parceiro_id };
   return { ok: false, motivo: `role='${perfil?.role}' não autorizado (bearer user: ${user.email})` };
 }

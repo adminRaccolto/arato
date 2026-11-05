@@ -1,6 +1,5 @@
 // Definição dos planos SaaS do Arato
-// Fonte de verdade: tabela `planos` no Supabase (editável pelo admin)
-// Este arquivo contém os defaults e helpers de feature flags.
+// Fonte de verdade dos preços e módulos: este arquivo. A tabela `planos` no banco só repete os preços (Seção 416).
 
 export type PlanoId = "essencial" | "gestao" | "performance";
 
@@ -53,7 +52,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
       "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
       "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
       "contratos","expedicao","arrendamento",
-      "compras","nf_entrada","nf_servico",
+      "estoque","compras","nf_entrada","nf_servico",
       "fin_contratos","fin_tesouraria","fin_seguros","apoio_financeiro",
       "transporte","usuarios",
     ],
@@ -85,7 +84,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
       "contratos","expedicao","arrendamento",
       "compras","nf_entrada","nf_servico",
       "fin_contratos","fin_tesouraria","fin_seguros","apoio_financeiro",
-      "transporte","usuarios",
+      "transporte","usuarios","estoque","empresas",
       "fiscal_nfe","fiscal_sped","automacoes","whatsapp_agente",
     ],
     features_marketing: [

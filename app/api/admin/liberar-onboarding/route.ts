@@ -34,7 +34,8 @@ async function isRaccotlo(): Promise<boolean> {
   if ((user.email ?? "").toLowerCase() === "gino@raccolto.com.br") return true;
   const db = adminDb();
   const { data } = await db.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-  return (data as { role?: string } | null)?.role === "raccotlo";
+  const role = (data as { role?: string } | null)?.role;
+  return role === "raccotlo" || role === "raccotlo_gestor";
 }
 
 export async function POST(req: Request) {

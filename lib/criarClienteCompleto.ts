@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "./supabase-servidor";
 import { Resend } from "resend";
 import { seedOperacoesGerenciais } from "./seedOperacoesGerenciais";
+import { PLANOS_DEFAULT } from "./planos";
 
 export interface CriarClientePayload {
   tipo: "pf" | "pj";
@@ -50,7 +51,9 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
   const supabase = adminClient();
 
   // ── 0. Criar conta (tenant raiz) ──
-  const insertConta: Record<string, unknown> = { nome, tipo: tipo === "pj" ? "pj" : "pf" };
+  // Teste com data de fim, como no cadastro pelo site: o painel mostra quem está vencendo.
+  const fimTeste = new Date(); fimTeste.setDate(fimTeste.getDate() + PLANOS_DEFAULT.gestao.trial_dias);
+  const insertConta: Record<string, unknown> = { nome, tipo: tipo === "pj" ? "pj" : "pf", status: "trial", data_vencimento: fimTeste.toISOString().slice(0, 10) };
   try { insertConta.onboarding_ativo = onboarding_ativo; } catch { /* coluna pode não existir */ }
   if (parceiro_id) insertConta.parceiro_id = parceiro_id;
 

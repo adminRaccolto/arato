@@ -37,6 +37,13 @@ test("base de conhecimento e prompt só citam caminhos que existem", () => {
   assert.deepEqual(rotasInvalidas(prompt, NAV), []);
 });
 
+test("passo a passo de implantação e manual do proprietário só citam caminhos que existem", () => {
+  for (const arq of ["lib/onboarding.ts", "app/admin/manual/page.tsx"]) {
+    const texto = readFileSync(arq, "utf8").replace(/<\/?strong>|"/g, "");
+    assert.deepEqual(rotasInvalidas(texto, NAV), [], arq);
+  }
+});
+
 test("Olívia em produção usa o modelo aprovado pela bateria e cache na parte fixa", () => {
   const rota = readFileSync("app/api/suporte/chat/route.ts", "utf8");
   assert.match(rota, /MODELO_OLIVIA = "claude-haiku-5-5"/);

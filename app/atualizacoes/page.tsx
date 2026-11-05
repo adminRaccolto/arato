@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-c",
+    data: "05/11/2026",
+    titulo: "Área de gestão da Raccolto atualizada",
+    modulos: ["Gestão"],
+    itens: [
+      { tipo: "correcao", texto: "Excluir cliente mostra antes o que será apagado, guarda uma cópia e apaga tudo ou nada. Só vale para cliente cancelado ou em teste." },
+      { tipo: "correcao", texto: "Padrões do Sistema trabalha por cliente, só acrescenta o que falta e nunca altera a operação que o cliente já tem." },
+      { tipo: "correcao", texto: "Dados & Limpeza alcança títulos de Empresa, extratos, folha, cartões, CT-e e outros cadastros, e o Zeramento agora lança ajustes que aparecem no Kardex." },
+      { tipo: "melhoria", texto: "Os planos passam a controlar também os itens de Produção, Estoque, Resultados e Empresas no menu, e o limite de usuários do plano vale ao criar usuário." },
+      { tipo: "melhoria", texto: "Gestores da Raccolto entram na área de gestão. Faturamento volta ao menu, com cobrança manual. Manual e passo a passo de implantação com os caminhos atuais." },
+    ],
+  },
+  {
     versao: "2026.11.05-b",
     data: "05/11/2026",
     titulo: "Conciliação: título pago em mais de uma linha do banco",

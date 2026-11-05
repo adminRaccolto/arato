@@ -4,15 +4,8 @@ import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
-
-// ─── Supabase client ─────────────────────────────────────────────────────────
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -238,16 +231,12 @@ function AbaAssinaturas() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  async function cancelarAssinatura(id: string, asaasSubId?: string) {
+  async function cancelarAssinatura(id: string) {
     if (!confirm("Cancelar esta assinatura?")) return;
     setCancelando(id);
     try {
-      await fetch("/api/asaas/cancelar", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assinatura_id: id, asaas_subscription_id: asaasSubId }),
-      });
-      await supabase.from("assinaturas").update({ status: "cancelada" }).eq("id", id);
+      const { error } = await supabase.from("assinaturas").update({ status: "cancelada" }).eq("id", id);
+      if (error) { alert("Não foi possível cancelar: " + error.message); return; }
       setLista(l => l.map(a => a.id === id ? { ...a, status: "cancelada" } : a));
     } finally { setCancelando(null); }
   }
@@ -325,7 +314,6 @@ function AbaAssinaturas() {
                   <tr key={a.id} style={{ borderBottom: i < filtradas.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                     <td style={{ padding: "11px 14px" }}>
                       <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{a.conta_nome}</div>
-                      {a.asaas_customer_id && <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace" }}>{a.asaas_customer_id}</div>}
                     </td>
                     <td style={{ padding: "11px 14px" }}>
                       <span style={{ background: "#F2F2F2", color: "#111111", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
@@ -349,7 +337,7 @@ function AbaAssinaturas() {
                     <td style={{ padding: "11px 14px", textAlign: "center" }}>
                       {a.status !== "cancelada" && (
                         <button data-arato-button="danger"
-                          onClick={() => cancelarAssinatura(a.id, a.asaas_subscription_id)}
+                          onClick={() => cancelarAssinatura(a.id)}
                           disabled={cancelando === a.id}
                           style={{ padding: "4px 10px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FEF2F2", cursor: "pointer", fontSize: 11, color: "#E24B4A", fontWeight: 600 }}
                         >

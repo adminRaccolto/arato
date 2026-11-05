@@ -1988,7 +1988,10 @@ export async function seedOperacoesGerenciaisTemplate(client?: any): Promise<{ i
   const { data: existentes, error: listErr } = await db
     .from("operacoes_gerenciais")
     .select("id, classificacao")
-    .is("fazenda_id", null);
+    // Modelo = sem fazenda E sem cliente. Só "sem fazenda" também traria o plano de todos os clientes, e o update abaixo
+    // sobrescreveria a operação de um cliente.
+    .is("fazenda_id", null)
+    .is("conta_id", null);
   if (listErr) throw new Error(`Erro ao ler templates existentes: ${listErr.message}`);
   const idPorClassificacao = new Map<string, string>((existentes ?? []).map((r: { id: string; classificacao: string }) => [r.classificacao, r.id]));
 

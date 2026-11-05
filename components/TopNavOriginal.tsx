@@ -232,6 +232,8 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
       const mid = (child as NavLink | NavSubgroup).moduleId;
       if (mid && !podeAcessar(mid)) return null;
       if (mid && !podeAcessarPlano(mid)) return null;
+      const planoItem = (child as NavLink).planoModulo;
+      if (planoItem && !podeAcessarPlano(planoItem)) return null;
     }
 
     // Divider
@@ -286,7 +288,7 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
               </div>
-              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || podeAcessarPlano(gc.moduleId))).map(gc => {
+              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || podeAcessarPlano(gc.moduleId)) && (!gc.planoModulo || podeAcessarPlano(gc.planoModulo))).map(gc => {
                 const ativoGc = isAtivo(gc.path);
                 return (
                   <Link
@@ -571,7 +573,7 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
             if (item.panel) {
               const grupos         = extrairGrupos(item.children);
               const gruposVisiveis = grupos.filter(g =>
-                g.items.some(i => !i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId)))
+                g.items.some(i => (!i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId))) && (!i.planoModulo || podeAcessarPlano(i.planoModulo)))
               );
               const grupoAtual = gruposVisiveis.find(g => g.label === panelGroup) ?? gruposVisiveis[0];
               return (
@@ -627,7 +629,7 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
                         <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                           {grupoAtual?.label}
                         </div>
-                        {grupoAtual?.items.filter(i => !i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId))).map((child, idx, visiveis) => {
+                        {grupoAtual?.items.filter(i => (!i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId))) && (!i.planoModulo || podeAcessarPlano(i.planoModulo))).map((child, idx, visiveis) => {
                           const ativoChild = isAtivo(child.path);
                           // Separador de bloco (traço + nome em cinza claro) quando o bloco muda em relação ao item anterior
                           const novoBloco = child.bloco && child.bloco !== visiveis[idx - 1]?.bloco;

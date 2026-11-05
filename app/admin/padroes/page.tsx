@@ -30,11 +30,8 @@ const FORM_VAZIO = (): Partial<OperacaoGerencial> => ({
   parent_id: undefined,
 });
 
-type Fazenda = { id: string; nome: string; municipio?: string };
-type ResultadoSync = {
-  fazenda_id: string; fazenda_nome: string;
-  inseridos: number; atualizados: number; erros: number;
-};
+type ContaCliente = { id: string; nome: string };
+type ResultadoSync = { conta_id: string; conta_nome: string; faltando: number; codigos: string[]; inseridos: number };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function depth(classificacao: string) {
@@ -49,7 +46,7 @@ function corTipo(tipo: string) {
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function PadroesPage() {
   const [templates, setTemplates] = useState<OpTemplate[]>([]);
-  const [fazendas,  setFazendas]  = useState<Fazenda[]>([]);
+  const [contas, setContas] = useState<ContaCliente[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [busca,     setBusca]     = useState("");
   const [filtroTipo, setFiltroTipo] = useState<"todos" | "receita" | "despesa">("todos");
@@ -76,19 +73,17 @@ export default function PadroesPage() {
   const carregar = useCallback(async () => {
     setLoading(true);
     const [{ data: tmpl }, contasRes] = await Promise.all([
-      supabase.from("operacoes_gerenciais").select("*").is("fazenda_id", null).order("classificacao"),
-      // Usa API route com service_role_key para ver fazendas de todos os clientes
+      supabase.from("operacoes_gerenciais").select("*").is("fazenda_id", null).is("conta_id", null).order("classificacao"),
+      // Usa API route com service_role_key para ver todos os clientes
       supabase.auth.getSession().then(({ data: { session } }) =>
         fetch("/api/admin/listar-contas", {
           headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
-        }).then(r => r.json()).catch(() => ({ fazendas: [] }))
-      ).catch(() => ({ fazendas: [] })),
+        }).then(r => r.json()).catch(() => [])
+      ).catch(() => []),
     ]);
     setTemplates((tmpl ?? []) as OpTemplate[]);
-    const todasFazendas = (contasRes?.fazendas ?? []) as Fazenda[];
-    // Ordena por nome
-    todasFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
-    setFazendas(todasFazendas);
+    const contasLista = (Array.isArray(contasRes) ? contasRes : contasRes?.contas ?? []) as ContaCliente[];
+    setContas([...contasLista].sort((a, b) => a.nome.localeCompare(b.nome)));
     setLoading(false);
   }, []);
 
@@ -106,7 +101,7 @@ export default function PadroesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro desconhecido");
       await carregar();
-      setSyncBanner(`✓ ${data.inseridos} operação(ões) nova(s) adicionada(s), ${data.atualizados} atualizada(s). Clique em "Sincronizar" para propagar aos clientes.`);
+      setSyncBanner(`✓ ${data.inseridos} operação(ões) nova(s) adicionada(s), ${data.atualizados} atualizada(s). Clique em "Sincronizar" para copiar aos clientes.`);
     } catch (e) {
       alert("Erro ao carregar padrões: " + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -144,7 +139,7 @@ export default function PadroesPage() {
     if (!form.descricao?.trim())     { setFormErr("Descrição é obrigatória."); return; }
     setSaving(true); setFormErr("");
     try {
-      const payload = { ...form, fazenda_id: null };
+      const payload = { ...form, fazenda_id: null, conta_id: null };
       if (modal === "editar" && form.id) {
         const { error } = await supabase.from("operacoes_gerenciais").update(payload).eq("id", form.id);
         if (error) throw error;
@@ -157,7 +152,7 @@ export default function PadroesPage() {
       }
       await carregar();
       setModal(null);
-      setSyncBanner(`✓ Operação ${modal === "novo" ? "criada" : "atualizada"}. Lembre-se de clicar em "Sincronizar" para propagar aos clientes.`);
+      setSyncBanner(`✓ Operação ${modal === "novo" ? "criada" : "atualizada"}. Clique em "Sincronizar" para copiar ao plano dos clientes.`);
     } catch (e) {
       setFormErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -172,25 +167,32 @@ export default function PadroesPage() {
     await supabase.from("operacoes_gerenciais").delete().eq("id", id);
     setDeletandoId(null);
     await carregar();
-    setSyncBanner("✓ Operação excluída do template. Lembre-se de clicar em \"Sincronizar\" para propagar a alteração.");
+    setSyncBanner("✓ Operação excluída do template. Quem já tem esse código no plano continua com ele.");
   }
 
   // ── Sincronizar ─────────────────────────────────────────────────────────────
+  // Primeiro mostra o que entraria em cada cliente; só grava depois de confirmar. O que o cliente já tem não muda.
   async function sincronizar() {
-    if (syncSelect.size === 0 && !confirm("Nenhuma fazenda selecionada — sincronizar com TODAS?")) return;
+    if (syncSelect.size === 0) { setSyncErr("Escolha pelo menos um cliente."); return; }
     setSyncing(true); setSyncErr(""); setSyncResult(null);
     try {
-      const res = await fetch("/api/admin/sincronizar-padroes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          modulo: "operacoes_gerenciais",
-          fazenda_ids: syncSelect.size > 0 ? Array.from(syncSelect) : [],
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || data.erro) throw new Error(data.erro ?? "Erro desconhecido");
-      setSyncResult(data.resultados ?? []);
+      const chamar = async (aplicar: boolean) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch("/api/admin/sincronizar-padroes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+          body: JSON.stringify({ conta_ids: Array.from(syncSelect), aplicar }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.erro) throw new Error(data.erro ?? data.error ?? "Erro desconhecido");
+        return data.resultados as ResultadoSync[];
+      };
+      const previa = await chamar(false);
+      const total = previa.reduce((a, r) => a + r.faltando, 0);
+      if (total === 0) { setSyncResult(previa); return; }
+      const resumo = previa.map(r => `• ${r.conta_nome}: ${r.faltando} código(s)${r.codigos.length ? ` (${r.codigos.slice(0, 4).join(", ")}${r.faltando > 4 ? "…" : ""})` : ""}`).join("\n");
+      if (!confirm(`Acrescentar ${total} operação(ões) ao plano destes clientes?\n\n${resumo}\n\nO que o cliente já tem não será alterado.`)) { setSyncResult(previa.map(r => ({ ...r, inseridos: 0 }))); return; }
+      setSyncResult(await chamar(true));
     } catch (e) {
       setSyncErr(e instanceof Error ? e.message : "Erro na sincronização.");
     } finally {
@@ -225,7 +227,7 @@ export default function PadroesPage() {
           </button>
         </div>
         <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-          Operações padrão visíveis por todos os clientes automaticamente (Opção A). Alterações aqui refletem imediatamente — sem necessidade de sincronizar.
+          Modelo do sistema. O cliente usa a própria operação quando tem uma com o mesmo código; os demais códigos do modelo aparecem para ele automaticamente. Sincronizar copia para o plano do cliente os códigos que faltam, sem alterar o que ele já tem.
         </div>
       </div>
 
@@ -356,7 +358,7 @@ export default function PadroesPage() {
           {templates.length > 0 && (
             <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, fontSize: 11, color: "#666" }}>
               <strong style={{ color: "#111111" }}>{templates.length}</strong> operações no template.
-              Clientes com operações próprias de mesmo código terão <strong>todos os campos atualizados</strong> na próxima sincronização (modo Merge).
+              A sincronização só acrescenta os códigos que faltam em cada cliente. O que ele já tem nunca é alterado.
               Operações que o cliente criou com códigos diferentes não são afetadas.
             </div>
           )}
@@ -373,18 +375,18 @@ export default function PadroesPage() {
             </div>
 
             <div style={{ padding: 16 }}>
-              {/* Selecionar fazendas */}
+              {/* Selecionar clientes */}
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <label data-arato-label="true" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
-                    Fazendas ({fazendas.length})
+                    Clientes ({contas.length})
                   </label>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button data-arato-button="secondary"
-                      onClick={() => setSyncSelect(new Set(fazendas.map(f => f.id)))}
+                      onClick={() => setSyncSelect(new Set(contas.map(f => f.id)))}
                       style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
-                      Todas
+                      Todos
                     </button>
                     <button data-arato-button="secondary"
                       onClick={() => setSyncSelect(new Set())}
@@ -395,9 +397,9 @@ export default function PadroesPage() {
                   </div>
                 </div>
                 <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8 }}>
-                  {fazendas.length === 0 ? (
-                    <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhuma fazenda encontrada</div>
-                  ) : fazendas.map(f => (
+                  {contas.length === 0 ? (
+                    <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhum cliente encontrado</div>
+                  ) : contas.map(f => (
                     <label data-arato-label="true" key={f.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", cursor: "pointer", borderBottom: "0.5px solid #F0F2F7", background: syncSelect.has(f.id) ? "#EEF5FD" : "transparent" }}>
                       <input
                         type="checkbox"
@@ -411,15 +413,14 @@ export default function PadroesPage() {
                       />
                       <div>
                         <div style={{ fontSize: 12, fontWeight: syncSelect.has(f.id) ? 600 : 400, color: "var(--text-1)" }}>{f.nome}</div>
-                        {f.municipio && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{f.municipio}</div>}
                       </div>
                     </label>
                   ))}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-3)" }}>
                   {syncSelect.size === 0
-                    ? "Nenhuma selecionada — vai sincronizar todas ao confirmar"
-                    : `${syncSelect.size} fazenda(s) selecionada(s)`}
+                    ? "Escolha pelo menos um cliente"
+                    : `${syncSelect.size} cliente(s) selecionado(s)`}
                 </div>
               </div>
 
@@ -438,10 +439,10 @@ export default function PadroesPage() {
 
               <button data-arato-button="primary"
                 onClick={sincronizar}
-                disabled={syncing || templates.length === 0}
-                style={{ ...btnP, width: "100%", opacity: (syncing || templates.length === 0) ? 0.6 : 1, cursor: (syncing || templates.length === 0) ? "not-allowed" : "pointer" }}
+                disabled={syncing || templates.length === 0 || syncSelect.size === 0}
+                style={{ ...btnP, width: "100%", opacity: (syncing || templates.length === 0 || syncSelect.size === 0) ? 0.6 : 1, cursor: (syncing || templates.length === 0 || syncSelect.size === 0) ? "not-allowed" : "pointer" }}
               >
-                {syncing ? "Sincronizando…" : `Sincronizar ${templates.length} operações →`}
+                {syncing ? "Sincronizando…" : "Ver o que falta e sincronizar →"}
               </button>
 
               {/* Resultado */}
@@ -452,19 +453,18 @@ export default function PadroesPage() {
                   </div>
                   <div style={{ maxHeight: 200, overflowY: "auto" }}>
                     {syncResult.map(r => (
-                      <div key={r.fazenda_id} style={{ padding: "7px 10px", borderBottom: "0.5px solid #F0F2F7", fontSize: 11 }}>
-                        <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{r.fazenda_nome}</div>
+                      <div key={r.conta_id} style={{ padding: "7px 10px", borderBottom: "0.5px solid #F0F2F7", fontSize: 11 }}>
+                        <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{r.conta_nome}</div>
                         <div style={{ display: "flex", gap: 10 }}>
-                          <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>+{r.inseridos} novos</span>
-                          <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.atualizados} atualizados</span>
-                          {r.erros > 0 && <span style={{ background: "#FCEBEB", color: "#791F1F", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.erros} erros</span>}
+                          <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>+{r.inseridos} acrescentados</span>
+                          <span style={{ background: "#E8E8E8", color: "#0D0D0D", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.faltando} faltavam</span>
                         </div>
                       </div>
                     ))}
                   </div>
                   <div style={{ marginTop: 8, padding: "8px 10px", background: "#EAF3DE", borderRadius: 8, fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
-                    ✓ {syncResult.reduce((a, r) => a + r.inseridos + r.atualizados, 0)} registros sincronizados
-                    em {syncResult.length} fazenda(s).
+                    {syncResult.reduce((a, r) => a + r.inseridos, 0)} operação(ões) acrescentada(s)
+                    em {syncResult.length} cliente(s).
                   </div>
                 </div>
               )}

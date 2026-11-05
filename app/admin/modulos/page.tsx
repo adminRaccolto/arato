@@ -40,14 +40,13 @@ const MODULOS_LABEL: Record<string, string> = {
   usuarios:        "Gestão de Usuários",
   fiscal_nfe:      "Emissão NF-e (SEFAZ)",
   fiscal_sped:     "SPED ECD / LCDPR",
-  configuracoes:   "Configurações",
-  bi:              "BI — Raccotlo Intelligence",
+  bi:              "BI — Raccolto Intelligence",
   // ── Add-ons opcionais (vendidos separadamente) ──
-  empresas:         "🏢 Módulo Empresas (CP/CR/Folha/DRE por empresa não-rural)",
+  empresas:         "🏢 Módulo Empresas (cadastro, Folha e DRE por empresa; incluso no Performance)",
   algodao:          "🌱 Módulo Algodão (Add-on)",
-  cerealista:       "🌾 Módulo Cerealista (Add-on)",
-  sementes:         "🫘 Módulo Sementes (Add-on)",
-  pecuaria:         "🐄 Módulo Pecuário (Add-on)",
+  cerealista:       "🌾 Módulo Cerealista (em breve)",
+  sementes:         "🫘 Módulo Sementes (em breve)",
+  pecuaria:         "🐄 Módulo Pecuário (em breve)",
   apoio_financeiro: "💼 Apoio Financeiro (Add-on)",
   ia_cedula:             "🤖 IA — Extração de Cédula (Add-on)",
   ia_contrato_venda:     "🤖 IA — Extração de Contrato de Venda (Add-on)",
@@ -57,6 +56,9 @@ const MODULOS_LABEL: Record<string, string> = {
   protecao_margem:       "📊 Proteção de Margem & Hedge (Add-on)",
   nf_confirmacao_entrega: "📦 NF de Entrada — Enviar para Aprovação (estoque só após confirmar a entrega)",
 };
+
+// Ainda sem tela no sistema: a chave aparece desligada e não pode ser ligada.
+const MODULOS_EM_BREVE = new Set(["cerealista", "sementes", "pecuaria"]);
 
 const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   {
@@ -77,7 +79,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Sistema",
-    modulos: ["usuarios", "configuracoes", "bi"],
+    modulos: ["usuarios", "bi"],
   },
   {
     label: "Add-ons Opcionais",
@@ -281,9 +283,9 @@ export default function ModulosPage() {
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {/* Toggle switch */}
                           <div
-                            onClick={() => toggleModulo(modulo)}
+                            onClick={() => { if (!MODULOS_EM_BREVE.has(modulo)) toggleModulo(modulo); }}
                             style={{
-                              width: 40, height: 22, borderRadius: 11, cursor: "pointer",
+                              width: 40, height: 22, borderRadius: 11, cursor: MODULOS_EM_BREVE.has(modulo) ? "not-allowed" : "pointer", opacity: MODULOS_EM_BREVE.has(modulo) ? 0.5 : 1,
                               background: hab ? "#16A34A" : "var(--border-table)",
                               position: "relative", transition: "background 0.2s",
                               flexShrink: 0,

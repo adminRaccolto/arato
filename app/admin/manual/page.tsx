@@ -108,7 +108,7 @@ function ManualContent() {
       <div className="no-print" style={{ background: "var(--bg-page)", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid var(--border)" }}>
         <div>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Manual do Proprietário — Arato SaaS</span>
-          <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 12 }}>Versão 2.0 · Abril 2026 · Uso interno Raccolto</span>
+          <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 12 }}>Versão 2.1 · Novembro 2026 · Uso interno Raccolto</span>
         </div>
         <button data-arato-button="primary"
           onClick={() => window.print()}
@@ -138,7 +138,7 @@ function ManualContent() {
           <h1 data-arato-h1="true" style={{ fontSize: 30, fontWeight: 900, color: "#111111", margin: "0 0 6px" }}>Arato SaaS</h1>
           <div style={{ fontSize: 16, color: "var(--text-2)", marginBottom: 28 }}>Manual Completo do Proprietário do Sistema</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
-            {["Versão 2.0", "Abril 2026", "Uso interno"].map(t => (
+            {["Versão 2.1", "Novembro 2026", "Uso interno"].map(t => (
               <span key={t} style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "var(--text-3)" }}>{t}</span>
             ))}
           </div>
@@ -272,7 +272,7 @@ VALUES (
         {/* ── 3. Empresa e Dados Fiscais ── */}
         <Secao n="3" titulo="Configuração da Empresa e Dados Fiscais">
           <p style={{ marginBottom: 14 }}>
-            Após o login do cliente, acesse <strong>Configurações → Empresa</strong> e preencha todos os campos. Esses dados aparecem no DANFE e são enviados ao SEFAZ em cada NF-e.
+            Após o login do cliente, acesse <strong>Configurações → Parâmetros Fiscais (NF-e)</strong> e preencha todos os campos. Esses dados aparecem no DANFE e são enviados ao SEFAZ em cada NF-e.
           </p>
           <SubSecao titulo="3.1 Dados obrigatórios para NF-e">
             <Tabela
@@ -329,7 +329,7 @@ VALUES (
               <p style={{ margin: "6px 0" }}>O cliente baixa o certificado da emissora (Certisign, Serasa, etc.) e entrega o arquivo <strong>.pfx + a senha</strong>. Guarde com segurança — essa senha não pode ser recuperada.</p>
             </Passo>
             <Passo n="2" titulo="Acessar Parâmetros do Sistema">
-              <p style={{ margin: "6px 0" }}>No sistema, logado como admin da fazenda, acesse <strong>Configurações → Parâmetros → Parâmetros do Sistema → aba Fiscal</strong>.</p>
+              <p style={{ margin: "6px 0" }}>No sistema, logado como admin da fazenda, acesse <strong>Configurações → Parâmetros Fiscais (NF-e) → aba Fiscal</strong>.</p>
             </Passo>
             <Passo n="3" titulo="Preencher os campos de certificado">
               <Tabela
@@ -352,7 +352,7 @@ VALUES (
           <SubSecao titulo="4.3 Renovação do Certificado">
             <p style={{ marginBottom: 10 }}>O sistema envia alertas automáticos 30, 15, 7 e 1 dia antes do vencimento. Quando o certificado novo chegar:</p>
             <ol style={{ paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-              <li>Acesse <strong>Configurações → Parâmetros do Sistema → Fiscal</strong></li>
+              <li>Acesse <strong>Configurações → Parâmetros Fiscais (NF-e) → aba Fiscal</strong></li>
               <li>Substitua o arquivo .pfx pelo novo</li>
               <li>Atualize a senha (se mudou) e a data de vencimento</li>
               <li>Salve e aguarde a confirmação "Certificado válido"</li>
@@ -550,15 +550,15 @@ RESEND_FROM=alertas@raccolto.com.br`}</Code>
         <Secao n="9" titulo="Configurações Financeiras">
           <SubSecao titulo="9.1 Plano de Contas">
             <p style={{ marginBottom: 10 }}>
-              Acesse <strong>Configurações → Financeiro → Plano de Contas</strong>. O sistema vem com um plano padrão para agronegócio. Personalize conforme o contador de cada cliente pede — especialmente as contas de receita e custo de produção, que alimentam o DRE.
+              Acesse <strong>Configurações → Plano de Contas</strong>. O sistema vem com um plano padrão para agronegócio. Personalize conforme o contador de cada cliente pede — especialmente as contas de receita e custo de produção, que alimentam o DRE.
             </p>
             <Info>Contas contábeis vinculadas a operações gerenciais são necessárias para gerar o SPED ECD. Confirme com o contador quais contas usar.</Info>
           </SubSecao>
           <SubSecao titulo="9.2 Centros de Custo e Regras de Rateio">
-            <p>Acesse <strong>Configurações → Financeiro → Centros de Custo</strong>. Configure os centros de custo por talhão, cultura ou fazenda. Depois, em <strong>Configurações → Financeiro → Regras de Rateio</strong>, defina como os custos compartilhados (ex: maquinário, arrendamento global) são distribuídos entre os ciclos de produção.</p>
+            <p>Acesse <strong>Cadastros → Centros de Custo</strong>. Configure os centros de custo por talhão, cultura ou fazenda. Depois, em <strong>Configurações → Regras de Rateio</strong>, defina como os custos compartilhados (ex: maquinário, arrendamento global) são distribuídos entre os ciclos de produção.</p>
           </SubSecao>
           <SubSecao titulo="9.3 Contas Bancárias">
-            <p>Cadastre as contas bancárias do cliente em <strong>Cadastros → Gerais → Empresas</strong> (aba Contas Bancárias). Essencial para a conciliação bancária e para o correto funcionamento do fluxo de caixa.</p>
+            <p>Cadastre as contas bancárias do cliente em <strong>Cadastros → Contas Bancárias</strong>. Essencial para a conciliação bancária e para o correto funcionamento do fluxo de caixa.</p>
           </SubSecao>
         </Secao>
 
@@ -568,12 +568,12 @@ RESEND_FROM=alertas@raccolto.com.br`}</Code>
             <Tabela
               colunas={["O que cadastrar", "Onde", "Ordem"]}
               linhas={[
-                ["Fazendas e Talhões",       "Cadastros → Técnicos → Fazendas & Talhões", "1º"],
-                ["Depósitos / Armazéns",     "Cadastros → Técnicos → Depósitos & Armazéns", "2º"],
-                ["Ano Safra",                "Cadastros → Técnicos → Safras → aba Ano Safra", "3º"],
-                ["Ciclo de Produção",        "Cadastros → Técnicos → Safras → aba Ciclos", "4º"],
-                ["Insumos",                  "Cadastros → Técnicos → Insumos", "5º"],
-                ["Padrões de Classificação", "Cadastros → Técnicos → Padrões de Classificação", "6º (opcional)"],
+                ["Fazendas e Talhões",       "Cadastros → Fazendas e Talhões", "1º"],
+                ["Depósitos / Armazéns",     "Cadastros → Depósitos & Armazéns", "2º"],
+                ["Ano Safra",                "Produção → Safras e Ciclos → aba Ano Safra", "3º"],
+                ["Ciclo de Produção",        "Produção → Safras e Ciclos → aba Ciclos", "4º"],
+                ["Insumos",                  "Cadastros → Catálogo de Insumos", "5º"],
+                ["Padrões de Classificação", "Produção → Classificação de Grãos", "6º (opcional)"],
               ]}
             />
             <Aviso>
@@ -582,7 +582,7 @@ RESEND_FROM=alertas@raccolto.com.br`}</Code>
           </SubSecao>
           <SubSecao titulo="10.2 Padrões de Classificação de Grãos">
             <p style={{ marginBottom: 10 }}>
-              Em <strong>Cadastros → Padrões de Classificação</strong>, carregue os padrões oficiais clicando em <strong>"Carregar Padrões Oficiais"</strong>. O sistema inclui:
+              Em <strong>Produção → Classificação de Grãos</strong>, carregue os padrões oficiais clicando em <strong>"Carregar Padrões Oficiais"</strong>. O sistema inclui:
             </p>
             <Tabela
               colunas={["Commodity", "Norma", "Parâmetros"]}
@@ -623,7 +623,7 @@ RESEND_FROM=alertas@raccolto.com.br`}</Code>
 
           <SubSecao titulo="11.2 Mudar para Produção">
             <ol style={{ paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-              <li>Acesse <strong>Configurações → Parâmetros do Sistema → aba Fiscal</strong></li>
+              <li>Acesse <strong>Configurações → Parâmetros Fiscais (NF-e) → aba Fiscal</strong></li>
               <li>Mude <strong>Ambiente</strong> de "2 - Homologação" para "1 - Produção"</li>
               <li>Mude <strong>Série</strong> de 900 para 1</li>
               <li>Defina <strong>Próximo número</strong> como 1 (início em produção)</li>
@@ -695,7 +695,7 @@ DELETE FROM fazendas             WHERE id          = 'UUID';
               ["NF-e rejeitada cStat 228", "Data de emissão inválida (mais de 5 min no futuro)", "Verificar fuso horário do servidor (deve ser UTC)"],
               ["NF-e rejeitada cStat 539", "CNPJ do emitente não autorizado para NF-e", "Credenciar o CNPJ no SEFAZ-MT"],
               ["NF-e rejeitada cStat 136", "Certificado digital vencido ou inválido", "Substituir o certificado A1 (Seção 4)"],
-              ["DANFE sem dados do emitente", "Empresa não configurada", "Preencher Configurações → Empresa"],
+              ["DANFE sem dados do emitente", "Empresa não configurada", "Preencher Configurações → Parâmetros Fiscais (NF-e)"],
               ["E-mail de alerta não chega", "RESEND_FROM não verificado", "Verificar DNS no painel Resend → domínio"],
               ["Login retorna 'Invalid session'", "Cookie de sessão expirado", "Fazer logout e login novamente"],
               ["Backup falha com erro 403", "Bucket 'backups' não criado ou não privado", "Supabase → Storage → criar bucket 'backups' (Private)"],
@@ -727,7 +727,7 @@ DELETE FROM fazendas             WHERE id          = 'UUID';
 
         {/* Rodapé */}
         <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 20, marginTop: 12, display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}>
-          <span>Arato SaaS — Manual do Proprietário v2.0 · Abril 2026</span>
+          <span>Arato SaaS — Manual do Proprietário v2.1 · Novembro 2026</span>
           <span>Raccolto Consultoria · Documento Interno · Não distribuir</span>
         </div>
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (perfil?.role !== "raccotlo") {
+    if (!isRaccotloAdmin(perfil?.role, user.email)) {
       return NextResponse.json({ ok: false, error: "Acesso restrito à equipe Raccolto" }, { status: 403 });
     }
 
