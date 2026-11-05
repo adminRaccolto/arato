@@ -1,0 +1,116 @@
+.form[data-arato-nf-form][data-arato-dialog] {
+  width: min(1480px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+}
+
+.headerFields [data-arato-fields="true"] {
+  gap: 8px 12px !important;
+  margin-bottom: 10px !important;
+}
+
+.headerFields [data-arato-fields="true"] > div {
+  min-width: 0;
+}
+
+.headerFields [data-arato-nf-fields="identity"] {
+  grid-template-columns: 0.85fr 0.4fr 0.6fr 1.3fr 1.3fr 1.25fr !important;
+}
+
+.headerFields [data-arato-nf-fields="issuer"] {
+  grid-template-columns: 1.7fr 1.7fr 1fr 0.8fr !important;
+}
+
+.headerFields [data-arato-nf-fields="payment"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.headerFields [data-arato-panel="true"] {
+  padding: 10px 12px !important;
+  margin-bottom: 10px !important;
+}
+
+.headerFields [role="combobox"],
+.supplierControl {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 5px 9px !important;
+  border-radius: 8px !important;
+}
+
+.headerFields [data-arato-button="toggle"],
+.headerFields :global(.input-data-hoje) {
+  min-height: 28px !important;
+  padding: 4px 9px !important;
+}
+
+.headerFields :global(.input-data-calendario) {
+  height: 30px !important;
+}
+
+.entryPanel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.entryPanel > div:first-child {
+  display: contents !important;
+}
+
+.withImport {
+  grid-template-columns: 1.15fr 1fr 1.15fr;
+}
+
+.importControls {
+  min-width: 0;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+.importControls input {
+  min-width: 0;
+}
+
+.installments {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .headerFields [data-arato-nf-fields="identity"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .headerFields [data-arato-nf-fields="issuer"],
+  .headerFields [data-arato-nf-fields="payment"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .withImport {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .importControls {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .form[data-arato-nf-form][data-arato-dialog] {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin-inline: 8px !important;
+  }
+
+  .headerFields [data-arato-nf-fields="identity"],
+  .headerFields [data-arato-nf-fields="taxes"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .headerFields [data-arato-nf-fields="issuer"],
+  .headerFields [data-arato-nf-fields="payment"],
+  .entryPanel {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

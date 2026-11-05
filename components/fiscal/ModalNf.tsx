@@ -14,6 +14,7 @@
 // lógica foi preservada EXATAMENTE como estava — só a casca mudou (recebe
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
+import styles from "./ModalNf.module.css";
 import { fazendaDoProdutor } from "../../lib/fazenda-de";
 import { hojeLocal } from "../../lib/data-local";
 import { listarCartoesDaConta } from "../../lib/db";
@@ -2639,10 +2640,10 @@ export default function ModalNf({
   return (
     <>
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div data-arato-nf-form="true" data-arato-drawer-width={etapa === "cabecalho" ? "860" : "1140"} data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1140, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div className={styles.form} data-arato-compacto="true" data-arato-nf-form="true" data-arato-drawer-width="1480" data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1480, margin: "0 16px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
-            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div data-arato-dialog-body="true">
                 <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {nfEdit ? `NF ${nfEdit.numero}/${nfEdit.serie}` : "Nova NF de Compra"}
@@ -2665,7 +2666,7 @@ export default function ModalNf({
               <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
-            <div data-arato-dialog-body="true" style={{ padding: "16px 20px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "12px 16px" }}>
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>
                 {err}
                 {nfExistente && err.startsWith("Esta NF já está no sistema") && (
@@ -2691,10 +2692,10 @@ export default function ModalNf({
               {/* ─── ETAPA 1: CABEÇALHO ──────────────────────── */}
               {etapa === "cabecalho" && (
                 <>
-                <div style={lockStyle}>
+                <div className={styles.headerFields} style={lockStyle}>
 
-                  {/* ── Barra compacta: Como lançar + Tipo de entrada ── */}
-                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                  {/* ── Origem e consulta ao lado do tipo de entrada ── */}
+                  <div className={`${styles.entryPanel} ${orig !== "manual" ? styles.withImport : ""}`} data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
                     <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
                       {/* Como lançar */}
                       <div style={{ flex: "1 1 auto" }}>
@@ -2743,7 +2744,7 @@ export default function ModalNf({
 
                     {/* Painel de input por origem (colapsável) */}
                     {orig === "xml" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
+                      <div className={styles.importControls} style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
                         <label data-arato-label="true" style={lbl}>Arquivo XML da NF-e</label>
                         <input ref={xmlInputRef} type="file" accept=".xml"
                           onChange={e => {
@@ -2759,7 +2760,7 @@ export default function ModalNf({
                     )}
 
                     {orig === "leitor" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
+                      <div className={styles.importControls} style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
                         <label data-arato-label="true" style={lbl}>Chave de Acesso — 44 dígitos (escaneie ou digite)</label>
                         <div style={{ position: "relative" }}>
                           <input
@@ -2827,7 +2828,7 @@ export default function ModalNf({
                     )}
 
                     {orig === "sieg" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
+                      <div className={styles.importControls} style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
                         <label data-arato-label="true" style={lbl}>Chave de Acesso Sieg (44 dígitos)</label>
                         <div style={{ display: "flex", gap: 10 }}>
                           <input value={siegChave} onChange={e => setSiegChave(e.target.value.replace(/\D/g, ""))}
@@ -2911,6 +2912,18 @@ export default function ModalNf({
                         style={inp}
                       />
                     </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Data de Emissão *</label>
+                      <InputData type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Data de Entrada</label>
+                      <InputData type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
+                      <input value={cab.natureza} onChange={e => setCab(p=>({...p,natureza:e.target.value}))} style={inp} />
+                    </div>
                   </div>
 
                   {CFOPS_REMESSA_BEM.has((cab.cfop || "").trim()) && (
@@ -2943,6 +2956,7 @@ export default function ModalNf({
                       {/* Dropdown customizado — nome e CNPJ em colunas separadas */}
                       <div style={{ position: "relative" }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setPessoaDropOpen(false); setPessoaBusca(""); } }}>
                         <div
+                          className={styles.supplierControl}
                           tabIndex={0}
                           onClick={() => { setPessoaDropOpen(o => !o); setPessoaBusca(""); }}
                           style={{ ...inp, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" as const }}
@@ -3016,9 +3030,6 @@ export default function ModalNf({
                       <label data-arato-label="true" style={lbl}>Nome do emitente *</label>
                       <input value={cab.emitente_nome} onChange={e => setCab(p=>({...p,emitente_nome:e.target.value}))} style={inp} />
                     </div>
-                  </div>
-
-                  <div data-arato-nf-fields="dates" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label data-arato-label="true" style={lbl}>CNPJ do Emitente</label>
                       <input
@@ -3044,25 +3055,14 @@ export default function ModalNf({
                       />
                     </div>
                     <div>
-                      <label data-arato-label="true" style={lbl}>Data de Emissão *</label>
-                      <InputData type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
-                    </div>
-                    <div>
-                      <label data-arato-label="true" style={lbl}>Data de Entrada</label>
-                      <InputData type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
-                    </div>
-                  </div>
-
-                  <div data-arato-nf-fields="value" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                    <div>
                       <label data-arato-label="true" style={lbl}>Valor Produtos (R$) *</label>
                       <input value={cab.valor_total} onChange={e => setCab(p=>({...p,valor_total:e.target.value}))} placeholder="0,00" style={inp} />
                     </div>
-                    <div>
-                      <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
-                      <input value={cab.natureza} onChange={e => setCab(p=>({...p,natureza:e.target.value}))} style={inp} />
-                    </div>
                   </div>
+
+
+
+
 
                   {/* ── Impostos adicionados ao total ── */}
                   <div data-arato-panel="true" style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 10, padding: 14, marginBottom: 14 }}>
@@ -3148,8 +3148,7 @@ export default function ModalNf({
                         <label data-arato-label="true" style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º vencimento)</span>}</label>
                         <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                       </div>
-                      {/* ── Parcelamento ── */}
-                      <div style={{ gridColumn: "1 / -1" }}>
+                      <div>
                         <label data-arato-label="true" style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
                         <div style={{ display: "flex", gap: 6, marginBottom: nfCondicao === "prazo" ? 10 : 0 }}>
                           {(["avista", "prazo"] as const).map(v => (
@@ -3159,76 +3158,6 @@ export default function ModalNf({
                             </button>
                           ))}
                         </div>
-                        {nfCondicao === "prazo" && (
-                          <div data-arato-panel="true" style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
-                            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: nfParcelas.length > 0 ? 12 : 0 }}>
-                              <div>
-                                <label data-arato-label="true" style={lbl}>Nº de Parcelas</label>
-                                <input type="number" min="2" max="120" value={nfQtdParcelas}
-                                  onChange={e => { setNfQtdParcelas(e.target.value); setNfParcelas([]); }}
-                                  style={{ ...inp, width: 80 }} />
-                              </div>
-                              <div>
-                                <label data-arato-label="true" style={lbl}>Intervalo (meses)</label>
-                                <SelectField value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
-                                  <option value="1">Mensal</option>
-                                  <option value="2">Bimestral</option>
-                                  <option value="3">Trimestral</option>
-                                  <option value="6">Semestral</option>
-                                  <option value="12">Anual</option>
-                                </SelectField>
-                              </div>
-                              <button data-arato-button="primary" onClick={gerarParcelasNf}
-                                style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-                                Gerar parcelas
-                              </button>
-                            </div>
-                            {nfParcelas.length > 0 && (
-                              <div>
-                                <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, paddingBottom: 4, borderBottom: "0.5px solid #C5D9EE" }}>
-                                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Vencimento</span>
-                                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Valor (R$)</span>
-                                  <span />
-                                </div>
-                                {nfParcelas.map((p, i) => (
-                                  <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
-                                    <InputData type="date" value={p.data}
-                                      onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
-                                      style={{ ...inp, fontSize: 12 }} />
-                                    <input type="text" value={p.valorMask}
-                                      onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: e.target.value } : x))}
-                                      style={{ ...inp, fontSize: 12, textAlign: "right" }} />
-                                    <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600 }}>{i + 1}/{nfParcelas.length}</span>
-                                  </div>
-                                ))}
-                                {(() => {
-                                  const soma = nfParcelas.reduce((s, p) => s + (parseFloat(p.valorMask.replace(/\./g, "").replace(",", ".")) || 0), 0);
-                                  const total = parseFloat(nfEdit?.valor_total?.toString() ?? cab.valor_total) || 0;
-                                  const diff  = Math.abs(soma - total);
-                                  return diff > 0.01 ? (
-                                    <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 6 }}>
-                                      ⚠ Soma das parcelas ({soma.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}) difere do total da NF ({total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})})
-                                    </div>
-                                  ) : (
-                                    <div style={{ fontSize: 11, color: "#166534", marginTop: 6 }}>
-                                      ✓ Soma confere: {soma.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            )}
-                            {nfParcelas.length === 0 && (
-                              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Clique em "Gerar parcelas" para criar o cronograma editável.</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <label data-arato-label="true" style={lbl}>Ano Safra *</label>
-                        <SelectField value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={{ ...inp, borderColor: cab.ano_safra_id ? undefined : "#E24B4A" }}>
-                          <option value="">— selecionar —</option>
-                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                        </SelectField>
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
@@ -3239,13 +3168,6 @@ export default function ModalNf({
                           placeholder="— nenhuma —"
                           style={inp}
                         />
-                      </div>
-                      <div>
-                        <label data-arato-label="true" style={lbl}>Ciclo</label>
-                        <SelectField value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
-                          <option value="">— selecione o ano safra —</option>
-                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
-                        </SelectField>
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Produtor</label>
@@ -3268,6 +3190,83 @@ export default function ModalNf({
                                 </option>
                               ))}
                             </SelectField>
+                          )}
+                        </div>
+                      )}
+                      <div>
+                        <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+                        <SelectField value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={{ ...inp, borderColor: cab.ano_safra_id ? undefined : "#E24B4A" }}>
+                          <option value="">— selecionar —</option>
+                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                        </SelectField>
+                      </div>
+                      <div>
+                        <label data-arato-label="true" style={lbl}>Ciclo</label>
+                        <SelectField value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
+                          <option value="">— selecione o ano safra —</option>
+                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
+                        </SelectField>
+                      </div>
+                      {nfCondicao === "prazo" && (
+                        <div className={styles.installments} data-arato-panel="true" style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: nfParcelas.length > 0 ? 12 : 0 }}>
+                            <div>
+                              <label data-arato-label="true" style={lbl}>Nº de Parcelas</label>
+                              <input type="number" min="2" max="120" value={nfQtdParcelas}
+                                onChange={e => { setNfQtdParcelas(e.target.value); setNfParcelas([]); }}
+                                style={{ ...inp, width: 80 }} />
+                            </div>
+                            <div>
+                              <label data-arato-label="true" style={lbl}>Intervalo (meses)</label>
+                              <SelectField value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
+                                <option value="1">Mensal</option>
+                                <option value="2">Bimestral</option>
+                                <option value="3">Trimestral</option>
+                                <option value="6">Semestral</option>
+                                <option value="12">Anual</option>
+                              </SelectField>
+                            </div>
+                            <button data-arato-button="primary" onClick={gerarParcelasNf}
+                              style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                              Gerar parcelas
+                            </button>
+                          </div>
+                          {nfParcelas.length > 0 && (
+                            <div>
+                              <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, paddingBottom: 4, borderBottom: "0.5px solid #C5D9EE" }}>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Vencimento</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>Valor (R$)</span>
+                                <span />
+                              </div>
+                              {nfParcelas.map((p, i) => (
+                                <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
+                                  <InputData type="date" value={p.data}
+                                    onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
+                                    style={{ ...inp, fontSize: 12 }} />
+                                  <input type="text" value={p.valorMask}
+                                    onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: e.target.value } : x))}
+                                    style={{ ...inp, fontSize: 12, textAlign: "right" }} />
+                                  <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600 }}>{i + 1}/{nfParcelas.length}</span>
+                                </div>
+                              ))}
+                              {(() => {
+                                const soma = nfParcelas.reduce((s, p) => s + (parseFloat(p.valorMask.replace(/\./g, "").replace(",", ".")) || 0), 0);
+                                const total = parseFloat(nfEdit?.valor_total?.toString() ?? cab.valor_total) || 0;
+                                const diff  = Math.abs(soma - total);
+                                return diff > 0.01 ? (
+                                  <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 6 }}>
+                                    ⚠ Soma das parcelas ({soma.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}) difere do total da NF ({total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})})
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: 11, color: "#166534", marginTop: 6 }}>
+                                    ✓ Soma confere: {soma.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+                          {nfParcelas.length === 0 && (
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Clique em "Gerar parcelas" para criar o cronograma editável.</div>
                           )}
                         </div>
                       )}
