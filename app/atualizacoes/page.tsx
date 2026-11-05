@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-a",
+    data: "05/11/2026",
+    titulo: "Olívia indica as telas do menu atual",
+    modulos: ["Suporte"],
+    itens: [
+      { tipo: "correcao", texto: "A Olívia passa a usar o menu real do sistema e não indica mais telas que mudaram de lugar. Toda resposta é conferida antes de chegar a você." },
+      { tipo: "melhoria", texto: "Como lançar NFS-e: a Olívia explica as duas situações, a nota que já chegou pelo SIEG (processar em Notas de Terceiro) e a nota que precisa ser lançada à mão." },
+    ],
+  },
+  {
     versao: "2026.11.04-v",
     data: "04/11/2026",
     titulo: "Ciclos do cliente inteiro em comercial, financeiro e notas",
