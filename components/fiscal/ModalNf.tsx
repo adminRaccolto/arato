@@ -4481,6 +4481,7 @@ export default function ModalNf({
                     <option value="L">Litro (L)</option>
                     <option value="mL">Mililitro (mL)</option>
                     <option value="sc">Saca (sc)</option>
+                    <option value="bag">Bag</option>
                     <option value="t">Tonelada (t)</option>
                     <option value="m">Metro (m)</option>
                     <option value="m2">Metro² (m²)</option>

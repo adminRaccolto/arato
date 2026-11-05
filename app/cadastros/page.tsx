@@ -5177,6 +5177,7 @@ function CadastrosInner() {
                             <option value="L">L (litros)</option>
                             <option value="mL">mL (mililitros)</option>
                             <option value="sc">sc (sacas 60kg)</option>
+                            <option value="bag">bag</option>
                             <option value="t">t (tonelada)</option>
                             <option value="un">un (unidade)</option>
                             <option value="m">m (metro)</option>
@@ -5783,6 +5784,7 @@ function CadastrosInner() {
                         <SelectField style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
                           <option value="un">un (unidade)</option>
                           <option value="kg">kg</option>
+                          <option value="bag">bag</option>
                           <option value="L">L (litros)</option>
                           <option value="m">m (metro)</option>
                           <option value="m2">m² (metro quadrado)</option>

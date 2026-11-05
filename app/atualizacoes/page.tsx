@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-j",
+    data: "05/11/2026",
+    titulo: "Unidade bag em todos os cadastros de insumo",
+    modulos: ["Cadastros", "Compras", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "A unidade bag agora aparece no Catálogo de Insumos para qualquer categoria e no cadastro rápido do pedido de compra, da NF e do estoque." },
+    ],
+  },
+  {
     versao: "2026.11.05-i",
     data: "05/11/2026",
     titulo: "Adiantamento reduz o título do pedido",

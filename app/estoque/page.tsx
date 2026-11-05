@@ -2724,6 +2724,7 @@ export default function Estoque() {
                   <option value="L">L (litro)</option>
                   <option value="mL">mL (mililitro)</option>
                   <option value="sc">sc (saca 60 kg)</option>
+                  <option value="bag">bag</option>
                   <option value="t">t (tonelada)</option>
                   <option value="un">un (unidade)</option>
                   <option value="m">m (metro)</option>

@@ -828,6 +828,8 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **Adiantamento a fornecedor — pedido de compra:** em Financeiro, Adiantamentos a Fornecedores, o campo Pedido de Compra é opcional. Escolher o pedido preenche o fornecedor. O adiantamento já lançado pode ser ligado ao abrir os detalhes dele. O valor aparece como Adiantado no Controle de Valor do pedido. O adiantamento reduz o título do pedido no Contas a Pagar e no Fluxo de Caixa, só pelo crédito ainda não aplicado. Ao aplicar o crédito em uma NF, o título do pedido volta a subir, porque o pagamento dessa NF já usou o adiantamento. O motivo da redução aparece abaixo da descrição do título e no Controle de Valor. Desligar o pedido ou cancelar o adiantamento refaz o cálculo.
 
+**Insumos — unidade bag:** a unidade bag está disponível no Catálogo de Insumos, em qualquer categoria, e no cadastro rápido do pedido de compra, da NF e do estoque.
+
 **Fluxo de Caixa — Excel:** em Financeiro → Relatórios Financeiros → Fluxo de Caixa, o botão ⬇ Excel, ao lado de Imprimir / PDF, exporta a visão aberta com os filtros da tela.
 - Diário: aba Resumo (escopo, período, tipo, saldo inicial com a composição quando Considerar atrasados? está ligado, totais e saldo final) e aba Fluxo Diário com uma linha por lançamento (data, fornecedor/pagador, descrição, origem, situação, entrada, saída e saldo acumulado), do saldo inicial aos totais.
 - Mensal e Anual: aba Resumo e aba com categorias nas linhas e meses (ou anos) nas colunas, separando Entradas e Saídas, com Total Entradas, Total Saídas, Saldo do mês/ano e Saldo Acumulado.
