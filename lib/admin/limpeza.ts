@@ -41,7 +41,7 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
   {
     id: "comercial", label: "Comercialização", icon: "📋", cor: "#C9921B", bg: "#FBF3E0",
     subitens: [
-      { id: "contratos", label: "Contratos de Venda/Compra", icon: "📝", contar: "contratos", tabelas: ["contrato_faturamentos", "barter_compromissos", "fixacoes_hedge", "contrato_itens", "contratos"] },
+      { id: "contratos", label: "Contratos de Venda/Compra", icon: "📝", contar: "contratos", tabelas: ["contratos_aditivos", "contrato_faturamentos", "barter_compromissos", "fixacoes_hedge", "contrato_itens", "contratos"] },
       { id: "romaneios", label: "Romaneios e pesagens avulsas", icon: "⚖️", contar: "romaneios", tabelas: ["pesagens_avulsas", "romaneios"] },
       { id: "notas_saida", label: "Notas de saída (NF-e emitidas)", icon: "🧾", contar: "notas_fiscais", tabelas: ["nfe_cartas_correcao", "gnre_guias", "notas_fiscais"], aviso: "NF-e autorizada na SEFAZ continua lá: isto só apaga o registro no sistema." },
       { id: "expedicao", label: "Expedição · CT-e · MDF-e", icon: "🚛", contar: "cargas_expedicao", tabelas: ["acertos_frete", "cte_cartas_correcao", "cte_entradas", "cte_recebidos", "cargas_expedicao", "ctes", "mdfes", "mdfe"] },

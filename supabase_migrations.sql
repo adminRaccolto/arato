@@ -19944,3 +19944,39 @@ CREATE TABLE IF NOT EXISTS rotinas_sistema (
 ALTER TABLE rotinas_sistema ENABLE ROW LEVEL SECURITY;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 418 — Aditivos do contrato de venda
+-- =============================================================================
+-- Cada aditivo guarda o antes e o depois. valor_ajuste_aditivo acerta o valor do contrato quando o preço muda: o que já
+-- tem NF continua ao preço antigo. contrato_origem_id liga o contrato novo ao contrato que passou o saldo para ele.
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS valor_ajuste_aditivo numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS contrato_origem_id uuid REFERENCES contratos(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS contratos_aditivos (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id      uuid NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+  fazenda_id       uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  conta_id         uuid REFERENCES contas(id) ON DELETE CASCADE,
+  numero           integer NOT NULL,
+  data_aditivo     date NOT NULL,
+  tipo             text NOT NULL CHECK (tipo IN ('quantidade','preco','prazo_entrega','pagamento','local_entrega','comprador','outros','novo_contrato')),
+  descricao        text NOT NULL,
+  antes            jsonb,
+  depois           jsonb,
+  novo_contrato_id uuid REFERENCES contratos(id) ON DELETE SET NULL,
+  pdf_url          text,
+  pdf_nome         text,
+  usuario_nome     text,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_contratos_aditivos_contrato ON contratos_aditivos(contrato_id);
+
+ALTER TABLE contratos_aditivos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "contratos_aditivos_tenant" ON contratos_aditivos;
+CREATE POLICY "contratos_aditivos_tenant" ON contratos_aditivos FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+
+NOTIFY pgrst, 'reload schema';

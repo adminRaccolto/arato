@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-f",
+    data: "05/11/2026",
+    titulo: "Aditivos no contrato de venda",
+    modulos: ["Comercial"],
+    itens: [
+      { tipo: "novidade", texto: "Contrato de venda ganhou a aba Aditivos: quantidade, preço, prazo, pagamento, local de entrega e comprador, com histórico do antes e depois e PDF." },
+      { tipo: "melhoria", texto: "Preço novo vale só para o saldo sem NF, e o título a receber acompanha. Volume e preço juntos viram contrato novo, ligado ao original, pelo botão Novo contrato pelo saldo." },
+      { tipo: "melhoria", texto: "Contrato confirmado com romaneio ou NF só muda quantidade, preço e comprador por aditivo." },
+    ],
+  },
+  {
     versao: "2026.11.05-e",
     data: "05/11/2026",
     titulo: "Produtos Agrícolas sem cadastro automático",

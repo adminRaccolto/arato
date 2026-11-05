@@ -471,6 +471,8 @@ export type PagamentoLoteItem = {
 
 export type Contrato = {
   id: string;
+  valor_ajuste_aditivo?: number | null; // acerto do valor quando o preço muda por aditivo: NF emitida segue ao preço antigo
+  contrato_origem_id?: string | null;   // contrato que passou o saldo para este
   fazenda_id: string;
   numero: string;
   num_lancamento?: number;

@@ -186,7 +186,7 @@ export async function carregarCustosAno(p: {
   // ── 5) Arrendamento: contratos pagos. Sacas × preço médio ponderado de venda do produto no ano safra ──
   if (anoIds.length) {
     const vendas = await paginar<{ produto: string | null; preco: number | null; quantidade_sc: number | null; moeda: string | null; cotacao_usd: number | null }>(from => supabase.from("contratos")
-      .select("produto,preco,quantidade_sc,moeda,cotacao_usd").in("fazenda_id", fazendaIds).in("ano_safra_id", anoIds)
+      .select("*").in("fazenda_id", fazendaIds).in("ano_safra_id", anoIds)
       .eq("confirmado", true).neq("tipo", "compra").order("id").range(from, from + 999));
     const acum: Record<string, { v: number; q: number }> = {};
     for (const c of vendas) {
@@ -194,7 +194,10 @@ export async function carregarCustosAno(p: {
       if (q <= 0 || pr <= 0) continue;
       const preco = c.moeda === "USD" && c.cotacao_usd ? pr * Number(c.cotacao_usd) : pr;
       const k = norm(c.produto);
-      (acum[k] ??= { v: 0, q: 0 }).v += preco * q; acum[k].q += q;
+      // Preço médio considera a parte já faturada ao preço anterior ao aditivo
+      const ajuste = Number((c as { valor_ajuste_aditivo?: number | null }).valor_ajuste_aditivo) || 0;
+      const fator = c.moeda === "USD" && c.cotacao_usd ? Number(c.cotacao_usd) : 1;
+      (acum[k] ??= { v: 0, q: 0 }).v += preco * q + ajuste * fator; acum[k].q += q;
     }
     const precoMedio = (commodity: string | null | undefined): number | null => {
       const alvo = norm(commodity);

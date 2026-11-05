@@ -31,6 +31,7 @@ import { produtoDoContrato } from "../../lib/fiscal/ncm-produtos";
 import FaturamentosCarga from "../../components/contratos/FaturamentosCarga";
 import { notaAguardaRomaneio, pesoDaNota } from "../../lib/contratos/romaneio-nf";
 import type { NotaFiscal } from "../../lib/supabase";
+import AbaAditivos from "../../components/contratos/AbaAditivos";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -346,7 +347,7 @@ const itemVazio = (): Omit<ContratoItem,"id"|"created_at"|"contrato_id"|"fazenda
   tipo: "Produto", produto: "Soja", unidade: "kg", quantidade: 0, valor_unitario: 0, valor_total: 0, moeda: "BRL", classificacao: "",
 });
 
-type AbaForm = "principal" | "adicionais";
+type AbaForm = "principal" | "adicionais" | "aditivos";
 type AbaLista = "contratos" | "expedicao" | "posicao";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -373,7 +374,7 @@ function normalizarFreteIA(frete?: string): string {
 }
 
 export default function Contratos() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, podeEscrever, nomeUsuario } = useAuth();
 
   // ── dados ────────────────────────────────────────────────────
   const [contratos, setContratos]     = useState<ContratoVM[]>([]);
@@ -466,6 +467,8 @@ export default function Contratos() {
   const [editContrato, setEditContrato]   = useState<ContratoVM|null>(null);
   const [viewOnly, setViewOnly]           = useState(false); // true = apenas visualizar
   const [abaForm, setAbaForm]             = useState<AbaForm>("principal");
+  const [contratoOrigem, setContratoOrigem] = useState<ContratoVM|null>(null); // contrato que passa o saldo para o novo
+  const [faturadoSc, setFaturadoSc]       = useState(0);
   const [itens, setItens]                 = useState<Omit<ContratoItem,"id"|"created_at"|"contrato_id"|"fazenda_id">[]>([itemVazio()]);
 
   const fContratoVazio = () => ({
@@ -858,6 +861,7 @@ export default function Contratos() {
 
   // ── abrir modal ───────────────────────────────────────────────
   const abrirNovo = () => {
+    setContratoOrigem(null);
     setEditContrato(null);
     setViewOnly(false);
     const vazio = fContratoVazio();
@@ -870,6 +874,9 @@ export default function Contratos() {
   };
 
   const abrirEditar = async (c: ContratoVM, modoEdicao = false) => {
+    setContratoOrigem(null);
+    setFaturadoSc(0);
+    fetch(`/api/contratos/aditivos?contrato_id=${c.id}`).then(r => r.json()).then(j => setFaturadoSc(Number(j?.faturado_sc) || 0)).catch(() => {});
     setViewOnly(!modoEdicao);
     setEditContrato(c);
     setFC({
@@ -953,6 +960,52 @@ export default function Contratos() {
     setModalContrato(true);
   };
 
+  // Depois de confirmado e com romaneio ou NF, quantidade, preço e comprador só mudam por aditivo
+  const contratoTravado = !!editContrato && !!editContrato.confirmado
+    && ((editContrato.romaneios?.length ?? 0) > 0 || Number(editContrato.entregue_sc) > 0 || faturadoSc > 0);
+
+  // Aditivo gravado: relê o contrato e mostra os valores novos, continuando na aba de aditivos
+  const recarregarContratoAberto = async () => {
+    if (!editContrato) return;
+    const { data } = await supabase.from("contratos").select("*").eq("id", editContrato.id).single();
+    if (!data) return;
+    const atualizado = { ...editContrato, ...data } as ContratoVM;
+    setContratos(prev => prev.map(c => c.id === atualizado.id ? { ...c, ...data } : c));
+    const eraVisualizacao = viewOnly;
+    await abrirEditar(atualizado, !eraVisualizacao);
+    setAbaForm("aditivos");
+  };
+
+  // Volume e preço juntos (ou outro comprador depois da entrega): o saldo vira um contrato novo, ligado a este
+  const novoContratoPeloSaldo = async () => {
+    const origem = editContrato;
+    if (!origem) return;
+    await abrirEditar(origem, true);
+    const saldoSc = Math.max(0, Number(origem.quantidade_sc) - Math.max(Number(origem.entregue_sc) || 0, faturadoSc));
+    setEditContrato(null);
+    setContratoOrigem(origem);
+    setItens(prev => prev.slice(0, 1).map(i => {
+      const kgSaca = classeCommodityDin(i.produto).kg_saca;
+      return { ...i, quantidade: Math.round(saldoSc * kgSaca * 1000) / 1000, valor_total: saldoSc * (i.valor_unitario || 0) };
+    }));
+    setCessaoSelecionados({}); // débitos em cessão ficam no contrato original
+    setFC(p => ({ ...p, data_contrato: hojeLocal(), pdf_url: "", pdf_nome: "", dado_em_cessao: false,
+      observacao_interna: `Originado do saldo do contrato ${origem.numero}.${p.observacao_interna ? ` ${p.observacao_interna}` : ""}` }));
+    setAbaForm("principal");
+  };
+
+  const enviarPdfAditivo = async (arquivo: File) => {
+    const fd = new FormData();
+    fd.append("file", arquivo);
+    fd.append("entidade_tipo", "contrato_venda_pdf");
+    fd.append("entidade_id", editContrato?.id ?? "");
+    fd.append("fazenda_id", editContrato?.fazenda_id ?? fazendaId ?? "");
+    const resp = await fetch("/api/storage/upload", { method: "POST", body: fd });
+    const rj = await resp.json();
+    if (!resp.ok) throw new Error(rj.erro ?? "Erro no upload do PDF");
+    return { url: supabase.storage.from("arquivos").getPublicUrl(rj.path).data.publicUrl, nome: arquivo.name };
+  };
+
   // Mapeamento subgrupo do produto agrícola → chave em CLASSE_COMMODITY
   const SUBGRUPO_CLASSE: Record<string, string> = {
     soja: "Soja", milho: "Milho 1ª", milho_pipoca: "Milho 1ª",
@@ -1000,6 +1053,7 @@ export default function Contratos() {
   const valorTotal = valorFinanceiro + (fC.valor_frete||0);
 
   const atualizarItem = (idx: number, campo: string, valor: string|number) => {
+    if (contratoTravado && ["quantidade","quantidade_kg","quantidade_sc","valor_unitario","produto"].includes(campo)) return;
     setItens(prev => prev.map((it,i) => {
       if (i !== idx) return it;
       const num = (v: string|number) => typeof v === "string" ? parseFloat(v)||0 : v;
@@ -1135,7 +1189,7 @@ export default function Contratos() {
         await atualizarContrato(editContrato.id, payload);
         salvo = { ...editContrato, ...payload, entregue_sc: editContrato.entregue_sc };
       } else {
-        salvo = await criarContrato({ ...payload, entregue_sc: 0 });
+        salvo = await criarContrato({ ...payload, entregue_sc: 0, ...(contratoOrigem ? { contrato_origem_id: contratoOrigem.id } : {}) });
       }
       await salvarItensContrato(salvo.id, fidContrato, itensCalc.filter(i=>i._qKg>0).map(i=>({
         tipo: i.tipo, produto: i.produto, unidade: "kg",
@@ -1176,6 +1230,21 @@ export default function Contratos() {
         if (json.num_lancamento) salvo = { ...salvo, num_lancamento: json.num_lancamento };
         if (json.lancamento_cr_id) salvo = { ...salvo, lancamento_cr_id: json.lancamento_cr_id };
         if (json.error) alert(`⚠️ CR não gerado: ${json.error}\n\nO contrato foi salvo. Verifique o erro e salve novamente para criar o CR.`);
+      }
+      if (contratoOrigem) {
+        // O contrato original fica só com o que já foi entregue ou faturado
+        const resp = await fetch("/api/contratos/aditivos", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ acao: "substituir", contrato_id: contratoOrigem.id, contrato_novo_id: salvo.id, usuario_nome: nomeUsuario ?? undefined }),
+        });
+        const json = await resp.json().catch(() => ({ error: "Resposta inválida do servidor" }));
+        if (!resp.ok || json.ok === false) alert(`⚠️ O contrato novo foi salvo, mas o saldo do contrato ${contratoOrigem.numero} não foi reduzido: ${json.error}`);
+        else {
+          if (json.avisos?.length) alert(json.avisos.join(" "));
+          const { data: origemAtual } = await supabase.from("contratos").select("*").eq("id", contratoOrigem.id).single();
+          if (origemAtual) setContratos(prev => prev.map(c => c.id === contratoOrigem.id ? { ...c, ...origemAtual } : c));
+        }
+        setContratoOrigem(null);
       }
       if (editContrato) {
         setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i._qKg>0) as unknown as ContratoItem[] } : c));
@@ -2243,20 +2312,41 @@ export default function Contratos() {
 
             {/* Abas Principal / Adicionais */}
             <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)" }}>
-              {(["principal","adicionais"] as AbaForm[]).map(a => (
+              {((editContrato ? ["principal","adicionais","aditivos"] : ["principal","adicionais"]) as AbaForm[]).map(a => (
                 <OperationalButton data-arato-tab-active={abaForm === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaForm(a)} style={{
                   padding:"9px 20px", border:"none", background:"transparent", cursor:"pointer",
                   fontWeight: abaForm===a?600:400, fontSize:13,
                   color: abaForm===a?"var(--text-1)":"var(--text-2)",
                   borderBottom: abaForm===a?"2px solid #111111":"2px solid transparent",
                 }}>
-                  {a==="principal" ? "Principal" : "Adicionais"}
+                  {a==="principal" ? "Principal" : a==="adicionais" ? "Adicionais" : "Aditivos"}
                 </OperationalButton>
               ))}
             </div>
 
             {/* Conteúdo das abas */}
             <div data-arato-dialog-body="true" style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+              {abaForm === "aditivos" && editContrato && (
+                <AbaAditivos
+                  contrato={editContrato as unknown as React.ComponentProps<typeof AbaAditivos>["contrato"]}
+                  pessoas={pessoas}
+                  podeLancar={podeEscrever("contratos")}
+                  usuarioNome={nomeUsuario}
+                  enviarPdf={enviarPdfAditivo}
+                  aoAlterar={recarregarContratoAberto}
+                  aoNovoContrato={novoContratoPeloSaldo}
+                />
+              )}
+              {abaForm === "principal" && contratoOrigem && (
+                <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 8, background: "#FBF3E0", color: "#7A5200", fontSize: 12 }}>
+                  Contrato novo pelo saldo de <strong>{contratoOrigem.numero}</strong>. Ajuste volume, preço ou comprador. Ao salvar, o contrato original fica só com o que já foi entregue ou faturado.
+                </div>
+              )}
+              {abaForm === "principal" && contratoTravado && (
+                <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 8, background: "#FBF3E0", color: "#7A5200", fontSize: 12 }}>
+                  Este contrato já tem romaneio ou NF: quantidade, preço e comprador só mudam pela aba <strong>Aditivos</strong>.
+                </div>
+              )}
               {abaForm === "principal" && (
                 <>
                   {/* ── Banner IA — upload de contrato PDF (Add-on ia_contrato_venda) ── */}
@@ -2490,7 +2580,7 @@ export default function Contratos() {
                           <input type="checkbox" checked={fC.is_triangulacao} readOnly style={{ cursor:"pointer" }} /> Triangulação
                         </span>
                       </label>
-                      <SelectPessoa value={fC.pessoa_id} onChange={id => setFC(p=>({...p,pessoa_id:id}))} pessoas={pessoas} />
+                      <SelectPessoa value={fC.pessoa_id} onChange={id => { if (!contratoTravado) setFC(p=>({...p,pessoa_id:id})); }} pessoas={pessoas} />
                       {fC.pessoa_id && (() => { const cnpj = pessoas.find(p => p.id === fC.pessoa_id)?.cpf_cnpj; return cnpj ? (
                         <div style={{ marginTop:4, padding:"4px 8px", background:"var(--bg-page)", border:"0.5px solid var(--border-table)", borderRadius:6, fontSize:11, fontFamily:"monospace", color:"var(--text-2)", letterSpacing:"0.03em" }}>
                           {cnpj}
@@ -2664,7 +2754,7 @@ export default function Contratos() {
                     <div data-arato-dialog-heading="true" style={{ padding:"8px 14px", background:"var(--bg-page)", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens do Contrato</span>
                       <OperationalButton data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }}
-                        onClick={() => { setItens(p => [...p, itemVazio()]); setErrosContrato([]); }}>+ Item</OperationalButton>
+                        disabled={contratoTravado} onClick={() => { setItens(p => [...p, itemVazio()]); setErrosContrato([]); }}>+ Item</OperationalButton>
                     </div>
                     <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
@@ -2692,7 +2782,7 @@ export default function Contratos() {
                             <td style={{ padding:"6px 8px", width:120 }}>
                               <InputNumerico style={{ ...inp, textAlign:"right", fontSize:12 }} decimais={0} min="0"
                                 value={it._qKg > 0 ? it._qKg : ""}
-                                onChange={v => atualizarItem(idx,"quantidade_kg",v)}
+                                disabled={contratoTravado} onChange={v => atualizarItem(idx,"quantidade_kg",v)}
                                 placeholder="0 kg" />
                               <span style={{ fontSize:9, color:"var(--text-3)", display:"block", textAlign:"right", marginTop:1 }}>kg</span>
                             </td>
@@ -2700,19 +2790,19 @@ export default function Contratos() {
                             <td style={{ padding:"6px 8px", width:110 }}>
                               <InputNumerico style={{ ...inp, textAlign:"right", fontSize:12, background:"#F8FAFF", borderColor:"#C4D0E8" }} decimais={3} min="0"
                                 value={it._qSc > 0 ? +it._qSc.toFixed(3) : ""}
-                                onChange={v => atualizarItem(idx,"quantidade_sc",v)}
+                                disabled={contratoTravado} onChange={v => atualizarItem(idx,"quantidade_sc",v)}
                                 placeholder="0 sc" />
                               <span style={{ fontSize:9, color:"var(--text-3)", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodityDin(it.produto).kg_saca} kg/sc)</span>
                             </td>
                             <td style={{ padding:"6px 8px", width:120 }}>
-                              <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} decimais={4} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,0000" />
+                              <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} decimais={4} min="0" value={it.valor_unitario||""} disabled={contratoTravado} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,0000" />
                             </td>
                             <td style={{ padding:"6px 8px", width:130 }}>
                               <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }}
                                 value={(it.valor_total??0).toLocaleString("pt-BR",{style:"currency",currency: fC.moeda === "USD" ? "USD" : "BRL"})} readOnly />
                             </td>
                             <td style={{ padding:"6px 8px", width:34 }}>
-                              {itens.length > 1 && <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_,i)=>i!==idx))}>✕</OperationalButton>}
+                              {itens.length > 1 && !contratoTravado && <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_,i)=>i!==idx))}>✕</OperationalButton>}
                             </td>
                           </tr>
                         ))}

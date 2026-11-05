@@ -679,5 +679,6 @@
 "Pagar Fatura"
 ]
 },
-{"id": "conc-duas-linhas", "p": "Um título já baixado foi pago em duas linhas do banco. Vinculei uma na conciliação, como vinculo a outra?", "rota": ["Concilia"], "deve": ["falta vincular", "Baixados"], "grupo": "base"}
+{"id": "conc-duas-linhas", "p": "Um título já baixado foi pago em duas linhas do banco. Vinculei uma na conciliação, como vinculo a outra?", "rota": ["Concilia"], "deve": ["falta vincular", "Baixados"], "grupo": "base"},
+{"id": "aditivo-venda", "p": "O comprador pediu aumento de volume e também mudou o preço do contrato de venda. Como lanço?", "rota": ["Contratos de Gr"], "deve": ["Novo contrato pelo saldo"], "grupo": "base"}
 ]

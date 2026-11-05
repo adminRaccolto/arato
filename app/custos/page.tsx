@@ -9,6 +9,7 @@ import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { Safra } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
+import { valorDoContrato } from "../../lib/contratos/aditivos";
 
 type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 
@@ -309,7 +310,7 @@ function CustosInner() {
     }
     Promise.all([
       supabase.from("contratos")
-        .select("id,ciclo_id,produto,moeda,preco,quantidade_sc,confirmado,status")
+        .select("*")
         .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds)
         .neq("status", "cancelado").eq("confirmado", true),
       supabase.from("movimentacoes_estoque")
@@ -347,12 +348,12 @@ function CustosInner() {
   const areaHa    = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
   // 1. RECEITA — contratos confirmados por ciclo
-  const receitaBRL    = contratos.filter(c => c.moeda === "BRL").reduce((s, c) => s + c.preco * c.quantidade_sc, 0);
+  const receitaBRL    = contratos.filter(c => c.moeda === "BRL").reduce((s, c) => s + valorDoContrato(c), 0);
   const totalSacas    = contratos.reduce((s, c) => s + c.quantidade_sc, 0); // para custo/sc
   const contratosPorProduto: Record<string, number> = {};
   for (const c of contratos) {
     if (c.moeda !== "BRL") continue;
-    contratosPorProduto[c.produto] = (contratosPorProduto[c.produto] ?? 0) + c.preco * c.quantidade_sc;
+    contratosPorProduto[c.produto] = (contratosPorProduto[c.produto] ?? 0) + valorDoContrato(c);
   }
 
   // 2. DEDUÇÕES sobre receita BRL
