@@ -1,4 +1,7 @@
 "use client";
+import { useOperationalPresentation } from "../../../components/arato-layout/presentation-mode";
+import controleStyles from "../../../components/folha/ControleFolha.module.css";
+import ControleFolha, { type TipoMovimentoFolha } from "../../../components/folha/ControleFolha";
 import { descontoNoSalario } from "../../../lib/folha/gratificacoes";
 import { planilhaFormatada } from "../../../lib/relatorios/xlsx-estilo";
 import { rotuloPagamentoFolha } from "../../../lib/folha/titulo-linha";
@@ -201,8 +204,8 @@ function dataFmt(s?: string) {
 
 // ─── Estilos ─────────────────────────────────────────────────
 const S = {
-  page:    { background: "#F4F6FA", minHeight: "100vh", fontFamily: "system-ui,sans-serif" },
-  body:    { maxWidth: 1300, margin: "0 auto", padding: "24px 20px" },
+  page:    { background: "var(--bg-page, #F4F6FA)", minHeight: "100vh", fontFamily: "system-ui,sans-serif" },
+  body:    { maxWidth: 1680, margin: "0 auto", padding: "24px 20px" },
   card:    { background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, marginBottom: 16 },
   label:   { fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: 4 },
   inp:     { border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "6px 10px", fontSize: 13, background: "#fff" } as React.CSSProperties,
@@ -222,7 +225,8 @@ type Aba = "processamento" | "adiantamentos" | "gratificacoes" | "decimo";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
-  const { fazendaId, contaId, fazendaIds = [], podeAcao } = useAuth();
+  const novoLayout = useOperationalPresentation();
+  const { fazendaId, contaId, fazendaIds = [], podeAcao, podeAcessar } = useAuth();
   // Reprocessar folha fechada é rotina liberada por grupo (Configurações → Usuários → Folha de Pagamento → Reprocessar)
   const podeReprocessar = podeAcao("folha", "reprocessar");
   type ItemRep = { tipo: "atualizar" | "criar" | "cancelar" | "sem_mudanca" | "pendencia_pago_maior" | "desconto"; funcionario_id?: string | null; nome: string; antes: number; depois: number; diferenca?: number };
@@ -237,6 +241,7 @@ export default function FolhaPagamentoPage() {
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
   const [saving, setSaving]       = useState(false);
+  const [controleVersao, setControleVersao] = useState(0);
 
   // dados
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -308,6 +313,7 @@ export default function FolhaPagamentoPage() {
   const [modalRep,   setModalRep]   = useState(false);
   const [repFolha,   setRepFolha]   = useState<Folha | null>(null);
   const [repNMeses,  setRepNMeses]  = useState(1);
+  const [repCopiarVariaveis, setRepCopiarVariaveis] = useState(false);
 
   // competência interna do modal (nova folha — permite retroativo sem mexer no filtro externo)
   const [modalCompDe,  setModalCompDe]  = useState(compAtual());
@@ -315,7 +321,7 @@ export default function FolhaPagamentoPage() {
 
   // ─── Carregar ───────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazendaId || !podeAcessar("folha")) return;
     setLoading(true);
     try {
       // Busca folhas via API route (service_role_key — evita qualquer bloqueio de RLS ou JWT)
@@ -398,13 +404,14 @@ export default function FolhaPagamentoPage() {
       const adis: any[] = adiPremRes.adis ?? [];
       const prems: any[] = adiPremRes.prems ?? [];
       setAdiantamentos(adis.filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
+      setControleVersao(v => v + 1);
       setPremiacoes(prems.filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
     } catch (e: any) {
       setMsg(`Erro ao carregar: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, contaId, fazendaIds.join(",")]);
+  }, [fazendaId, contaId, fazendaIds.join(","), podeAcessar]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -1078,39 +1085,31 @@ export default function FolhaPagamentoPage() {
     setSaving(true);
     try {
       const res = await apiFolha({ operacao: "listar_funcionarios_folha", folha_id: repFolha.id });
-      const funcsBase: any[] = (res.data ?? []).map((i: any) => ({
-        funcionario_id: i.funcionario_id, empresa_id: i.empresa_id, produtor_id: i.produtor_id,
-        nome_funcionario: i.nome_funcionario, cargo: i.cargo,
-        salario_bruto: i.salario_bruto, complemento_salarial: i.complemento_salarial ?? 0,
-        gratificacao: i.gratificacao, inss_trabalhador: i.inss_trabalhador, irrf: i.irrf,
-        ...((res.data ?? []).some((x: { he_valor?: number; he_50_horas?: number; he_100_horas?: number }) => Number(x.he_valor ?? 0) > 0 || Number(x.he_50_horas ?? 0) > 0 || Number(x.he_100_horas ?? 0) > 0)
-          ? { he_50_horas: i.he_50_horas ?? 0, he_100_horas: i.he_100_horas ?? 0, he_valor: i.he_valor ?? 0, he_dsr: i.he_dsr ?? 0 } : {}),
-        adiantamento: 0, outros_descontos: 0, desc_outros_descontos: "",
-        vale_transporte: i.vale_transporte, vale_refeicao: i.vale_refeicao,
-        outros_beneficios: i.outros_beneficios, inss_patronal: i.inss_patronal, fgts: i.fgts,
-      }));
+      const funcsBase = (res.data ?? []) as FolhaFunc[];
       const [ano, mes] = repFolha.competencia.split("-").map(Number);
       const criadas: string[] = [];
       for (let i = 1; i <= repNMeses; i++) {
         const dt = new Date(ano, mes - 1 + i, 1);
         const novaComp = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
-        const novaRes = await apiFolha({
-          operacao: "upsert_folha",
-          fazenda_id: fazendaId,
-          empresa_id: repFolha.empresa_id ?? null,
-          competencia: novaComp,
-          valor_bruto: repFolha.valor_bruto, valor_liquido: repFolha.valor_liquido,
-          inss_patronal: repFolha.inss_patronal, fgts_total: repFolha.fgts_total,
+        if (folhas.some(f => f.competencia === novaComp && chaveEmpregador(f) === chaveEmpregador(repFolha))) { criadas.push(`${nomeMes(novaComp)} (já existe — preservada)`); continue; }
+        const funcs = funcsBase.filter(f => funcionarios.some(c => c.id === f.funcionario_id)).map(f => {
+          const cadastro = funcionarios.find(c => c.id === f.funcionario_id)!;
+          const base = Number(f.salario_bruto ?? 0) - Number(f.gratificacao ?? 0) - Number(f.he_valor ?? 0) - Number(f.he_dsr ?? 0);
+          return recalc({ ...f, ...pctsEncargos(cadastro), salario_base: base, _comp: novaComp,
+            gratificacao: repCopiarVariaveis ? Number(f.gratificacao ?? 0) : 0,
+            he_50_horas: repCopiarVariaveis ? Number(f.he_50_horas ?? 0) : 0, he_100_horas: repCopiarVariaveis ? Number(f.he_100_horas ?? 0) : 0,
+            he_valor: repCopiarVariaveis ? Number(f.he_valor ?? 0) : 0, he_dsr: repCopiarVariaveis ? Number(f.he_dsr ?? 0) : 0,
+            adiantamento: 0, outros_descontos: 0, desc_outros_descontos: "" });
         });
-        if (!novaRes.criou) {
-          criadas.push(`${nomeMes(novaComp)} (já existe — atualizada)`);
-        } else {
-          criadas.push(nomeMes(novaComp));
-        }
-        await apiFolha({ operacao: "delete_funcionarios", folha_id: novaRes.id });
-        if (funcsBase.length) {
-          await apiFolha({ operacao: "insert_funcionarios", rows: funcsBase.map((f: any) => ({ ...f, folha_id: novaRes.id })) });
-        }
+        if (!funcs.length) { criadas.push(`${nomeMes(novaComp)} (sem funcionários ativos)`); continue; }
+        const novaRes = await apiFolha({ operacao: "upsert_folha", somente_criar: true,
+          fazenda_id: repFolha.fazenda_id, empresa_id: repFolha.empresa_id ?? null, produtor_id: repFolha.produtor_id ?? null, competencia: novaComp,
+          data_vencimento: vencimentoSalario(novaComp, Number(repFolha.data_vencimento?.slice(8,10)) || diaPagamentoPadrao()),
+          valor_bruto: funcs.reduce((s,f)=>s+f.salario_bruto,0), valor_liquido: funcs.reduce((s,f)=>s+liquido(f),0),
+          inss_patronal: funcs.reduce((s,f)=>s+f.inss_patronal,0), fgts_total: funcs.reduce((s,f)=>s+f.fgts,0) });
+        if (!novaRes.criou) { criadas.push(`${nomeMes(novaComp)} (já existe — preservada)`); continue; }
+        await apiFolha({ operacao: "insert_funcionarios", rows: linhasDaFolha(funcs).map(f => ({ ...f, folha_id: novaRes.id })) });
+        criadas.push(nomeMes(novaComp));
       }
       setMsg(`Replicado para: ${criadas.join(", ")}.`);
       setModalRep(false); carregar();
@@ -1251,18 +1250,28 @@ export default function FolhaPagamentoPage() {
   const totalLiqFolhaEdit     = folhaEdit.funcionarios?.reduce((s,f)=>s+liquido(f),0)??0;
   const totalINSSPatFolhaEdit  = folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_patronal,0)??0;
 
+  async function iniciarMovimentoControle(tipo: TipoMovimentoFolha, funcionarioId: string, competencia: string) {
+    const funcionario = funcionarios.find(f => f.id === funcionarioId);
+    if (!funcionario) { setMsg("Erro: funcionário ativo não encontrado. Atualize a lista antes de lançar um movimento."); return; }
+    if (tipo === "gratificacao") {
+      setPremEdit({ funcionario_id: funcionarioId, mes_referencia: competencia }); setModalPrem(true); return;
+    }
+    if (tipo === "adiantamento_salario" || tipo === "adiantamento_gratificacao") {
+      setAdiEdit({ funcionario_id: funcionarioId, tipo: tipo === "adiantamento_gratificacao" ? "gratificacao" : "salario", data: hojeLocal(), competencia_ref: competencia });
+      setAdiConta(""); setModalAdi(true); return;
+    }
+    if (tipo === "decimo1" || tipo === "decimo2") { setAba("decimo"); return; }
+    const folha = folhas.find(f => f.competencia === competencia && chaveEmpregador(f) === chaveEmpregador(funcionario));
+    await abrirFolha(folha, { comp: competencia, empregador: chaveEmpregador(funcionario), incluir: [funcionarioId] });
+    setMsg(`${funcionario.nome}: ajuste ${tipo === "horas_extras" ? "as horas extras / DSR" : "os descontos"} na linha do funcionário. ${folha?.status === "fechado" ? "Use Reprocessar Folha para conferir a alteração no CP." : "Salve a folha para atualizar sua previsão no CP."}`);
+  }
+
   // ─── Render ───────────────────────────────────────────────────
+  if (!podeAcessar("folha")) return <div style={S.page}><TopNav /><p role="alert" style={{ padding: 24 }}>Seu grupo não tem acesso à Folha de Pagamento.</p></div>;
   return (
-    <div data-arato-page="true" style={S.page}>
+    <div className={controleStyles.shell} data-folha-layout={novoLayout ? "novo" : "padrao"} data-arato-page="true" style={S.page}>
       <TopNav />
       <div style={S.body}>
-
-        {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-          <div>
-            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento</h1>
-          </div>
-        </div>
 
         {msg && (
           <div style={{ background: msg.startsWith("Erro") ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${msg.startsWith("Erro") ? "#FECACA" : "#BBF7D0"}`, borderRadius: 6, padding: "10px 16px", marginBottom: 12, fontSize: 13, color: msg.startsWith("Erro") ? "#B91C1C" : "#166534" }}>
@@ -1270,21 +1279,21 @@ export default function FolhaPagamentoPage() {
           </div>
         )}
 
-        {/* Abas */}
-        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
-          {([
-            ["processamento","📋 Processamento"],
-            ["adiantamentos","💵 Adiantamentos"],
-            ["gratificacoes","⭐ Gratificações"],
-            ["decimo","🎁 13º Salário"],
-          ] as [Aba,string][]).map(([k,l]) => (
-            <OperationalButton data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={()=>setAba(k)}
-              style={{ padding: "10px 20px", background: "none", border: "none", borderBottom: aba===k ? "2px solid #1A4870" : "2px solid transparent", fontWeight: aba===k ? 700 : 400, color: aba===k ? "#1A4870" : "#666", cursor: "pointer", fontSize: 13 }}>
-              {l}
-            </OperationalButton>
-          ))}
-        </div>
-
+        <ControleFolha
+          fazendaIds={fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []}
+          contaId={contaId} de={fComp} ate={fCompAte} versao={controleVersao}
+          carregando={loading} salvando={saving}
+          podeConferir={podeAcao("folha", "editar") || podeAcao("folha", "criar") || podeReprocessar}
+          abaLegada={aba} onAbaLegada={setAba}
+          onPeriodo={(de, ate) => { setFComp(de); setFCompAte(ate); }}
+          empregador={v => ({ chave: chaveEmpregador(v), nome: nomeEmpregador(v) })}
+          onGerar={() => abrirFolha()}
+          onAbrir={(id) => { const f = folhas.find(f => f.id === id); if (f) void abrirFolha(f); }}
+          onCriar={(id, comp) => { const f = funcionarios.find(f => f.id === id); if (f) void abrirFolha(undefined, { empregador: chaveEmpregador(f), comp, incluir: [id] }); }}
+          onFechar={ids => { const lista = folhas.filter(f => ids.includes(f.id) && f.status === "rascunho"); if (lista.length) void fecharFolhas(lista); }}
+          onReplicar={id => { const f = folhas.find(f => f.id === id); if (f) { setRepFolha(f); setRepNMeses(1); setRepCopiarVariaveis(false); setModalRep(true); } }}
+          onMovimento={iniciarMovimentoControle}
+        >
         {/* ══════════════════ ABA 13º SALÁRIO ══════════════════ */}
         {aba === "decimo" && <DecimoTerceiro />}
 
@@ -1623,12 +1632,13 @@ export default function FolhaPagamentoPage() {
           </>
         )}
 
+        </ControleFolha>
       </div>
 
       {/* ══════════════ MODAL FOLHA ══════════════ */}
       {modalFolha && (
-        <div style={S.overlay} onClick={()=>setModalFolha(false)}>
-          <div style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
+        <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalFolha(false)}>
+          <div data-folha-dialog="true" style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <h2 data-arato-h2="true" style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
@@ -1975,8 +1985,8 @@ export default function FolhaPagamentoPage() {
             </fieldset>
 
             {repPlano && (
-              <div style={S.overlay} onClick={() => !saving && setRepPlano(null)}>
-                <div style={{ ...S.modal, width: "min(96vw,900px)" }} onClick={e => e.stopPropagation()}>
+              <div data-folha-modal="true" style={S.overlay} onClick={() => !saving && setRepPlano(null)}>
+                <div data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,900px)" }} onClick={e => e.stopPropagation()}>
                   <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#0B2D50" }}>Reprocessar folha de {nomeMes(folhaEdit.competencia ?? "")}</h3>
                   <div style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>
                     Confira o que vai mudar no Contas a Pagar. Títulos com valor igual não são mexidos.{repAdiNovos > 0 ? ` ${repAdiNovos} adiantamento(s) lançado(s) depois do fechamento serão descontados.` : ""}
@@ -2040,7 +2050,7 @@ export default function FolhaPagamentoPage() {
                   </OperationalButton>
                 )}
                 {folhaEdit.id && (
-                  <OperationalButton data-arato-button="secondary" onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>
+                  <OperationalButton data-arato-button="secondary" onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setRepCopiarVariaveis(false); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>
                     ↻ Replicar Folha
                   </OperationalButton>
                 )}
@@ -2066,14 +2076,14 @@ export default function FolhaPagamentoPage() {
 
       {/* ══════════════ MODAL REPLICAR ══════════════ */}
       {modalRep && repFolha && (
-        <div style={S.overlay} onClick={()=>setModalRep(false)}>
-          <div style={{ ...S.modal, width:"min(96vw,440px)" }} onClick={e=>e.stopPropagation()}>
+        <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalRep(false)}>
+          <div data-folha-dialog="true" style={{ ...S.modal, width:"min(96vw,440px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Replicar Folha</h2>
               <OperationalButton data-arato-button="icon" onClick={()=>setModalRep(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
             </div>
             <p style={{ fontSize:13, color:"#555", marginTop:-8, marginBottom:16 }}>
-              Copia a estrutura da folha de <strong>{nomeMes(repFolha.competencia)}</strong>{repFolha.empresa_id ? ` (${empresasMap[repFolha.empresa_id] ?? "empresa"})` : ""} para as próximas competências como rascunho. Adiantamentos zerados.
+              Copia a estrutura da folha de <strong>{nomeMes(repFolha.competencia)}</strong>{repFolha.empresa_id ? ` (${empresasMap[repFolha.empresa_id] ?? "empresa"})` : ""} para as próximas competências como rascunho. Adiantamentos e descontos eventuais zerados. Competências já existentes serão preservadas.
             </p>
             <div style={{ marginBottom:20 }}>
               <label data-arato-label="true" style={S.label}>Replicar para as próximas</label>
@@ -2082,6 +2092,10 @@ export default function FolhaPagamentoPage() {
                 <span style={{ fontSize:13, color:"#555" }}>competência{repNMeses>1?"s":""}</span>
               </div>
             </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginBottom: 16 }}>
+              <input type="checkbox" checked={repCopiarVariaveis} onChange={e => setRepCopiarVariaveis(e.target.checked)} />
+              Repetir horas extras e gratificação incluída no salário da folha de origem
+            </label>
             {repNMeses > 0 && (() => {
               const [ano, mes] = repFolha.competencia.split("-").map(Number);
               const meses = Array.from({ length: repNMeses }, (_, i) => {
@@ -2116,8 +2130,8 @@ export default function FolhaPagamentoPage() {
           pendente: i => `Sem folha fechada: ${fmt(i.diferenca)} volta a pendente e será descontado ao fechar a folha`,
         };
         return (
-          <div style={S.overlay}>
-            <div style={{ ...S.modal, width: "min(96vw,560px)" }} onClick={e=>e.stopPropagation()}>
+          <div data-folha-modal="true" style={S.overlay}>
+            <div data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,560px)" }} onClick={e=>e.stopPropagation()}>
               <h2 data-arato-h2="true" style={{ margin:"0 0 4px", fontSize:16, color:"#0B2D50" }}>Corrigir adiantamento descontado</h2>
               <p style={{ fontSize:12, color:"#888", margin:"0 0 16px" }}>Salário já pago não muda: a diferença vira um título ou um desconto novo. A correção fica no histórico da folha.</p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
@@ -2159,8 +2173,8 @@ export default function FolhaPagamentoPage() {
       })()}
 
       {modalAdi && (
-        <div style={S.overlay} onClick={()=>setModalAdi(false)}>
-          <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
+        <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalAdi(false)}>
+          <div data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento Salarial"}</h2>
               <OperationalButton data-arato-button="icon" onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
@@ -2231,8 +2245,8 @@ export default function FolhaPagamentoPage() {
 
       {/* ══════════════ MODAL GRATIFICAÇÃO ══════════════ */}
       {modalPrem && (
-        <div style={S.overlay} onClick={()=>setModalPrem(false)}>
-          <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
+        <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalPrem(false)}>
+          <div data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{premEdit.id ? "Editar Gratificação" : "Nova Gratificação"}</h2>
               <OperationalButton data-arato-button="icon" onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>

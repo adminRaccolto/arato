@@ -13,6 +13,7 @@ import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarCentrosCustoGeralDaConta, listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
+import { buscarLancamentosConciliacao, type LancamentoConciliacao as Lancamento } from "../../../lib/financeiro/conciliacao-leitura";
 import { caixaDoBordero, ehLinhaSaldo, linhasAlteradas, pagoSemExtrato } from "../../../lib/financeiro/conciliacao";
 import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
@@ -59,25 +60,6 @@ interface RegraConc {
 let COLUNAS_NOVAS = false;
 let ultimoErroSync = "";   // último erro devolvido pelo servidor ao gravar extrato_transacoes (mostrado no alerta)
 let ultimoErroPersist = "";
-
-interface Lancamento {
-  id: string;
-  tipo: "receber" | "pagar";
-  descricao: string;
-  valor: number;
-  valor_pago?: number;
-  data_vencimento: string;
-  data_baixa?: string;
-  status: string;
-  categoria?: string;
-  conta_bancaria?: string;
-  produtor_id?: string | null;
-  conciliado?: boolean;
-  origem_tabela?: "lancamentos" | "empresa_lancamentos";
-  moeda?: string;
-  pessoa_id?: string | null;
-  lote_id?: string | null;
-}
 
 // Borderô = lote de pagamento do Contas a Pagar (pagamento_lotes + pagamento_lote_itens). Um borderô
 // gera UMA saída no extrato (o total), então é conciliado como unidade — não título a título.
@@ -495,75 +477,12 @@ function ConciliacaoInner() {
 
   // Colunas redimensionáveis
 
-  // Busca TODOS os lançamentos (não só os 600/1000 mais recentes) — o corte
-  // fixo escondia lançamentos mais antigos por completo da conciliação (achado
-  // real 18/09/2026: conta com 1438 lançamentos, só 600 chegavam a entrar em
-  // memória — quase 60% invisíveis pro matching e pra tela). Fetch normal sem
-  // paginação também bateria no limite padrão de 1000 do Supabase pra contas
-  // grandes; paginado aqui do mesmo jeito que outras funções já fazem em
-  // lib/db.ts.
-  async function buscarTodosLancamentosConciliacao(
-    fazIds: string[],
-    filtroData?: { de: string; ate: string },
-  ): Promise<Lancamento[]> {
-    const PAGE = 1000;
-    let all: Lancamento[] = [];
-    let from = 0;
-    while (true) {
-      let q = supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id,lote_id")
-        .in("fazenda_id", fazIds)
-        .not("status", "eq", "cancelado")
-        // previsão (Previsão de Gastos / folha em rascunho) não é pagamento: não concilia (o banco recusa a baixa)
-        .or("natureza.is.null,natureza.neq.previsao")
-        // desempate por id: só data_vencimento é chave não-única e a paginação por range
-        // pulava/duplicava lançamentos na fronteira das páginas.
-        .order("data_vencimento", { ascending: false })
-        .order("id", { ascending: true })
-        .order("id", { ascending: true }).range(from, from + PAGE - 1);
-      if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
-      const { data, error } = await q;
-      if (error) throw error;
-      all = all.concat((data ?? []) as Lancamento[]);
-      if (!data || data.length < PAGE) break;
-      from += PAGE;
-    }
-    // Títulos de EMPRESA (empresa_lancamentos): entram na mesma lista, para baixa e conciliação.
-    // Empresa usa status pendente/pago; aqui vira em_aberto/baixado, o mesmo vocabulário da tela.
-    const emp: Lancamento[] = [];
-    for (let f = 0; ; f += PAGE) {
-      let q = supabase.from("empresa_lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_pagamento,status,categoria,conciliado,moeda,pessoa_id,lote_id")
-        .in("fazenda_id", fazIds)
-        .not("status", "eq", "cancelado")
-        .order("data_vencimento", { ascending: false })
-        .order("id", { ascending: true })
-        .order("id", { ascending: true }).range(f, f + PAGE - 1);
-      if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
-      const { data, error } = await q;
-      if (error) throw error;
-      for (const e of (data ?? []) as Array<Record<string, unknown>>) {
-        emp.push({
-          id: String(e.id), tipo: e.tipo as "pagar" | "receber", descricao: String(e.descricao ?? ""),
-          valor: Number(e.valor ?? 0), valor_pago: e.valor_pago != null ? Number(e.valor_pago) : undefined,
-          data_vencimento: String(e.data_vencimento), data_baixa: (e.data_pagamento as string) ?? undefined,
-          status: e.status === "pago" ? "baixado" : "em_aberto",
-          categoria: (e.categoria as string) ?? undefined, conciliado: !!e.conciliado,
-          moeda: (e.moeda as string) ?? "BRL", pessoa_id: (e.pessoa_id as string) ?? null,
-          origem_tabela: "empresa_lancamentos", lote_id: (e.lote_id as string) ?? null,
-        } as Lancamento);
-      }
-      if (!data || data.length < PAGE) break;
-    }
-    return [...all, ...emp];
-  }
-
   // ── Carregar dados ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const [cR, lData, exR, hR, ogR, gsR, pR, etR, colR, regR, pesR, prodR] = await Promise.all([
       supabase.from("contas_bancarias").select("id,nome,banco,agencia,conta,produtor_id,fazenda_id,conjunta,cotitulares").in("fazenda_id", fazendaIds).order("nome"),
-      buscarTodosLancamentosConciliacao(fazendaIds),
+      buscarLancamentosConciliacao(supabase, fazendaIds),
       // sem `linhas` (JSON de todas as transações de cada import): a tela só usa o cabeçalho
       // do log, e o payload inteiro travava o carregamento em contas com muitos imports.
       supabase.from("extratos_bancarios").select("id,fazenda_id,conta_id,conta_nome,data_importacao,data_inicio,data_fim,total_linhas,conciliados,pendentes,usuario_nome,ofx_storage_path").in("fazenda_id", fazendaIds).order("data_importacao", { ascending: false }),
@@ -689,7 +608,7 @@ function ConciliacaoInner() {
     if (!fazendaId || lancRefresh) return;
     setLancRefresh(true);
     try {
-      const data = await buscarTodosLancamentosConciliacao(fazendaIds);
+      const data = await buscarLancamentosConciliacao(supabase, fazendaIds);
       setLancamentos(data);
     } finally { setLancRefresh(false); }
   }
@@ -831,17 +750,9 @@ function ConciliacaoInner() {
       const iniMatch = dIniMatch.toISOString().slice(0, 10);
       const fimMatch = dFimMatch.toISOString().slice(0, 10);
 
-      // Lançamentos frescos do período do OFX (±15 dias). Antes o select omitia
-      // conta_bancaria: o merge SUBSTITUÍA os lançamentos do estado por cópias sem
-      // conta, e os baixados sumiam do painel esquerdo até recarregar a página.
-      const lancFresh = await paginar<Lancamento>((de, ate) => supabase.from("lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_baixa,status,categoria,conta_bancaria,produtor_id,conciliado,moeda,pessoa_id,lote_id")
-        .in("fazenda_id", fazendaIds)
-        .not("status", "eq", "cancelado")
-        .or("natureza.is.null,natureza.neq.previsao")
-        .gte("data_vencimento", iniMatch)
-        .lte("data_vencimento", fimMatch)
-        .order("id").range(de, ate));
+      // Atualiza as duas origens e mantém a conta da baixa. Inclui pagamentos do período,
+      // mesmo quando o vencimento do título ficou fora do intervalo do OFX.
+      const lancFresh = await buscarLancamentosConciliacao(supabase, fazendaIds, { de: iniMatch, ate: fimMatch });
       let lancParaMatch = lancamentos;
       if (lancFresh.length > 0) {
         const mapa = new Map(lancamentos.map(l => [l.id, l]));

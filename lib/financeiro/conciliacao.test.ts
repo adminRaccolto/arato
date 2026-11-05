@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { buscarLancamentosConciliacao } from "./conciliacao-leitura.ts";
+import { avaliarLinhas } from "../conciliacao-match.ts";
 import { ajustarVinculosParaFk, caixaDoBordero, ehLinhaSaldo, linhaMudou, linhasAlteradas, pagoSemExtrato } from "./conciliacao.ts";
 
 test("título de Empresa (fora de lancamentos) vai só para lancamento_ids e lancamento_id fica nulo", () => {
@@ -105,4 +108,115 @@ test("linhasAlteradas: só a linha conciliada nesta ação é regravada, a de ou
   assert.deepEqual(linhasAlteradas([a, b], depois), [{ id: "b", conciliado: true }]);
   assert.deepEqual(linhasAlteradas([a, b], [a, b]), []);
   assert.deepEqual(linhasAlteradas([a], [a, b]), [b]);
+});
+
+// Exercita a leitura usada tanto pela carga da tela quanto pela importação do OFX.
+type RegistroConciliacao = Record<string, unknown>;
+function bancoConciliacao(tabelas: Record<string, RegistroConciliacao[]>, falha?: string) {
+  const consultas: string[] = [];
+  const separar = (s: string) => {
+    let nivel = 0, inicio = 0;
+    const partes: string[] = [];
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === "(") nivel++;
+      if (s[i] === ")") nivel--;
+      if (s[i] === "," && nivel === 0) { partes.push(s.slice(inicio, i)); inicio = i + 1; }
+    }
+    return [...partes, s.slice(inicio)];
+  };
+  const avaliar = (r: RegistroConciliacao, expressao: string): boolean => {
+    if (expressao.startsWith("and(")) return separar(expressao.slice(4, -1)).every(x => avaliar(r, x));
+    if (expressao.startsWith("or(")) return separar(expressao.slice(3, -1)).some(x => avaliar(r, x));
+    const [campo, op, ...resto] = expressao.split(".");
+    const valor = resto.join(".");
+    if (op === "is") return r[campo] == null;
+    if (r[campo] == null) return false;
+    if (op === "neq") return r[campo] !== valor;
+    if (op === "gte") return String(r[campo]) >= valor;
+    if (op === "lte") return String(r[campo]) <= valor;
+    throw new Error(`Operador não implementado: ${op}`);
+  };
+  return {
+    consultas,
+    sb: { from(tabela: string) {
+      consultas.push(tabela);
+      let rows = [...(tabelas[tabela] ?? [])], campos = "";
+      const q = {
+        select(c: string) { campos = c; return q; },
+        in(c: string, valores: unknown[]) { rows = rows.filter(r => valores.includes(r[c])); return q; },
+        neq(c: string, v: unknown) { rows = rows.filter(r => r[c] !== v); return q; },
+        or(expressao: string) { rows = rows.filter(r => separar(expressao).some(x => avaliar(r, x))); return q; },
+        order() { return q; },
+        range(inicio: number, fim: number) {
+          if (tabela === falha) return Promise.resolve({ data: null, error: new Error("Leitura negada") });
+          return Promise.resolve({ data: rows.slice(inicio, fim + 1).map(r => Object.fromEntries(campos.split(",").map(c => [c, r[c]]))), error: null });
+        },
+      };
+      return q;
+    } } as unknown as SupabaseClient,
+  };
+}
+const empresaBaixada = {
+  id: "emp-cnpj", fazenda_id: "faz-1", tipo: "pagar", descricao: "NF Insumos",
+  valor: "1200.00", valor_pago: "1200.00", data_vencimento: "2026-09-01",
+  data_pagamento: "2026-11-05", status: "pago", conta_bancaria: "conta-cnpj",
+  conciliado: false, moeda: "BRL", pessoa_id: "fornecedor", lote_id: null,
+};
+
+test("baixa do CNPJ preserva conta, data e valor do CP e pode casar com o extrato", async () => {
+  const { sb } = bancoConciliacao({ empresa_lancamentos: [empresaBaixada] });
+  const [titulo] = await buscarLancamentosConciliacao(sb, ["faz-1"], { de: "2026-11-01", ate: "2026-11-10" });
+  assert.equal(titulo.conta_bancaria, "conta-cnpj");
+  assert.equal(titulo.data_baixa, "2026-11-05");
+  assert.equal(titulo.status, "baixado");
+  assert.equal(titulo.valor_pago, 1200);
+  assert.equal(titulo.origem_tabela, "empresa_lancamentos");
+  const linha = { id: "ofx", data: "2026-11-05", descricao: "PAGAMENTO NF INSUMOS", valor: 1200, tipo: "debito" as const };
+  const mesmaConta = avaliarLinhas([linha], [titulo], { conta: { id: "conta-cnpj", titulares: [] } });
+  assert.equal(mesmaConta.get("ofx")?.lancamento?.id, "emp-cnpj");
+  const outraConta = avaliarLinhas([linha], [titulo], { conta: { id: "outra-conta", titulares: [] } });
+  assert.equal(outraConta.get("ofx")?.nivel, "bloqueado");
+});
+
+test("atualização lê produtor e empresa, exclui outro cliente, cancelados e previsões", async () => {
+  const produtor = { ...empresaBaixada, id: "cpf", status: "baixado", data_baixa: "2026-11-05", produtor_id: "prod-1", natureza: "real" };
+  const { sb, consultas } = bancoConciliacao({
+    lancamentos: [produtor, { ...produtor, id: "previsao", natureza: "previsao" }, { ...produtor, id: "legado", natureza: null }],
+    empresa_lancamentos: [empresaBaixada, { ...empresaBaixada, id: "outro", fazenda_id: "outro-cliente" }, { ...empresaBaixada, id: "cancelado", status: "cancelado" }],
+  });
+  const titulos = await buscarLancamentosConciliacao(sb, ["faz-1"]);
+  assert.deepEqual(titulos.map(t => t.id), ["cpf", "legado", "emp-cnpj"]);
+  assert.equal(titulos[0].produtor_id, "prod-1");
+  assert.deepEqual(consultas, ["lancamentos", "empresa_lancamentos"]);
+});
+
+test("período aceita vencimento ou baixa, sem trazer títulos fora das duas datas", async () => {
+  const { sb } = bancoConciliacao({
+    empresa_lancamentos: [empresaBaixada, { ...empresaBaixada, id: "a-vencer", status: "pendente", data_pagamento: null, data_vencimento: "2026-11-08" }, { ...empresaBaixada, id: "antigo", data_pagamento: "2026-09-03" }],
+    lancamentos: [{ ...empresaBaixada, id: "prod-pago", natureza: "real", status: "baixado", data_baixa: "2026-11-03" }, { ...empresaBaixada, id: "prev", natureza: "previsao", data_baixa: "2026-11-03" }],
+  });
+  const titulos = await buscarLancamentosConciliacao(sb, ["faz-1"], { de: "2026-11-01", ate: "2026-11-10" });
+  assert.deepEqual(titulos.map(t => t.id), ["prod-pago", "emp-cnpj", "a-vencer"]);
+});
+
+test("pagamento parcial da empresa mantém status, valor pago e borderô", async () => {
+  const { sb } = bancoConciliacao({ empresa_lancamentos: [{ ...empresaBaixada, status: "parcial", valor_pago: "300", lote_id: "bordero" }] });
+  const [titulo] = await buscarLancamentosConciliacao(sb, ["faz-1"]);
+  assert.equal(titulo.status, "parcial");
+  assert.equal(titulo.valor_pago, 300);
+  assert.equal(titulo.lote_id, "bordero");
+});
+
+test("leitura paginada não perde baixas de empresa depois dos primeiros mil títulos", async () => {
+  const { sb } = bancoConciliacao({ empresa_lancamentos: Array.from({ length: 1002 }, (_, i) => ({ ...empresaBaixada, id: `emp-${i}` })) });
+  const titulos = await buscarLancamentosConciliacao(sb, ["faz-1"]);
+  assert.equal(titulos.length, 1002);
+  assert.equal(new Set(titulos.map(t => t.id)).size, 1002);
+});
+
+test("sem fazendas não consulta; falha na empresa não retorna uma lista incompleta", async () => {
+  const { sb, consultas } = bancoConciliacao({}, "empresa_lancamentos");
+  assert.deepEqual(await buscarLancamentosConciliacao(sb, []), []);
+  assert.deepEqual(consultas, []);
+  await assert.rejects(() => buscarLancamentosConciliacao(sb, ["faz-1"]), /Leitura negada/);
 });

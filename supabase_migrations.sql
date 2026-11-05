@@ -19990,3 +19990,31 @@ CREATE INDEX IF NOT EXISTS idx_adiant_forn_pedido ON adiantamentos_fornecedor(pe
   WHERE pedido_compra_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 420 — Conferência versionada por funcionário na folha de pagamento
+--   Registra a versão revisada. Alterações nos valores invalidam a conferência
+--   pela assinatura, preservando o histórico de versões anteriores.
+-- ═══════════════════════════════════════════════════════════════════════════════
+BEGIN;
+CREATE TABLE IF NOT EXISTS folha_conferencias (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  folha_id uuid NOT NULL REFERENCES folha_pagamento(id) ON DELETE CASCADE,
+  linha_id uuid NOT NULL,
+  funcionario_id uuid REFERENCES funcionarios(id) ON DELETE SET NULL,
+  assinatura text NOT NULL,
+  assinatura_hash text GENERATED ALWAYS AS (md5(assinatura)) STORED,
+  usuario_id uuid NOT NULL,
+  usuario_nome text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (linha_id, assinatura_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_folha_conferencias_folha ON folha_conferencias(folha_id, created_at DESC);
+ALTER TABLE folha_conferencias ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS folha_conferencias_leitura ON folha_conferencias;
+CREATE POLICY folha_conferencias_leitura ON folha_conferencias FOR SELECT TO authenticated
+  USING (fazenda_id IN (SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+-- Escrita somente pela API autenticada, que valida o cliente, a folha, a linha e a assinatura atual.
+COMMIT;
+NOTIFY pgrst, 'reload schema';

@@ -1,3 +1,5 @@
+import { carregarControleFolha, validarPeriodoControle } from "../../../../lib/folha/controle-server";
+import { assinaturaConferencia, podeUsarControleFolha } from "../../../../lib/folha/controle";
 import { descontoNoSalario } from "../../../../lib/folha/gratificacoes";
 import { soDigitos } from "../../../../lib/folha/empregador";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -380,6 +382,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Acesso negado a este registro." }, { status: 403 });
     }
 
+    let perfilControle: {nome:string|null;role:string|null} | null = null;
+    if (["listar_controle", "conferir_funcionario"].includes(operacao)) {
+      const { data: perfil, error: ePerfil } = await sb.from("perfis").select("nome,role").eq("user_id", user.id).maybeSingle();
+      if (ePerfil) throw ePerfil;
+      perfilControle = perfil;
+      let permissao: unknown;
+      if (!String(perfil?.role ?? "").startsWith("raccotlo") && perfil?.role !== "bpo") {
+        const { data: usuario, error } = await sb.from("usuarios").select("grupos_usuarios(permissoes)").eq("auth_user_id", user.id).maybeSingle();
+        if (error) throw error;
+        const grupo = Array.isArray(usuario?.grupos_usuarios) ? usuario.grupos_usuarios[0] : usuario?.grupos_usuarios;
+        permissao = grupo?.permissoes?.folha;
+      }
+      if (!podeUsarControleFolha(perfil?.role, permissao, operacao === "conferir_funcionario")) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
+    }
+
+    if (operacao === "listar_controle") {
+      const de = payload.competencia_de, ate = payload.competencia_ate;
+      if (!validarPeriodoControle(de, ate) || typeof ate !== "string") return NextResponse.json({ error: "Informe um período válido." }, { status: 400 });
+      const ids = alvos.fazendas;
+      if (!ids.length) return NextResponse.json({ error: "Informe as fazendas do cliente." }, { status: 400 });
+      const data = await carregarControleFolha(sb, ids, de, ate);
+      return NextResponse.json({ ok: true, data });
+    }
+    if (operacao === "conferir_funcionario") {
+      const { data: folha, error: ef } = await sb.from("folha_pagamento").select("id,fazenda_id,competencia").eq("id", payload.folha_id).single();
+      if (ef || !folha) throw ef ?? new Error("Folha não encontrada.");
+      const dados = await carregarControleFolha(sb, [...new Set([...alvos.fazendas, folha.fazenda_id])], folha.competencia, folha.competencia);
+      const linha = dados.linhas.find(l=>l.id === payload.linha_id && l.folha_id === folha.id);
+      if (!linha) return NextResponse.json({ error: "Funcionário não encontrado nesta folha." }, { status: 404 });
+      if (!dados.conferenciaDisponivel) return NextResponse.json({ error: "Aplique a Seção 420 do supabase_migrations.sql para registrar a conferência." }, { status: 409 });
+      const assinatura = assinaturaConferencia(linha,dados);
+      if (payload.assinatura !== assinatura) return NextResponse.json({ error: "Os valores mudaram desde a abertura da conferência. Atualize os dados e confira novamente." }, { status: 409 });
+      const { error } = await sb.from("folha_conferencias").upsert({ fazenda_id: folha.fazenda_id, folha_id: folha.id, linha_id: linha.id, funcionario_id: linha.funcionario_id, assinatura, usuario_id: user.id, usuario_nome: perfilControle?.nome || user.email || "Usuário" }, { onConflict: "linha_id,assinatura_hash", ignoreDuplicates: true });
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+
     // ─── listar_folhas — inclui contagem de funcionários por folha ───────────
     // Escopo por CONTA (todas as fazendas), não só a fazenda ativa no
     // momento — senão uma folha criada com outra fazenda ativa "some" da
@@ -438,8 +477,8 @@ export async function POST(req: Request) {
     // produtor_id não existe em folha_pagamento), cai de volta pro
     // comportamento antigo (só empresa_id) em vez de quebrar a gravação.
     if (operacao === "upsert_folha") {
-      const { fazenda_id, empresa_id, produtor_id, competencia, ...dados } = payload as {
-        fazenda_id: string; empresa_id: string | null; produtor_id?: string | null; competencia: string;
+      const { fazenda_id, empresa_id, produtor_id, competencia, somente_criar, ...dados } = payload as {
+        fazenda_id: string; empresa_id: string | null; produtor_id?: string | null; competencia: string; somente_criar?: boolean;
         valor_bruto: number; valor_liquido: number; inss_patronal: number; fgts_total: number; obs?: string;
       };
       const isMissingProdutorCol = (e: { message?: string } | null) =>
@@ -493,6 +532,7 @@ export async function POST(req: Request) {
       const semDataVenc = (d: Record<string, unknown>) => { const { data_vencimento: _x, ...r } = d; void _x; return r; };
       const colunaAusente = (e: { message?: string } | null) => !!e?.message?.includes("data_vencimento");
       if (exist?.id) {
+        if (somente_criar) return NextResponse.json({ ok: true, id: exist.id, criou: false });
         await exigirFolhaAberta(sb, exist.id);
         // Folha de PJ: guarda/atualiza o produtor vinculado dos funcionários (a folha continua identificada pela empresa)
         const dadosUpd: Record<string, unknown> = empresa_id && produtor_id && colunaProdutorDisponivel ? { ...dados, produtor_id } : dados;
