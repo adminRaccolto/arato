@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-l",
+    data: "05/11/2026",
+    titulo: "Folha: nenhum funcionário fica de fora",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "correcao", texto: "O empregador da folha é o CNPJ/CPF: a mesma empresa cadastrada como produtor e como empresa não gera mais duas folhas no mês, e a folha passa a calcular o INSS patronal." },
+      { tipo: "melhoria", texto: "Nova Folha pede o empregador e só marca os funcionários dele. Se a folha do mês já existe, os novos são somados, sem apagar quem já estava." },
+      { tipo: "novidade", texto: "Aviso de funcionários ativos fora da folha do mês e botão + Incluir funcionário, também em folha fechada (com Reprocessar Folha)." },
+    ],
+  },
+  {
     versao: "2026.11.05-k",
     data: "05/11/2026",
     titulo: "13º: impostos só sobre o salário base",

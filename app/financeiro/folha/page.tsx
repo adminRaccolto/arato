@@ -18,6 +18,7 @@ import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
 import DecimoTerceiro from "../../../components/folha/DecimoTerceiro";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../lib/print";
+import { criarResolvedorEmpregador, funcionariosSemFolha, mesAnterior, type CadastroDoc } from "../../../lib/folha/empregador";
 
 // ─── Tipos ────────────────────────────────────────────────────
 interface Funcionario {
@@ -40,6 +41,8 @@ interface Funcionario {
   empresa_id?: string | null;
   empresa_nome?: string;
   produtor_id?: string | null;
+  data_admissao?: string | null;
+  data_demissao?: string | null;
 }
 interface FolhaFunc {
   id?: string;
@@ -94,6 +97,7 @@ interface Folha {
   data_vencimento?: string | null;   // data de pagamento (vencimento do CP de salário) escolhida ao gerar a folha
   num_funcionarios?: number;
   num_pagos?: number;
+  funcionario_ids?: string[];
   funcionarios?: FolhaFunc[];
 }
 interface Adiantamento {
@@ -240,6 +244,12 @@ export default function FolhaPagamentoPage() {
   const [mesesAbertos, setMesesAbertos] = useState<Set<string>>(new Set());
   const [empresasMap,  setEmpresasMap]  = useState<Record<string, string>>({});
   const [produtoresMap, setProdutoresMap] = useState<Record<string, string>>({});
+  // Empregador pelo CNPJ/CPF (lib/folha/empregador): o mesmo CNPJ como Produtor PJ e Empresa é uma folha só
+  const [cadEmpregador, setCadEmpregador] = useState<{ empresas: CadastroDoc[]; produtores: CadastroDoc[]; vinculos: { empresa_id?: string | null }[] }>({ empresas: [], produtores: [], vinculos: [] });
+  const resolverEmpregador = criarResolvedorEmpregador(cadEmpregador.empresas, cadEmpregador.produtores, cadEmpregador.vinculos);
+  const chaveEmpregador = (v: { empresa_id?: string | null; produtor_id?: string | null }) => resolverEmpregador(v).chave;
+  // Nova folha: empregador escolhido ("" = ainda não escolheu; "*" = todos)
+  const [empNova, setEmpNova] = useState("");
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
   const [premiacoes,   setPremiacoes]   = useState<Premiacao[]>([]);
 
@@ -333,7 +343,7 @@ export default function FolhaPagamentoPage() {
         // Busca funcionários de todas as fazendas da conta via fazendaIds (join !inner
         // filtrado por conta_id falha silenciosamente no Supabase JS — usar in() diretamente)
         supabase.from("funcionarios")
-          .select("id,fazenda_id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,fgts_pct,inss_empregador_pct,sat_rat_pct,sistema_s_pct,tipo,empresa_id,produtor_id,ativo")
+          .select("id,fazenda_id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,fgts_pct,inss_empregador_pct,sat_rat_pct,sistema_s_pct,tipo,empresa_id,produtor_id,ativo,data_admissao,data_demissao")
           .in("fazenda_id", fids)
           .eq("ativo", true)
           .order("nome"),
@@ -342,10 +352,10 @@ export default function FolhaPagamentoPage() {
         // Empresa é do cliente (conta). "nome_fantasia" não existe na tabela: pedir essa coluna fazia a consulta
         // falhar e toda folha de PJ mostrava só "Empresa" no lugar do nome.
         contaId
-          ? supabase.from("empresas").select("id,nome,razao_social").or(fids.length ? `conta_id.eq.${contaId},fazenda_id.in.(${fids.join(",")})` : `conta_id.eq.${contaId}`).order("nome")
+          ? supabase.from("empresas").select("id,nome,razao_social,cpf_cnpj").or(fids.length ? `conta_id.eq.${contaId},fazenda_id.in.(${fids.join(",")})` : `conta_id.eq.${contaId}`).order("nome")
           : Promise.resolve({ data: [] }),
         contaId
-          ? supabase.from("produtores").select("id,nome").eq("conta_id", contaId).order("nome")
+          ? supabase.from("produtores").select("id,nome,cpf_cnpj").eq("conta_id", contaId).order("nome")
           : Promise.resolve({ data: [] }),
       ]);
       const { data: funcs } = funcsRes as { data: any[] | null };
@@ -362,10 +372,17 @@ export default function FolhaPagamentoPage() {
       (prods ?? []).forEach((p: any) => { pMap[p.id] = p.nome; });
       setProdutoresMap(pMap);
 
-      // Todos os funcionários ativos com nome do empregador resolvido
+      // Todos os funcionários ativos com o empregador resolvido pelo CNPJ/CPF: funcionário ligado só ao Produtor PJ que
+      // também é Empresa (ou a uma empresa cadastrada duas vezes) vai para a folha da empresa, com INSS patronal
+      const cad = { empresas: (emps ?? []) as CadastroDoc[], produtores: (prods ?? []) as CadastroDoc[], vinculos: (funcs ?? []) as { empresa_id?: string | null }[] };
+      setCadEmpregador(cad);
+      const resolver = criarResolvedorEmpregador(cad.empresas, cad.produtores, cad.vinculos);
       const funcsLista = (funcs ?? [])
         .filter((f: any) => f.ativo !== false)
-        .map((f: any) => ({ ...f, empresa_nome: f.empresa_id ? (eMap[f.empresa_id] ?? "Empresa não encontrada") : undefined }));
+        .map((f: any) => {
+          const r = resolver(f);
+          return { ...f, empresa_id: r.empresa_id, empresa_nome: r.empresa_id ? (eMap[r.empresa_id] ?? "Empresa não encontrada") : undefined };
+        });
       const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
 
@@ -405,7 +422,40 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Folha — abrir / criar ───────────────────────────────────
-  async function abrirFolha(folha?: Folha) {
+  // Linha de um funcionário numa folha nova (ou incluído numa folha já existente)
+  function linhaNova(f: Funcionario, comp: string): FolhaFunc {
+    const base = f.salario_base ?? 0;
+    // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
+    const grat = premiacoes.filter(p => p.mes_referencia === comp && !p.lancamento_id && p.funcionario_id === f.id).reduce((s, p) => s + p.valor, 0);
+    const adi = adiantamentos.filter(a => (!a.competencia_ref || a.competencia_ref === comp) && a.status === "pendente" && a.funcionario_id === f.id)
+      .reduce((s, a) => s + descontoNoSalario(a), 0);
+    return recalc({
+      ...pctsEncargos(f),
+      funcionario_id: f.id,
+      fazenda_id: f.fazenda_id,
+      empresa_id: f.empresa_id ?? null,
+      produtor_id: f.produtor_id ?? null,
+      nome_funcionario: f.nome,
+      cargo: f.funcao ?? "",
+      salario_base: base,
+      complemento_salarial: f.complemento_salarial ?? 0,
+      gratificacao: grat,
+      he_50_horas: 0, he_100_horas: 0, he_valor: 0, he_dsr: 0, _comp: comp,
+      salario_bruto: base + grat,
+      inss_trabalhador: 0,
+      irrf: 0,
+      adiantamento: adi,
+      outros_descontos: 0, desc_outros_descontos: "",
+      vale_transporte: f.vale_transporte ?? 0,
+      vale_refeicao: f.vale_refeicao ?? 0,
+      outros_beneficios: f.outros_beneficios ?? 0,
+      inss_patronal: 0, fgts: 0,
+    });
+  }
+
+  // opts.incluir: funcionários a acrescentar na folha aberta (aviso de quem ficou de fora);
+  // opts.empregador / opts.comp: nova folha já com o empregador e a competência escolhidos
+  async function abrirFolha(folha?: Folha, opts?: { incluir?: string[]; empregador?: string; comp?: string }) {
     if (!fazendaId) return;
     if (folha) {
       // Carregar itens existentes via API route (service_role — bypass RLS)
@@ -457,6 +507,13 @@ export default function FolhaPagamentoPage() {
         }
         return base;
       });
+      // Funcionários do mesmo empregador que ficaram de fora: entram marcados; na folha fechada, o Reprocessar cria o título
+      const incluidos = (opts?.incluir ?? [])
+        .filter(id => !funcsCarregados.some(x => x.funcionario_id === id))
+        .map(id => funcionarios.find(f => f.id === id)).filter((f): f is Funcionario => !!f)
+        .map(f => linhaNova(f, folha.competencia));
+      funcsCarregados.push(...incluidos);
+      if (incluidos.length) setMsg(`${incluidos.map(f => f.nome_funcionario).join(", ")} incluído(s) nesta folha. ${folha.status === "fechado" ? "Clique em ⟳ Reprocessar Folha para gerar o título no Contas a Pagar." : "Clique em Salvar Folha."}`);
       setFolhaEdit({ ...folha, funcionarios: funcsCarregados });
       setSelecionados(new Set(funcsCarregados.map((_, i) => i)));
       dataPgtoManual.current = true;
@@ -506,43 +563,9 @@ export default function FolhaPagamentoPage() {
     } else {
       setVencCp({}); setSituacaoCp({});
       dataPgtoManual.current = false;
-      // Nova folha — pré-preenche com funcionários ativos
-      // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
-      const adisComp = adiantamentos.filter(
-        a => (!a.competencia_ref || a.competencia_ref === fComp) && a.status === "pendente"
-      );
-      const premsComp = premiacoes.filter(p => p.mes_referencia === fComp && !p.lancamento_id);
-      const funcs: FolhaFunc[] = funcionarios.map(f => {
-        const base = f.salario_base ?? 0;
-        const grat = premsComp
-          .filter(p => p.funcionario_id === f.id)
-          .reduce((s, p) => s + p.valor, 0);
-        const adi  = adisComp
-          .filter(a => a.funcionario_id === f.id)
-          .reduce((s, a) => s + descontoNoSalario(a), 0);
-        return recalc({
-          ...pctsEncargos(f),
-          funcionario_id: f.id,
-          fazenda_id: f.fazenda_id,
-          empresa_id: f.empresa_id ?? null,
-          produtor_id: f.produtor_id ?? null,
-          nome_funcionario: f.nome,
-          cargo: f.funcao ?? "",
-          salario_base: base,
-          complemento_salarial: (f as any).complemento_salarial ?? 0,
-          gratificacao: grat,
-          he_50_horas: 0, he_100_horas: 0, he_valor: 0, he_dsr: 0, _comp: fComp,
-          salario_bruto: base + grat,
-          inss_trabalhador: 0,
-          irrf: 0,
-          adiantamento: adi,
-          outros_descontos: 0, desc_outros_descontos: "",
-          vale_transporte: f.vale_transporte ?? 0,
-          vale_refeicao: f.vale_refeicao ?? 0,
-          outros_beneficios: f.outros_beneficios ?? 0,
-          inss_patronal: 0, fgts: 0,
-        });
-      });
+      // Nova folha — pré-preenche com os funcionários ativos; só os do empregador escolhido vêm marcados
+      const compNova = opts?.comp ?? fComp;
+      const funcs: FolhaFunc[] = funcionarios.map(f => linhaNova(f, compNova));
       // Ordena por empregador (nulls por último) para agrupamento visual
       funcs.sort((a, b) => {
         const ea = a.empresa_id ?? "￿";
@@ -550,10 +573,16 @@ export default function FolhaPagamentoPage() {
         if (ea !== eb) return ea.localeCompare(eb);
         return a.nome_funcionario.localeCompare(b.nome_funcionario);
       });
-      setFolhaEdit({ competencia: fComp, status: "rascunho", funcionarios: funcs });
-      setSelecionados(new Set(funcs.map((_, i) => i)));
-      setModalCompDe(fComp);
-      setModalCompAte(fCompAte);
+      setFolhaEdit({ competencia: compNova, status: "rascunho", funcionarios: funcs });
+      // Achado 05/11/2026: a folha nova abria com todos os ~70 funcionários do cliente marcados e quem montava a folha de
+      // um empregador desmarcava os outros um a um — o Cleiton (Muriana, Out/2026) ficou de fora assim. Agora se escolhe o
+      // empregador e só os dele vêm marcados (com um empregador só, já vem escolhido).
+      const chaves = [...new Set(funcs.map(f => chaveEmpregador(f)))];
+      const emp = opts?.empregador ?? (chaves.length === 1 ? chaves[0] : "");
+      setEmpNova(emp);
+      setSelecionados(new Set(funcs.map((f, i) => (emp === "*" || (emp !== "" && chaveEmpregador(f) === emp)) ? i : -1).filter(i => i >= 0)));
+      setModalCompDe(compNova);
+      setModalCompAte(opts?.comp ?? fCompAte);
     }
     setAbaModal("funcionarios");
     setFuncExpand(new Set());
@@ -567,7 +596,7 @@ export default function FolhaPagamentoPage() {
     try {
       // Apenas os funcionários marcados
       const funcs = (folhaEdit.funcionarios ?? []).filter((_, i) => selecionados.has(i));
-      if (funcs.length === 0) { setMsg("Selecione ao menos um funcionário."); setSaving(false); return; }
+      if (funcs.length === 0) { setMsg(!folhaEdit.id && !empNova ? "Escolha o empregador da folha." : "Selecione ao menos um funcionário."); setSaving(false); return; }
 
       if (folhaEdit.id) {
         // Edição de folha existente — mantém empregador e fazenda originais
@@ -586,7 +615,8 @@ export default function FolhaPagamentoPage() {
           const empresaId  = f.empresa_id ?? null;
           // Folha de PJ continua uma por empresa (o produtor não separa a folha); sem empresa, uma por produtor
           const produtorChave = empresaId ? null : (f.produtor_id ?? null);
-          const key = `${empresaId ?? ""}|${produtorChave ?? ""}`;
+          // O mesmo CNPJ/CPF é o mesmo empregador, ainda que cadastrado como produtor e como empresa
+          const key = chaveEmpregador(f) || `${empresaId ?? ""}|${produtorChave ?? ""}`;
           if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId: produtorChave, fazendaIdGrupo, itens: [] });
           const g = grupos.get(key)!;
           g.itens.push(f);
@@ -641,7 +671,8 @@ export default function FolhaPagamentoPage() {
     return json;
   }
 
-  async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string) {
+  async function salvarFolhaMes(comp: string, funcsTela: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string) {
+    let funcs = funcsTela;
     const fazendaAlvo = fazendaIdGrupo ?? funcs[0]?.fazenda_id ?? fazendaId!;
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
     const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
@@ -675,9 +706,22 @@ export default function FolhaPagamentoPage() {
         ...dadosFolha,
       });
       folhaId = res.id as string;
-      if (!res.criou) {
-        // Folha existente: limpa funcionários para recriar
+      if (!res.criou && folhaEdit.id) {
+        // Editando a folha (o empregador foi resolvido para outra folha do mesmo CNPJ): regrava os funcionários
         await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
+      } else if (!res.criou) {
+        // Nova folha de um empregador que já tem folha no mês: soma os funcionários novos aos que já estão nela.
+        // Antes apagava a folha existente e gravava só os marcados — quem já estava nela sumia sem aviso.
+        const ex = await apiFolha({ operacao: "listar_funcionarios_folha", folha_id: folhaId });
+        const existentes = (ex.data ?? []) as FolhaFunc[];
+        const ja = new Set(existentes.map(r => r.funcionario_id).filter(Boolean));
+        funcs = funcs.filter(f => !f.funcionario_id || !ja.has(f.funcionario_id));
+        const todos = [...existentes, ...funcs];
+        await apiFolha({ operacao: "update_folha", id: folhaId, ...dadosFolha,
+          valor_bruto: todos.reduce((s, f) => s + Number(f.salario_bruto ?? 0), 0),
+          valor_liquido: todos.reduce((s, f) => s + liquido(f), 0),
+          inss_patronal: todos.reduce((s, f) => s + Number(f.inss_patronal ?? 0), 0),
+          fgts_total: todos.reduce((s, f) => s + Number(f.fgts ?? 0), 0) });
       }
       if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, fazenda_id: fazendaAlvo, empresa_id: empresaId ?? null, produtor_id: produtorId ?? null }));
     } else {
@@ -1133,6 +1177,32 @@ export default function FolhaPagamentoPage() {
   }
 
   // ─── Derived ─────────────────────────────────────────────────
+  const nomeEmpregador = (v: { empresa_id?: string | null; produtor_id?: string | null }) =>
+    (v.empresa_id && empresasMap[v.empresa_id]) || (v.produtor_id && produtoresMap[v.produtor_id]) || "Sem empregador";
+  // Nova folha: empregadores dos funcionários (pelo CNPJ/CPF) e quais linhas aparecem
+  const gruposNova = !folhaEdit.id ? Array.from((folhaEdit.funcionarios ?? []).reduce((m, f) => {
+    const ch = chaveEmpregador(f);
+    const g = m.get(ch) ?? { chave: ch, nome: nomeEmpregador(f), n: 0 };
+    g.n++; m.set(ch, g); return m;
+  }, new Map<string, { chave: string; nome: string; n: number }>()).values()).sort((a, b) => a.nome.localeCompare(b.nome)) : [];
+  const linhaVisivel = (f: FolhaFunc) => !!folhaEdit.id || empNova === "*" || (empNova !== "" && chaveEmpregador(f) === empNova);
+  const idxVisiveis = (folhaEdit.funcionarios ?? []).map((f, i) => linhaVisivel(f) ? i : -1).filter(i => i >= 0);
+  function escolherEmpregadorNova(ch: string) {
+    setEmpNova(ch);
+    setSelecionados(new Set((folhaEdit.funcionarios ?? []).map((f, i) => (ch === "*" || (ch !== "" && chaveEmpregador(f) === ch)) ? i : -1).filter(i => i >= 0)));
+  }
+  // Folha aberta: funcionários ativos do mesmo empregador que não estão nela
+  const candidatosIncluir = folhaEdit.id ? funcionarios.filter(f =>
+    chaveEmpregador(f) === chaveEmpregador(folhaEdit) && !(folhaEdit.funcionarios ?? []).some(x => x.funcionario_id === f.id)) : [];
+  function incluirNaFolha(id: string) {
+    const f = funcionarios.find(x => x.id === id);
+    if (!f || !folhaEdit.competencia) return;
+    const n = (folhaEdit.funcionarios ?? []).length;
+    setFolhaEdit(p => ({ ...p, funcionarios: [...(p.funcionarios ?? []), linhaNova(f, p.competencia!)] }));
+    setSelecionados(prev => new Set([...prev, n]));
+    setMsg(`${f.nome} incluído. ${folhaEdit.status === "fechado" ? "Clique em ⟳ Reprocessar Folha para gerar o título no Contas a Pagar." : "Clique em Salvar Folha."}`);
+  }
+
   const folhasFiltradas   = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte);
   const folhasForaPeriodo = folhas.filter(f => f.competencia < fComp || f.competencia > fCompAte);
   // A folha aparece como UMA por mês. Por dentro segue uma por empregador: FGTS e INSS Patronal são recolhidos por
@@ -1244,6 +1314,41 @@ export default function FolhaPagamentoPage() {
                 </OperationalButton>
               </div>
             </OperationalFilters>
+
+            {/* Funcionários ativos que ficaram fora da folha do mês (estavam no mês anterior ou foram admitidos agora) */}
+            {!loading && (() => {
+              const avisos = [...new Set(folhasFiltradas.map(f => f.competencia))].sort().map(comp => {
+                const doMes = folhas.filter(f => f.competencia === comp);
+                const naMes = new Set(doMes.flatMap(f => f.funcionario_ids ?? []));
+                const naAnterior = new Set(folhas.filter(f => f.competencia === mesAnterior(comp)).flatMap(f => f.funcionario_ids ?? []));
+                const fora = funcionariosSemFolha(comp, funcionarios, naMes, naAnterior) as Funcionario[];
+                const porEmp = new Map<string, Funcionario[]>();
+                for (const f of fora) { const ch = chaveEmpregador(f); porEmp.set(ch, [...(porEmp.get(ch) ?? []), f]); }
+                return { comp, doMes, porEmp };
+              }).filter(a => a.porEmp.size);
+              if (!avisos.length) return null;
+              return (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "10px 16px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>
+                  {avisos.map(a => (
+                    <div key={a.comp} style={{ marginBottom: 4 }}>
+                      <strong>⚠ {nomeMes(a.comp)}: funcionários ativos fora da folha</strong>
+                      {[...a.porEmp.entries()].map(([ch, fs]) => {
+                        const folhaEmp = a.doMes.find(f => chaveEmpregador(f) === ch);
+                        return (
+                          <div key={ch} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                            <span><strong>{nomeEmpregador(fs[0])}</strong>: {fs.map(f => f.nome).join(", ")}</span>
+                            <OperationalButton data-arato-button="secondary" onClick={() => folhaEmp ? abrirFolha(folhaEmp, { incluir: fs.map(f => f.id) }) : abrirFolha(undefined, { empregador: ch, comp: a.comp })}
+                              style={{ fontSize: 11, color: "#791F1F", background: "#fff", border: "0.5px solid #E24B4A", borderRadius: 5, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                              {folhaEmp ? "Incluir na folha" : "Criar a folha"}
+                            </OperationalButton>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Aviso de folhas fora do período filtrado */}
             {folhasForaPeriodo.length > 0 && (
@@ -1581,6 +1686,14 @@ export default function FolhaPagamentoPage() {
                       {monthsInRange(modalCompDe, modalCompAte).length} meses
                     </span>
                   )}
+                  <div>
+                    <div style={{ ...S.label, marginBottom:2 }}>Empregador *</div>
+                    <SelectField value={empNova} onChange={e => escolherEmpregadorNova(e.target.value)} style={{ ...S.inp, fontSize:13, minWidth:240 }}>
+                      <option value="">— escolha o empregador —</option>
+                      {gruposNova.map(g => <option key={g.chave} value={g.chave}>{g.nome} ({g.n})</option>)}
+                      {gruposNova.length > 1 && <option value="*">Todos os empregadores</option>}
+                    </SelectField>
+                  </div>
                 </>
               )}
               <div title="Data em que o salário será pago: vira o vencimento do CP de cada funcionário ao fechar a folha">
@@ -1629,22 +1742,28 @@ export default function FolhaPagamentoPage() {
                   <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10, fontSize:12, color:"#555" }}>
                     <label data-arato-label="true" style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontWeight:600 }}>
                       <input type="checkbox"
-                        checked={selecionados.size === (folhaEdit.funcionarios ?? []).length && selecionados.size > 0}
-                        ref={el => { if (el) el.indeterminate = selecionados.size > 0 && selecionados.size < (folhaEdit.funcionarios ?? []).length; }}
-                        onChange={() => {
-                          const total = (folhaEdit.funcionarios ?? []).length;
-                          setSelecionados(selecionados.size === total ? new Set() : new Set(Array.from({length: total}, (_, i) => i)));
-                        }}
+                        checked={idxVisiveis.length > 0 && idxVisiveis.every(i => selecionados.has(i))}
+                        ref={el => { if (el) { const n = idxVisiveis.filter(i => selecionados.has(i)).length; el.indeterminate = n > 0 && n < idxVisiveis.length; } }}
+                        onChange={() => setSelecionados(idxVisiveis.every(i => selecionados.has(i)) ? new Set() : new Set(idxVisiveis))}
                       />
                       Selecionar todos
                     </label>
                     <span style={{ color:"#1A4870", fontWeight:700 }}>
-                      {selecionados.size} de {(folhaEdit.funcionarios ?? []).length} selecionados
+                      {idxVisiveis.filter(i => selecionados.has(i)).length} de {idxVisiveis.length} selecionados
                     </span>
+                    {candidatosIncluir.length > 0 && (folhaEdit.status !== "fechado" || podeReprocessar) && (
+                      <SelectField value="" onChange={e => { if (e.target.value) incluirNaFolha(e.target.value); }} style={{ ...S.inp, fontSize:12, marginLeft:"auto", maxWidth:280 }}
+                        title="Funcionários ativos deste empregador que não estão na folha">
+                        <option value="">+ Incluir funcionário ({candidatosIncluir.length})</option>
+                        {candidatosIncluir.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                      </SelectField>
+                    )}
                   </div>
                 )}
                 {(folhaEdit.funcionarios ?? []).length === 0 ? (
                   <div style={{ textAlign:"center", padding:24, color:"#888" }}>Nenhum funcionário. Adicione manualmente abaixo.</div>
+                ) : idxVisiveis.length === 0 ? (
+                  <div style={{ textAlign:"center", padding:24, color:"#888" }}>Escolha o empregador acima para listar os funcionários da folha.</div>
                 ) : (
                   <div data-arato-grid-container="true" style={{ overflowX:"auto" }}>
                     <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
@@ -1657,6 +1776,7 @@ export default function FolhaPagamentoPage() {
                       </thead>
                       <tbody>
                         {(folhaEdit.funcionarios ?? []).map((f, idx) => {
+                          if (!linhaVisivel(f)) return null;
                           const liq = liquido(f);
                           const expanded = funcExpand.has(idx);
                           const sel = selecionados.has(idx);

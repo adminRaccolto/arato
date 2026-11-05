@@ -1,4 +1,5 @@
 import { descontoNoSalario } from "../../../../lib/folha/gratificacoes";
+import { soDigitos } from "../../../../lib/folha/empregador";
 import { falharSeErro } from "../../../../lib/db-util";
 import { buscarPaginado } from "../../../../lib/buscar-paginado";
 import { tituloDaLinha } from "../../../../lib/folha/titulo-linha";
@@ -397,16 +398,18 @@ export async function POST(req: Request) {
       // Conta funcionários por folha em uma única query
       const folhaIds = (data ?? []).map((f: any) => f.id);
       let countMap: Record<string, number> = {};
+      const funcsPorFolha: Record<string, string[]> = {};
       const pagosMap: Record<string, number> = {};
       if (folhaIds.length > 0) {
-        const counts = await buscarPaginado<{ id: string; folha_id: string; cp_lancamento_id: string | null }>((de, ate) => sb
+        const counts = await buscarPaginado<{ id: string; folha_id: string; cp_lancamento_id: string | null; funcionario_id: string | null }>((de, ate) => sb
           .from("folha_funcionarios")
-          .select("id, folha_id, cp_lancamento_id")
+          .select("id, folha_id, cp_lancamento_id, funcionario_id")
           .in("folha_id", folhaIds)
           .order("id")
           .range(de, ate));
         (counts ?? []).forEach((row: any) => {
           countMap[row.folha_id] = (countMap[row.folha_id] ?? 0) + 1;
+          if (row.funcionario_id) (funcsPorFolha[row.folha_id] ??= []).push(row.funcionario_id);
         });
         // Salários já baixados no CP, por folha fechada
         const fechadas = new Set((data ?? []).filter((f: { status: string }) => f.status === "fechado").map((f: { id: string }) => f.id));
@@ -422,6 +425,7 @@ export async function POST(req: Request) {
         ...f,
         num_funcionarios: countMap[f.id] ?? 0,
         num_pagos: pagosMap[f.id] ?? 0,
+        funcionario_ids: funcsPorFolha[f.id] ?? [],
       }));
       return NextResponse.json({ ok: true, data: result });
     }
@@ -447,10 +451,34 @@ export async function POST(req: Request) {
       const { data: fzsDaConta } = fzConta?.conta_id ? await sb.from("fazendas").select("id").eq("conta_id", fzConta.conta_id) : { data: null };
       const fazendasCliente = (fzsDaConta ?? []).map(f => f.id as string);
       if (!fazendasCliente.includes(fazenda_id)) fazendasCliente.push(fazenda_id);
-      let q = sb.from("folha_pagamento").select("id").in("fazenda_id", fazendasCliente).eq("competencia", competencia);
-      if (empresa_id) q = q.eq("empresa_id", empresa_id); else q = q.is("empresa_id", null);
-      if (!empresa_id) q = produtor_id ? q.eq("produtor_id", produtor_id) : q.is("produtor_id", null);
-      let { data: exist, error: findErr } = await q.order("created_at").limit(1).maybeSingle();
+      // O empregador é o CNPJ/CPF, não o cadastro: a mesma empresa cadastrada como Produtor PJ e como Empresa (ou duas
+      // vezes) caía em duas folhas do mês (achado 05/11/2026, Muriana Out/2026). Acha a folha do mês pelo documento.
+      const docDe = async (tabela: "empresas" | "produtores", ids: string[]) => {
+        const m = new Map<string, string>();
+        if (!ids.length) return m;
+        const { data } = await sb.from(tabela).select("id, cpf_cnpj").in("id", ids);
+        for (const r of data ?? []) { const d = soDigitos(r.cpf_cnpj); if (d) m.set(r.id as string, d); }
+        return m;
+      };
+      const docPedido = empresa_id ? (await docDe("empresas", [empresa_id])).get(empresa_id)
+        : produtor_id ? (await docDe("produtores", [produtor_id])).get(produtor_id) : undefined;
+      let exist: { id: string } | null = null;
+      let findErr: { message?: string } | null = null;
+      if (docPedido) {
+        const { data: doMes } = await sb.from("folha_pagamento").select("id, empresa_id, produtor_id").in("fazenda_id", fazendasCliente)
+          .eq("competencia", competencia).order("created_at");
+        const lista = (doMes ?? []) as { id: string; empresa_id: string | null; produtor_id: string | null }[];
+        const dEmp = await docDe("empresas", [...new Set(lista.map(f => f.empresa_id).filter(Boolean))] as string[]);
+        const dProd = await docDe("produtores", [...new Set(lista.map(f => f.produtor_id).filter(Boolean))] as string[]);
+        const achada = lista.find(f => (f.empresa_id ? dEmp.get(f.empresa_id) : f.produtor_id ? dProd.get(f.produtor_id) : undefined) === docPedido);
+        if (achada) exist = { id: achada.id };
+      }
+      if (!exist) {
+        let q = sb.from("folha_pagamento").select("id").in("fazenda_id", fazendasCliente).eq("competencia", competencia);
+        if (empresa_id) q = q.eq("empresa_id", empresa_id); else q = q.is("empresa_id", null);
+        if (!empresa_id) q = produtor_id ? q.eq("produtor_id", produtor_id) : q.is("produtor_id", null);
+        ({ data: exist, error: findErr } = await q.order("created_at").limit(1).maybeSingle());
+      }
       let colunaProdutorDisponivel = true;
       if (findErr && isMissingProdutorCol(findErr)) {
         colunaProdutorDisponivel = false;
