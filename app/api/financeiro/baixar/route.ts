@@ -7,6 +7,8 @@
  * Ação "reabrir": reseta data_baixa, valor_pago, status para em_aberto/vencido.
  */
 import { desvincularExtrato } from "../../../../lib/financeiro/desvincular-extrato";
+import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
+import { ptaxDoDiaQualquerLado } from "../../../../lib/financeiro/ptax";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
@@ -202,6 +204,8 @@ export async function POST(req: NextRequest) {
         .update({ valor_aplicado: novoTotalAdiantamento, status: novoStatusAdiantamento })
         .eq("id", adiantamentoId);
       if (eAdiant) return NextResponse.json({ ok: false, error: eAdiant.message }, { status: 400 });
+      // Crédito usado deixa de abater o título do pedido ligado a este adiantamento
+      if (adiant.pedido_compra_id) await ajustarSaldoPedidoNoFC(sb, adiant.pedido_compra_id, ptaxDoDiaQualquerLado).catch(e => console.error("[saldo-pedido]", e));
 
       // 3. Abate o CP — mesma lógica de "baixar", sem tocar conta_bancaria
       // (nenhum dinheiro saiu de banco nesta parte, foi crédito já pago antes)

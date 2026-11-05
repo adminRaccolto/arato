@@ -35,7 +35,7 @@ import {
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
   listarGruposInsumoDaConta, listarPrincipiosAtivos, insumoAtivo, reavaliarStatusPedidoCompra } from "../../lib/db";
 import type { PedidoCompra, RelPedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo, AdiantamentoFornecedor } from "../../lib/supabase";
-import { resumoValorPedido, totalNfsNaMoeda, valorCanceladoPorLinhas, valorEntreguePorLinhas } from "../../lib/financeiro/saldo-pedido";
+import { motivoDaObservacao, resumoValorPedido, totalNfsNaMoeda, valorCanceladoPorLinhas, valorEntreguePorLinhas } from "../../lib/financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "../../lib/financeiro/ptax";
 import { supabase } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -399,6 +399,7 @@ export default function ComprasPage() {
   // Controle de valor do modal: NFs convertidas na moeda do pedido em dólar (null = falta cotação) e adiantamentos ligados
   const [entregueUSD, setEntregueUSD] = useState<number | null>(null);
   const [adiantPedido, setAdiantPedido] = useState<AdiantamentoFornecedor[]>([]);
+  const [tituloPedido, setTituloPedido] = useState<{ valor: number; status: string; observacao: string | null; origem_lancamento: string | null } | null>(null);
 
   // Modal encerramento (ajuste de divergência — peso de carga, casas decimais)
   const [modalEncerrar, setModalEncerrar] = useState<{
@@ -1349,6 +1350,9 @@ export default function ComprasPage() {
     setModalEntrega({ pedido: ped, itens: its });
     setEntregueUSD(null); setAdiantPedido([]);
     listarAdiantamentosDoPedido(ped.id).then(setAdiantPedido).catch(() => setAdiantPedido([]));
+    setTituloPedido(null);
+    if (ped.lancamento_id) supabase.from("lancamentos").select("valor, status, observacao, origem_lancamento").eq("id", ped.lancamento_id).maybeSingle()
+      .then(({ data }) => setTituloPedido(data?.origem_lancamento === "pedido_compra" ? data : null));
     if (ped.fiscal) {
       const { nfs, itens: nfItens } = await listarNfEntradasPorPedido(ped.id);
       if (ped.moeda === "USD") {
@@ -2565,12 +2569,14 @@ export default function ComprasPage() {
           const v = adiantPedido.filter(a => a.moeda === m).reduce((s, a) => s + a.valor, 0);
           return v > 0 ? (m === "USD" ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fmtBRL(v)) : "";
         }).filter(Boolean).join(" + ");
+        const motivoTitulo = motivoDaObservacao(tituloPedido?.observacao);
         const cartoesValor: [string, string, string?][] = [
           ["Valor do pedido", fmtValorPedido(resumoValor.total)],
           ["Valor entregue", entregueNaMoeda === null ? "Sem cotação" : fmtValorPedido(resumoValor.entregue), pedidoUSD && ehFiscal && nfsFiscais.some(n => n.status === "processada") ? `NFs: ${fmtBRL(totalNFs)}` : undefined],
           ["Saldo a entregar", entregueNaMoeda === null ? "—" : fmtValorPedido(resumoValor.saldo)],
           ...(resumoValor.cancelado > 0 ? [["Cancelado", fmtValorPedido(resumoValor.cancelado)] as [string, string]] : []),
           ...(adiantadoTxt ? [["Adiantado", adiantadoTxt, `${adiantPedido.length} ${adiantPedido.length === 1 ? "adiantamento" : "adiantamentos"}`] as [string, string, string]] : []),
+          ...(tituloPedido ? [["Título no CP", tituloPedido.status === "cancelado" ? fmtValorPedido(0) : fmtValorPedido(Number(tituloPedido.valor)), tituloPedido.status === "cancelado" ? "Saldo zerado" : undefined] as [string, string, string?]] : []),
         ];
         // Lista mostra só as NFs processadas (as que contam como entregue); NF ainda pendente que aponta para o pedido
         // fica numa linha de aviso, para achar vínculo feito por engano antes de processar.
@@ -2615,6 +2621,8 @@ export default function ComprasPage() {
                     <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>{resumoValor.pct}% entregue</span>
                   </div>
                 )}
+
+                {motivoTitulo && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: -8, marginBottom: 16 }}>Título no CP reduzido: {motivoTitulo}</div>}
 
                 {/* Situação dos itens */}
                 <div data-arato-dialog-body="true" style={secTit}>Situação dos Itens</div>

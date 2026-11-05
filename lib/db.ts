@@ -7193,17 +7193,33 @@ export async function criarAdiantamento(
   if (eLanc) throw eLanc;
 
   await supabase.from("adiantamentos_fornecedor").update({ lancamento_id: lanc.id }).eq("id", adiant.id);
+  await reajustarPedidoDoAdiantamento(a.pedido_compra_id);
   return { ...adiant, lancamento_id: lanc.id };
 }
 
+// O título do pedido vale o saldo menos os adiantamentos ligados: recalcula sempre que um deles muda.
+async function reajustarPedidoDoAdiantamento(pedido_id?: string | null): Promise<void> {
+  if (pedido_id) await ajustarSaldoPedidoNoFC(supabase, pedido_id, ptaxDoDiaQualquerLado).catch(e => console.error("[saldo-pedido]", e));
+}
+
 export async function atualizarAdiantamento(id: string, data: Partial<AdiantamentoFornecedor>): Promise<void> {
+  const trocaPedido = "pedido_compra_id" in data;
+  const anterior = trocaPedido
+    ? (await supabase.from("adiantamentos_fornecedor").select("pedido_compra_id").eq("id", id).maybeSingle()).data?.pedido_compra_id as string | null | undefined
+    : null;
   const { error } = await supabase.from("adiantamentos_fornecedor").update(data).eq("id", id);
   if (error) throw error;
+  if (trocaPedido && anterior !== data.pedido_compra_id) {
+    await reajustarPedidoDoAdiantamento(anterior);
+    await reajustarPedidoDoAdiantamento(data.pedido_compra_id);
+  }
 }
 
 export async function cancelarAdiantamento(id: string): Promise<void> {
+  const { data: atual } = await supabase.from("adiantamentos_fornecedor").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase.from("adiantamentos_fornecedor").update({ status: "cancelado" }).eq("id", id);
   if (error) throw error;
+  await reajustarPedidoDoAdiantamento((atual as AdiantamentoFornecedor | null)?.pedido_compra_id);
 }
 
 export async function aplicarAdiantamento(
@@ -7237,6 +7253,7 @@ export async function aplicarAdiantamento(
     .from("adiantamentos_fornecedor")
     .update({ valor_aplicado: novoTotal, status: novoStatus })
     .eq("id", adiantamento.id);
+  await reajustarPedidoDoAdiantamento(adiantamento.pedido_compra_id);
 
   return apl;
 }

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-i",
+    data: "05/11/2026",
+    titulo: "Adiantamento reduz o título do pedido",
+    modulos: ["Compras", "Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Adiantamento ligado a um pedido reduz o título do pedido no Contas a Pagar e no Fluxo de Caixa. O crédito já aplicado em NF deixa de abater." },
+      { tipo: "melhoria", texto: "O motivo da redução aparece no título do CP e no Controle de Valor do pedido." },
+    ],
+  },
+  {
     versao: "2026.11.05-h",
     data: "05/11/2026",
     titulo: "Pedido de compra: valor entregue e adiantamentos",

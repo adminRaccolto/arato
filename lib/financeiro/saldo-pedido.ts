@@ -40,6 +40,50 @@ export async function totalNfsNaMoeda(
   return r2(soma);
 }
 
+type AdiantamentoSaldo = { valor: unknown; valor_aplicado?: unknown; moeda?: string | null; cotacao_usd?: unknown; data_emissao?: string | null };
+
+/**
+ * Crédito ainda disponível dos adiantamentos ligados ao pedido, na moeda do título. Só conta o que não foi aplicado: o
+ * valor aplicado já quitou o título de uma NF, e abatê-lo de novo tiraria do caixa um pagamento que ainda vai sair.
+ * null = falta a cotação de algum adiantamento (quem chama não mexe no título).
+ */
+export async function saldoAdiantamentosNaMoeda(
+  adiantamentos: AdiantamentoSaldo[], moeda: string | null | undefined, ptax: (data: string) => Promise<number | null>,
+): Promise<number | null> {
+  const destinoUSD = moeda === "USD";
+  let soma = 0;
+  for (const a of adiantamentos) {
+    const v = Math.max(0, Number(a.valor || 0) - Number(a.valor_aplicado || 0));
+    if (v <= 0) continue;
+    const origemUSD = a.moeda === "USD";
+    if (origemUSD === destinoUSD) { soma += v; continue; }
+    const cot = (origemUSD ? Number(a.cotacao_usd) || 0 : 0) || (a.data_emissao ? await ptax(String(a.data_emissao).slice(0, 10)) : null);
+    if (!cot) return null;
+    soma += origemUSD ? v * cot : v / cot;
+  }
+  return r2(soma);
+}
+
+const PREFIXO_MOTIVO = "[Saldo do pedido]";
+const fmtMoeda = (v: number, moeda?: string | null) => `${moeda === "USD" ? "US$" : "R$"} ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Motivo da redução do título do pedido, gravado na observação e mostrado no CP. null = título ainda vale o total. */
+export function motivoSaldoPedido(d: { total: number; nfs: number; adiantamentos: number; saldo: number; moeda?: string | null }): string | null {
+  if (d.nfs <= 0 && d.adiantamentos <= 0) return null;
+  const partes = [`Total ${fmtMoeda(d.total, d.moeda)}`];
+  if (d.nfs > 0) partes.push(`NFs processadas ${fmtMoeda(d.nfs, d.moeda)}`);
+  if (d.adiantamentos > 0) partes.push(`adiantamentos ${fmtMoeda(d.adiantamentos, d.moeda)}`);
+  return `${PREFIXO_MOTIVO} ${partes.join(" − ")} = ${fmtMoeda(d.saldo, d.moeda)}`;
+}
+/** Tira da observação só o que o sistema escreveu: o texto digitado pelo usuário continua. */
+export function observacaoSemMotivo(obs: unknown): string {
+  return String(obs ?? "").split("\n").filter(l => !l.startsWith(PREFIXO_MOTIVO) && !l.includes(MARCA_SALDO_ZERADO)).join("\n").trim();
+}
+/** Linha do motivo dentro da observação do título, para mostrar na tela. */
+export function motivoDaObservacao(obs: unknown): string | null {
+  return String(obs ?? "").split("\n").find(l => l.startsWith(PREFIXO_MOTIVO))?.slice(PREFIXO_MOTIVO.length).trim() ?? null;
+}
+
 type LinhaValor = { quantidade: number; qtd_entregue?: number | null; qtd_cancelada?: number | null; valor_unitario?: number | null; desconto_unitario?: number | null };
 const unitarioLiquido = (l: LinhaValor) => (Number(l.valor_unitario) || 0) - (Number(l.desconto_unitario) || 0);
 
@@ -74,17 +118,26 @@ export async function ajustarSaldoPedidoNoFC(
   const somaNfs = await totalNfsNaMoeda(nfs ?? [], lanc.moeda, ptax ?? (async () => null));
   if (somaNfs === null) return;   // sem PTAX de alguma NF: não mexe no título (melhor manter o saldo do que zerar errado)
   // Pedido em dólar: sobra de até 2% do total é diferença de câmbio entre o pedido e as NFs, não saldo a faturar
-  let saldoBruto = saldoDoPedido(Number(ped.total_financeiro), somaNfs);
+  // Adiantamento ligado ao pedido (Seção 419) já saiu ou vai sair por título próprio: abate o saldo para não contar duas vezes.
+  // Sem a seção, a consulta falha e vale só o abatimento das NFs.
+  const { data: adts } = await cli.from("adiantamentos_fornecedor")
+    .select("valor, valor_aplicado, moeda, cotacao_usd, data_emissao").eq("pedido_compra_id", pedidoId).neq("status", "cancelado");
+  const somaAdiant = await saldoAdiantamentosNaMoeda(adts ?? [], lanc.moeda, ptax ?? (async () => null));
+  if (somaAdiant === null) return;
+  let saldoBruto = saldoDoPedido(Number(ped.total_financeiro), somaNfs + somaAdiant);
   if (lanc.moeda === "USD" && saldoBruto <= Number(ped.total_financeiro) * TOLERANCIA_CAMBIO + 0.005) saldoBruto = 0;
   const saldo = saldoBruto;
 
   const aberto = ["em_aberto", "vencido", "vencendo"].includes(lanc.status);
   const zeradoPorNos = lanc.status === "cancelado" && String(lanc.observacao ?? "").includes(MARCA_SALDO_ZERADO);
+  const motivo = motivoSaldoPedido({ total: Number(ped.total_financeiro), nfs: somaNfs, adiantamentos: somaAdiant, saldo, moeda: lanc.moeda });
+  const obsUsuario = observacaoSemMotivo(lanc.observacao);
+  const obsComMotivo = [obsUsuario, motivo].filter(Boolean).join("\n") || null;
   if (saldo <= 0.01) {
-    if (aberto) await cli.from("lancamentos").update({ status: "cancelado", observacao: MARCA_SALDO_ZERADO }).eq("id", lanc.id);
-  } else if (aberto && Math.abs(saldo - Number(lanc.valor)) > 0.005) {
-    await cli.from("lancamentos").update({ valor: saldo }).eq("id", lanc.id);
+    if (aberto) await cli.from("lancamentos").update({ status: "cancelado", observacao: [obsUsuario, MARCA_SALDO_ZERADO, motivo].filter(Boolean).join("\n") }).eq("id", lanc.id);
+  } else if (aberto && (Math.abs(saldo - Number(lanc.valor)) > 0.005 || (lanc.observacao ?? null) !== obsComMotivo)) {
+    await cli.from("lancamentos").update({ valor: saldo, observacao: obsComMotivo }).eq("id", lanc.id);
   } else if (zeradoPorNos) {
-    await cli.from("lancamentos").update({ status: "em_aberto", valor: saldo, observacao: null }).eq("id", lanc.id);
+    await cli.from("lancamentos").update({ status: "em_aberto", valor: saldo, observacao: obsComMotivo }).eq("id", lanc.id);
   }
 }

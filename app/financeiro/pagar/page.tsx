@@ -68,6 +68,7 @@ import {
   excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
   listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados,
   listarAdiantamentosFuncionarioDisponiveis, aplicarAdiantamentoFuncionarioEmCP, type AdiantamentoFuncionarioDisp } from "../../../lib/db";
+import { motivoDaObservacao } from "../../../lib/financeiro/saldo-pedido";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { statusExibido } from "../../../lib/financeiro/titulos";
@@ -2314,6 +2315,9 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px" }}>
                       {l.descricao ?? "—"}
                       {l.origem_lancamento === "pedido_compra" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>Pedido de Compra</span>}
+                      {l.origem_lancamento === "pedido_compra" && motivoDaObservacao(l.observacao) && (
+                        <div style={{ fontSize: 10, color: "#666", marginTop: 2, fontStyle: "normal" }}>Valor reduzido: {motivoDaObservacao(l.observacao)}</div>
+                      )}
                     </td>
                   ),
                   operacao: (
