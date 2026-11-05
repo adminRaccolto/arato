@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { instalarFetchComToken } from "../lib/fetch-com-token";
 import { calcularStepsCompletos } from "../lib/onboarding";
 import { planoInclui } from "../lib/planos";
+import { ehConfiguracaoPorGrupo, grupoLiberaConfiguracao } from "../lib/permissoes-configuracao";
 import type { PlanoId } from "../lib/planos";
 import { useRouter } from "next/navigation";
 
@@ -599,6 +600,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     if (isAnyRaccotlo) return true; // raccotlo/bpo vêem tudo, inclusive conf_raccotlo
     if (modulo === "conf_raccotlo") return false;  // clientes bloqueados de páginas raccotlo
     const p = permissoes[modulo] as unknown;
+    if (ehConfiguracaoPorGrupo(modulo)) return grupoLiberaConfiguracao(p); // configuração: não marcado = sem acesso
     if (p === undefined) return true;              // não configurado = permitido por padrão
     if (Array.isArray(p)) {
       if ((p as string[]).length === 0) return true; // array vazio = não configurado = permitido
@@ -628,6 +630,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // Raccotlo staff e BPO têm acesso irrestrito — inclusive ao visualizar contexto de cliente
     if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional" || userRole === "bpo") return true;
 
+    // Configuração não depende de plano: quem decide é o grupo de usuários (podeAcessar)
+    if (ehConfiguracaoPorGrupo(modulo)) return true;
     // Override explícito false bloqueia o cliente (mas não raccotlo, já tratado acima)
     if (contaModulosOverrides[modulo] === false) return false;
     // Override explícito true (add-on habilitado para a conta)

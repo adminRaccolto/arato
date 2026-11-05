@@ -16,6 +16,7 @@ const RELEASES = [
       { tipo: "correcao", texto: "Padrões do Sistema trabalha por cliente, só acrescenta o que falta e nunca altera a operação que o cliente já tem." },
       { tipo: "correcao", texto: "Dados & Limpeza alcança títulos de Empresa, extratos, folha, cartões, CT-e e outros cadastros, e o Zeramento agora lança ajustes que aparecem no Kardex." },
       { tipo: "melhoria", texto: "Os planos passam a controlar também os itens de Produção, Estoque, Resultados e Empresas no menu, e o limite de usuários do plano vale ao criar usuário." },
+      { tipo: "melhoria", texto: "As telas de configuração (fiscal, financeira e contábil) passam a ser liberadas pelo grupo de usuários, em Configurações → Usuários e Permissões." },
       { tipo: "melhoria", texto: "Gestores da Raccolto entram na área de gestão. Faturamento volta ao menu, com cobrança manual. Manual e passo a passo de implantação com os caminhos atuais." },
     ],
   },

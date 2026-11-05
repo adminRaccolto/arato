@@ -859,6 +859,8 @@ Valores saem como número (somáveis), negativos em vermelho.
 **Série por IE:** a série e a numeração de cada IE ficam em Configurações → Sistema → Parâmetros Fiscais (NF-e) → aba Fiscal, no cartão do produtor dono da IE. Um mesmo CPF pode ter mais de um cartão (por exemplo, "FULANO" e "FULANO E OUTROS"), e cada IE aparece só no cartão do seu produtor. Se a série está configurada e o erro continua, confira se foi salva no cartão certo.
 
 ### Usuários, acesso e login
+**Telas de configuração:** Parâmetros Fiscais, Operações Fiscais, Operações Gerenciais, Plano de Contas, Regras de Rateio, Classificação Automática, Taxas de Referência e Contabilidade só aparecem para o usuário cujo grupo tem a permissão marcada, em Configurações → Usuários e Permissões. Não depende do plano. Usuário sem grupo não vê essas telas. A equipe Raccolto vê tudo.
+
 **Usuários e grupos de permissão:** usuários e grupos de permissão são do cliente e valem para todas as fazendas. O botão de acesso da equipe Raccolto (Configurações → Usuários e Permissões) liga/desliga o acesso em todas as fazendas de uma vez.
 
 **Acesso aos dados:** cada usuário só vê os dados do próprio cliente. Se uma tela ficar vazia para quem via os dados, ou aparecer "Acesso negado" em tela usada normalmente, encaminhe à equipe Raccolto informando a tela e o usuário.

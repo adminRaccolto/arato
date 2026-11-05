@@ -251,7 +251,7 @@ export const NAV: NavItem[] = [
       { id: "conf-op-fiscais",      label: "Operações Fiscais / CFOP",   path: "/configuracoes/modulos?aba=operacoes",                moduleId: "conf_fiscal"       },
       { id: "conf-op-gerenciais",   label: "Operações Gerenciais",       path: "/configuracoes/operacoes-gerenciais",                 moduleId: "conf_financeiro"   },
       { id: "conf-plano-contas",    label: "Plano de Contas",            path: "/configuracoes/plano-contas",                         moduleId: "conf_financeiro"   },
-      { id: "conf-rateio",          label: "Regras de Rateio",           path: "/configuracoes/rateio"                                                              },
+      { id: "conf-rateio",          label: "Regras de Rateio",           path: "/configuracoes/rateio", moduleId: "conf_financeiro" },
       { id: "conf-classificacao",   label: "Classificação Automática",   path: "/configuracoes/classificacao",                        moduleId: "conf_fiscal"       },
       { id: "conf-taxas-variaveis", label: "Taxas de Referência",        path: "/configuracoes/financeiras/taxas",                    moduleId: "conf_financeiro"   },
       { id: "conf-contabilidade",   label: "Contabilidade",              path: "/configuracoes/contabilidade",                        moduleId: "conf_contabilidade" },
