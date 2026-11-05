@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-m",
+    data: "05/11/2026",
+    titulo: "Contas bancárias inativas fora dos seletores",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Os seletores de conta bancária do Contas a Pagar, do Contas a Receber e da Folha mostram só contas ativas; conta desativada não aparece mais repetida. Lançamento antigo numa conta inativa continua mostrando a conta, marcada como inativa." },
+    ],
+  },
+  {
     versao: "2026.11.05-l",
     data: "05/11/2026",
     titulo: "Folha: nenhum funcionário fica de fora",

@@ -63,8 +63,7 @@ import {
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
   listarOperacoesGerenciaisAtivasDaConta, ogDaLista, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclosDoCliente,
-  excluirLancamento, excluirEmpresaLancamento,
-} from "../../../lib/db";
+  excluirLancamento, excluirEmpresaLancamento, comContaAtual,} from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
 import { statusExibido } from "../../../lib/financeiro/titulos";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
@@ -806,7 +805,7 @@ export default function ContasAReceberPage() {
         const contas = novoForm.origem === "empresa_lancamentos" && novoForm.empresa_id
           ? await listarContasPorEmpresa(novoForm.empresa_id)
           : contaId ? await listarContasProdutorDaConta(contaId) : [];
-        setContasNovo(contas);
+        setContasNovo(await comContaAtual(contas, novoForm.conta_pagamento));
       } catch { setContasNovo([]); }
     })();
   }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId, contaId]);

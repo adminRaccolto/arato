@@ -2582,20 +2582,34 @@ export async function listarContas(fazenda_id: string | string[]): Promise<Conta
 
 // Contas bancárias do produtor de TODAS as fazendas da conta (não só da fazenda ativa) —
 // exclui contas de empresa. Usado nos selects de Conta de Pagamento/Recebimento do lado Produtor.
-export async function listarContasProdutorDaConta(conta_id: string): Promise<ContaBancaria[]> {
+// Seletores de conta mostram só contas ativas: conta desativada (ex.: recriada em outra fazenda) aparecia em dobro
+// no CP/CR (achado 05/11/2026). Quem precisa das inativas pede incluirInativas.
+type OpcoesContas = { incluirInativas?: boolean };
+export async function listarContasProdutorDaConta(conta_id: string, opts?: OpcoesContas): Promise<ContaBancaria[]> {
   const { data: fzs, error: errFz } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
   if (errFz) throw errFz;
   const ids = (fzs ?? []).map(f => f.id as string);
   if (ids.length === 0) return [];
-  const { data, error } = await supabase.from("contas_bancarias").select("*").in("fazenda_id", ids).is("empresa_id", null).order("nome");
+  let q = supabase.from("contas_bancarias").select("*").in("fazenda_id", ids).is("empresa_id", null);
+  if (!opts?.incluirInativas) q = q.or("ativa.is.null,ativa.eq.true");
+  const { data, error } = await q.order("nome");
   if (error) throw error;
   return data ?? [];
 }
 
-export async function listarContasPorEmpresa(empresa_id: string): Promise<ContaBancaria[]> {
-  const { data, error } = await supabase.from("contas_bancarias").select("*").eq("empresa_id", empresa_id).order("nome");
+export async function listarContasPorEmpresa(empresa_id: string, opts?: OpcoesContas): Promise<ContaBancaria[]> {
+  let q = supabase.from("contas_bancarias").select("*").eq("empresa_id", empresa_id);
+  if (!opts?.incluirInativas) q = q.or("ativa.is.null,ativa.eq.true");
+  const { data, error } = await q.order("nome");
   if (error) throw error;
   return data ?? [];
+}
+
+/** Lançamento antigo gravado numa conta hoje inativa: a conta continua no seletor, marcada, para não sumir ao editar. */
+export async function comContaAtual(lista: ContaBancaria[], id?: string | null): Promise<ContaBancaria[]> {
+  if (!id || lista.some(c => c.id === id)) return lista;
+  const { data } = await supabase.from("contas_bancarias").select("*").eq("id", id).maybeSingle();
+  return data ? [...lista, { ...(data as ContaBancaria), nome: `${(data as ContaBancaria).nome} (inativa)` }] : lista;
 }
 
 export async function criarConta(c: Omit<ContaBancaria, "id" | "created_at">): Promise<ContaBancaria> {

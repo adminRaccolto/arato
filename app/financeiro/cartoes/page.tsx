@@ -119,7 +119,7 @@ export default function CartoesCredito() {
       Promise.all([
         listarCartoesDaConta(contaId),
         listarFaturasDaConta(contaId),
-        listarContasProdutorDaConta(contaId),
+        listarContasProdutorDaConta(contaId, { incluirInativas: true }),
       ]).then(([c, f, cb]) => {
         setCartoes(c);
         setFaturas(f);

@@ -830,6 +830,8 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **Insumos — unidade bag:** a unidade bag está disponível no Catálogo de Insumos, em qualquer categoria, e no cadastro rápido do pedido de compra, da NF e do estoque.
 
+**Contas bancárias inativas:** os seletores de conta do Contas a Pagar, do Contas a Receber (baixa, novo lançamento e lote) e da Folha mostram só contas ativas. Para uma conta voltar a aparecer, reative-a em Cadastros. Lançamento antigo gravado numa conta inativa mostra a conta com "(inativa)" ao editar.
+
 **Fluxo de Caixa — Excel:** em Financeiro → Relatórios Financeiros → Fluxo de Caixa, o botão ⬇ Excel, ao lado de Imprimir / PDF, exporta a visão aberta com os filtros da tela.
 - Diário: aba Resumo (escopo, período, tipo, saldo inicial com a composição quando Considerar atrasados? está ligado, totais e saldo final) e aba Fluxo Diário com uma linha por lançamento (data, fornecedor/pagador, descrição, origem, situação, entrada, saída e saldo acumulado), do saldo inicial aos totais.
 - Mensal e Anual: aba Resumo e aba com categorias nas linhas e meses (ou anos) nas colunas, separando Entradas e Saídas, com Total Entradas, Total Saídas, Saldo do mês/ano e Saldo Acumulado.

@@ -67,7 +67,7 @@ import {
   listarOperacoesGerenciaisAtivasDaConta, ogDaLista, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclosDoCliente,
   excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
   listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados,
-  listarAdiantamentosFuncionarioDisponiveis, aplicarAdiantamentoFuncionarioEmCP, type AdiantamentoFuncionarioDisp } from "../../../lib/db";
+  listarAdiantamentosFuncionarioDisponiveis, aplicarAdiantamentoFuncionarioEmCP, type AdiantamentoFuncionarioDisp, comContaAtual} from "../../../lib/db";
 import { motivoDaObservacao } from "../../../lib/financeiro/saldo-pedido";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
@@ -996,7 +996,7 @@ export default function ContasAPagarPage() {
         const contas = novoForm.origem === "empresa_lancamentos" && novoForm.empresa_id
           ? await listarContasPorEmpresa(novoForm.empresa_id)
           : contaId ? await listarContasProdutorDaConta(contaId) : [];
-        setContasNovo(contas);
+        setContasNovo(await comContaAtual(contas, novoForm.conta_pagamento));
       } catch { setContasNovo([]); }
     })();
   }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId, contaId]);
