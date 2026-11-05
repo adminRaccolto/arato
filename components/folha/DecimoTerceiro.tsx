@@ -101,8 +101,12 @@ export default function DecimoTerceiro() {
     const reg = regs.get(f.id);
     const avos = Math.max(0, Math.min(12, parseInt(avosEd[f.id] ?? "0") || 0));
     const base = numBR(bases[f.id] ?? "0");
-    const c = calcularDecimo(base, avos);
     const s1 = situacao(reg?.parcela1_lancamento_id), s2 = situacao(reg?.parcela2_lancamento_id);
+    // Complemento entra no 13º a pagar, mas INSS e IRRF incidem só sobre o salário base. Com a 1ª parcela lançada a base
+    // fica travada: vale o que foi gravado nela, não o seletor atual.
+    const compCadastro = Number(f.complemento_salarial ?? 0);
+    const temComplemento = s1 === "lancar" ? comComplemento : compCadastro > 0 && base >= Number(f.salario_base ?? 0) + compCadastro - 0.01;
+    const c = calcularDecimo(base, avos, temComplemento ? compCadastro : 0);
     // 2ª parcela desconta o que foi lançado na 1ª (se já lançada, o valor gravado)
     const p1 = s1 !== "lancar" ? Number(reg?.parcela1_valor ?? c.parcela1) : c.parcela1;
     const p2 = s2 !== "lancar" ? Number(reg?.parcela2_valor ?? 0) : Math.max(0, Math.round((c.bruto - c.inss - c.irrf - p1) * 100) / 100);
@@ -193,7 +197,7 @@ export default function DecimoTerceiro() {
                       <td style={td}><input value={bases[l.f.id] ?? ""} disabled={travado} onChange={e => setBases(p => ({ ...p, [l.f.id]: e.target.value }))} style={{ ...inp, width: 100, textAlign: "right" }} /></td>
                       <td style={{ ...td, fontWeight: 600 }}>{fmtBRL(l.c.bruto)}</td>
                       <td style={td}>{fmtBRL(l.p1)}<div>{chip(l.s1, l.reg?.parcela1_vencimento)}{l.s1 === "aberto" && <button type="button" onClick={() => estornar(l.f, 1)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
-                      <td style={{ ...td, color: "var(--text-2)" }}>{fmtBRL(l.c.inss)}</td>
+                      <td style={{ ...td, color: "var(--text-2)" }} title={l.c.brutoTributavel !== l.c.bruto ? `INSS e IRRF sobre ${fmtBRL(l.c.brutoTributavel)}, sem o complemento` : undefined}>{fmtBRL(l.c.inss)}{l.c.brutoTributavel !== l.c.bruto && <div style={{ fontSize: 10, color: "var(--text-3)" }}>sobre {fmtBRL(l.c.brutoTributavel)}</div>}</td>
                       <td style={{ ...td, color: "var(--text-2)" }}>{fmtBRL(l.c.irrf)}</td>
                       <td style={td}>{fmtBRL(l.p2)}<div>{chip(l.s2, l.reg?.parcela2_vencimento)}{l.s2 === "aberto" && <button type="button" onClick={() => estornar(l.f, 2)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
                     </tr>

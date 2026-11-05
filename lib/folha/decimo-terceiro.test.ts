@@ -20,3 +20,22 @@ test("parcelas: 1ª metade sem descontos, 2ª com INSS e IRRF sobre o total", ()
   assert.equal(Math.round((c.parcela1 + c.parcela2 + c.inss + c.irrf) * 100) / 100, 3000);
   assert.equal(calcularDecimo(3000, 6).bruto, 1500);
 });
+
+test("salário + complemento: paga sobre o total, INSS e IRRF só sobre o salário base", () => {
+  const comp = calcularDecimo(5000, 12, 2000);
+  const soSalario = calcularDecimo(3000, 12);
+  assert.equal(comp.bruto, 5000);
+  assert.equal(comp.parcela1, 2500);
+  assert.equal(comp.brutoTributavel, 3000);
+  assert.equal(comp.inss, soSalario.inss);
+  assert.equal(comp.irrf, soSalario.irrf);
+  assert.equal(comp.parcela2, Math.round((5000 - comp.inss - comp.irrf - 2500) * 100) / 100);
+  assert.notEqual(comp.inss, calcularDecimo(5000, 12).inss);
+});
+test("complemento proporcional aos avos e sem base negativa", () => {
+  const c = calcularDecimo(5000, 6, 2000);
+  assert.equal(c.bruto, 2500);
+  assert.equal(c.brutoTributavel, 1500);
+  assert.equal(calcularDecimo(1000, 12, 2000).inss, 0);
+  assert.equal(calcularDecimo(3000, 12).brutoTributavel, 3000);
+});

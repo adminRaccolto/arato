@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-k",
+    data: "05/11/2026",
+    titulo: "13º: impostos só sobre o salário base",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "correcao", texto: "Com a base Salário + complemento, o 13º é pago sobre o total, mas INSS e IRRF são calculados só sobre o salário base." },
+    ],
+  },
+  {
     versao: "2026.11.05-j",
     data: "05/11/2026",
     titulo: "Unidade bag em todos os cadastros de insumo",
