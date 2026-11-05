@@ -113,3 +113,10 @@ test("telas comerciais, financeiras e de notas não filtram ciclo por uma fazend
     assert.ok(!/listarTodosCiclos\(/.test(codigo), `${tela} voltou a filtrar ciclo por fazenda com listarTodosCiclos`);
   }
 });
+
+test("produto agrícola só nasce pelo botão Carregar Padrões: abrir tela não cria cadastro", () => {
+  const cadastros = readFileSync("app/cadastros/page.tsx", "utf8");
+  assert.doesNotMatch(cadastros, /await seederProdutosAgricolas\(fazendaId\)/);
+  assert.doesNotMatch(cadastros, /nome: "Algodão em Pluma", categoria: "produto_agricola"/);
+  assert.doesNotMatch(readFileSync("app/api/culturas-seed/route.ts", "utf8"), /produto_agricola/);
+});

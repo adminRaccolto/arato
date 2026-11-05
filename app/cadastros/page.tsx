@@ -758,16 +758,7 @@ function CadastrosInner() {
       listarInsumosParaConta(contaId, fazendaId ?? undefined).then(setInsumos).catch(() => {});
     }
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
-      listarInsumosParaConta(contaId, fazendaId ?? undefined).then(async lista => {
-        setInsumos(lista);
-        // Auto-seed na primeira abertura da aba Produtos se não há nenhum produto agrícola
-        if (aba === "produtos" && lista.filter(i => i.categoria === "produto_agricola").length === 0) {
-          try {
-            await seederProdutosAgricolas(fazendaId);
-            listarInsumosParaConta(contaId, fazendaId ?? undefined).then(setInsumos).catch(() => {});
-          } catch {}
-        }
-      }).catch(e => setErro(e.message));
+      listarInsumosParaConta(contaId, fazendaId ?? undefined).then(setInsumos).catch(e => setErro(e.message));
       listarGruposInsumoDaConta(fazendaId).then(setGruposInsumo).catch(() => {});
       listarSubgruposInsumoDaConta(fazendaId).then(setSubgruposInsumo).catch(() => {});
       listarDepositos(fazendaIds.length ? fazendaIds : fazendaId).then(setDepositos).catch(() => {});
@@ -819,21 +810,9 @@ function CadastrosInner() {
         .then(({ data, error }) => { if (error) setErro(error.message); else setUnidades((data ?? []) as UnidadeMedida[]); });
     }
     if (aba === "culturas" || aba === "safras" || aba === "produtos") {
-      // Carrega insumos produto_agricola — auto-seed se vazio
+      // Produto agrícola só nasce por "Carregar Padrões" ou "+ Novo Produto": nada é criado ao abrir a tela
       supabase.from("insumos").select("id,nome,unidade").in("fazenda_id", fazendaIds).eq("categoria","produto_agricola").order("nome")
-        .then(async ({ data }) => {
-          if (data && data.length > 0) { setInsumosPA(data as Insumo[]); return; }
-          await supabase.from("insumos").insert([
-            { fazenda_id: fazendaId, tipo: "produto", nome: "Soja",             categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
-            { fazenda_id: fazendaId, tipo: "produto", nome: "Milho",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
-            { fazenda_id: fazendaId, tipo: "produto", nome: "Algodão em Pluma", categoria: "produto_agricola", unidade: "outros", estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
-            { fazenda_id: fazendaId, tipo: "produto", nome: "Arroz",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
-            { fazenda_id: fazendaId, tipo: "produto", nome: "Trigo",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
-            { fazenda_id: fazendaId, tipo: "produto", nome: "Sorgo",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
-          ]);
-          const { data: seeded } = await supabase.from("insumos").select("id,nome,unidade").in("fazenda_id", fazendaIds).eq("categoria","produto_agricola").order("nome");
-          setInsumosPA((seeded ?? []) as Insumo[]);
-        });
+        .then(({ data }) => setInsumosPA((data ?? []) as Insumo[]));
       supabase.from("culturas").select("*").in("fazenda_id", fazendaIds).order("ordem").order("nome")
         .then(async ({ data, error }) => {
           if (error) return;
@@ -5435,6 +5414,7 @@ function CadastrosInner() {
                         const r = await seederProdutosAgricolas(fazIdEff);
                         const lista = await listarInsumosParaConta(contaId, fazIdEff ?? undefined);
                         setInsumos(lista);
+                        setInsumosPA(lista.filter(i => i.categoria === "produto_agricola"));
                         const partes = [r.novos ? `${r.novos} produto(s) padrão cadastrado(s)` : "", r.ncmPreenchidos ? `NCM preenchido em ${r.ncmPreenchidos} produto(s)` : ""].filter(Boolean);
                         alert(partes.length
                           ? `${partes.join(" e ")}. O NCM é o de grão para venda (não semente) — confira com o contador e ajuste no Editar se precisar.`
@@ -9137,7 +9117,7 @@ function CadastrosInner() {
                   placeholder="— selecione o produto que vai para o estoque —" options={insumosPA.map(i => ({ value: i.id, label: `${i.nome} (${i.unidade})` }))} />
                 {insumosPA.length === 0 && (
                   <div style={{ fontSize:11, color:"#C9921B", marginTop:4 }}>
-                    Nenhum produto agrícola cadastrado. Vá em Cadastros → Insumos e crie os produtos (Soja Convencional, Soja Transgênica, Milho, etc.) com categoria <strong>Produto Agrícola</strong>.
+                    Nenhum produto agrícola cadastrado. Vá em Cadastros → Produtos Agrícolas e clique em Carregar Padrões ou + Novo Produto.
                   </div>
                 )}
                 {fCiclo.produto_agricola_id && (

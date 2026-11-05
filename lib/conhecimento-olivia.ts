@@ -288,6 +288,8 @@ Como cada área funciona hoje. Para o passo a passo das tarefas comuns, use ante
 **Data da última sincronização do SIEG:** não avança se uma nota falhar ao salvar, ou se a busca for feita pelo botão Sincronizar com período escolhido.
 
 ### Notas de saída e faturamento
+**Produtos Agrícolas começam vazios:** nada é criado sozinho. Em Cadastros → Produtos Agrícolas, use Carregar Padrões para trazer a lista padrão ou + Novo Produto para cadastrar um. O ciclo precisa de um produto para a colheita entrar no estoque.
+
 **Produtos Agrícolas e item da NF de venda:** o cadastro em Cadastros → Produtos Agrícolas define nome, NCM e unidade do item da NF de venda. NCM é obrigatório (8 dígitos); o campo sugere o NCM de referência pelo nome. "↺ Carregar Padrões" cadastra os produtos padrão que faltam e preenche NCM vazio dos existentes; nunca troca NCM já preenchido. No Faturamento (NF pelo contrato), o produto do contrato é ligado pelo nome ao cadastro do cliente (todas as fazendas), e a NF sai com nome e NCM do cadastro. Sem produto cadastrado ou sem NCM, a NF usa o NCM de referência de grão e aparece um aviso ao lado de "Itens da Nota" pedindo o cadastro. Na venda avulsa (Documentos Fiscais → Notas de Saída → Notas de Venda), o campo Item sugere os produtos do cadastro e preenche NCM e unidade.
 
 **NCMs de referência** (grão para venda, não semente; confirmar com o contador): Soja 1201.90.00, Milho 1005.90.10, Trigo 1001.99.00, Sorgo 1007.90.00, Arroz em casca 1006.10.92, Algodão em pluma 5201.00.10, Caroço de algodão 1207.29.00.

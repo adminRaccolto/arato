@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-e",
+    data: "05/11/2026",
+    titulo: "Produtos Agrícolas sem cadastro automático",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Abrir as telas de Cadastros não cria mais produtos agrícolas sozinho. A lista padrão entra só pelo botão Carregar Padrões, sem repetir Soja, Milho e Algodão com outros nomes." },
+    ],
+  },
+  {
     versao: "2026.11.05-d",
     data: "05/11/2026",
     titulo: "Cadastros de pessoas completos sozinhos",
