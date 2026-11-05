@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-h",
+    data: "05/11/2026",
+    titulo: "Pedido de compra: valor entregue e adiantamentos",
+    modulos: ["Compras", "Financeiro"],
+    itens: [
+      { tipo: "novidade", texto: "O controle de NFs Vinculadas e Entregas do pedido agora mostra valor do pedido, valor entregue, saldo a entregar e o percentual entregue." },
+      { tipo: "novidade", texto: "Adiantamento a fornecedor pode ser ligado a um pedido de compra, de forma opcional. O valor adiantado aparece no controle do pedido." },
+    ],
+  },
+  {
     versao: "2026.11.05-g",
     data: "05/11/2026",
     titulo: "Pedidos de compra no CP e cores no Fluxo de Caixa",

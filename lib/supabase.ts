@@ -2551,6 +2551,7 @@ export type AdiantamentoFornecedor = {
   valor_aplicado: number;       // total já aplicado (acumulado)
   status: "em_aberto" | "parcial" | "aplicado" | "cancelado";
   lancamento_id?: string;       // FK lancamentos — CP gerado
+  pedido_compra_id?: string | null; // FK pedidos_compra — opcional: nem toda compra exige pedido (Seção 419)
   conta_bancaria_id?: string;
   ano_safra_id?: string;
   observacao?: string;

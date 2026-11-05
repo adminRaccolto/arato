@@ -40,6 +40,24 @@ export async function totalNfsNaMoeda(
   return r2(soma);
 }
 
+type LinhaValor = { quantidade: number; qtd_entregue?: number | null; qtd_cancelada?: number | null; valor_unitario?: number | null; desconto_unitario?: number | null };
+const unitarioLiquido = (l: LinhaValor) => (Number(l.valor_unitario) || 0) - (Number(l.desconto_unitario) || 0);
+
+/** Valor entregue pelas entregas manuais (pedido sem NF vinculada): quantidade entregue x valor líquido da linha. */
+export function valorEntreguePorLinhas(linhas: LinhaValor[]): number {
+  return r2(linhas.reduce((s, l) => s + (Number(l.qtd_entregue) || 0) * unitarioLiquido(l), 0));
+}
+/** Valor das quantidades canceladas ao encerrar o pedido: deixa de ser saldo a entregar. */
+export function valorCanceladoPorLinhas(linhas: LinhaValor[]): number {
+  return r2(linhas.reduce((s, l) => s + (Number(l.qtd_cancelada) || 0) * unitarioLiquido(l), 0));
+}
+/** Painel de valor do pedido: entregue, cancelado, saldo a entregar e % sobre o que continua valendo. */
+export function resumoValorPedido(total: number, entregue: number, cancelado = 0) {
+  const valido = Math.max(0, r2((Number(total) || 0) - (Number(cancelado) || 0)));
+  const ent = r2(Number(entregue) || 0);
+  return { total: r2(Number(total) || 0), entregue: ent, cancelado: r2(Number(cancelado) || 0), saldo: saldoDoPedido(valido, ent), pct: valido > 0 ? Math.round((ent / valido) * 100) : 0 };
+}
+
 export async function ajustarSaldoPedidoNoFC(
   cli: SupabaseClient, pedidoId: string | null | undefined,
   ptax?: (data: string) => Promise<number | null>,   // obrigatório para pedido em dólar (lib/financeiro/ptax)

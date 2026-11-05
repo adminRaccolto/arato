@@ -31,10 +31,12 @@ import {
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
-  listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
+  listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor, listarAdiantamentosDoPedido,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
   listarGruposInsumoDaConta, listarPrincipiosAtivos, insumoAtivo, reavaliarStatusPedidoCompra } from "../../lib/db";
-import type { PedidoCompra, RelPedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
+import type { PedidoCompra, RelPedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo, AdiantamentoFornecedor } from "../../lib/supabase";
+import { resumoValorPedido, totalNfsNaMoeda, valorCanceladoPorLinhas, valorEntreguePorLinhas } from "../../lib/financeiro/saldo-pedido";
+import { ptaxDoDiaQualquerLado } from "../../lib/financeiro/ptax";
 import { supabase } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
@@ -394,6 +396,9 @@ export default function ComprasPage() {
   // NFs vinculadas (modal fiscal)
   const [nfsFiscais,      setNfsFiscais]      = useState<NfEntrada[]>([]);
   const [nfsFiscaisItens, setNfsFiscaisItens] = useState<NfEntradaItem[]>([]);
+  // Controle de valor do modal: NFs convertidas na moeda do pedido em dólar (null = falta cotação) e adiantamentos ligados
+  const [entregueUSD, setEntregueUSD] = useState<number | null>(null);
+  const [adiantPedido, setAdiantPedido] = useState<AdiantamentoFornecedor[]>([]);
 
   // Modal encerramento (ajuste de divergência — peso de carga, casas decimais)
   const [modalEncerrar, setModalEncerrar] = useState<{
@@ -1342,8 +1347,13 @@ export default function ComprasPage() {
   const abrirEntregas = async (ped: RelPedidoCompra) => {
     const its = await listarPedidoCompraItens(ped.id);
     setModalEntrega({ pedido: ped, itens: its });
+    setEntregueUSD(null); setAdiantPedido([]);
+    listarAdiantamentosDoPedido(ped.id).then(setAdiantPedido).catch(() => setAdiantPedido([]));
     if (ped.fiscal) {
       const { nfs, itens: nfItens } = await listarNfEntradasPorPedido(ped.id);
+      if (ped.moeda === "USD") {
+        totalNfsNaMoeda(nfs.filter(n => n.status === "processada"), "USD", ptaxDoDiaQualquerLado).then(setEntregueUSD).catch(() => setEntregueUSD(null));
+      }
       setNfsFiscais(nfs);
       setNfsFiscaisItens(nfItens);
       setEntregas([]);
@@ -2547,6 +2557,21 @@ export default function ComprasPage() {
 
         const totalNFs    = nfsFiscais.filter(n => n.status === "processada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
         const totalPedido = modalEntrega.pedido.total_financeiro ?? 0;
+        const pedidoUSD = modalEntrega.pedido.moeda === "USD";
+        const entregueNaMoeda = !ehFiscal ? valorEntreguePorLinhas(modalEntrega.itens) : pedidoUSD ? entregueUSD : totalNFs;
+        const resumoValor = resumoValorPedido(totalPedido, entregueNaMoeda ?? 0, valorCanceladoPorLinhas(modalEntrega.itens));
+        const fmtValorPedido = (v: number) => pedidoUSD ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fmtBRL(v);
+        const adiantadoTxt = (["BRL", "USD"] as const).map(m => {
+          const v = adiantPedido.filter(a => a.moeda === m).reduce((s, a) => s + a.valor, 0);
+          return v > 0 ? (m === "USD" ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fmtBRL(v)) : "";
+        }).filter(Boolean).join(" + ");
+        const cartoesValor: [string, string, string?][] = [
+          ["Valor do pedido", fmtValorPedido(resumoValor.total)],
+          ["Valor entregue", entregueNaMoeda === null ? "Sem cotação" : fmtValorPedido(resumoValor.entregue), pedidoUSD && ehFiscal && nfsFiscais.some(n => n.status === "processada") ? `NFs: ${fmtBRL(totalNFs)}` : undefined],
+          ["Saldo a entregar", entregueNaMoeda === null ? "—" : fmtValorPedido(resumoValor.saldo)],
+          ...(resumoValor.cancelado > 0 ? [["Cancelado", fmtValorPedido(resumoValor.cancelado)] as [string, string]] : []),
+          ...(adiantadoTxt ? [["Adiantado", adiantadoTxt, `${adiantPedido.length} ${adiantPedido.length === 1 ? "adiantamento" : "adiantamentos"}`] as [string, string, string]] : []),
+        ];
         // Lista mostra só as NFs processadas (as que contam como entregue); NF ainda pendente que aponta para o pedido
         // fica numa linha de aviso, para achar vínculo feito por engano antes de processar.
         const nfsLista     = nfsFiscais.filter(n => n.status === "processada");
@@ -2570,6 +2595,26 @@ export default function ComprasPage() {
                 <OperationalButton data-arato-button="icon" onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
               </div>
               <div data-arato-dialog-body="true" style={{ padding: 22 }}>
+
+                {/* Controle de valor do pedido */}
+                <div data-arato-dialog-body="true" style={secTit}>Controle de Valor</div>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(130px, 1fr))`, gap: 8, marginBottom: 8 }}>
+                  {cartoesValor.map(([rot, val, sub]) => (
+                    <div key={rot} style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>{rot}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{val}</div>
+                      {sub && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{sub}</div>}
+                    </div>
+                  ))}
+                </div>
+                {entregueNaMoeda !== null && resumoValor.total > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    <div style={{ flex: 1, height: 6, background: "var(--bg-page)", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.min(100, resumoValor.pct)}%`, background: "#1A4870" }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>{resumoValor.pct}% entregue</span>
+                  </div>
+                )}
 
                 {/* Situação dos itens */}
                 <div data-arato-dialog-body="true" style={secTit}>Situação dos Itens</div>

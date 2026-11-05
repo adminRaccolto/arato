@@ -19980,3 +19980,13 @@ CREATE POLICY "contratos_aditivos_tenant" ON contratos_aditivos FOR ALL
   WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 419 — Adiantamento a fornecedor ligado a pedido de compra (opcional)
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+ALTER TABLE adiantamentos_fornecedor
+  ADD COLUMN IF NOT EXISTS pedido_compra_id UUID REFERENCES pedidos_compra(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_adiant_forn_pedido ON adiantamentos_fornecedor(pedido_compra_id)
+  WHERE pedido_compra_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

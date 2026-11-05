@@ -822,7 +822,11 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **Fluxo de Caixa — cores:** no fluxo diário, na tela e no PDF, pedido de compra aparece em azul, previsão em verde e o restante em preto. Saldo negativo continua em vermelho. O Excel não tem cores.
 
-**Contas a Pagar — pedidos de compra:** o atalho Pedidos de compra mostra os títulos de pedido em qualquer data, sem os cancelados. Sem esse atalho, vale o período padrão da tela, de hoje até 60 dias. Título de pedido traz a marca Pedido na descrição.
+**Contas a Pagar — pedidos de compra:** o atalho Pedidos de compra mostra os títulos de pedido em qualquer data, sem os cancelados. Sem esse atalho, vale o período padrão da tela, de hoje até 60 dias. Título de pedido traz a marca Pedido de Compra na descrição.
+
+**Pedido de Compra — controle de valor:** ao abrir NFs Vinculadas ou Entregas do pedido, o painel Controle de Valor mostra valor do pedido, valor entregue, saldo a entregar e percentual. Pedido com NF soma as NFs processadas; pedido sem NF soma as entregas registradas. Pedido em dólar converte cada NF pela PTAX do dia da emissão. Quantidade cancelada ao encerrar sai do saldo.
+
+**Adiantamento a fornecedor — pedido de compra:** em Financeiro, Adiantamentos a Fornecedores, o campo Pedido de Compra é opcional. Escolher o pedido preenche o fornecedor. O adiantamento já lançado pode ser ligado ao abrir os detalhes dele. O valor aparece como Adiantado no Controle de Valor do pedido. O vínculo não reduz o saldo do pedido no Contas a Pagar nem baixa título.
 
 **Fluxo de Caixa — Excel:** em Financeiro → Relatórios Financeiros → Fluxo de Caixa, o botão ⬇ Excel, ao lado de Imprimir / PDF, exporta a visão aberta com os filtros da tela.
 - Diário: aba Resumo (escopo, período, tipo, saldo inicial com a composição quando Considerar atrasados? está ligado, totais e saldo final) e aba Fluxo Diário com uma linha por lançamento (data, fornecedor/pagador, descrição, origem, situação, entrada, saída e saldo acumulado), do saldo inicial aos totais.

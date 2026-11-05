@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { saldoDoPedido } from "./saldo-pedido.ts";
+import { saldoDoPedido, valorEntreguePorLinhas, valorCanceladoPorLinhas, resumoValorPedido } from "./saldo-pedido.ts";
 
 test("saldo = total do pedido menos as NFs processadas", () => {
   assert.equal(saldoDoPedido(100000, 30000), 70000);
@@ -22,4 +22,16 @@ test("pedido em dólar: NFs em reais convertidas pela PTAX do dia de cada uma", 
   assert.equal(await totalNfsNaMoeda([{ valor_total: 10000, data_emissao: "2026-10-20" }, { valor_total: 4000, data_emissao: "2026-10-21" }], "USD", ptax), 3000);
   assert.equal(await totalNfsNaMoeda([{ valor_total: 10000, data_emissao: "2026-10-20" }], "BRL", ptax), 10000);
   assert.equal(await totalNfsNaMoeda([{ valor_total: 10000, data_emissao: "2026-01-01" }], "USD", ptax), null);
+});
+
+test("valor entregue: quantidade entregue x valor líquido da linha", () => {
+  const linhas = [{ quantidade: 10, qtd_entregue: 4, qtd_cancelada: 1, valor_unitario: 100, desconto_unitario: 10 }, { quantidade: 5, valor_unitario: 20 }];
+  assert.equal(valorEntreguePorLinhas(linhas), 360);
+  assert.equal(valorCanceladoPorLinhas(linhas), 90);
+});
+test("resumo de valor: saldo e % desconsideram o cancelado e nunca ficam negativos", () => {
+  assert.deepEqual(resumoValorPedido(1000, 400), { total: 1000, entregue: 400, cancelado: 0, saldo: 600, pct: 40 });
+  assert.deepEqual(resumoValorPedido(1000, 400, 200), { total: 1000, entregue: 400, cancelado: 200, saldo: 400, pct: 50 });
+  assert.equal(resumoValorPedido(1000, 1200).saldo, 0);
+  assert.equal(resumoValorPedido(0, 0).pct, 0);
 });

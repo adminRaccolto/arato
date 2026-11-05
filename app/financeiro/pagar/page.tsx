@@ -2313,7 +2313,7 @@ export default function ContasAPagarPage() {
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>
                       {l.descricao ?? "—"}
-                      {l.origem_lancamento === "pedido_compra" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>Pedido</span>}
+                      {l.origem_lancamento === "pedido_compra" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>Pedido de Compra</span>}
                     </td>
                   ),
                   operacao: (

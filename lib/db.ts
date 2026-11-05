@@ -7139,6 +7139,13 @@ export async function listarAdiantamentos(fazenda_id: string): Promise<Adiantame
   return data ?? [];
 }
 
+/** Adiantamentos ligados a um pedido de compra. Sem a Seção 419 no banco, volta vazio para não travar o pedido. */
+export async function listarAdiantamentosDoPedido(pedido_compra_id: string): Promise<AdiantamentoFornecedor[]> {
+  const { data, error } = await supabase.from("adiantamentos_fornecedor").select("*")
+    .eq("pedido_compra_id", pedido_compra_id).neq("status", "cancelado").order("data_emissao");
+  return error ? [] : (data ?? []);
+}
+
 export async function listarAplicacoesAdiantamento(adiantamento_id: string): Promise<AdiantamentoAplicacao[]> {
   const { data, error } = await supabase
     .from("adiantamentos_aplicacoes")

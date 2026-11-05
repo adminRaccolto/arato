@@ -6,15 +6,17 @@ import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   listarAdiantamentos, criarAdiantamento, cancelarAdiantamento,
   aplicarAdiantamento, listarAplicacoesAdiantamento,
   listarPessoasDaConta, listarContas, listarAnosSafra, listarFazendasDaConta,
+  listarPedidosCompraRelDaConta, atualizarAdiantamento,
 } from "../../../lib/db";
 import type {
   AdiantamentoFornecedor, AdiantamentoAplicacao,
-  Pessoa, ContaBancaria, AnoSafra,
+  Pessoa, ContaBancaria, AnoSafra, RelPedidoCompra,
 } from "../../../lib/supabase";
 
 // ── Estilos base ──────────────────────────────────────────────
@@ -64,7 +66,7 @@ function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onC
 }
 
 const VAZIO_FORM = {
-  pessoa_id: "", descricao: "", nr_documento: "", data_emissao: "", data_previsao: "",
+  pessoa_id: "", pedido_compra_id: "", descricao: "", nr_documento: "", data_emissao: "", data_previsao: "",
   valor: "", moeda: "BRL" as Moeda, cotacao_usd: "", conta_bancaria_id: "",
   ano_safra_id: "", observacao: "", ja_quitado: true,
 };
@@ -90,6 +92,7 @@ export default function AdiantamentosPage() {
   const [pessoas, setPessoas]             = useState<Pessoa[]>([]);
   const [contas, setContas]               = useState<ContaBancaria[]>([]);
   const [anosSafra, setAnosSafra]         = useState<AnoSafra[]>([]);
+  const [pedidos, setPedidos]             = useState<RelPedidoCompra[]>([]);
   const [tab, setTab]                     = useState<Tab>("em_aberto");
   const [busca, setBusca]                 = useState("");
   const [carregando, setCarregando]       = useState(true);
@@ -121,7 +124,29 @@ export default function AdiantamentosPage() {
     ]).then(([a, p, c, s]) => {
       setAdiantamentos(a); setPessoas(p); setContas(c); setAnosSafra(s);
     }).catch(e => setErro(e.message)).finally(() => setCarregando(false));
+    // Lista de apoio: sem ela o adiantamento continua funcionando, só sem o vínculo opcional
+    listarPedidosCompraRelDaConta(fazAtiva).then(setPedidos).catch(() => setPedidos([]));
   }, [fazAtiva]);
+
+  // ── Pedido de compra (opcional) ───────────────────────────────
+  const rotuloPedido = (p: RelPedidoCompra) => `${p.nr_pedido || `#${p.numero ?? "—"}`} — ${p.fornecedor_nome ?? "sem fornecedor"} — ${p.moeda === "USD" ? "US$ " : "R$ "}${(p.total_financeiro ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const opcoesPedido = (fornecedorId?: string | null, atual?: string | null) => pedidos
+    .filter(p => p.id === atual || (p.status !== "rascunho" && p.status !== "cancelado" && (!fornecedorId || p.fornecedor_id === fornecedorId)))
+    .map(p => ({ value: p.id, label: rotuloPedido(p) }));
+  const pedidoDoAdiantamento = (a: AdiantamentoFornecedor) => pedidos.find(p => p.id === a.pedido_compra_id);
+  const msgErroPedido = (e: unknown) => {
+    const m = (e as Error).message ?? String(e);
+    return m.includes("pedido_compra_id") ? "Para ligar o adiantamento a um pedido, rode antes a Seção 419 no Supabase." : m;
+  };
+  const vincularPedidoExistente = async (a: AdiantamentoFornecedor, pedidoId: string) => {
+    setErro("");
+    try {
+      await atualizarAdiantamento(a.id, { pedido_compra_id: pedidoId || null });
+      const novo = { ...a, pedido_compra_id: pedidoId || null };
+      setAdiantamentos(l => l.map(x => x.id === a.id ? novo : x));
+      setModalDetalhe(novo);
+    } catch (e) { setErro(msgErroPedido(e)); }
+  };
 
   // ── Filtros ───────────────────────────────────────────────────
   const lista = adiantamentos.filter(a => {
@@ -155,6 +180,7 @@ export default function AdiantamentosPage() {
       const novo = await criarAdiantamento({
         fazenda_id:       fazAtiva,
         pessoa_id:        form.pessoa_id || undefined,
+        pedido_compra_id: form.pedido_compra_id || undefined,
         descricao:        form.descricao.trim(),
         nr_documento:     form.nr_documento || undefined,
         data_emissao:     form.data_emissao,
@@ -170,7 +196,7 @@ export default function AdiantamentosPage() {
       setAdiantamentos(p => [novo, ...p]);
       setModalNovo(false);
       setForm({ ...VAZIO_FORM });
-    } catch (e) { setErro((e as Error).message); }
+    } catch (e) { setErro(msgErroPedido(e)); }
     finally { setSalvando(false); }
   };
 
@@ -306,7 +332,10 @@ export default function AdiantamentosPage() {
                         <div>{a.descricao}</div>
                         {a.observacao && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{a.observacao}</div>}
                       </td>
-                      <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>{a.nr_documento || "—"}</td>
+                      <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>
+                        {a.nr_documento || "—"}
+                        {pedidoDoAdiantamento(a) && <div style={{ fontFamily: "inherit", fontSize: 10, color: "#0B2D50", marginTop: 2 }}>Pedido {pedidoDoAdiantamento(a)!.nr_pedido || `#${pedidoDoAdiantamento(a)!.numero}`}</div>}
+                      </td>
                       <td style={tdS}>{fmtData(a.data_emissao)}</td>
                       <td style={{ ...tdS, color: a.data_previsao ? "var(--text-1)" : "var(--text-muted)" }}>
                         {a.data_previsao ? (() => {
@@ -355,10 +384,27 @@ export default function AdiantamentosPage() {
           <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1/-1" }}>
               <label data-arato-label="true" style={lbl}>Fornecedor</label>
-              <SelectField style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
+              <SelectField style={inp} value={form.pessoa_id} onChange={e => {
+                const pessoa_id = e.target.value;
+                // Fornecedor trocado: o pedido escolhido só continua se for desse fornecedor
+                setForm(p => ({ ...p, pessoa_id, pedido_compra_id: pedidos.find(x => x.id === p.pedido_compra_id)?.fornecedor_id === pessoa_id ? p.pedido_compra_id : "" }));
+              }}>
                 <option value="">— selecione —</option>
                 {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
               </SelectField>
+            </div>
+
+            <div style={{ gridColumn: "1/-1" }}>
+              <label data-arato-label="true" style={lbl}>Pedido de Compra (opcional)</label>
+              <SelectBusca style={inp} value={form.pedido_compra_id} placeholder="Sem pedido"
+                options={opcoesPedido(form.pessoa_id)}
+                onChange={pedidoId => {
+                  const ped = pedidos.find(x => x.id === pedidoId);
+                  // Escolher o pedido já traz o fornecedor e o número, para não digitar de novo
+                  setForm(p => ({ ...p, pedido_compra_id: pedidoId,
+                    pessoa_id: ped?.fornecedor_id ?? p.pessoa_id,
+                    nr_documento: p.nr_documento || ped?.nr_pedido || "" }));
+                }} />
             </div>
 
             <div style={{ gridColumn: "1/-1" }}>
@@ -500,6 +546,15 @@ export default function AdiantamentosPage() {
               </div>
             ))}
           </div>
+
+          {modalDetalhe.status !== "cancelado" && (
+            <div style={{ marginBottom: 20 }}>
+              <label data-arato-label="true" style={lbl}>Pedido de Compra (opcional)</label>
+              <SelectBusca style={inp} value={modalDetalhe.pedido_compra_id ?? ""} placeholder="Sem pedido"
+                options={opcoesPedido(modalDetalhe.pessoa_id, modalDetalhe.pedido_compra_id)}
+                onChange={pedidoId => vincularPedidoExistente(modalDetalhe, pedidoId)} />
+            </div>
+          )}
 
           {/* Barra de progresso */}
           {modalDetalhe.valor > 0 && (
