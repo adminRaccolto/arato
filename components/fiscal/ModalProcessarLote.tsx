@@ -24,7 +24,7 @@ import {
   listarDepositosMulti,
   listarOperacoesGerenciaisAtivasDaConta,
   listarAnosSafra,
-  listarCiclos,
+  listarCiclosDoCliente,
   listarPessoasDaConta,
   ogDaLista,
 } from "../../lib/db";
@@ -206,8 +206,8 @@ export default function ModalProcessarLote({
   // Ciclos do ano safra escolhido
   useEffect(() => {
     if (!settings.ano_safra_id) { setCiclos([]); return; }
-    listarCiclos(settings.ano_safra_id, batchFazendaId).then(setCiclos).catch(() => setCiclos([]));
-  }, [settings.ano_safra_id, batchFazendaId]);
+    listarCiclosDoCliente(fazendaIds, batchFazendaId, settings.ano_safra_id).then(setCiclos).catch(() => setCiclos([]));
+  }, [settings.ano_safra_id, batchFazendaId, fazendaIds]);
 
   // Pedido escolhido: preenche ano safra, ciclo e vencimento vazios (como no processamento individual) e confirma
   // quando o pedido é de outra empresa (compra por conta e ordem)
@@ -453,7 +453,7 @@ export default function ModalProcessarLote({
               <label data-arato-label="true" style={lbl}>Ciclo</label>
               <SelectField value={settings.ciclo_id} onChange={e => setSettings(p => ({ ...p, ciclo_id: e.target.value }))} style={inp}>
                 <option value="">— manter individual —</option>
-                {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                {ciclos.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao}</option>)}
               </SelectField>
             </div>
           )}

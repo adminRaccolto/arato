@@ -8,6 +8,7 @@
 //  • Mão de obra: folha fechada da competência (bruto + complemento + encargos patronais), regime de competência.
 //  • Arrendamento: contratos pagos; em sacas, sacas pagas × preço médio ponderado de venda do produto no ano safra.
 //  • Sem ciclo apontado → "semCiclo" (a regra de rateio entre ciclos é a próxima tarefa).
+import { tituloEntraNaVisao } from "./ciclos/visao-cliente";
 import { supabase } from "./supabase";
 import { getDreGrupo } from "./seedOperacoesGerenciais";
 
@@ -77,8 +78,11 @@ const norm = (s: string | null | undefined) => (s ?? "").normalize("NFD").replac
 
 export async function carregarCustosAno(p: {
   fazendaIds: string[]; anoIds: string[]; inicio: string; fim: string; cicloIds: string[];
+  /** Todas as fazendas do cliente: o título pode ser de outra fazenda e apontar para o ciclo escolhido. */
+  fazendaIdsCliente?: string[];
 }): Promise<CustosAno> {
   const { fazendaIds, anoIds, inicio, fim, cicloIds } = p;
+  const fazendasBusca = p.fazendaIdsCliente?.length ? p.fazendaIdsCliente : fazendaIds;
   const out: CustosAno = { porCiclo: {}, semCiclo: {} };
   const cicloSet = new Set(cicloIds);
   const add = (cicloId: string | null | undefined, grupo: string, valor: number) => {
@@ -98,15 +102,24 @@ export async function carregarCustosAno(p: {
   ].filter(Boolean).join(",");
   const titsProd = await paginar<Tit>(from => supabase.from("lancamentos")
     .select("id,valor,moeda,cotacao_usd,sacas,preco_saca_barter,categoria,operacao_gerencial_id,ciclo_id,ano_safra_id,data_vencimento,status,natureza,origem_lancamento,nf_entrada_id,fazenda_id")
-    .in("fazenda_id", fazendaIds).eq("tipo", "pagar").or(filtroAno).order("id").range(from, from + 999));
+    .in("fazenda_id", fazendasBusca).eq("tipo", "pagar").or(filtroAno).order("id").range(from, from + 999));
   const filtroEmp = [cicloIds.length ? `ciclo_id.in.(${cicloIds.join(",")})` : "", anoIds.length ? `ano_safra_id.in.(${anoIds.join(",")})` : ""].filter(Boolean).join(",");
   const titsEmp = filtroEmp ? await paginar<Tit & { origem?: string | null }>(from => supabase.from("empresa_lancamentos")
     .select("id,valor,moeda,cotacao_usd,categoria,operacao_gerencial_id,ciclo_id,ano_safra_id,data_vencimento,status,origem,nf_entrada_id,fazenda_id")
-    .in("fazenda_id", fazendaIds).eq("tipo", "pagar").or(filtroEmp).order("id").range(from, from + 999)) : [];
+    .in("fazenda_id", fazendasBusca).eq("tipo", "pagar").or(filtroEmp).order("id").range(from, from + 999)) : [];
+  // Ciclo que não está na visão: de qual fazenda ele é decide se o título fica aqui
+  const fazendaDoCiclo = new Map<string, string>();
+  const ciclosFora = [...new Set([...titsProd, ...titsEmp].map(t => t.ciclo_id).filter((id): id is string => !!id && !cicloSet.has(id)))];
+  for (let i = 0; i < ciclosFora.length; i += 200) {
+    const { data } = await supabase.from("ciclos").select("id,fazenda_id").in("id", ciclosFora.slice(i, i + 200));
+    for (const c of data ?? []) fazendaDoCiclo.set(c.id as string, c.fazenda_id as string);
+  }
+  const fazendasVisao = new Set(fazendaIds);
   const tits = [
     ...titsProd.filter(t => t.status !== "cancelado" && t.natureza !== "previsao"),
     ...titsEmp.filter(t => t.status !== "cancelado").map(t => ({ ...t, origem_lancamento: (t as { origem?: string | null }).origem ?? null })),
-  ].filter(t => !["folha", "arrendamento", "cartao_fatura"].includes(t.origem_lancamento ?? ""));
+  ].filter(t => !["folha", "arrendamento", "cartao_fatura"].includes(t.origem_lancamento ?? ""))
+    .filter(t => tituloEntraNaVisao(t, cicloSet, fazendasVisao, fazendaDoCiclo));
 
   const ogIds = [...new Set(tits.map(t => t.operacao_gerencial_id).filter(Boolean))] as string[];
   const nfIds = [...new Set(tits.map(t => t.nf_entrada_id).filter(Boolean))] as string[];

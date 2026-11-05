@@ -224,7 +224,7 @@ export default function DrePage() {
       const inicio = (periodos ?? []).map(a => a.data_inicio as string).filter(Boolean).sort()[0];
       const fim = (periodos ?? []).map(a => a.data_fim as string).filter(Boolean).sort().at(-1);
       if (inicio && fim) {
-        custos = await carregarCustosAno({ fazendaIds: fids, anoIds, inicio, fim, cicloIds: ciclosArr.map(c => c.id) });
+        custos = await carregarCustosAno({ fazendaIds: fids, fazendaIdsCliente: authFazendaIds, anoIds, inicio, fim, cicloIds: ciclosArr.map(c => c.id) });
       }
     } catch (e) { console.error("[DRE] custos do ano safra", e); }
 
@@ -253,10 +253,10 @@ export default function DrePage() {
         supabase.from("adubacoes_base").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("status_campo", "aprovado"),
         supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("status_campo", "aprovado"),
         supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).maybeSingle(),
-        supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
+        supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("ciclo_id", cicloId).eq("confirmado", true),
         Promise.resolve({ data: [] as CpDre[] }),
-        supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("tipo", "pagar"),
-        supabase.from("lancamentos").select("valor_juros, valor_multa, valor_desconto").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).in("status", ["baixado", "parcial"]),
+        supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("ciclo_id", cicloId).eq("tipo", "pagar"),
+        supabase.from("lancamentos").select("valor_juros, valor_multa, valor_desconto").eq("ciclo_id", cicloId).in("status", ["baixado", "parcial"]),
       ]);
       // Juros, multa e desconto gravados nos pagamentos (borderô ou baixa) deste ciclo
       const juros_mora_pag      = (ajustesPagData ?? []).reduce((s, r) => s + ((r as { valor_juros?: number | null }).valor_juros ?? 0), 0);
@@ -368,7 +368,7 @@ export default function DrePage() {
           Promise.resolve({ data: null }),
           Promise.resolve({ data: null }),
           Promise.resolve({ data: [] as CpDre[] }),
-          supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", aux.id).eq("tipo", "pagar"),
+          supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("ciclo_id", aux.id).eq("tipo", "pagar"),
         ]);
         aux_sementes     += (auxPl ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0) * pct;
         aux_fertilizantes += (auxAd ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;

@@ -101,3 +101,15 @@ test("seletores de OG usam a lista com uma OG por classificação", () => {
     assert.ok(!/from\("operacoes_gerenciais"\)\s*\.select\([^)]*\)\s*\.or\(/.test(src), `${tela}: não deve listar OGs com consulta direta`);
   }
 });
+
+// Comercial, financeiro e notas mostram os ciclos do cliente inteiro. Filtrar pela fazenda do usuário ou do documento
+// escondia ciclos (reclamação Fazenda Sapezal, 04/11/2026) e deixava o Armazém, que não tem ciclo, sem opção.
+test("telas comerciais, financeiras e de notas não filtram ciclo por uma fazenda só", () => {
+  for (const tela of ["app/contratos/page.tsx", "app/financeiro/pagar/page.tsx", "app/financeiro/receber/page.tsx", "app/financeiro/previsoes/page.tsx",
+    "app/financeiro/apoio/page.tsx", "app/compras/nf/page.tsx", "app/estoque/graos/page.tsx", "components/fiscal/ModalNf.tsx", "components/fiscal/ModalProcessarLote.tsx"]) {
+    const codigo = readFileSync(tela, "utf8");
+    assert.ok(codigo.includes("listarCiclosDoCliente("), `${tela} deve usar listarCiclosDoCliente`);
+    assert.ok(!/listarCiclos\(/.test(codigo), `${tela} voltou a filtrar ciclo por fazenda com listarCiclos`);
+    assert.ok(!/listarTodosCiclos\(/.test(codigo), `${tela} voltou a filtrar ciclo por fazenda com listarTodosCiclos`);
+  }
+});

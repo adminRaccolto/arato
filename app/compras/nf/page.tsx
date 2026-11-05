@@ -31,7 +31,7 @@ import {
   listarMaquinas,
   listarBombas,
   listarAnosSafra,
-  listarCiclos,
+  listarCiclosDoCliente,
   listarPedidoCompraItens, insumoAtivo } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { listarTransferenciasMaquinas, atualizarTransferenciaMaquina } from "../../../lib/db";
@@ -793,8 +793,8 @@ export default function NfCompraPage() {
   // Carrega ciclos quando o ano safra muda no formulário
   useEffect(() => {
     if (!cab.ano_safra_id) { setCiclosNF([]); return; }
-    listarCiclos(cab.ano_safra_id, fazendaId).then(setCiclosNF).catch(() => setCiclosNF([]));
-  }, [cab.ano_safra_id, fazendaId]);
+    listarCiclosDoCliente(fazendaIds, fazendaId, cab.ano_safra_id).then(setCiclosNF).catch(() => setCiclosNF([]));
+  }, [cab.ano_safra_id, fazendaId, fazendaIds]);
 
   // Reforço do auto-preenchimento de Produtor: se wProdutores só termina de carregar
   // DEPOIS que a NF já foi aberta (abrirEditar roda antes do re-render refletir o
@@ -838,8 +838,8 @@ export default function NfCompraPage() {
   // Carrega ciclos do lote quando ano safra do lote muda
   useEffect(() => {
     if (!batchSettings.ano_safra_id) { setBatchCiclos([]); return; }
-    listarCiclos(batchSettings.ano_safra_id, fazendaId).then(setBatchCiclos).catch(() => setBatchCiclos([]));
-  }, [batchSettings.ano_safra_id, fazendaId]);
+    listarCiclosDoCliente(fazendaIds, fazendaId, batchSettings.ano_safra_id).then(setBatchCiclos).catch(() => setBatchCiclos([]));
+  }, [batchSettings.ano_safra_id, fazendaId, fazendaIds]);
 
   // ── SIEG — sincronização ────────────────────────────────────
   async function sincronizarSieg() {
@@ -3917,7 +3917,7 @@ export default function NfCompraPage() {
                         <label data-arato-label="true" style={lbl}>Ciclo</label>
                         <SelectField value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
                           <option value="">— selecione o ano safra —</option>
-                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
+                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                         </SelectField>
                       </div>
                       <div>
@@ -5430,7 +5430,7 @@ export default function NfCompraPage() {
                   <label data-arato-label="true" style={lbl}>Ciclo</label>
                   <SelectField value={batchSettings.ciclo_id} onChange={e => setBatchSettings(p => ({ ...p, ciclo_id: e.target.value }))} style={inp}>
                     <option value="">— manter individual —</option>
-                    {batchCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                    {batchCiclos.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao}</option>)}
                   </SelectField>
                 </div>
               )}

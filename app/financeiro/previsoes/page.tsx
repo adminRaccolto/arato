@@ -9,7 +9,7 @@ import { supabase } from "../../../lib/supabase";
 import { hojeLocal } from "../../../lib/data-local";
 import { nomeRelatorio } from "../../../lib/print";
 import {
-  listarOperacoesGerenciaisAtivasDaConta, listarPessoasDaConta, listarEmpresasDaConta, listarAnosSafra, listarCiclos,
+  listarOperacoesGerenciaisAtivasDaConta, listarPessoasDaConta, listarEmpresasDaConta, listarAnosSafra, listarCiclosDoCliente,
   listarCentrosCustoGeralDaConta, listarProdutoresDaConta, listarFazendas,
 } from "../../../lib/db";
 import type { OperacaoGerencial, Pessoa, Empresa, AnoSafra, Ciclo, CentroCusto, Produtor, Fazenda } from "../../../lib/supabase";
@@ -59,7 +59,7 @@ const FORM_VAZIO = {
 };
 
 export default function PrevisaoGastosPage() {
-  const { fazendaId, contaId, contaNome } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome } = useAuth();
   const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   const hoje = hojeLocal();
   const [aba, setAba] = useState<Aba>("previsoes");
@@ -161,8 +161,8 @@ export default function PrevisaoGastosPage() {
   }, [fazendas]);
   useEffect(() => {
     if (!form.ano_safra_id) { setCiclos([]); return; }
-    listarCiclos(form.ano_safra_id, form.fazenda_id || fazendaId).then(setCiclos).catch(() => setCiclos([]));
-  }, [form.ano_safra_id, form.fazenda_id, fazendaId]);
+    listarCiclosDoCliente(fazendaIds, form.fazenda_id || fazendaId, form.ano_safra_id).then(setCiclos).catch(() => setCiclos([]));
+  }, [form.ano_safra_id, form.fazenda_id, fazendaId, fazendaIds]);
 
   // ─── Derivados ───────────────────────────────────────────────
   const pendentes = useMemo(() => previsoes.filter(p => p.status === "pendente_decisao"), [previsoes]);
@@ -626,7 +626,7 @@ export default function PrevisaoGastosPage() {
                 <label style={S.label}>Ciclo</label>
                 <select value={form.ciclo_id} onChange={e => setForm(f => ({ ...f, ciclo_id: e.target.value }))} style={S.inp} disabled={!form.ano_safra_id}>
                   <option value="">— Nenhum —</option>
-                  {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                  {ciclos.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                 </select>
               </div>
               <div>

@@ -63,7 +63,7 @@ import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
-  listarOperacoesGerenciaisAtivasDaConta, ogDaLista, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
+  listarOperacoesGerenciaisAtivasDaConta, ogDaLista, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclosDoCliente,
   excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
   listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados,
   listarAdiantamentosFuncionarioDisponiveis, aplicarAdiantamentoFuncionarioEmCP, type AdiantamentoFuncionarioDisp } from "../../../lib/db";
@@ -528,7 +528,7 @@ export default function ContasAPagarPage() {
   const [bClass, setBClass] = useState({ pessoa_id: "", ano_safra_id: "", ciclo_id: "", og_id: "", salvar: false });
   const [bClassAberta, setBClassAberta] = useState(false);
   const [bSafras, setBSafras] = useState<{ id: string; descricao: string }[]>([]);
-  const [bCiclos, setBCiclos] = useState<{ id: string; descricao?: string | null; cultura?: string | null }[]>([]);
+  const [bCiclos, setBCiclos] = useState<{ id: string; descricao?: string | null; cultura?: string | null; rotulo?: string }[]>([]);
   useEffect(() => {
     if (!modalBaixa || modalBaixa.origem_tabela !== "lancamentos") { setBSafras([]); return; }
     const f = modalBaixa.fazenda_id ?? fazendaId; if (!f) return;
@@ -537,7 +537,7 @@ export default function ContasAPagarPage() {
   useEffect(() => {
     const f = modalBaixa?.fazenda_id ?? fazendaId;
     if (!bClass.ano_safra_id || !f) { setBCiclos([]); return; }
-    listarCiclos(bClass.ano_safra_id, f).then(c => setBCiclos(c as { id: string; descricao?: string | null; cultura?: string | null }[])).catch(() => setBCiclos([]));
+    listarCiclosDoCliente(fazendaIds, f, bClass.ano_safra_id).then(c => setBCiclos(c as { id: string; descricao?: string | null; cultura?: string | null; rotulo?: string }[])).catch(() => setBCiclos([]));
   }, [bClass.ano_safra_id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvandoAcao, setSalvandoAcao] = useState(false);
   const [erroAcao,     setErroAcao]     = useState("");
@@ -925,11 +925,11 @@ export default function ContasAPagarPage() {
   }, [contaId]);
   const [parcelasNovo, setParcelasNovo] = useState<ParcelaGrid[]>([]);
   // Rateio por vencimento: ciclos de cada safra escolhida nas parcelas (carregados sob demanda)
-  const [ciclosPorSafra, setCiclosPorSafra] = useState<Record<string, { id: string; descricao?: string | null; cultura?: string | null }[]>>({});
+  const [ciclosPorSafra, setCiclosPorSafra] = useState<Record<string, { id: string; descricao?: string | null; cultura?: string | null; rotulo?: string }[]>>({});
   useEffect(() => {
     const f = fazendaId; if (!f) return;
     const faltam = [...new Set(parcelasNovo.map(p => p.ano_safra_id).filter((x): x is string => !!x))].filter(id => !ciclosPorSafra[id]);
-    faltam.forEach(id => listarCiclos(id, f).then(c => setCiclosPorSafra(prev => ({ ...prev, [id]: c as never }))).catch(() => {}));
+    faltam.forEach(id => listarCiclosDoCliente(fazendaIds, f, id).then(c => setCiclosPorSafra(prev => ({ ...prev, [id]: c as never }))).catch(() => {}));
   }, [parcelasNovo, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
@@ -980,8 +980,8 @@ export default function ContasAPagarPage() {
 
   useEffect(() => {
     if (!novoForm.emp_ano_safra_id || !fazendaId) { setEmpCiclos([]); return; }
-    listarCiclos(novoForm.emp_ano_safra_id, fazendaId).then(setEmpCiclos).catch(() => setEmpCiclos([]));
-  }, [novoForm.emp_ano_safra_id, fazendaId]);
+    listarCiclosDoCliente(fazendaIds, fazendaId, novoForm.emp_ano_safra_id).then(setEmpCiclos).catch(() => setEmpCiclos([]));
+  }, [novoForm.emp_ano_safra_id, fazendaId, fazendaIds]);
 
   useEffect(() => {
     if (!modalNovo) return;
@@ -1843,7 +1843,7 @@ export default function ContasAPagarPage() {
                                     <td style={{ padding: "4px 8px" }}>
                                       <SelectField style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} value={p.ciclo_id ?? ""} disabled={!p.ano_safra_id} onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value || undefined } : x))}>
                                         <option value="">Do lançamento</option>
-                                        {(p.ano_safra_id ? ciclosPorSafra[p.ano_safra_id] ?? [] : []).map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                                        {(p.ano_safra_id ? ciclosPorSafra[p.ano_safra_id] ?? [] : []).map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                                       </SelectField>
                                     </td>
                                   </>)}
@@ -3079,7 +3079,7 @@ export default function ContasAPagarPage() {
                       <label data-arato-label="true" style={lbl}>Ciclo / Empreendimento</label>
                       <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.ciclo_id} onChange={e => setBClass(p => ({ ...p, ciclo_id: e.target.value }))}>
                         <option value="">— Sem ciclo —</option>
-                        {bCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                        {bCiclos.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                       </SelectField>
                     </div>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 20, fontSize: 12, color: "#555", cursor: bClass.pessoa_id && bClass.og_id ? "pointer" : "not-allowed" }}>
@@ -3288,7 +3288,7 @@ export default function ContasAPagarPage() {
                           <label data-arato-label="true" style={lbl}>Ciclo / Cultura</label>
                           <SelectField value={novoForm.emp_ciclo_id} onChange={e => setNovoForm(p => ({ ...p, emp_ciclo_id: e.target.value }))} disabled={!novoForm.emp_ano_safra_id} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
                             <option value="">— Sem ciclo —</option>
-                            {empCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao ?? c.cultura}</option>)}
+                            {empCiclos.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                           </SelectField>
                         </div>
                         <div>

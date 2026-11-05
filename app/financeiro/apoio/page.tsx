@@ -12,7 +12,7 @@ import TopNav from "../../../components/TopNav";
 import {
   listarPessoasDaConta,
   listarAnosSafra,
-  listarTodosCiclos,
+  listarCiclosDoCliente,
   listarOperacoesGerenciaisAtivasDaConta,
   listarContas,
   listarFazendasDaConta,
@@ -215,7 +215,7 @@ export default function ApoioFinanceiroPage() {
     Promise.all([
       listarPessoasDaConta(fazAtiva).catch(() => [] as Pessoa[]),
       listarAnosSafra(fazAtiva).catch(() => [] as AnoSafra[]),
-      listarTodosCiclos(fazAtiva).catch(() => [] as Ciclo[]),
+      listarCiclosDoCliente(fazendaIds, fazAtiva).catch(() => [] as Ciclo[]),
       listarOperacoesGerenciaisAtivasDaConta({ permite: "cp_cr" }, fazAtiva).catch(() => [] as OperacaoGerencial[]),
       listarContas(fazAtiva).catch(() => [] as ContaBancaria[]),
     ]).then(([p, a, c, o, cb]) => {
@@ -1241,7 +1241,7 @@ export default function ApoioFinanceiroPage() {
                   >
                     <option value="">— Selecione —</option>
                     {ciclosFiltrados.map((c) => (
-                      <option key={c.id} value={c.id}>{c.descricao ?? c.cultura}</option>
+                      <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>
                     ))}
                   </SelectField>
                 </div>

@@ -13,7 +13,7 @@ import {
   listarRomaneios, criarRomaneio, atualizarRomaneio, excluirRomaneio,
   listarItensContrato, salvarItensContrato,
   listarCessaoDebitos, salvarCessaoDebitos,
-  listarPessoasDaConta, listarProdutoresDaConta, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
+  listarPessoasDaConta, listarProdutoresDaConta, listarAnosSafra, listarCiclosDoCliente, listarDepositos, listarFazendas,
   encerrarAnoSafra, reabrirAnoSafra,
   baixarLancamento,
   listarIEsDoProdutor,
@@ -787,14 +787,14 @@ export default function Contratos() {
   // ── ciclos: carrega quando safra muda (formulário) ───────────
   useEffect(() => {
     if (!fC.ano_safra_id) { setCiclos([]); return; }
-    listarCiclos(fC.ano_safra_id, fazendaId).then(setCiclos).catch(() => setCiclos([]));
-  }, [fC.ano_safra_id, fazendaId]);
+    listarCiclosDoCliente(fazendaIds, fazendaId, fC.ano_safra_id).then(setCiclos).catch(() => setCiclos([]));
+  }, [fC.ano_safra_id, fazendaId, fazendaIds]);
 
   // ── ciclos: carrega quando filtro de ano muda ────────────────
   useEffect(() => {
     if (!filtroAno) { setCiclosFiltro([]); setFiltroCiclo(""); return; }
-    listarCiclos(filtroAno, fazendaId).then(setCiclosFiltro).catch(() => setCiclosFiltro([]));
-  }, [filtroAno, fazendaId]);
+    listarCiclosDoCliente(fazendaIds, fazendaId, filtroAno).then(setCiclosFiltro).catch(() => setCiclosFiltro([]));
+  }, [filtroAno, fazendaId, fazendaIds]);
 
   // ── carga ────────────────────────────────────────────────────
   // Recarrega também quando chega a lista completa de fazendas da conta: a primeira carga sai com a lista provisória
@@ -1794,7 +1794,7 @@ export default function Contratos() {
                       disabled={!filtroAno || ciclosFiltro.length === 0}
                       style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none", opacity: !filtroAno ? 0.5 : 1 }}>
                       <option value="">Todos os ciclos</option>
-                      {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.cultura}{c.descricao ? ` — ${c.descricao}` : ""}</option>)}
+                      {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                     </SelectField>
                     {/* produto */}
                     <SelectField value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)}
@@ -2759,7 +2759,7 @@ export default function Contratos() {
                             ? <option value="">Nenhum ciclo cadastrado para esta safra</option>
                             : <>
                                 <option value="">— selecione o ciclo —</option>
-                                {ciclos.map(ci => <option key={ci.id} value={ci.id}>{ci.descricao} — {ci.cultura}</option>)}
+                                {ciclos.map(ci => <option key={ci.id} value={ci.id}>{ci.rotulo || ci.descricao || ci.cultura}</option>)}
                               </>
                         }
                       </SelectField>

@@ -336,6 +336,8 @@ Este é o MDF-e e CT-e reais, que transmitem à SEFAZ — inclusive o MDF-e aber
 
 **Acesso aos dados (01/11/2026)**: o banco só entrega a cada usuário os dados do próprio cliente. Se uma tela ficar vazia para alguém que antes via os dados, encaminhe à equipe Raccolto informando a tela e o usuário: pode ser uma regra de acesso a ajustar.
 
+**Ciclos por cliente ou por fazenda (04/11/2026)**: cada ciclo pertence a uma fazenda. Comercialização de Grãos, Contas a Pagar e a Receber, NF de Produtos, Previsão de Gastos, Apoio e Estoque de Grãos listam os ciclos de todas as fazendas do cliente, com a fazenda no nome. Plantio, pulverização, colheita, adubação e demais operações de lavoura listam por fazenda. O custo conta para o ciclo escolhido, mesmo lançado em outra fazenda: no DRE filtrado por fazenda, ele aparece na fazenda do ciclo.
+
 **Ciclos no Painel, Pragas e Hedge (04/11/2026)**: ciclo ativo é o que tem a data de hoje entre o início e o fim dele. A busca do Painel procura pela descrição do ciclo. Pragas e Doenças e Hedge listam os ciclos com a safra, e o Hedge usa a área plantada do ciclo.
 
 **Nota de transferência vinda do SIEG (04/11/2026)**: nota de transferência emitida no Arato que volta pelo SIEG aparece em Documentos Fiscais com o status Transferência, sem opção de processar, porque o estoque já foi movimentado pela transferência. Nota CFOP 5152 que continua Pendente não foi reconhecida como transferência emitida no Arato. Nas Movimentações de uma fazenda aparecem também os movimentos que passaram por um depósito dela; a linha indica \"Saldo de: [fazenda]\" quando o saldo é de outra fazenda. Saldo e Kardex continuam contando por fazenda.

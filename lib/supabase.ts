@@ -922,6 +922,7 @@ export type AnoSafra = {
 
 export type Ciclo = {
   id: string;
+  rotulo?: string;   // só em memória: nome com a fazenda (listarCiclosDoCliente), não existe no banco
   ano_safra_id: string;
   fazenda_id: string;
   descricao: string;

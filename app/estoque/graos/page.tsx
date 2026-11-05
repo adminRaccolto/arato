@@ -5,6 +5,7 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
+import { listarCiclosDoCliente } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import { listarFazendasDaConta } from "../../../lib/db";
 
@@ -12,7 +13,7 @@ type Aba = "posicao" | "movimentacoes" | "quebra" | "qualidade" | "config";
 
 type Deposito  = { id: string; nome: string; tipo: string };
 type AnoSafra  = { id: string; descricao: string };
-type Ciclo     = { id: string; cultura: string; ano_safra_id?: string };
+type Ciclo     = { id: string; cultura: string; ano_safra_id?: string; rotulo?: string };
 
 // Configuração de quebra técnica
 type QuebConfig = {
@@ -117,7 +118,7 @@ function BadgeTipo({ tipo }: { tipo: "entrada" | "saida" | "quebra" }) {
 }
 
 export default function EstoqueGraosPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
   // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
   // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
@@ -187,7 +188,7 @@ export default function EstoqueGraosPage() {
     const [{ data: dep }, { data: anos }, { data: cic }, { data: cfg }] = await Promise.all([
       supabase.from("depositos").select("id, nome, tipo").eq("fazenda_id", fazAtiva).order("nome"),
       anosQ,
-      supabase.from("ciclos").select("id, cultura, ano_safra_id").eq("fazenda_id", fazAtiva).order("created_at", { ascending: false }),
+      listarCiclosDoCliente(fazendaIds, fazAtiva).then(data => ({ data })),
       supabase.from("parametros_armazenagem").select("*").eq("fazenda_id", fazAtiva).order("created_at"),
     ]);
     setDepositos((dep ?? []) as Deposito[]);
@@ -508,7 +509,7 @@ export default function EstoqueGraosPage() {
         </SelectField>
         <SelectField value={fCiclo} onChange={e => setFCiclo(e.target.value)} style={inp}>
           <option value="">Todos os ciclos</option>
-          {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.cultura}</option>)}
+          {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.cultura}</option>)}
         </SelectField>
         {aba === "posicao" && (
           <SelectField value={fDeposito} onChange={e => setFDeposito(e.target.value)} style={inp}>

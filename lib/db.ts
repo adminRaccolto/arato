@@ -19,6 +19,7 @@ import { hojeLocal } from "./data-local";
 import { atualizarSituacaoDevolucao, compensarDevolucao } from "./fiscal/devolucao-compensacao";
 import { supabase } from "./supabase";
 import type { DepositosDaTransferencia } from "./estoque/rotulo-transferencia";
+import { rotularCiclos } from "./ciclos/visao-cliente";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
 import { vencimentoSalario } from "./folha-calculo";
@@ -2004,6 +2005,24 @@ export async function listarTalhoesDasFazendas(fazenda_ids: string[]): Promise<T
   const { data, error } = await supabase.from("talhoes").select("*").in("fazenda_id", fazenda_ids).order("nome");
   if (error) throw error;
   return data ?? [];
+}
+/**
+ * Ciclos do cliente inteiro, com a fazenda no nome. Para comercial, financeiro e notas: o custo ou a venda pode ser de
+ * ciclo de outra fazenda (o Armazém, que não planta, compra insumo para a lavoura). Operações de lavoura seguem por fazenda.
+ */
+export async function listarCiclosDoCliente(fazendaIds: string[], fazendaId?: string | null, ano_safra_id?: string): Promise<Ciclo[]> {
+  const ids = fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+  if (!ids.length) return [];
+  let q = supabase.from("ciclos").select("*").in("fazenda_id", ids);
+  if (ano_safra_id) q = q.eq("ano_safra_id", ano_safra_id);
+  const [{ data, error }, { data: fazendas, error: eFaz }] = await Promise.all([
+    q.order("data_inicio").order("id"),
+    supabase.from("fazendas").select("id,nome").in("id", ids),
+  ]);
+  if (error) throw error;
+  if (eFaz) throw eFaz;
+  const nomes = new Map((fazendas ?? []).map(f => [f.id as string, f.nome as string]));
+  return rotularCiclos((data ?? []) as Ciclo[], id => nomes.get(id));
 }
 export async function listarTodosCiclos(fazenda_id: string | string[]): Promise<Ciclo[]> {
   const { data, error } = await supabase.from("ciclos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data_inicio");

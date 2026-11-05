@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.04-v",
+    data: "04/11/2026",
+    titulo: "Ciclos do cliente inteiro em comercial, financeiro e notas",
+    modulos: ["Comercial", "Financeiro", "Fiscal", "Estoque", "Relatórios"],
+    itens: [
+      { tipo: "correcao", texto: "Comercialização de Grãos, Contas a Pagar e a Receber, NF de Produtos, Previsão de Gastos, Apoio e Estoque de Grãos passam a listar os ciclos de todas as fazendas do cliente, com a fazenda no nome. Antes aparecia só o ciclo de uma fazenda." },
+      { tipo: "correcao", texto: "DRE filtrado por fazenda: o custo lançado em outra fazenda conta para o ciclo apontado, e o custo desta fazenda apontado para ciclo de outra deixa de entrar aqui. Com todas as fazendas, o resultado não muda." },
+    ],
+  },
+  {
     versao: "2026.11.04-u",
     data: "04/11/2026",
     titulo: "Ciclos de produção voltam a aparecer em Pragas, Hedge e no Painel",

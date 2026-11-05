@@ -44,7 +44,7 @@ import {
   listarMaquinas, criarMaquina, ogDaLista,
   listarBombas,
   listarAnosSafra,
-  listarCiclos,
+  listarCiclosDoCliente,
   listarPedidoCompraItens,
   
   processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
@@ -2350,16 +2350,13 @@ export default function ModalNf({
       setWPedidos((data ?? []) as PedidoMin[]);
     } catch { setWPedidos([]); }
   }
-  // Carrega ciclos quando o ano safra muda no formulário. Usa a fazenda DONA da NF
-  // (nfEdit.fazenda_id), não a fazenda ativa da sessão (fazendaId) — Documentos Fiscais
-  // lista NFs de todas as fazendas da conta de uma vez, então a fazenda ativa do TopNav
-  // raramente é a mesma da NF aberta; filtrar por ela escondia ciclos cadastrados na
-  // fazenda certa só porque outra fazenda da conta estava ativa no momento.
+  // Carrega os ciclos do cliente inteiro, com a fazenda no nome: filtrar pela fazenda da NF deixava
+  // sem opção a NF do Armazém, que não planta mas compra insumo para a lavoura das outras fazendas.
   useEffect(() => {
     if (!cab.ano_safra_id) { setCiclosNF([]); return; }
     const fazCiclo = nfEdit?.fazenda_id ?? fazendaId;
-    listarCiclos(cab.ano_safra_id, fazCiclo).then(setCiclosNF).catch(() => setCiclosNF([]));
-  }, [cab.ano_safra_id, fazendaId, nfEdit?.fazenda_id]);
+    listarCiclosDoCliente(fazendaIds, fazCiclo, cab.ano_safra_id).then(setCiclosNF).catch(() => setCiclosNF([]));
+  }, [cab.ano_safra_id, fazendaId, fazendaIds, nfEdit?.fazenda_id]);
 
   // Reforço do auto-preenchimento de Produtor: se wProdutores só termina de carregar
   // DEPOIS que a NF já foi aberta (abrirEditar roda antes do re-render refletir o
@@ -3247,7 +3244,7 @@ export default function ModalNf({
                         <label data-arato-label="true" style={lbl}>Ciclo</label>
                         <SelectField value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
                           <option value="">— selecione o ano safra —</option>
-                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
+                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.rotulo || c.descricao || c.cultura}</option>)}
                         </SelectField>
                       </div>
                       <div>
