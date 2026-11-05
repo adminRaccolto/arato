@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { rotuloPrevisaoFluxo } from "../../../lib/financeiro/previsoes";
+import { COR_FLUXO, corLinhaFluxo, rotuloPrevisaoFluxo } from "../../../lib/financeiro/previsoes";
 import { aplicarPadraoRelatorio } from "../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
@@ -765,19 +765,20 @@ function FinanceiroRelatoriosInner() {
                     <td colspan="2" style="padding:7px 10px;font-weight:700;font-size:11px;color:#1A4870">${fmtDt(dia)}</td>
                     <td style="padding:7px 10px;font-size:10px;color:#888">${diaRows.length} lançamento${diaRows.length !== 1 ? "s" : ""}</td>
                     <td style="padding:7px 10px;font-size:10px;color:#888"></td>
-                    <td style="padding:7px 10px;text-align:right;font-weight:700;color:#16A34A;font-size:11px">${diaEnt > 0 ? fmtV(diaEnt) : ""}</td>
-                    <td style="padding:7px 10px;text-align:right;font-weight:700;color:#E24B4A;font-size:11px">${diaSai > 0 ? fmtV(diaSai) : ""}</td>
+                    <td style="padding:7px 10px;text-align:right;font-weight:700;color:#111;font-size:11px">${diaEnt > 0 ? fmtV(diaEnt) : ""}</td>
+                    <td style="padding:7px 10px;text-align:right;font-weight:700;color:#111;font-size:11px">${diaSai > 0 ? fmtV(diaSai) : ""}</td>
                     <td style="padding:7px 10px;text-align:right;font-weight:700;font-size:11px;color:${diaUltSaldo >= 0 ? "#111" : "#E24B4A"}">${fmtV(diaUltSaldo)}</td>
                   </tr>`;
                 const detalhes = diaRows.map(r => {
                   const origLabel = r.tipo_row === "previsao" ? rotuloPrevisaoFluxo(r.origem_lancamento) : r.origem_lancamento ? (ORIG_LABEL[r.origem_lancamento] ?? r.origem_lancamento) : TIPO_LABEL[r.tipo_row];
+                  const corLinha = corLinhaFluxo({ previsao: r.tipo_row === "previsao", origem_lancamento: r.origem_lancamento });
                   return `<tr style="border-bottom:0.5px solid #F0F3FA">
-                    <td style="padding:5px 10px 5px 20px;font-size:10px;color:#888;white-space:nowrap">${new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}</td>
-                    <td style="padding:5px 10px;font-size:11px;color:#444;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fornecedor || "—"}</td>
-                    <td style="padding:5px 10px;font-size:11px;color:#444;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.descricao || "—"}</td>
-                    <td style="padding:5px 10px;font-size:10px;color:#666">${origLabel}</td>
-                    <td style="padding:5px 10px;text-align:right;font-weight:600;color:#16A34A;font-size:11px">${r.entrada > 0 ? fmtV(r.entrada) : ""}</td>
-                    <td style="padding:5px 10px;text-align:right;font-weight:600;color:#E24B4A;font-size:11px">${r.saida > 0 ? fmtV(r.saida) : ""}</td>
+                    <td style="padding:5px 10px 5px 20px;font-size:10px;color:${corLinha};white-space:nowrap">${new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}</td>
+                    <td style="padding:5px 10px;font-size:11px;color:${corLinha};max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fornecedor || "—"}</td>
+                    <td style="padding:5px 10px;font-size:11px;color:${corLinha};max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.descricao || "—"}</td>
+                    <td style="padding:5px 10px;font-size:10px;color:${corLinha}">${origLabel}</td>
+                    <td style="padding:5px 10px;text-align:right;font-weight:600;color:${corLinha};font-size:11px">${r.entrada > 0 ? fmtV(r.entrada) : ""}</td>
+                    <td style="padding:5px 10px;text-align:right;font-weight:600;color:${corLinha};font-size:11px">${r.saida > 0 ? fmtV(r.saida) : ""}</td>
                     <td style="padding:5px 10px;text-align:right;font-weight:700;font-size:11px;color:${r.saldo >= 0 ? "#111" : "#E24B4A"}">${fmtV(r.saldo)}</td>
                   </tr>`;
                 }).join("");
@@ -1504,8 +1505,8 @@ function FinanceiroRelatoriosInner() {
                                         {temPrev && <span style={{ marginLeft: 4, fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "1px 5px", borderRadius: 8 }}>prev</span>}
                                       </td>
                                       <td /><td />
-                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#16A34A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaEnt > 0 ? fmtBRL(diaEnt, 2) : ""}</td>
-                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#E24B4A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSai > 0 ? fmtBRL(diaSai, 2) : ""}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", color: COR_FLUXO.padrao, fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaEnt > 0 ? fmtBRL(diaEnt, 2) : ""}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", color: COR_FLUXO.padrao, fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSai > 0 ? fmtBRL(diaSai, 2) : ""}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSimLiq !== 0 ? (diaSimLiq > 0 ? "+" : "−") + fmtBRL(Math.abs(diaSimLiq), 2) : ""}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: diaUltSaldo >= 0 ? "#111111" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(diaUltSaldo, 2)}</td>
                                     </tr>
@@ -1514,47 +1515,48 @@ function FinanceiroRelatoriosInner() {
                                       const isPrev = r.tipo_row === "previsao";
                                       const isPend = r.tipo_row === "pendente";
                                       const isReal = r.tipo_row === "real";
+                                      const corLinha = corLinhaFluxo({ previsao: isPrev, origem_lancamento: r.origem_lancamento });
                                       return (
                                         <tr key={`${dia}-${idx}`} style={{ background: isSim ? "#FAF5FF" : isPrev ? "#F0FDF4" : isPend ? "#FFFBF0" : "var(--bg-card)", borderBottom: "0.5px solid var(--bg-page)" }}>
                                           <td />
-                                          <td style={{ padding: "6px 14px 6px 28px", color: "var(--text-3)", fontSize: 11, whiteSpace: "nowrap" }}>
+                                          <td style={{ padding: "6px 14px 6px 28px", color: corLinha, fontSize: 11, whiteSpace: "nowrap" }}>
                                             {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
                                           </td>
-                                          <td style={{ padding: "6px 14px", color: "#444", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.fornecedor || "—"}</td>
-                                          <td style={{ padding: "6px 14px", color: "#444", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao || "—"}</td>
+                                          <td style={{ padding: "6px 14px", color: corLinha, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.fornecedor || "—"}</td>
+                                          <td style={{ padding: "6px 14px", color: corLinha, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao || "—"}</td>
                                           <td style={{ padding: "6px 14px" }}>
                                             {isSim  && <span style={{ fontSize: 10, background: "#EDE9FE", color: "#7C3AED", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Simulação</span>}
                                             {!isSim && (() => {
                                               if (isPrev) return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>{rotuloPrevisaoFluxo(r.origem_lancamento)}</span>;
                                               const orig = r.origem_lancamento;
                                               const ORIG_MAP: Record<string, { label: string; bg: string; color: string }> = {
-                                                pedido_compra:       { label: "Pedido de Compra",    bg: "#FBF3E0", color: "#7A5A12" },
-                                                nf_entrada:          { label: "NF de Entrada",       bg: "#F2F2F2", color: "#1E40AF" },
-                                                nf_saida:            { label: "NF de Saída",          bg: "#F2F2F2", color: "#1E40AF" },
-                                                contrato:            { label: "Contrato de Venda",   bg: "#DCFCE7", color: "#166534" },
-                                                arrendamento:        { label: "Arrendamento",         bg: "#FFF7ED", color: "#9A3412" },
-                                                contrato_financeiro: { label: "Contrato Financeiro",  bg: "#F3E8FF", color: "#6B21A8" },
-                                                manual:              { label: "Manual",               bg: "#F1F5F9", color: "#475569" },
-                                                cron:                { label: "Automático",           bg: "#DCFCE7", color: "#166534" },
-                                                transporte:          { label: "Transporte",           bg: "#F0F9FF", color: "#0369A1" },
-                                                apoio_financeiro:    { label: "Apoio Financeiro",     bg: "#FEF3C7", color: "#92400E" },
-                                                folha:               { label: "Folha",                bg: "#F1F5F9", color: "#475569" },
+                                                pedido_compra:       { label: "Pedido de Compra",    bg: "#D5E8F5", color: COR_FLUXO.pedido },
+                                                nf_entrada:          { label: "NF de Entrada",       bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                nf_saida:            { label: "NF de Saída",          bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                contrato:            { label: "Contrato de Venda",   bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                arrendamento:        { label: "Arrendamento",         bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                contrato_financeiro: { label: "Contrato Financeiro",  bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                manual:              { label: "Manual",               bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                cron:                { label: "Automático",           bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                transporte:          { label: "Transporte",           bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                apoio_financeiro:    { label: "Apoio Financeiro",     bg: "#F2F2F2", color: COR_FLUXO.padrao },
+                                                folha:               { label: "Folha",                bg: "#F2F2F2", color: COR_FLUXO.padrao },
                                               };
                                               if (orig && ORIG_MAP[orig]) {
                                                 const o = ORIG_MAP[orig];
                                                 return <span style={{ fontSize: 10, background: o.bg, color: o.color, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>{o.label}</span>;
                                               }
-                                              if (isPend) return <span style={{ fontSize: 10, background: "#F1F5F9", color: "#475569", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
-                                              if (isReal) return <span style={{ fontSize: 10, background: "#F1F5F9", color: "#475569", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
+                                              if (isPend) return <span style={{ fontSize: 10, background: "#F2F2F2", color: COR_FLUXO.padrao, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
+                                              if (isReal) return <span style={{ fontSize: 10, background: "#F2F2F2", color: COR_FLUXO.padrao, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Manual</span>;
                                               return null;
                                             })()}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
-                                            {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada, 2)}</div>}
+                                            {r.entrada > 0 && <div style={{ color: corLinha, fontWeight: 600 }}>{fmtBRL(r.entrada, 2)}</div>}
                                             {r.entrada > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{r.subMoeda}</div>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
-                                            {r.saida > 0 && <div style={{ color: "#E24B4A", fontWeight: 600 }}>{fmtBRL(r.saida, 2)}</div>}
+                                            {r.saida > 0 && <div style={{ color: corLinha, fontWeight: 600 }}>{fmtBRL(r.saida, 2)}</div>}
                                             {r.saida > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{r.subMoeda}</div>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 700 }}>

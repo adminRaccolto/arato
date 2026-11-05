@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { datasRecorrencia, resultadoConsumo, ogCasa, previsaoVencida, previstoRealizado, rotuloPrevisaoFluxo } from "./previsoes.ts";
+import { datasRecorrencia, resultadoConsumo, ogCasa, previsaoVencida, previstoRealizado, rotuloPrevisaoFluxo, corLinhaFluxo, COR_FLUXO } from "./previsoes.ts";
 
 test("recorrência mensal mantém o dia e ajusta mês curto", () => {
   assert.deepEqual(datasRecorrencia("2026-01-31", 3), ["2026-01-31", "2026-02-28", "2026-03-31"]);
@@ -74,4 +74,12 @@ test("previsão no fluxo nunca aparece como lançamento manual", () => {
   assert.equal(rotuloPrevisaoFluxo("previsao"), "Previsão");
   assert.equal(rotuloPrevisaoFluxo(null), "Previsão");
   assert.equal(rotuloPrevisaoFluxo("folha"), "Previsão · Folha");
+});
+
+test("cor da linha no fluxo: pedido azul, previsão verde, restante preto", () => {
+  assert.equal(corLinhaFluxo({ origem_lancamento: "pedido_compra" }), COR_FLUXO.pedido);
+  assert.equal(corLinhaFluxo({ previsao: true, origem_lancamento: "previsao" }), COR_FLUXO.previsao);
+  assert.equal(corLinhaFluxo({ previsao: true, origem_lancamento: "folha" }), COR_FLUXO.previsao);
+  for (const origem_lancamento of ["nf_entrada", "manual", "contrato", null, undefined])
+    assert.equal(corLinhaFluxo({ origem_lancamento }), COR_FLUXO.padrao);
 });

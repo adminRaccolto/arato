@@ -11,6 +11,7 @@ import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior, listarPessoasDaConta, listarPagamentoLotes, listarProdutoresDaConta } from "../../lib/db";
 import { fazendaDoProdutor } from "../../lib/fazenda-de";
+import { corLinhaFluxo } from "../../lib/financeiro/previsoes";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao, PagamentoLote } from "../../lib/supabase";
 
@@ -875,7 +876,7 @@ export default function Financeiro() {
                                   {fmtData(l.data_vencimento)}
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "right", whiteSpace: "nowrap" }}>
-                                  <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : l.natureza === "previsao" ? "#444444" : l.origem_lancamento === "pedido_compra" ? "#16A34A" : l.tipo === "pagar" ? "#E24B4A" : "var(--text-1)", fontSize: 12 }}>{exibirValor(l)}</div>
+                                  <div style={{ fontWeight: 600, color: corLinhaFluxo({ previsao: l.natureza === "previsao", origem_lancamento: l.origem_lancamento }), fontSize: 12 }}>{exibirValor(l)}</div>
                                   {conv && <div style={{ fontSize: 10, color: "#444", marginTop: 1 }}>{conv}</div>}
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "center" }}>

@@ -820,6 +820,10 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **Fluxo de Caixa — previsões:** previsões em aberto, inclusive as criadas no Contas a Pagar e as da folha, entram nas saídas e no saldo do Fluxo de Caixa Previsto; no Realizado, não. O botão "Previsões" liga e desliga no fluxo diário. A tela mostra quantas previsões e o valor no período; o dia com previsão tem a marca "prev" e, ao abri-lo, a linha aparece como "Previsão" (ou "Previsão · Folha", "Previsão · Recorrente"). No mensal e anual, o valor fica somado na categoria e o subtítulo informa quanto é previsão. Previsão vencida antes do início do período não entra no saldo, nem com "Considerar atrasados" ligado: um aviso mostra quantas são e o valor, com link para Previsão de Gastos → Previsões Vencidas ou Contas a Pagar, onde o gestor dá nova data ou efetiva.
 
+**Fluxo de Caixa — cores:** no fluxo diário, na tela e no PDF, pedido de compra aparece em azul, previsão em verde e o restante em preto. Saldo negativo continua em vermelho. O Excel não tem cores.
+
+**Contas a Pagar — pedidos de compra:** o atalho Pedidos de compra mostra os títulos de pedido em qualquer data, sem os cancelados. Sem esse atalho, vale o período padrão da tela, de hoje até 60 dias. Título de pedido traz a marca Pedido na descrição.
+
 **Fluxo de Caixa — Excel:** em Financeiro → Relatórios Financeiros → Fluxo de Caixa, o botão ⬇ Excel, ao lado de Imprimir / PDF, exporta a visão aberta com os filtros da tela.
 - Diário: aba Resumo (escopo, período, tipo, saldo inicial com a composição quando Considerar atrasados? está ligado, totais e saldo final) e aba Fluxo Diário com uma linha por lançamento (data, fornecedor/pagador, descrição, origem, situação, entrada, saída e saldo acumulado), do saldo inicial aos totais.
 - Mensal e Anual: aba Resumo e aba com categorias nas linhas e meses (ou anos) nas colunas, separando Entradas e Saídas, com Total Entradas, Total Saídas, Saldo do mês/ano e Saldo Acumulado.

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-g",
+    data: "05/11/2026",
+    titulo: "Pedidos de compra no CP e cores no Fluxo de Caixa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Contas a Pagar ganhou o atalho Pedidos de compra, que mostra os títulos de pedido em qualquer data, e a marca Pedido na descrição." },
+      { tipo: "melhoria", texto: "No Fluxo de Caixa diário, inclusive no PDF, pedido de compra aparece em azul, previsão em verde e o restante em preto." },
+    ],
+  },
+  {
     versao: "2026.11.05-f",
     data: "05/11/2026",
     titulo: "Aditivos no contrato de venda",

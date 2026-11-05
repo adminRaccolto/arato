@@ -444,7 +444,7 @@ export default function ContasAPagarPage() {
   // O período padrão (hoje até hoje + 60 dias) é ignorado quando não foi escolhido à mão e: busca por fornecedor/nº NF,
   // ou atalho/status que olha o passado (Vencidos, Parciais, Baixados, Barter, Contratos, Compra de terra) — senão
   // "Vencidos" ficaria sempre vazio, já que o padrão começa hoje.
-  const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra"]);
+  const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra", "pedido_compra"]);
   // Sem período escolhido à mão, busca por fornecedor/nº NF e os atalhos de contrato (barter, contratos, compra de terra)
   // olham todas as datas — e os campos de data ficam vazios na tela, para mostrar o que está valendo.
   const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || ATALHOS_SEM_DATA.has(fAtalho));
@@ -485,6 +485,8 @@ export default function ContasAPagarPage() {
     if (fAtalho === "vencendo") return aberto && !!l.data_vencimento && l.data_vencimento >= h && l.data_vencimento <= lim.toISOString().slice(0, 10);
     if (fAtalho === "barter") return l.moeda === "barter";
     if (fAtalho === "previsoes") return ehPrevisao(l);
+    // Título de pedido cancelado é o que já foi coberto pelas NFs: não é mais compromisso
+    if (fAtalho === "pedido_compra") return l.origem_lancamento === "pedido_compra" && l.status_normalizado !== "cancelado";
     return l.origem_lancamento === fAtalho;
   };
   // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
@@ -1893,7 +1895,7 @@ export default function ContasAPagarPage() {
         <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {([
             ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"], ["previsoes", "Previsões"],
-            ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
+            ["pedido_compra", "Pedidos de compra"], ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
           ] as const).map(([k, rot]) => {
             const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
               : k === "em_aberto" || k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
@@ -2311,6 +2313,7 @@ export default function ContasAPagarPage() {
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>
                       {l.descricao ?? "—"}
+                      {l.origem_lancamento === "pedido_compra" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>Pedido</span>}
                     </td>
                   ),
                   operacao: (

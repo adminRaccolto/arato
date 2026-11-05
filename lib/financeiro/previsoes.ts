@@ -114,3 +114,10 @@ export function previstoRealizado(previsoes: PrevisaoAgg[], titulos: TituloRealA
 export function rotuloPrevisaoFluxo(origem?: string | null): string {
   return origem === "folha" ? "Previsão · Folha" : origem === "recorrencia" ? "Previsão · Recorrente" : "Previsão";
 }
+
+/** Cor da linha no Fluxo de Caixa: pedido de compra em azul, previsão em verde, o restante em preto. */
+export const COR_FLUXO = { pedido: "#1A5CB8", previsao: "#16A34A", padrao: "#111111" } as const;
+export function corLinhaFluxo(l: { previsao?: boolean; origem_lancamento?: string | null }): string {
+  if (l.previsao) return COR_FLUXO.previsao;
+  return l.origem_lancamento === "pedido_compra" ? COR_FLUXO.pedido : COR_FLUXO.padrao;
+}
