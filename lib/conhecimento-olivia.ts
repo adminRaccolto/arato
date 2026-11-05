@@ -37,6 +37,48 @@ Reconstruída em 07/10/2026 a partir de levantamento de código (snapshot 06/10/
 
 Este documento descreve o que o sistema Arato Web faz **hoje**, verificado contra o código quando a afirmação tem consequência financeira ou fiscal. Não é um histórico de mudanças. Onde o comportamento real é mais limitado do que o texto de alguma tela sugere (automação "de mentirinha", registro só local), isso está dito explicitamente — nunca omita essa ressalva ao responder.
 
+
+---
+
+## Guia por tarefa — comece por aqui
+Responda com estes passos quando a pergunta for "como faço" ou "onde fica". Os nomes de botão e aba são os da tela. Quando a pergunta casar com um item, use o caminho e o botão exatamente como aqui.
+
+**Cadastrar fornecedor, cliente, comprador, transportadora ou banco:** Cadastros → Entidades → Pessoas e Entidades, botão + Nova Pessoa. Com CNPJ, o botão ao lado do campo busca os dados na Receita.
+**Cadastrar produtor:** Cadastros → Entidades → Produtores, botão + Novo Produtor.
+**Cadastrar fazenda ou talhão:** Cadastros → Entidades → Fazendas e Talhões, botão + Nova Fazenda; o talhão fica dentro da fazenda.
+**Criar ciclo ou safra:** Produção → Planejamento → Safras e Ciclos.
+
+**NF de produtos à mão ou por XML:** Documentos Fiscais → Notas de Entrada → Notas de Terceiro, botão + Nova NF de Produtos.
+**Processar nota que já chegou pelo SIEG:** Documentos Fiscais → Notas de Entrada → Notas de Terceiro, filtre Status = Pendente, clique na nota, confira e processe. Só ao processar entram estoque e Contas a Pagar.
+**Desfazer nota processada:** Documentos Fiscais → Notas de Entrada → Notas de Terceiro, clique na nota, botão ↺ Estornar. Nenhum título dela pode estar pago, conciliado ou em borderô.
+**Nota com status Transferência:** é nota de transferência emitida no Arato que voltou pelo SIEG. O estoque já foi movimentado pela transferência; não precisa processar.
+
+**Registrar plantio:** Produção → Operações de Campo → Plantio, botão + Registrar Plantio.
+**Registrar pulverização:** Produção → Operações de Campo → Pulverização Terrestre, botão + Registrar Aplicação. Se foi de avião: Produção → Operações de Campo → Aplicação Aérea.
+**Registrar colheita:** Produção → Colheita → Colheita, botão + Nova Colheita. Depois, em cada colheita, + Romaneio: primeiro o peso bruto, quando o caminhão chega carregado; depois a tara, com o caminhão vazio, e o depósito. A entrada no estoque acontece só ao confirmar com a tara.
+
+**Pedido de compra:** Comercial & Logística → Compras → Pedido de Compras, botão + Novo Pedido.
+**Transferir insumo ou semente entre fazendas:** Comercial & Logística → Estoque → Transferência entre Fazendas, botão + Nova Transferência. A tela pede Fazenda Origem, Depósito Origem, fazenda e depósito de destino e os itens (+ Adicionar Item).
+**Saldo por depósito:** Comercial & Logística → Relatórios → Posição de Insumos, aba Relatórios, opção Saldo por Depósito.
+**Histórico de entradas e saídas de um produto:** Comercial & Logística → Relatórios → Kardex (Ficha de Estoque).
+
+**Contrato de venda de grãos:** Comercial & Logística → Comercialização → Contratos de Grãos.
+**Emitir nota de venda:** Documentos Fiscais → Notas de Saída → Notas de Venda, botão + Nova NF-e. Confirmar contrato não emite a nota.
+**Remessa para armazém:** Documentos Fiscais → Remessas e Retornos → Remessas (armazém, máquinas), botão + Nova Remessa.
+**CT-e:** Documentos Fiscais → Transporte → CT-e — Conhecimento de Transporte, botão + Emitir CT-e.
+**MDF-e, manifesto de carga:** Documentos Fiscais → Transporte → MDF-e — Manifesto de Cargas, botão + Emitir MDF-e.
+
+**Conta a pagar sem nota, como um boleto:** Financeiro → Contas a Pagar / Receber → Contas a Pagar, botão + Novo Lançamento.
+**Pagar vários títulos:** Financeiro → Contas a Pagar / Receber → Contas a Pagar, marque os títulos e use ✓ Baixar em Lote.
+**Desfazer pagamento de borderô:** use Estornar no borderô. Ele volta a ficar em aberto, com os mesmos títulos.
+**Conferir extrato, OFX:** Financeiro → Tesouraria → Conciliação Bancária.
+**Fatura do cartão:** Financeiro → Cartões de Crédito → Cartões de Crédito, botão 💰 Pagar Fatura, com a fatura Fechada.
+**Previsão de gasto:** Financeiro → Contas a Pagar / Receber → Previsão de Gastos, botão + Nova Previsão.
+**Financiamento:** Financeiro → Complemento Financeiro → Contratos Financeiros, botão + Novo Contrato.
+
+**LCDPR:** Fiscal → Obrigações → LCDPR. O arquivo é baixado na aba Exportação. Os dados do imóvel e do contador ficam na aba Cadastro LCDPR. O LCDPR é só de produtor pessoa física: empresa com CNPJ não entrega por aqui. Gerar o arquivo não transmite à Receita.
+
+**Importar planilha e fazer backup:** quem faz é a equipe Raccolto; o cliente não vê essas telas. Oriente a falar com a Raccolto.
 ---
 
 ## PRINCÍPIO DE HONESTIDADE

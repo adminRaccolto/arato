@@ -57,10 +57,11 @@ export function rotasInvalidas(texto: string, nav: ItemMenu[]): string[] {
   const invalidas: string[] = [];
   const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\&]/g, "\\$&");
   const procurar = (nome: string, validar: (proximo: string) => boolean) => {
-    const re = new RegExp(`(?<![\\wÀ-ÿ])(?<!aba )${escapar(nome)}\\s*→\\s*([^→\\n.,;:()—]{2,45})`, "g");
+    const re = new RegExp(`(?<![\\wÀ-ÿ])(?<!aba )(?<!→ )${escapar(nome)}\\s*→\\s*([^→\\n.,;:()—]{2,45})`, "g");
     for (const m of limpo.matchAll(re)) if (!validar(normalizar(m[1]))) invalidas.push(`${nome} → ${m[1].trim()}`);
   };
-  for (const [nome, nomes] of menus) procurar(nome, proximo => [...nomes].some(n => casa(proximo, n)));
+  // "Configurações → Rede" é a tela do RustDesk, programa do suporte remoto, não do Arato
+  for (const [nome, nomes] of menus) procurar(nome, proximo => [...nomes].some(n => casa(proximo, n)) || (nome === "Configurações" && proximo.startsWith("rede")));
   for (const nome of MENUS_ANTIGOS) {
     const re = new RegExp(`(?<![\\wÀ-ÿ])(?<!→ )(?<!& )${escapar(nome)}\\s*→\\s*([^→\\n.,;:()—]{2,45})`, "g");
     for (const m of limpo.matchAll(re)) invalidas.push(`${nome} → ${m[1].trim()}`);

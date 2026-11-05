@@ -1,0 +1,682 @@
+[
+{
+"id": "nfse-sieg",
+"p": "Como lanço uma NFS-e que veio do sistema nacional?",
+"rota": [
+"Documentos Fiscais → Notas de Entrada → Notas de Terceiro"
+],
+"deve": [
+"Abrir NFS",
+"Processar NF",
+"Ano Safra",
+"Opera[cç][aã]o Gerencial"
+],
+"grupo": "base"
+},
+{
+"id": "nfse-manual",
+"p": "Tenho uma nota de serviço em papel que não chegou pelo sistema. Como lanço?",
+"rota": [
+"Documentos Fiscais → Notas de Entrada → Notas de Terceiro"
+],
+"deve": [
+"Nova NF de Servi[cç]o"
+],
+"grupo": "base"
+},
+{
+"id": "nf-produto",
+"p": "Como lanço uma nota de compra de defensivo à mão?",
+"rota": [
+"Documentos Fiscais → Notas de Entrada → Notas de Terceiro"
+],
+"deve": [
+"Nova NF de Produtos"
+],
+"grupo": "base"
+},
+{
+"id": "nf-estornar",
+"p": "Processei uma nota de compra errada. Como desfaço?",
+"rota": [
+"Documentos Fiscais → Notas de Entrada → Notas de Terceiro"
+],
+"deve": [
+"Estornar"
+],
+"grupo": "base"
+},
+{
+"id": "nf-transf-status",
+"p": "Apareceu uma nota com status Transferência em Documentos Fiscais e sem botão de processar. Isso está certo?",
+"rota": [],
+"deve": [
+"movimentad"
+],
+"nao": [
+"precisa processar para"
+],
+"grupo": "base"
+},
+{
+"id": "fornecedor",
+"p": "Onde cadastro um novo fornecedor?",
+"rota": [
+"Cadastros → Entidades → Pessoas e Entidades"
+],
+"deve": [
+"Nova Pessoa"
+],
+"nao": [
+"reconhece pela forma"
+],
+"grupo": "base"
+},
+{
+"id": "produtor",
+"p": "Onde cadastro um novo produtor?",
+"rota": [
+"Cadastros → Entidades → Produtores"
+],
+"deve": [
+"Novo Produtor"
+],
+"grupo": "base"
+},
+{
+"id": "talhao",
+"p": "Onde cadastro um talhão novo?",
+"rota": [
+"Cadastros → Entidades → Fazendas e Talhões"
+],
+"grupo": "base"
+},
+{
+"id": "deposito",
+"p": "Onde cadastro um depósito ou silo?",
+"rota": [
+"Cadastros → Agrícola → Depósitos & Armazéns"
+],
+"grupo": "base"
+},
+{
+"id": "conta-banco",
+"p": "Onde cadastro uma conta bancária?",
+"rota": [
+"Cadastros → Financeiro → Contas Bancárias"
+],
+"grupo": "base"
+},
+{
+"id": "insumo",
+"p": "Onde cadastro um insumo novo?",
+"rota": [
+"Cadastros → Agrícola → Catálogo de Insumos"
+],
+"grupo": "base"
+},
+{
+"id": "maquina",
+"p": "Onde cadastro um trator?",
+"rota": [
+"Cadastros → Patrimônio → Máquinas e Veículos",
+"Produção → Máquinas → Máquinas e Veículos"
+],
+"grupo": "base"
+},
+{
+"id": "ciclo",
+"p": "Como crio um ciclo de soja da safra nova?",
+"rota": [
+"Produção → Planejamento → Safras e Ciclos"
+],
+"grupo": "base"
+},
+{
+"id": "plantio",
+"p": "Como registro um plantio?",
+"rota": [
+"Produção → Operações de Campo → Plantio"
+],
+"deve": [
+"Registrar Plantio"
+],
+"grupo": "base"
+},
+{
+"id": "pulverizacao",
+"p": "Como lanço uma pulverização?",
+"rota": [
+"Produção → Operações de Campo → Pulverização Terrestre"
+],
+"deve": [
+"Registrar Aplica[cç][aã]o"
+],
+"grupo": "base"
+},
+{
+"id": "colheita",
+"p": "Como lanço a colheita?",
+"rota": [
+"Produção → Colheita → Colheita"
+],
+"deve": [
+"Nova Colheita"
+],
+"grupo": "base"
+},
+{
+"id": "romaneio-tara",
+"p": "Como funciona a pesagem do caminhão na colheita?",
+"rota": [
+"Produção → Colheita → Colheita"
+],
+"deve": [
+"peso bruto",
+"tara"
+],
+"grupo": "base"
+},
+{
+"id": "semente-deposito",
+"p": "Onde vejo o estoque de sementes por depósito?",
+"rota": [
+"Comercial & Logística → Relatórios → Posição de Insumos"
+],
+"deve": [
+"Saldo por Dep[oó]sito"
+],
+"grupo": "base"
+},
+{
+"id": "kardex",
+"p": "Onde vejo o histórico de entradas e saídas de um produto?",
+"rota": [
+"Comercial & Logística → Relatórios → Kardex (Ficha de Estoque)"
+],
+"grupo": "base"
+},
+{
+"id": "transferencia",
+"p": "Como faço uma transferência de insumo entre fazendas?",
+"rota": [
+"Comercial & Logística → Estoque → Transferência entre Fazendas"
+],
+"deve": [
+"Fazenda (de )?Origem",
+"Dep[oó]sito (de )?Origem"
+],
+"nao": [
+"Produtor de origem"
+],
+"grupo": "base"
+},
+{
+"id": "pedido",
+"p": "Como faço um pedido de compra?",
+"rota": [
+"Comercial & Logística → Compras → Pedido de Compras"
+],
+"deve": [
+"Novo Pedido"
+],
+"grupo": "base"
+},
+{
+"id": "contrato-graos",
+"p": "Onde lanço um contrato de venda de soja?",
+"rota": [
+"Comercial & Logística → Comercialização → Contratos de Grãos"
+],
+"grupo": "base"
+},
+{
+"id": "contrato-nf",
+"p": "Quando eu confirmo um contrato de grãos a nota é emitida sozinha?",
+"rota": [],
+"deve": [
+"n[aã]o"
+],
+"grupo": "base"
+},
+{
+"id": "nf-venda",
+"p": "Como emito uma nota de venda de grãos?",
+"rota": [
+"Documentos Fiscais → Notas de Saída → Notas de Venda",
+"Comercial & Logística → Comercialização → Faturamento / NF-e de Saída"
+],
+"grupo": "base"
+},
+{
+"id": "arrendamento",
+"p": "Onde lanço um contrato de arrendamento?",
+"rota": [
+"Comercial & Logística → Comercialização → Contratos de Arrendamento"
+],
+"grupo": "base"
+},
+{
+"id": "compra-terra",
+"p": "Onde lanço a compra de uma terra?",
+"rota": [
+"Comercial & Logística → Comercialização → Compra de Terra"
+],
+"grupo": "base"
+},
+{
+"id": "expedicao",
+"p": "Onde controlo as cargas de grão que saíram?",
+"rota": [
+"Comercial & Logística → Expedição → Expedição de Grãos",
+"Comercial & Logística → Expedição → Cargas em Trânsito"
+],
+"grupo": "base"
+},
+{
+"id": "cte",
+"p": "Como emito um CT-e?",
+"rota": [
+"Documentos Fiscais → Transporte → CT-e — Conhecimento de Transporte",
+"Comercial & Logística → Fretes e Transporte → CT-e — Conhecimento de Transporte"
+],
+"deve": [
+"Emitir CT-e"
+],
+"grupo": "base"
+},
+{
+"id": "mdfe",
+"p": "Como emito um MDF-e?",
+"rota": [
+"Documentos Fiscais → Transporte → MDF-e — Manifesto de Cargas",
+"Comercial & Logística → Fretes e Transporte → MDF-e — Manifesto de Cargas"
+],
+"deve": [
+"Emitir MDF-e"
+],
+"grupo": "base"
+},
+{
+"id": "remessa",
+"p": "Como emito uma nota de remessa para armazém?",
+"rota": [
+"Documentos Fiscais → Remessas e Retornos → Remessas"
+],
+"deve": [
+"Nova Remessa"
+],
+"grupo": "base"
+},
+{
+"id": "cp",
+"p": "Onde lanço uma conta a pagar?",
+"rota": [
+"Financeiro → Contas a Pagar / Receber → Contas a Pagar"
+],
+"deve": [
+"Novo Lan[cç]amento"
+],
+"grupo": "base"
+},
+{
+"id": "lote",
+"p": "Como pago vários títulos de uma vez?",
+"rota": [
+"Financeiro → Contas a Pagar / Receber → Contas a Pagar"
+],
+"deve": [
+"Baixar em Lote"
+],
+"grupo": "base"
+},
+{
+"id": "bordero-estorno",
+"p": "Paguei um borderô errado. Como desfaço só o pagamento sem perder o borderô?",
+"rota": [],
+"deve": [
+"Estornar"
+],
+"grupo": "base"
+},
+{
+"id": "conciliacao",
+"p": "Onde importo o extrato OFX do banco?",
+"rota": [
+"Financeiro → Tesouraria → Conciliação Bancária"
+],
+"nao": [
+"Fluxo de Caixa → Importar"
+],
+"grupo": "base"
+},
+{
+"id": "cartao",
+"p": "Como pago a fatura do cartão de crédito?",
+"rota": [
+"Financeiro → Cartões de Crédito"
+],
+"deve": [
+"Pagar Fatura"
+],
+"grupo": "base"
+},
+{
+"id": "folha",
+"p": "Onde lanço a folha dos funcionários da fazenda?",
+"rota": [
+"Financeiro → Contas a Pagar / Receber → Folha de Pagamento"
+],
+"grupo": "base"
+},
+{
+"id": "folha-empresa",
+"p": "Onde lanço a folha dos funcionários da empresa com CNPJ?",
+"rota": [
+"Financeiro → Contas a Pagar / Receber → Folha de Pagamento — Empresa"
+],
+"grupo": "base"
+},
+{
+"id": "previsao",
+"p": "Como lanço uma previsão de gasto?",
+"rota": [
+"Financeiro → Contas a Pagar / Receber → Previsão de Gastos"
+],
+"deve": [
+"Nova Previs[aã]o"
+],
+"grupo": "base"
+},
+{
+"id": "contrato-fin",
+"p": "Onde lanço um financiamento do banco?",
+"rota": [
+"Financeiro → Complemento Financeiro → Contratos Financeiros"
+],
+"deve": [
+"Novo Contrato"
+],
+"grupo": "base"
+},
+{
+"id": "fluxo",
+"p": "Onde vejo o fluxo de caixa previsto?",
+"rota": [
+"Financeiro → Relatórios Financeiros → Fluxo de Caixa Previsto"
+],
+"grupo": "base"
+},
+{
+"id": "endivid",
+"p": "Onde vejo o total das minhas dívidas?",
+"rota": [
+"Financeiro → Relatórios Financeiros → Endividamento"
+],
+"grupo": "base"
+},
+{
+"id": "dre",
+"p": "Onde vejo o DRE da safra?",
+"rota": [
+"Resultados → Resultado Econômico → DRE Agrícola"
+],
+"grupo": "base"
+},
+{
+"id": "custo-ha",
+"p": "Onde vejo o custo por hectare?",
+"rota": [
+"Resultados → Custos → Custo / ha"
+],
+"grupo": "base"
+},
+{
+"id": "lcdpr",
+"p": "Onde baixo o arquivo do LCDPR?",
+"rota": [
+"Fiscal → Obrigações → LCDPR"
+],
+"deve": [
+"Exporta[cç][aã]o"
+],
+"nao": [
+"PF.{0,30}ou.{0,30}PJ",
+"PF.{0,20}\\bPJ\\b"
+],
+"grupo": "base"
+},
+{
+"id": "lcdpr-pj",
+"p": "Minha empresa com CNPJ precisa entregar o LCDPR pelo Arato?",
+"rota": [],
+"deve": [
+"pessoa f[ií]sica|\\bPF\\b|produtor"
+],
+"grupo": "base"
+},
+{
+"id": "certificado",
+"p": "Onde coloco o certificado digital?",
+"rota": [
+"Fiscal → Emissão e Controle → Certificado Digital"
+],
+"grupo": "base"
+},
+{
+"id": "serie",
+"p": "Onde configuro a série da nota fiscal?",
+"rota": [
+"Configurações → Sistema → Parâmetros Fiscais (NF-e)"
+],
+"grupo": "base"
+},
+{
+"id": "og",
+"p": "Onde cadastro uma operação gerencial?",
+"rota": [
+"Configurações → Sistema → Operações Gerenciais"
+],
+"grupo": "base"
+},
+{
+"id": "usuario",
+"p": "Como dou acesso ao sistema para uma funcionária?",
+"rota": [
+"Configurações → Usuários → Usuários e Permissões"
+],
+"grupo": "base"
+},
+{
+"id": "importar",
+"p": "Tenho uma planilha com todos os meus clientes. Como importo?",
+"rota": [],
+"deve": [
+"Raccolto"
+],
+"grupo": "base"
+},
+{
+"id": "backup",
+"p": "Como faço um backup do sistema?",
+"rota": [],
+"deve": [
+"Raccolto"
+],
+"grupo": "base"
+},
+{
+"id": "remoto",
+"p": "Preciso de ajuda de alguém na minha tela. Como peço?",
+"rota": [
+"Ajuda → Suporte → Suporte Remoto"
+],
+"grupo": "base"
+},
+{
+"id": "tela-inexistente",
+"p": "Onde fica a tela de controle de ponto dos funcionários?",
+"rota": [],
+"deve": [
+"n[aã]o (encontrei|tenho|h[aá]|existe)"
+],
+"grupo": "base"
+},
+{
+"id": "triangulacao",
+"p": "Onde emito a triangulação de nota fiscal?",
+"rota": [],
+"nao": [
+"Fiscal → Emissão e Controle → Triangula"
+],
+"grupo": "base"
+},
+{
+"id": "cnpj-banco",
+"p": "Qual é o CNPJ do Bradesco? Vou cadastrar aqui.",
+"rota": [],
+"deve": [
+"confir|Receita"
+],
+"nao": [
+"\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}"
+],
+"grupo": "base"
+},
+{
+"id": "v-servico",
+"grupo": "validacao",
+"p": "Chegou nota de um prestador no Arato, mas não gerou conta a pagar. O que faço?",
+"rota": [
+"Documentos Fiscais → Notas de Entrada → Notas de Terceiro"
+],
+"deve": [
+"Processar"
+]
+},
+{
+"id": "v-comprador",
+"grupo": "validacao",
+"p": "Onde coloco um comprador novo de grãos?",
+"rota": [
+"Cadastros → Entidades → Pessoas e Entidades"
+],
+"deve": [
+"Nova Pessoa"
+]
+},
+{
+"id": "v-plantei",
+"grupo": "validacao",
+"p": "Plantei ontem o talhão 3, onde informo?",
+"rota": [
+"Produção → Operações de Campo → Plantio"
+],
+"deve": [
+"Registrar Plantio"
+]
+},
+{
+"id": "v-aviao",
+"grupo": "validacao",
+"p": "Apliquei herbicida de avião, onde lanço?",
+"rota": [
+"Produção → Operações de Campo → Aplicação Aérea"
+],
+"deve": []
+},
+{
+"id": "v-colher",
+"grupo": "validacao",
+"p": "Comecei a colher hoje, onde lanço as cargas?",
+"rota": [
+"Produção → Colheita → Colheita"
+],
+"deve": [
+"Nova Colheita"
+]
+},
+{
+"id": "v-mandar",
+"grupo": "validacao",
+"p": "Mandei semente do armazém para outra fazenda, como registro?",
+"rota": [
+"Comercial & Logística → Estoque → Transferência entre Fazendas"
+],
+"deve": [
+"Dep[oó]sito (de )?Origem"
+]
+},
+{
+"id": "v-boleto",
+"grupo": "validacao",
+"p": "Chegou boleto da oficina sem nota, onde coloco?",
+"rota": [
+"Financeiro → Contas a Pagar / Receber → Contas a Pagar"
+],
+"deve": [
+"Novo Lan[cç]amento"
+]
+},
+{
+"id": "v-extrato",
+"grupo": "validacao",
+"p": "Como confiro o extrato do banco com os pagamentos?",
+"rota": [
+"Financeiro → Tesouraria → Conciliação Bancária"
+],
+"deve": []
+},
+{
+"id": "v-livro",
+"grupo": "validacao",
+"p": "Como tiro o livro caixa digital para o contador?",
+"rota": [
+"Fiscal → Obrigações → LCDPR"
+],
+"deve": [
+"Exporta[cç][aã]o"
+]
+},
+{
+"id": "v-manifesto",
+"grupo": "validacao",
+"p": "Preciso do manifesto da carga, onde emito?",
+"rota": [
+"Documentos Fiscais → Transporte → MDF-e — Manifesto de Cargas",
+"Comercial & Logística → Fretes e Transporte → MDF-e — Manifesto de Cargas"
+],
+"deve": [
+"Emitir MDF-e"
+]
+},
+{
+"id": "v-resultado",
+"grupo": "validacao",
+"p": "Qual relatório mostra o resultado da safra?",
+"rota": [
+"Resultados → Resultado Econômico → DRE Agrícola"
+],
+"deve": []
+},
+{
+"id": "v-esposa",
+"grupo": "validacao",
+"p": "Minha esposa precisa entrar no sistema, o que faço?",
+"rota": [
+"Configurações → Usuários → Usuários e Permissões"
+],
+"deve": []
+},
+{
+"id": "v-quitar",
+"grupo": "validacao",
+"p": "Onde quito o cartão da fazenda?",
+"rota": [
+"Financeiro → Cartões de Crédito"
+],
+"deve": [
+"Pagar Fatura"
+]
+}
+]
