@@ -43,7 +43,7 @@ import {
   listarOperacoesGerenciaisAtivasDaConta,
   verificarExclusaoNf,
   listarMaquinas, criarMaquina, ogDaLista,
-  listarBombas,
+  listarBombasDoCliente,
   listarAnosSafra,
   listarCiclosDoCliente,
   listarPedidoCompraItens,
@@ -2328,12 +2328,9 @@ export default function ModalNf({
     const [ccData, depData, bombaData] = await Promise.all([
       listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
       listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
-      // Bombas de todas as fazendas do cliente: a lista na tela é filtrada pela fazenda que recebe o combustível
-      // (a da IE do produtor), que nem sempre é a fazenda onde a NF caiu na importação.
-      Promise.resolve(allFazIds.length > 1
-        ? supabase.from("bombas_combustivel").select("*, fazendas(nome)").in("fazenda_id", allFazIds).order("nome")
-            .then(({ data, error }) => { if (error) throw error; return (data ?? []).map(b => ({ ...b, fazenda_nome: (b as { fazendas?: { nome?: string } }).fazendas?.nome })) as (BombaCombustivel & { fazenda_nome?: string })[]; })
-        : listarBombas(fId)).catch(() => [] as BombaCombustivel[]),
+      // Bombas de todas as fazendas do cliente (pela conta, sem depender da lista de fazendas já carregada): a lista na
+      // tela é filtrada pela fazenda que recebe o combustível, que nem sempre é a fazenda onde a NF caiu na importação.
+      listarBombasDoCliente(contaId, allFazIds).catch(() => [] as BombaCombustivel[]),
     ]);
     setWCentros(ccData);
     setWDepositos(depData);
@@ -2611,9 +2608,12 @@ export default function ModalNf({
   // a da própria NF). O local físico de descarga pode ser outro (estoque físico ≠ fiscal) — o usuário troca a
   // fazenda no seletor acima da bomba.
   const fazendaBombaSugerida = iesProdutor.find(i => i.inscricao_estadual === cab.ie_produtor)?.fazenda_id || nfEdit?.fazenda_id || fazendaId || "";
-  const fazendaBombas = fazendaBombaSel || fazendaBombaSugerida;
   const fazendasComBomba = wBombas.reduce<{ id: string; nome: string }[]>((acc, b) =>
     acc.some(f => f.id === b.fazenda_id) ? acc : [...acc, { id: b.fazenda_id, nome: b.fazenda_nome ?? "Fazenda" }], []);
+  // Fazenda sugerida sem bomba e só uma fazenda do cliente com bomba: usa essa (antes a lista ficava vazia e o seletor
+  // de fazenda nem aparecia, porque só era mostrado com duas ou mais fazendas com bomba)
+  const sugeridaTemBomba = fazendasComBomba.some(f => f.id === fazendaBombaSugerida);
+  const fazendaBombas = fazendaBombaSel || (!sugeridaTemBomba && fazendasComBomba.length === 1 ? fazendasComBomba[0].id : fazendaBombaSugerida);
   const bombasDaFazenda = wBombas.filter(b => !fazendaBombas || b.fazenda_id === fazendaBombas);
   // OG de compra de combustível (permite_combustivel) em NF de Insumos/Combustíveis já é combustível: marca
   // "É Combustível" sozinho e mostra o seletor de bomba — antes dependia de achar e marcar a caixa à mão.
@@ -4207,7 +4207,7 @@ export default function ModalNf({
                           <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
                             Bomba / Tanque destino (crédito de estoque)
                           </div>
-                          {fazendasComBomba.length > 1 && (
+                          {(fazendasComBomba.length > 1 || (fazendasComBomba.length === 1 && fazendasComBomba[0].id !== fazendaBombaSugerida)) && (
                             <div style={{ marginBottom: 8 }}>
                               <label data-arato-label="true" style={lbl}>Fazenda da descarga</label>
                               <SelectField value={fazendasComBomba.some(f => f.id === fazendaBombas) ? fazendaBombas : ""}

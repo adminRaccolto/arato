@@ -2141,6 +2141,23 @@ export async function excluirMaquinas(ids: string[]): Promise<void> {
 // BOMBAS DE COMBUSTÍVEL
 // ————————————————————————————————————————
 
+/**
+ * Bombas e tanques de todas as fazendas do cliente, com o nome da fazenda. A NF de combustível pode ser descarregada
+ * numa fazenda diferente da que recebeu a nota; buscar só a fazenda da NF deixava o seletor vazio (achado 05/11/2026).
+ */
+export async function listarBombasDoCliente(conta_id: string | null | undefined, fazendasReserva: string[]): Promise<(BombaCombustivel & { fazenda_nome?: string })[]> {
+  let ids = fazendasReserva.filter(Boolean);
+  if (conta_id) {
+    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
+    if (fzs?.length) ids = fzs.map(f => f.id as string);
+  }
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("bombas_combustivel").select("*, fazendas(nome)").in("fazenda_id", ids).order("nome");
+  if (error) throw error;
+  return (data ?? []).filter(b => b.ativa !== false)
+    .map(b => ({ ...b, fazenda_nome: (b as { fazendas?: { nome?: string } }).fazendas?.nome })) as (BombaCombustivel & { fazenda_nome?: string })[];
+}
+
 export async function listarBombas(fazenda_id: string | string[]): Promise<BombaCombustivel[]> {
   const { data, error } = await supabase.from("bombas_combustivel").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("nome");
   if (error) throw error;

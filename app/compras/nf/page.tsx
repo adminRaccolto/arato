@@ -29,7 +29,7 @@ import {
   verificarExclusaoNf,
   excluirNfEntrada,
   listarMaquinas,
-  listarBombas,
+  listarBombasDoCliente,
   listarAnosSafra,
   listarCiclosDoCliente,
   listarPedidoCompraItens, insumoAtivo } from "../../../lib/db";
@@ -732,7 +732,7 @@ export default function NfCompraPage() {
     const [ccData, depData, bombaData] = await Promise.all([
       listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
       listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
-      listarBombas(fId).catch(() => [] as BombaCombustivel[]),
+      listarBombasDoCliente(contaId, fazendaIds.length ? fazendaIds : [fId]).catch(() => [] as BombaCombustivel[]),
     ]);
     setWCentros(ccData);
     setWDepositos(depData);
@@ -4776,7 +4776,7 @@ export default function NfCompraPage() {
                             <option value="">Selecione a bomba ou tanque…</option>
                             {wBombas.map(b => (
                               <option key={b.id} value={b.id}>
-                                {b.nome} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
+                                {b.nome}{(b as { fazenda_nome?: string }).fazenda_nome ? ` (${(b as { fazenda_nome?: string }).fazenda_nome})` : ""} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
                               </option>
                             ))}
                           </SelectField>

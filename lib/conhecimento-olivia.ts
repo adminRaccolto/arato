@@ -832,6 +832,8 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **Contas bancárias inativas:** os seletores de conta do Contas a Pagar, do Contas a Receber (baixa, novo lançamento e lote) e da Folha mostram só contas ativas. Para uma conta voltar a aparecer, reative-a em Cadastros. Lançamento antigo gravado numa conta inativa mostra a conta com "(inativa)" ao editar.
 
+**NF de combustível — bomba/tanque:** com É Combustível marcado, o seletor Bomba / Tanque destino lista as bombas da fazenda da IE do produtor na nota. Se essa fazenda não tem bomba e só uma fazenda do cliente tem, o sistema usa essa; com mais de uma, aparece Fazenda da descarga para escolher. Bomba nova se cadastra em Cadastros → Combustíveis & Bombas.
+
 **Fluxo de Caixa — Excel:** em Financeiro → Relatórios Financeiros → Fluxo de Caixa, o botão ⬇ Excel, ao lado de Imprimir / PDF, exporta a visão aberta com os filtros da tela.
 - Diário: aba Resumo (escopo, período, tipo, saldo inicial com a composição quando Considerar atrasados? está ligado, totais e saldo final) e aba Fluxo Diário com uma linha por lançamento (data, fornecedor/pagador, descrição, origem, situação, entrada, saída e saldo acumulado), do saldo inicial aos totais.
 - Mensal e Anual: aba Resumo e aba com categorias nas linhas e meses (ou anos) nas colunas, separando Entradas e Saídas, com Total Entradas, Total Saídas, Saldo do mês/ano e Saldo Acumulado.

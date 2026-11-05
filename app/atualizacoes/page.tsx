@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.05-n",
+    data: "05/11/2026",
+    titulo: "Bomba/tanque na entrada da NF",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "O seletor de bomba/tanque da NF de combustível traz as bombas de todas as fazendas do cliente. Se a fazenda da nota não tem bomba, o sistema usa a fazenda que tem, ou mostra o seletor Fazenda da descarga." },
+    ],
+  },
+  {
     versao: "2026.11.05-m",
     data: "05/11/2026",
     titulo: "Contas bancárias inativas fora dos seletores",
