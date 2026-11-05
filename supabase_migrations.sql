@@ -19462,6 +19462,21 @@ ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS transferencia_estoque_id uuid R
 CREATE INDEX IF NOT EXISTS idx_transf_estoque_nf_chave ON transferencias_estoque(nf_chave) WHERE nf_chave IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_transf_estoque_nf_destino_chave ON transferencias_estoque(nf_destino_chave) WHERE nf_destino_chave IS NOT NULL;
 
+-- A regra de status permitidos não está neste arquivo: acrescenta o novo valor à regra que existe no banco, sem perder os outros.
+DO $$
+DECLARE v_def text;
+BEGIN
+  SELECT pg_get_constraintdef(oid) INTO v_def FROM pg_constraint
+   WHERE conname = 'nf_entradas_status_check' AND conrelid = 'nf_entradas'::regclass;
+  IF v_def IS NOT NULL AND v_def NOT LIKE '%transferencia%' THEN
+    IF v_def NOT LIKE '%ARRAY[%' THEN
+      RAISE EXCEPTION 'Formato inesperado de nf_entradas_status_check: %', v_def;
+    END IF;
+    ALTER TABLE nf_entradas DROP CONSTRAINT nf_entradas_status_check;
+    EXECUTE 'ALTER TABLE nf_entradas ADD CONSTRAINT nf_entradas_status_check ' || replace(v_def, 'ARRAY[', 'ARRAY[''transferencia''::text, ');
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_nf(p_id uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
