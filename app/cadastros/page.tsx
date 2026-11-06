@@ -2364,17 +2364,11 @@ function CadastrosInner() {
     if (!editFunc) return;
     const erros: string[] = [];
     if (!fPremiacao.descricao) erros.push("Descrição");
-    if (!fPremiacao.valor) erros.push("Valor");
+    if (!(Number(fPremiacao.valor) > 0)) erros.push("Valor positivo");
+    if (!fPremiacao.mes_referencia) erros.push("Competência");
     if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
     setErroModal("");
     const mesRef = fPremiacao.mes_referencia; // YYYY-MM
-    const dataVenc = fPremiacao.data_pagamento || (mesRef ? `${mesRef}-05` : hojeLocal());
-    const dataHoje = hojeLocal();
-    // Determina o código OG conforme área de trabalho do funcionário
-    const isAdm = editFunc.area_trabalho === "administrativo";
-    const ogCode = isAdm ? "2.01.02.01.03.004" : "2.01.01.10.004";
-    const { data: ogData } = await supabase
-      .from("operacoes_gerenciais").select("id").eq("fazenda_id", fazIdEff!).eq("classificacao", ogCode).maybeSingle();
     const p = await criarPremiacao({
       funcionario_id: editFunc.id, fazenda_id: (fazIdEff)!,
       mes_referencia: mesRef,
@@ -2382,22 +2376,7 @@ function CadastrosInner() {
       descricao: fPremiacao.descricao, valor: Number(fPremiacao.valor),
       lancado_financeiro: true,
     });
-    // Lança automaticamente em Contas a Pagar com OG vinculada
-    await criarLancamento({
-      fazenda_id: (fazIdEff)!,
-      tipo: "pagar",
-      moeda: "BRL",
-      descricao: `Premiação — ${editFunc.nome} — ${fPremiacao.descricao}`,
-      categoria: isAdm ? "PRÊMIO FUNCIONÁRIOS - ADM" : "PRÊMIO FUNCIONÁRIOS - FAZ",
-      valor: Number(fPremiacao.valor),
-      data_lancamento: dataHoje,
-      data_vencimento: dataVenc,
-      status: "em_aberto",
-      auto: false,
-      origem_lancamento: "manual",
-      funcionario_id: editFunc.id,
-      operacao_gerencial_id: ogData?.id ?? undefined,
-    });
+    // A mesma rotina da folha cria e vincula o CP na transação do banco.
     setPremiacoes(prev => [p, ...prev]);
     setModalPremiacao(false);
     setFPremiacao({ mes_referencia: "", data_pagamento: "", descricao: "", valor: "" });
@@ -10633,7 +10612,7 @@ function CadastrosInner() {
                           <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{p.data_pagamento || "—"}</td>
                           <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#111111" }}>R$ {R(p.valor)}</td>
                           <td style={{ padding: "8px 12px", textAlign: "right" }}>
-                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPremiacao(p.id).then(() => setPremiacoes(x => x.filter(r => r.id !== p.id))); }}>✕</OperationalButton>
+                            <OperationalButton data-arato-button="danger" style={btnX} disabled={p.origem_tabela === "funcionario_premiacoes"} title={p.origem_tabela === "funcionario_premiacoes" ? "Registro histórico: preservar até conciliar o CP existente" : "Excluir premiação"} onClick={() => { if (confirm("Excluir?")) excluirPremiacao(p.id, p.origem_tabela).then(() => setPremiacoes(x => x.filter(r => r.id !== p.id))).catch(e => setErroModal(e.message)); }}>✕</OperationalButton>
                           </td>
                         </tr>
                       ))}

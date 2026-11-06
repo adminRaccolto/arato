@@ -1117,6 +1117,7 @@ export type Funcao = {
 };
 
 export type FuncionarioPremiacao = {
+  origem_tabela?: "funcionarios_premiacoes" | "funcionario_premiacoes";
   id: string;
   funcionario_id: string;
   fazenda_id: string;

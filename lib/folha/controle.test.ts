@@ -268,3 +268,28 @@ test("conferência de mil funcionários reaproveita a leitura financeira sem alt
   assert.equal(registros.length, 1000);
   assert.equal(registros[999].linha_id, "linha-999");
 });
+
+test("premiações das duas origens preservam o vínculo e não duplicam o mesmo CP", async () => {
+  const { unificarPremiacoes, competenciaDoSalario } = await import("./premiacoes-origem.ts");
+  const registros = unificarPremiacoes([{ id: "nova", lancamento_id: "cp" }], [{ id: "antiga", lancamento_id: "cp" }, { id: "pendente", lancamento_id: null }]);
+  assert.equal(registros.length, 2);
+  assert.equal(registros[0].origem_tabela, "funcionarios_premiacoes");
+  assert.equal(registros[1].origem_tabela, "funcionario_premiacoes");
+  assert.equal(competenciaDoSalario("Salário Set/2026 — Pessoa"), "2026-09");
+  assert.equal(competenciaDoSalario("Adiantamento Set/2026"), null);
+  assert.equal(competenciaDoSalario("Salário — Pessoa"), null);
+});
+
+test("reprocessamento compara a obrigação inteira e preserva o pagamento parcial", async () => {
+  const { titulosParaReprocessamento } = await import("./reprocessamento-titulos.ts");
+  const mapa = titulosParaReprocessamento(["raiz"], [
+    { id: "raiz", valor: 3000, valor_pago: 3000, status: "baixado", conciliado: true },
+    { id: "saldo", titulo_origem_id: "raiz", valor: 2000, status: "em_aberto" },
+    { id: "cancelada", titulo_origem_id: "raiz", valor: 2000, status: "cancelado" },
+  ]);
+  assert.equal(mapa.get("raiz")?.valor, 5000);
+  assert.equal(mapa.get("raiz")?.valor_pago, 3000);
+  assert.equal(mapa.get("raiz")?.status, "baixado");
+  assert.equal(mapa.get("raiz")?.conciliado, true);
+  assert.throws(() => titulosParaReprocessamento(["apagada"], [{ id: "saldo", titulo_origem_id: "apagada", valor: 500, status: "em_aberto" }]), /sem o título original/);
+});

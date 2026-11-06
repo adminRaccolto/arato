@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buscarPaginado } from "../buscar-paginado.ts";
 import { mesAnterior } from "./empregador.ts";
+import { competenciaDoSalario, unificarPremiacoes } from "./premiacoes-origem.ts";
 import type {
   ControleDados,
   FolhaControle,
@@ -68,7 +69,7 @@ export async function carregarControleFolha(
       return [];
     }
   };
-  const [folhas, funcionarios, adiantamentos, premios] = await Promise.all([
+  const [folhas, funcionarios, adiantamentos, premiosAtuais, premiosAntigos] = await Promise.all([
     todas<FolhaControle>(
       "folha_pagamento",
       (q) =>
@@ -102,7 +103,13 @@ export async function carregarControleFolha(
           .lte("mes_referencia", ate),
       "*",
     ),
+    opcionais<PremioControle>("Premiações do cadastro histórico", () => todas<PremioControle>(
+      "funcionario_premiacoes",
+      q => q.in("fazenda_id", fazendas).gte("mes_referencia", de).lte("mes_referencia", ate),
+      "*",
+    )),
   ]);
+  const premios = unificarPremiacoes(premiosAtuais, premiosAntigos);
   const folhaIds = folhas.map((f) => f.id),
     linhas: LinhaControle[] = [],
     historico: HistoricoControle[] = [],
@@ -277,6 +284,21 @@ export async function carregarControleFolha(
       descricao: "13º — 2ª parcela",
     });
   }
+  // O histórico pode ter CPs válidos que perderam o vínculo. Exibe-os para conciliação,
+  // sem associar por nome ou criar novas obrigações automaticamente.
+  const salarios = await todas<TituloControle>("lancamentos", q => q.in("fazenda_id", fazendas).ilike("descricao", "Salário%"),
+    "id,funcionario_id,titulo_origem_id,descricao,status,natureza");
+  const ligados = new Set(vinculos.map(v => v.titulo_id));
+  let semFolha = 0;
+  for (const t of salarios) {
+    const comp = competenciaDoSalario(t.descricao);
+    if (!comp || comp < de || comp > ate || ligados.has(t.id) || t.titulo_origem_id || t.status === "cancelado" || t.natureza === "previsao") continue;
+    vinculos.push({ titulo_id: t.id, funcionario_id: t.funcionario_id, competencia: comp, grupo: "salario", sem_folha: true,
+      descricao: `${t.descricao} · sem vínculo com folha — conferir competência` });
+    semFolha++;
+  }
+  if (semFolha) avisos.push(`${semFolha} título(s) de salário sem vínculo com a folha foram incluídos em Pagamentos. Confira a competência e o pagamento existente antes de gerar outro título.`);
+  if (folhas.some(f => f.competencia >= de && !f.empresa_id && !f.produtor_id)) avisos.push("Há folhas históricas sem empregador identificado. Os valores foram preservados; confirme o vínculo pelos documentos da competência.");
   const raizes = [...new Set(vinculos.map((v) => v.titulo_id))],
     titulos: TituloControle[] = [];
   for (let i = 0; i < raizes.length; i += 150) {

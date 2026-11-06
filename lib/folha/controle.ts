@@ -60,6 +60,7 @@ export type AdiantamentoControle = {
   descontado_gratificacao_cp?: number | null;
 };
 export type PremioControle = {
+  origem_tabela?: "funcionarios_premiacoes" | "funcionario_premiacoes";
   id: string;
   fazenda_id: string;
   funcionario_id: string;
@@ -70,6 +71,7 @@ export type PremioControle = {
   data_pagamento?: string | null;
 };
 export type TituloControle = {
+  funcionario_id?: string | null;
   id: string;
   fazenda_id: string;
   titulo_origem_id?: string | null;
@@ -95,6 +97,7 @@ export type GrupoTitulo =
   | "rescisao"
   | "decimo";
 export type VinculoControle = {
+  sem_folha?: boolean;
   titulo_id: string;
   funcionario_id?: string | null;
   folha_id?: string | null;

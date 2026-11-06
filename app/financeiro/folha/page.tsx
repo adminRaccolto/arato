@@ -1,7 +1,6 @@
 "use client";
 import { useOperationalPresentation } from "../../../components/arato-layout/presentation-mode";
-import controleStyles from "../../../components/folha/ControleFolha.module.css";
-import ControleFolha, { type TipoMovimentoFolha } from "../../../components/folha/ControleFolha";
+import folhaStyles from "./FolhaPagamento.module.css";
 import { descontoNoSalario } from "../../../lib/folha/gratificacoes";
 import { planilhaFormatada } from "../../../lib/relatorios/xlsx-estilo";
 import { rotuloPagamentoFolha } from "../../../lib/folha/titulo-linha";
@@ -128,6 +127,7 @@ interface Premiacao {
   descricao: string;
   valor: number;
   lancado_financeiro: boolean;
+  origem_tabela?: "funcionarios_premiacoes" | "funcionario_premiacoes";
   lancamento_id?: string | null;
   data_pagamento?: string | null;
   created_at?: string;
@@ -206,14 +206,14 @@ function dataFmt(s?: string) {
 const S = {
   page:    { background: "var(--bg-page, #F4F6FA)", minHeight: "100vh", fontFamily: "system-ui,sans-serif" },
   body:    { maxWidth: 1680, margin: "0 auto", padding: "24px 20px" },
-  card:    { background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, marginBottom: 16 },
-  label:   { fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: 4 },
-  inp:     { border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "6px 10px", fontSize: 13, background: "#fff" } as React.CSSProperties,
+  card:    { background: "var(--bg-card, #fff)", border: "1px solid var(--border-table, #DDE2EE)", borderRadius: 8, marginBottom: 16 },
+  label:   { fontSize: 11, color: "var(--text-2, #555)", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: 4 },
+  inp:     { border: "1px solid var(--border-control, #DDE2EE)", borderRadius: 6, padding: "6px 10px", fontSize: 13, background: "var(--bg-input, #fff)", color: "var(--text-1, #0B2D50)" } as React.CSSProperties,
   btn:     (bg: string, color = "#fff"): React.CSSProperties => ({ background: bg, color, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }),
   th:      { padding: "8px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" as const, background: "#F4F6FA" },
   td:      { padding: "8px 10px", fontSize: 13, borderBottom: "0.5px solid #F0F2F7", verticalAlign: "middle" as const },
   overlay: { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" },
-  modal:   { background: "#fff", borderRadius: 10, padding: 28, width: "min(96vw,760px)", maxHeight: "92vh", overflowY: "auto" as const, position: "relative" as const },
+  modal:   { background: "var(--bg-card, #fff)", borderRadius: 10, padding: 28, width: "min(96vw,760px)", maxHeight: "92vh", overflowY: "auto" as const, position: "relative" as const },
 };
 
 const ST_LABEL: Record<string,string>  = { rascunho:"Rascunho", fechado:"Fechado", pago:"Pago" };
@@ -241,7 +241,6 @@ export default function FolhaPagamentoPage() {
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
   const [saving, setSaving]       = useState(false);
-  const [controleVersao, setControleVersao] = useState(0);
 
   // dados
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -261,6 +260,8 @@ export default function FolhaPagamentoPage() {
   // filtros processamento
   const [fComp,    setFComp]    = useState(compAtual());
   const [fCompAte, setFCompAte] = useState(compAtual());
+  const [fEmpregador, setFEmpregador] = useState("");
+  useEffect(() => { setFEmpregador(""); }, [contaId]);
 
   // modal folha
   const [modalFolha,  setModalFolha]  = useState(false);
@@ -389,7 +390,6 @@ export default function FolhaPagamentoPage() {
           const r = resolver(f);
           return { ...f, empresa_id: r.empresa_id, empresa_nome: r.empresa_id ? (eMap[r.empresa_id] ?? "Empresa não encontrada") : undefined };
         });
-      const funcIds = new Set(funcsLista.map((f: any) => f.id));
       setFuncionarios(funcsLista);
 
       // Folhas via API route (já vêm com num_funcionarios)
@@ -401,11 +401,10 @@ export default function FolhaPagamentoPage() {
       }));
       setFolhas(folhasComNome);
 
-      const adis: any[] = adiPremRes.adis ?? [];
-      const prems: any[] = adiPremRes.prems ?? [];
-      setAdiantamentos(adis.filter((a: any) => funcIds.has(a.funcionario_id)).map((a: any) => ({ ...a, funcionario_nome: a.funcionarios?.nome })));
-      setControleVersao(v => v + 1);
-      setPremiacoes(prems.filter((p: any) => funcIds.has(p.funcionario_id)).map((p: any) => ({ ...p, funcionario_nome: p.funcionarios?.nome })));
+      const adis = (adiPremRes.adis ?? []) as (Adiantamento & { funcionarios?: { nome: string } | null })[];
+      const prems = (adiPremRes.prems ?? []) as (Premiacao & { funcionarios?: { nome: string } | null })[];
+      setAdiantamentos(adis.map(a => ({ ...a, funcionario_nome: a.funcionarios?.nome ?? a.funcionario_nome })));
+      setPremiacoes(prems.map(p => ({ ...p, funcionario_nome: p.funcionarios?.nome ?? p.funcionario_nome })));
     } catch (e: any) {
       setMsg(`Erro ao carregar: ${e.message}`);
     } finally {
@@ -433,7 +432,7 @@ export default function FolhaPagamentoPage() {
   function linhaNova(f: Funcionario, comp: string): FolhaFunc {
     const base = f.salario_base ?? 0;
     // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
-    const grat = premiacoes.filter(p => p.mes_referencia === comp && !p.lancamento_id && p.funcionario_id === f.id).reduce((s, p) => s + p.valor, 0);
+    const grat = premiacoes.filter(p => p.mes_referencia === comp && p.origem_tabela !== "funcionario_premiacoes" && !p.lancamento_id && p.funcionario_id === f.id).reduce((s, p) => s + p.valor, 0);
     const adi = adiantamentos.filter(a => (!a.competencia_ref || a.competencia_ref === comp) && a.status === "pendente" && a.funcionario_id === f.id)
       .reduce((s, a) => s + descontoNoSalario(a), 0);
     return recalc({
@@ -484,34 +483,8 @@ export default function FolhaPagamentoPage() {
           he_valor: Number(i.he_valor ?? 0), he_dsr: Number(i.he_dsr ?? 0),
           _comp: folha.competencia,
         };
-        // Rascunho: a folha salva é uma "foto" de quando foi criada. Se o cadastro mudou depois (salário
-        // base, complemento salarial, benefícios), reabrir mostrava valores velhos e o que ia pro CP não
-        // batia com o cadastro. Atualiza do cadastro; gratificação e outros descontos são da folha e ficam.
-        if (folha.status === "rascunho") {
-          const cad = funcionarios.find(x => x.id === i.funcionario_id);
-          if (cad) {
-            Object.assign(base, recalc({
-              ...base,
-              ...pctsEncargos(cad),
-              salario_base: cad.salario_base ?? base.salario_base,
-              complemento_salarial: cad.complemento_salarial ?? 0,
-              vale_transporte: cad.vale_transporte ?? 0,
-              vale_refeicao: cad.vale_refeicao ?? 0,
-              outros_beneficios: cad.outros_beneficios ?? 0,
-            }));
-          }
-        }
-        // Para rascunho: herda adiantamentos pendentes — inclui os sem competência_ref
-        if (folha.status === "rascunho") {
-          const adi = adiantamentos
-            .filter(a =>
-              (!a.competencia_ref || a.competencia_ref === folha.competencia) &&
-              a.status === "pendente" &&
-              a.funcionario_id === i.funcionario_id
-            )
-            .reduce((s, a) => s + descontoNoSalario(a), 0);
-          base.adiantamento = adi;  // vem só da aba Adiantamentos (pendentes da competência ou sem competência)
-        }
+        // Folhas gravadas preservam os valores da competência. O cadastro atual só
+        // preenche folhas novas; ajustes retroativos precisam ser feitos explicitamente.
         return base;
       });
       // Funcionários do mesmo empregador que ficaram de fora: entram marcados; na folha fechada, o Reprocessar cria o título
@@ -545,27 +518,6 @@ export default function FolhaPagamentoPage() {
             travado: atual.travado || travado };
         }
         setSituacaoCp(sit);
-        // Folha fechada: salário ainda não pago que mudou no cadastro (salário base, complemento, benefícios) é
-        // atualizado na tela — o ⟳ Reprocessar Folha leva a diferença ao Contas a Pagar. Achado 29/10/2026: o
-        // reprocessamento usava a "foto" da folha e ignorava a mudança feita no cadastro. Salário pago fica como está.
-        if (folha.status === "fechado") {
-          const atualizados: string[] = [];
-          const novos = funcsCarregados.map(f => {
-            if (f.cp_lancamento_id && sit[f.cp_lancamento_id]?.travado) return f;
-            const cad = funcionarios.find(x => x.id === f.funcionario_id);
-            if (!cad) return f;
-            const dif = (a: unknown, b: unknown) => Math.abs((Number(a) || 0) - (Number(b) || 0)) > 0.005;
-            if (!(dif(cad.salario_base ?? f.salario_base, f.salario_base) || dif(cad.complemento_salarial, f.complemento_salarial)
-              || dif(cad.vale_transporte, f.vale_transporte) || dif(cad.vale_refeicao, f.vale_refeicao) || dif(cad.outros_beneficios, f.outros_beneficios))) return f;
-            atualizados.push(f.nome_funcionario);
-            return { ...f, ...recalc({ ...f, ...pctsEncargos(cad), salario_base: cad.salario_base ?? f.salario_base, complemento_salarial: cad.complemento_salarial ?? 0,
-              vale_transporte: cad.vale_transporte ?? 0, vale_refeicao: cad.vale_refeicao ?? 0, outros_beneficios: cad.outros_beneficios ?? 0 }) };
-          });
-          if (atualizados.length) {
-            setFolhaEdit({ ...folha, funcionarios: novos });
-            setMsg(`Salário atualizado pelo cadastro: ${atualizados.join(", ")}. Clique em ⟳ Reprocessar Folha para levar a diferença ao Contas a Pagar.`);
-          }
-        }
       } else { setVencCp({}); setSituacaoCp({}); }
     } else {
       setVencCp({}); setSituacaoCp({});
@@ -1202,8 +1154,9 @@ export default function FolhaPagamentoPage() {
     setMsg(`${f.nome} incluído. ${folhaEdit.status === "fechado" ? "Clique em ⟳ Reprocessar Folha para gerar o título no Contas a Pagar." : "Clique em Salvar Folha."}`);
   }
 
-  const folhasFiltradas   = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte);
-  const folhasForaPeriodo = folhas.filter(f => f.competencia < fComp || f.competencia > fCompAte);
+  const empregadoresFiltro = [...new Map([...folhas, ...funcionarios].map(f => [chaveEmpregador(f), nomeEmpregador(f)])).entries()].filter(([id]) => !!id).sort((a,b) => a[1].localeCompare(b[1]));
+  const folhasFiltradas   = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte && (!fEmpregador || chaveEmpregador(f) === fEmpregador));
+  const folhasForaPeriodo = folhas.filter(f => (!fEmpregador || chaveEmpregador(f) === fEmpregador) && (f.competencia < fComp || f.competencia > fCompAte));
   // A folha aparece como UMA por mês. Por dentro segue uma por empregador: FGTS e INSS Patronal são recolhidos por
   // empregador, e cada folha gera os títulos de encargo dele. Empregadores do mês ficam a um clique, em "Abrir".
   const mesesFolha: [string, Folha[]][] = [];
@@ -1250,28 +1203,16 @@ export default function FolhaPagamentoPage() {
   const totalLiqFolhaEdit     = folhaEdit.funcionarios?.reduce((s,f)=>s+liquido(f),0)??0;
   const totalINSSPatFolhaEdit  = folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_patronal,0)??0;
 
-  async function iniciarMovimentoControle(tipo: TipoMovimentoFolha, funcionarioId: string, competencia: string) {
-    const funcionario = funcionarios.find(f => f.id === funcionarioId);
-    if (!funcionario) { setMsg("Erro: funcionário ativo não encontrado. Atualize a lista antes de lançar um movimento."); return; }
-    if (tipo === "gratificacao") {
-      setPremEdit({ funcionario_id: funcionarioId, mes_referencia: competencia }); setModalPrem(true); return;
-    }
-    if (tipo === "adiantamento_salario" || tipo === "adiantamento_gratificacao") {
-      setAdiEdit({ funcionario_id: funcionarioId, tipo: tipo === "adiantamento_gratificacao" ? "gratificacao" : "salario", data: hojeLocal(), competencia_ref: competencia });
-      setAdiConta(""); setModalAdi(true); return;
-    }
-    if (tipo === "decimo1" || tipo === "decimo2") { setAba("decimo"); return; }
-    const folha = folhas.find(f => f.competencia === competencia && chaveEmpregador(f) === chaveEmpregador(funcionario));
-    await abrirFolha(folha, { comp: competencia, empregador: chaveEmpregador(funcionario), incluir: [funcionarioId] });
-    setMsg(`${funcionario.nome}: ajuste ${tipo === "horas_extras" ? "as horas extras / DSR" : "os descontos"} na linha do funcionário. ${folha?.status === "fechado" ? "Use Reprocessar Folha para conferir a alteração no CP." : "Salve a folha para atualizar sua previsão no CP."}`);
-  }
-
   // ─── Render ───────────────────────────────────────────────────
   if (!podeAcessar("folha")) return <div style={S.page}><TopNav /><p role="alert" style={{ padding: 24 }}>Seu grupo não tem acesso à Folha de Pagamento.</p></div>;
   return (
-    <div className={controleStyles.shell} data-folha-layout={novoLayout ? "novo" : "padrao"} data-arato-page="true" style={S.page}>
+    <div className={folhaStyles.page} data-folha-fluxo="original" data-folha-layout={novoLayout ? "novo" : "padrao"} data-arato-page="true" style={S.page}>
       <TopNav />
       <div style={S.body}>
+        <header className={folhaStyles.heading} data-arato-page-heading="true">
+          <div><p>FINANCEIRO</p><h1 data-arato-h1="true">Folha de Pagamento</h1>
+            <span>Abra a folha do empregador para ajustar, salvar ou fechar todos os funcionários na mesma grade.</span></div>
+        </header>
 
         {msg && (
           <div style={{ background: msg.startsWith("Erro") ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${msg.startsWith("Erro") ? "#FECACA" : "#BBF7D0"}`, borderRadius: 6, padding: "10px 16px", marginBottom: 12, fontSize: 13, color: msg.startsWith("Erro") ? "#B91C1C" : "#166534" }}>
@@ -1279,38 +1220,40 @@ export default function FolhaPagamentoPage() {
           </div>
         )}
 
-        <ControleFolha
-          fazendaIds={fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []}
-          contaId={contaId} de={fComp} ate={fCompAte} versao={controleVersao}
-          carregando={loading} salvando={saving}
-          podeConferir={podeAcao("folha", "editar") || podeAcao("folha", "criar") || podeReprocessar}
-          abaLegada={aba} onAbaLegada={setAba}
-          onPeriodo={(de, ate) => { setFComp(de); setFCompAte(ate); }}
-          empregador={v => ({ chave: chaveEmpregador(v), nome: nomeEmpregador(v) })}
-          onGerar={(empregador, comp) => abrirFolha(undefined, { empregador, comp })}
-          onPreparar={(id, incluir) => { const f = folhas.find(f => f.id === id); if (f) void abrirFolha(f, { incluir }); }}
-          onAbrir={(id) => { const f = folhas.find(f => f.id === id); if (f) void abrirFolha(f); }}
-          onCriar={(id, comp) => { const f = funcionarios.find(f => f.id === id); if (f) void abrirFolha(undefined, { empregador: chaveEmpregador(f), comp, incluir: [id] }); }}
-          onFechar={ids => { const lista = folhas.filter(f => ids.includes(f.id) && f.status === "rascunho"); if (lista.length) void fecharFolhas(lista); }}
-          onReplicar={id => { const f = folhas.find(f => f.id === id); if (f) { setRepFolha(f); setRepNMeses(1); setRepCopiarVariaveis(false); setModalRep(true); } }}
-          onMovimento={iniciarMovimentoControle}
-        >
+        <nav className={folhaStyles.tabs} role="tablist" aria-label="Rotinas da folha de pagamento" data-arato-tabs="true">
+          {([
+            ["processamento", "Processamento"], ["adiantamentos", "Adiantamentos"],
+            ["gratificacoes", "Gratificações"], ["decimo", "13º Salário"],
+          ] as [Aba, string][]).map(([id, label]) => (
+            <OperationalButton key={id} type="button" role="tab" id={`folha-tab-${id}`}
+              aria-selected={aba === id} tabIndex={aba === id ? 0 : -1} onKeyDown={e => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+                e.preventDefault();
+                const ids: Aba[] = ["processamento", "adiantamentos", "gratificacoes", "decimo"];
+                const index = e.key === "Home" ? 0 : e.key === "End" ? ids.length - 1 : (ids.indexOf(id) + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length;
+                setAba(ids[index]); document.getElementById(`folha-tab-${ids[index]}`)?.focus();
+              }} aria-controls={`folha-painel-${id}`}
+              data-arato-tab="true" data-arato-tab-active={aba === id} data-arato-button="toggle"
+              onClick={() => setAba(id)}>{label}</OperationalButton>
+          ))}
+        </nav>
+        <section role="tabpanel" id={`folha-painel-${aba}`} aria-labelledby={`folha-tab-${aba}`}>
         {/* ══════════════════ ABA 13º SALÁRIO ══════════════════ */}
         {aba === "decimo" && <DecimoTerceiro />}
 
         {/* ══════════════════ ABA PROCESSAMENTO ══════════════════ */}
         {aba === "processamento" && (
           <>
-            <OperationalFilters data-arato-filters="true" style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <OperationalFilters className={folhaStyles.filters} data-arato-filters="true" style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                 <div>
                   <label data-arato-label="true" style={S.label}>De</label>
-                  <InputData type="month" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
+                  <InputData type="month" aria-label="Competência inicial" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 <span style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>até</span>
                 <div>
                   <label data-arato-label="true" style={S.label}>Até</label>
-                  <InputData type="month" value={fCompAte} onChange={e=>{ if (!e.target.value) return; setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
+                  <InputData type="month" aria-label="Competência final" min={fComp} value={fCompAte} onChange={e=>{ if (!e.target.value) return; setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 {fCompAte > fComp && (
                   <span style={{ fontSize: 11, color: "#C9921B", background: "#FBF3E0", borderRadius: 4, padding: "3px 8px", marginBottom: 4, fontWeight: 600 }}>
@@ -1318,8 +1261,14 @@ export default function FolhaPagamentoPage() {
                   </span>
                 )}
               </div>
+              <label className={folhaStyles.employerFilter}>Empregador
+                <SelectField aria-label="Filtrar empregador" value={fEmpregador} onChange={e => setFEmpregador(e.target.value)} style={S.inp}>
+                  <option value="">Todos os empregadores</option>
+                  {empregadoresFiltro.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+                </SelectField>
+              </label>
               <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                <OperationalButton data-arato-button="secondary" onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>
+                <OperationalButton data-arato-button="primary" onClick={()=>abrirFolha(undefined, { empregador: fEmpregador || undefined })} style={S.btn("#1A4870")}>
                   {fCompAte > fComp ? `+ Gerar ${monthsInRange(fComp,fCompAte).length} Folhas` : "+ Nova Folha"}
                 </OperationalButton>
               </div>
@@ -1331,7 +1280,7 @@ export default function FolhaPagamentoPage() {
                 const doMes = folhas.filter(f => f.competencia === comp);
                 const naMes = new Set(doMes.flatMap(f => f.funcionario_ids ?? []));
                 const naAnterior = new Set(folhas.filter(f => f.competencia === mesAnterior(comp)).flatMap(f => f.funcionario_ids ?? []));
-                const fora = funcionariosSemFolha(comp, funcionarios, naMes, naAnterior) as Funcionario[];
+                const fora = (funcionariosSemFolha(comp, funcionarios, naMes, naAnterior) as Funcionario[]).filter(f => !fEmpregador || chaveEmpregador(f) === fEmpregador);
                 const porEmp = new Map<string, Funcionario[]>();
                 for (const f of fora) { const ch = chaveEmpregador(f); porEmp.set(ch, [...(porEmp.get(ch) ?? []), f]); }
                 return { comp, doMes, porEmp };
@@ -1368,7 +1317,7 @@ export default function FolhaPagamentoPage() {
                   {" "}{[...new Set(folhasForaPeriodo.map(f => f.competencia))].map(nomeMes).join(", ")}
                 </span>
                 <OperationalButton data-arato-button="secondary" onClick={() => {
-                  const todas = folhas.map(f => f.competencia).sort();
+                  const todas = folhas.filter(f => !fEmpregador || chaveEmpregador(f) === fEmpregador).map(f => f.competencia).sort();
                   if (todas.length) { setFComp(todas[0]); setFCompAte(todas[todas.length - 1]); }
                 }} style={{ fontSize: 11, color: "#92400E", background: "#FDE68A", border: "0.5px solid #F0C060", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
                   Ver todas
@@ -1383,10 +1332,10 @@ export default function FolhaPagamentoPage() {
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
                 <div>Nenhuma folha para {fComp === fCompAte ? nomeMes(fComp) : `${nomeMes(fComp)} – ${nomeMes(fCompAte)}`}.</div>
                 {folhasForaPeriodo.length > 0 && <div style={{ fontSize: 12, color: "#C9921B", marginTop: 4 }}>Ajuste o filtro acima para ver as folhas de outros meses.</div>}
-                <OperationalButton data-arato-button="secondary" onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop: 12 }}>Criar Folha</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={()=>abrirFolha(undefined, { empregador: fEmpregador || undefined })} style={{ ...S.btn("#1A4870"), marginTop: 12 }}>Criar Folha</OperationalButton>
               </div>
             ) : (
-              <div style={S.card}>
+              <div className={folhaStyles.tableWrap} style={S.card}>
                 <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr>
@@ -1421,7 +1370,7 @@ export default function FolhaPagamentoPage() {
                             })()}
                           </td>
                           <td style={{ ...S.td, whiteSpace:"nowrap" }}>
-                            <OperationalButton data-arato-button="secondary" onClick={() => setMesesAbertos(prev => { const n = new Set(prev); if (n.has(comp)) n.delete(comp); else n.add(comp); return n; })} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>{aberto ? "▾ Fechar lista" : "▸ Abrir"}</OperationalButton>
+                            <OperationalButton data-arato-button="secondary" aria-expanded={aberto} aria-label={`${aberto ? "Ocultar" : "Ver"} empregadores de ${nomeMes(comp)}`} onClick={() => setMesesAbertos(prev => { const n = new Set(prev); if (n.has(comp)) n.delete(comp); else n.add(comp); return n; })} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>{aberto ? "▾ Ocultar empregadores" : "▸ Ver empregadores"}</OperationalButton>
                             {rascunhos.length > 0 && (
                               <OperationalButton data-arato-button="secondary" onClick={() => fecharFolhas(rascunhos)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</OperationalButton>
                             )}
@@ -1618,11 +1567,11 @@ export default function FolhaPagamentoPage() {
                             : <span style={{ fontSize:11, color:"#888" }}>Pendente</span>}
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
-                          {!p.lancamento_id && <OperationalButton data-arato-button="secondary" disabled={saving} onClick={()=>lancarPremiacaoCp(p.id)} style={{ ...S.btn("#1A4870"), marginRight:8 }}>Lançar no CP</OperationalButton>}
-                          <>
+                          {p.origem_tabela !== "funcionario_premiacoes" && !p.lancamento_id && <OperationalButton data-arato-button="secondary" disabled={saving} onClick={()=>lancarPremiacaoCp(p.id)} style={{ ...S.btn("#1A4870"), marginRight:8 }}>Lançar no CP</OperationalButton>}
+                          {p.origem_tabela === "funcionario_premiacoes" ? <span style={{ fontSize:11, color:"var(--text-2)" }}>Cadastro histórico · ajustes em Funcionários</span> : <>
                             <OperationalButton data-arato-button="secondary" onClick={()=>{ setPremEdit({ id: p.id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, descricao: p.descricao, valor: p.valor, data_pagamento: p.data_pagamento }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</OperationalButton>
                             <OperationalButton data-arato-button="secondary" onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</OperationalButton>
-                          </>
+                          </>}
                         </td>
                       </tr>
                     ))}
@@ -1633,15 +1582,15 @@ export default function FolhaPagamentoPage() {
           </>
         )}
 
-        </ControleFolha>
+        </section>
       </div>
 
       {/* ══════════════ MODAL FOLHA ══════════════ */}
       {modalFolha && (
         <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalFolha(false)}>
-          <div data-folha-dialog="true" style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <h2 data-arato-h2="true" style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="folha-dialog-title" className={folhaStyles.modal} data-folha-dialog="true" style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
+            <div className={folhaStyles.modalHeading} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <h2 id="folha-dialog-title" data-arato-h2="true" style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
                   ? `Folha — ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` · ${empresasMap[folhaEdit.empresa_id] ?? ""}` : folhaEdit.produtor_id ? ` · ${produtoresMap[folhaEdit.produtor_id] ?? ""}` : " · Sem vínculo"}`
                   : fCompAte > fComp
@@ -1655,7 +1604,7 @@ export default function FolhaPagamentoPage() {
                   </span>
                 )}
               </h2>
-              <OperationalButton data-arato-button="icon" onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
+              <OperationalButton data-arato-button="icon" aria-label="Fechar folha" onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
             </div>
 
             {folhaEdit.status === "fechado" && (
@@ -1668,7 +1617,7 @@ export default function FolhaPagamentoPage() {
             {/* Folha fechada sem a permissão de reprocessar: todos os campos ficam travados */}
             <fieldset disabled={folhaEdit.status === "fechado" && !podeReprocessar} style={{ border:"none", padding:0, margin:0, minWidth:0 }}>
             {/* Competência — editável para nova folha (retroativa), somente leitura para existente) */}
-            <div data-arato-panel="true" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
+            <div className={folhaStyles.fieldPanel} data-arato-panel="true" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
               {folhaEdit.id ? (
                 <>
                   <div>
@@ -2042,7 +1991,7 @@ export default function FolhaPagamentoPage() {
               </div>
             )}
 
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
+            <div className={folhaStyles.modalFooter} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <div style={{ display:"flex", gap:8 }}>
                 {folhaEdit.id && folhaEdit.status === "fechado" && (
                   <OperationalButton data-arato-button="secondary" onClick={reabrirFolha} title="Volta a folha inteira para rascunho: apaga os títulos reais e relança como previsão. Use só para refazer do zero."
@@ -2064,7 +2013,7 @@ export default function FolhaPagamentoPage() {
               <div style={{ display:"flex", gap:8 }}>
                 <OperationalButton data-arato-button="secondary" onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</OperationalButton>
                 {folhaEdit.status !== "fechado" && (
-                  <OperationalButton data-arato-button="secondary" onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</OperationalButton>
+                  <OperationalButton data-arato-button="primary" onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</OperationalButton>
                 )}
                 {folhaEdit.id && folhaEdit.status === "fechado" && podeReprocessar && (
                   <OperationalButton data-arato-button="primary" onClick={() => reprocessarFolha(true)} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Calculando..." : "⟳ Reprocessar Folha"}</OperationalButton>
@@ -2175,22 +2124,22 @@ export default function FolhaPagamentoPage() {
 
       {modalAdi && (
         <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalAdi(false)}>
-          <div data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
+          <div className={folhaStyles.movementModal} role="dialog" aria-modal="true" aria-labelledby="adiantamento-dialog-title" data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,680px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento Salarial"}</h2>
+              <h2 id="adiantamento-dialog-title" data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento"}</h2>
               <OperationalButton data-arato-button="icon" onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado na hora, já baixado na conta escolhida.</p>
 
-            <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
-              <div>
+            <div className={folhaStyles.movementFields} data-arato-fields="true" style={{ display:"grid", gap:14 }}>
+              <div className={folhaStyles.fullWidth}>
                 <label data-arato-label="true" style={S.label}>Funcionário *</label>
                 <SelectField value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
                 </SelectField>
               </div>
-              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div className={folhaStyles.fullWidth} data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <label data-arato-label="true" style={S.label}>Data *</label>
                   <InputData type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
@@ -2215,13 +2164,13 @@ export default function FolhaPagamentoPage() {
               </div>
               <div>
                 <label style={S.label}>Tipo de adiantamento</label>
-                <select value={adiEdit.tipo ?? "salario"} onChange={e=>setAdiEdit(p=>({...p,tipo:e.target.value as "salario"|"gratificacao"}))} style={{ ...S.inp, width:"100%" }}>
+                <select aria-label="Tipo de adiantamento" value={adiEdit.tipo ?? "salario"} onChange={e=>setAdiEdit(p=>({...p,tipo:e.target.value as "salario"|"gratificacao"}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="salario">Salário</option>
                   <option value="gratificacao">Gratificação (de uma competência lançada)</option>
                 </select>
               </div>
               {!adiEdit.id && (
-                <div>
+                <div className={folhaStyles.fullWidth}>
                   <label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
                   <SelectField value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
                     <option value="">{adiEdit.funcionario_id ? "Selecionar..." : "Escolha o funcionário primeiro"}</option>
@@ -2230,7 +2179,7 @@ export default function FolhaPagamentoPage() {
                   <span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span>
                 </div>
               )}
-              <div>
+              <div className={folhaStyles.fullWidth}>
                 <label data-arato-label="true" style={S.label}>Descrição / Motivo</label>
                 <input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" />
               </div>
@@ -2238,7 +2187,7 @@ export default function FolhaPagamentoPage() {
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <OperationalButton data-arato-button="secondary" onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="secondary" onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar, Gerar CP e Baixar"}</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar, Gerar CP e Baixar"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -2247,22 +2196,22 @@ export default function FolhaPagamentoPage() {
       {/* ══════════════ MODAL GRATIFICAÇÃO ══════════════ */}
       {modalPrem && (
         <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalPrem(false)}>
-          <div data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
+          <div className={folhaStyles.movementModal} role="dialog" aria-modal="true" aria-labelledby="gratificacao-dialog-title" data-folha-dialog="true" style={{ ...S.modal, width: "min(96vw,680px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{premEdit.id ? "Editar Gratificação" : "Nova Gratificação"}</h2>
+              <h2 id="gratificacao-dialog-title" data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{premEdit.id ? "Editar Gratificação" : "Nova Gratificação"}</h2>
               <OperationalButton data-arato-button="icon" onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
             </div>
-            <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>A gratificação é incluída no bruto do mês de referência e será carregada ao criar a folha.</p>
+            <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>A gratificação gera um título separado no Contas a Pagar, vinculado ao funcionário e à competência.</p>
 
-            <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
-              <div>
+            <div className={folhaStyles.movementFields} data-arato-fields="true" style={{ display:"grid", gap:14 }}>
+              <div className={folhaStyles.fullWidth}>
                 <label data-arato-label="true" style={S.label}>Funcionário *</label>
                 <SelectField value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
                 </SelectField>
               </div>
-              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div className={folhaStyles.fullWidth} data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <label data-arato-label="true" style={S.label}>Mês de referência *</label>
                   <InputData type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
@@ -2284,7 +2233,7 @@ export default function FolhaPagamentoPage() {
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <OperationalButton data-arato-button="secondary" onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="secondary" onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving ? "Salvando..." : premEdit.id ? "Salvar Alterações" : "Salvar Gratificação"}</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving ? "Salvando..." : premEdit.id ? "Salvar Alterações" : "Salvar Gratificação"}</OperationalButton>
             </div>
           </div>
         </div>

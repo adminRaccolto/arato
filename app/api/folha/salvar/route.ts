@@ -1,6 +1,8 @@
 import { carregarControleFolha, validarPeriodoControle } from "../../../../lib/folha/controle-server";
 import { assinaturaConferencia, podeUsarControleFolha } from "../../../../lib/folha/controle";
 import { prepararConferenciaEmLote } from "../../../../lib/folha/por-empregador";
+import { unificarPremiacoes } from "../../../../lib/folha/premiacoes-origem";
+import { titulosParaReprocessamento } from "../../../../lib/folha/reprocessamento-titulos";
 import { descontoNoSalario } from "../../../../lib/folha/gratificacoes";
 import { soDigitos } from "../../../../lib/folha/empregador";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -665,10 +667,11 @@ export async function POST(req: Request) {
 
       // Títulos atuais
       const idsTitulos = [...(antigas ?? []).map((r: any) => r.cp_lancamento_id), folha.cp_fgts_id, folha.cp_inss_patronal_id].filter(Boolean) as string[];
-      const { data: titulos } = idsTitulos.length
-        ? await sb.from("lancamentos").select("id, valor, valor_pago, status, natureza, lote_id, conciliado, observacao, descricao").in("id", idsTitulos).neq("status", "cancelado")
-        : { data: [] as any[] };
-      const tituloPor = new Map<string, any>((titulos ?? []).map((t: any) => [t.id, t]));
+      const { data: titulos, error: erroTitulos } = idsTitulos.length
+        ? await sb.from("lancamentos").select("id, titulo_origem_id, valor, valor_pago, status, natureza, lote_id, conciliado, observacao, descricao").or(`id.in.(${idsTitulos.join(",")}),titulo_origem_id.in.(${idsTitulos.join(",")})`).eq("fazenda_id", folha.fazenda_id).neq("status", "cancelado")
+        : { data: [] as any[], error: null };
+      if (erroTitulos) throw erroTitulos;
+      const tituloPor = titulosParaReprocessamento<any>(idsTitulos, titulos ?? []);
       const pago = (t: any) => !!t && (t.status === "baixado" || t.status === "parcial" || !!t.lote_id || !!t.conciliado || Number(t.valor_pago ?? 0) > 0);
       const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -678,7 +681,7 @@ export async function POST(req: Request) {
         const velha = antigaPor.get(chave(r));
         const t = velha?.cp_lancamento_id ? tituloPor.get(velha.cp_lancamento_id) : null;
         if (!velha || !pago(t)) continue;
-        for (const campo of ["gratificacao", "salario_bruto", "inss_trabalhador", "irrf", "outros_descontos", "desc_outros_descontos", "complemento_salarial", "inss_patronal", "fgts"])
+        for (const campo of ["gratificacao", "salario_bruto", "inss_trabalhador", "irrf", "outros_descontos", "desc_outros_descontos", "complemento_salarial", "vale_transporte", "vale_refeicao", "outros_beneficios", "inss_patronal", "fgts"])
           r[campo] = velha[campo];
         for (const campo of ["he_50_horas", "he_100_horas", "he_valor", "he_dsr"])
           if (campo in r || velha[campo] != null) r[campo] = velha[campo] ?? 0;
@@ -1163,13 +1166,15 @@ export async function POST(req: Request) {
       const { fazenda_id, fazenda_ids } = payload as { fazenda_id?: string; fazenda_ids?: string[] };
       const ids = fazenda_ids?.length ? fazenda_ids : fazenda_id ? [fazenda_id] : [];
       if (!ids.length) return NextResponse.json({ ok: true, adis: [], prems: [] });
-      const [{ data: adis, error: adiErr }, { data: prems, error: premErr }] = await Promise.all([
+      const [{ data: adis, error: adiErr }, { data: prems, error: premErr }, { data: historicas, error: historicasErr }] = await Promise.all([
         sb.from("adiantamentos_salario").select("*, funcionarios(nome)").in("fazenda_id", ids).order("data", { ascending: false }),
         sb.from("funcionarios_premiacoes").select("*, funcionarios(nome)").in("fazenda_id", ids),
+        sb.from("funcionario_premiacoes").select("*, funcionarios(nome)").in("fazenda_id", ids),
       ]);
       if (adiErr) throw adiErr;
       if (premErr) throw premErr;
-      return NextResponse.json({ ok: true, adis: adis ?? [], prems: prems ?? [] });
+      if (historicasErr) throw historicasErr;
+      return NextResponse.json({ ok: true, adis: adis ?? [], prems: unificarPremiacoes(prems ?? [], historicas ?? []) });
     }
 
     // ─── salvar_adiantamento ──────────────────────────────────────────────────
@@ -1444,15 +1449,16 @@ export async function POST(req: Request) {
     // ─── salvar_premiacao ─────────────────────────────────────────────────────
     if (operacao === "salvar_premiacao") {
       const { fazenda_id: fazendaPayload, funcionario_id, mes_referencia, descricao, valor, data_pagamento } = payload as any;
+      if (typeof mes_referencia !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(mes_referencia) || !String(descricao ?? "").trim() || !Number.isFinite(Number(valor)) || Number(valor) <= 0) return NextResponse.json({ error: "Informe competência, descrição e valor positivo para a gratificação." }, { status: 422 });
       const { data: funcFaz } = await sb.from("funcionarios").select("fazenda_id").eq("id", funcionario_id).maybeSingle();
       const fazenda_id: string = await fazendaDoMesmoCliente(sb, funcFaz?.fazenda_id as string | undefined, fazendaPayload);
-      const { error } = await sb.from("funcionarios_premiacoes").insert({
+      const { data, error } = await sb.from("funcionarios_premiacoes").insert({
         fazenda_id, funcionario_id, mes_referencia, descricao, data_pagamento: data_pagamento || null,
         valor, lancado_financeiro: true,
-      });
+      }).select("*").single();
       if (error) throw error;
       await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, data });
     }
 
     // ─── editar_premiacao ─────────────────────────────────────────────────────

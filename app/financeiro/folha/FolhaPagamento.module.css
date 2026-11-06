@@ -1,0 +1,165 @@
+.page {
+  color: var(--text-1, #0b2d50);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.heading p {
+  margin: 0 0 5px;
+  color: var(--text-3, #66768c);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.heading h1 {
+  margin: 0 0 6px;
+  font-size: 25px;
+  line-height: 1.2;
+  color: var(--text-1, #0b2d50);
+}
+.heading span {
+  color: var(--text-2, #586b82);
+  font-size: 13px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border-table, #dce3ed);
+  border-radius: 10px;
+  background: var(--bg-card, #fff);
+  overflow-x: auto;
+}
+.tabs > button {
+  flex: 1;
+  padding: 10px 18px;
+  border: 1px solid var(--border-table, #e4e9f0);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2, #586b82);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tabs > button[aria-selected="true"] {
+  border-color: var(--c-primary, #1a4870);
+  background: var(--c-primary, #1a4870);
+  color: var(--on-primary, #fff);
+  font-weight: 700;
+}
+.page :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--c-primary, #1a4870);
+  outline-offset: 2px;
+}
+.filters {
+  align-items: flex-end !important;
+}
+.employerFilter {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 460px;
+  color: var(--text-2, #586b82);
+  font-size: 12px;
+  font-weight: 600;
+}
+.employerFilter select {
+  width: 100%;
+  min-height: 34px;
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.modal {
+  border: 1px solid var(--border-table, #dce3ed);
+  box-shadow: 0 18px 70px #15263c33;
+}
+.movementModal {
+  padding: 20px !important;
+  border: 1px solid var(--border-table, #dce3ed);
+  box-shadow: 0 18px 70px #15263c33;
+}
+.movementFields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px !important;
+}
+.fullWidth {
+  grid-column: 1 / -1;
+}
+.modalHeading {
+  position: sticky;
+  top: -20px;
+  z-index: 3;
+  gap: 16px;
+  padding: 12px 0;
+  background: var(--bg-card, #fff);
+  border-bottom: 1px solid var(--border-table, #dce3ed);
+}
+.modalHeading h2 {
+  line-height: 1.5;
+}
+.modalHeading > button {
+  flex-shrink: 0;
+}
+.fieldPanel {
+  flex-wrap: wrap;
+  gap: 10px 18px !important;
+}
+.modalFooter {
+  position: sticky;
+  bottom: -28px;
+  z-index: 3;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 16px;
+  background: var(--bg-card, #fff);
+}
+.modalFooter > div {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.page[data-folha-layout="novo"] .heading h1 {
+  font-size: 30px;
+}
+.page[data-folha-layout="novo"] [data-folha-dialog="true"] {
+  border-radius: 16px !important;
+  background: var(--bg-card, #fff) !important;
+  color: var(--text-1, #294c51);
+}
+@media (max-width: 720px) {
+  .heading h1,
+  .page[data-folha-layout="novo"] .heading h1 {
+    font-size: 24px;
+  }
+  .tabs > button {
+    padding: 9px 12px;
+  }
+  .employerFilter {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .modal {
+    padding: 12px !important;
+    max-height: 96dvh !important;
+  }
+  .movementModal {
+    padding: 16px !important;
+  }
+  .movementFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .modalHeading {
+    top: -12px;
+  }
+  .modalFooter {
+    bottom: -12px;
+    padding-bottom: 12px;
+  }
+}

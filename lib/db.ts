@@ -9,6 +9,7 @@ import { statusDoContrato } from "./financeiro/refinanciamento";
 import { cotacaoDoContrato } from "./financeiro/moeda";
 import { itemDoCliente } from "./estoque/duplicados";
 import { falharSeErro } from "./db-util";
+import { unificarPremiacoes, type OrigemPremiacao } from "./folha/premiacoes-origem";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
 import { excluirTitulosDaNf } from "./financeiro/titulos-nf";
@@ -2233,18 +2234,28 @@ export async function excluirFuncao(id: string): Promise<void> {
 }
 
 export async function listarPremiacoesFuncionario(funcionario_id: string): Promise<FuncionarioPremiacao[]> {
-  const { data, error } = await supabase.from("funcionario_premiacoes").select("*").eq("funcionario_id", funcionario_id).order("mes_referencia", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const [atuais, historicas] = await Promise.all([
+    supabase.from("funcionarios_premiacoes").select("*").eq("funcionario_id", funcionario_id),
+    supabase.from("funcionario_premiacoes").select("*").eq("funcionario_id", funcionario_id),
+  ]);
+  if (atuais.error) throw atuais.error;
+  if (historicas.error) throw historicas.error;
+  return unificarPremiacoes<FuncionarioPremiacao>(atuais.data ?? [], historicas.data ?? []).sort((a,b)=>b.mes_referencia.localeCompare(a.mes_referencia));
 }
 export async function criarPremiacao(p: Omit<FuncionarioPremiacao, "id" | "created_at">): Promise<FuncionarioPremiacao> {
-  const { data, error } = await supabase.from("funcionario_premiacoes").insert(p).select().single();
-  if (error) throw error;
-  return data;
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch("/api/folha/salvar", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+    body: JSON.stringify({ operacao: "salvar_premiacao", fazenda_id: p.fazenda_id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, data_pagamento: p.data_pagamento, descricao: p.descricao, valor: p.valor }) });
+  const json = await res.json();
+  if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível salvar a premiação.");
+  return { ...json.data, origem_tabela: "funcionarios_premiacoes" };
 }
-export async function excluirPremiacao(id: string): Promise<void> {
-  const { error } = await supabase.from("funcionario_premiacoes").delete().eq("id", id);
-  if (error) throw error;
+export async function excluirPremiacao(id: string, origem: OrigemPremiacao = "funcionario_premiacoes"): Promise<void> {
+  if (origem === "funcionario_premiacoes") throw new Error("Registro histórico: concilie o CP existente antes de alterar ou excluir a premiação.");
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch("/api/folha/salvar", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` }, body: JSON.stringify({ operacao: "excluir_premiacao", id }) });
+  const json = await res.json();
+  if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível excluir a premiação.");
 }
 
 // — Férias —

@@ -45,6 +45,10 @@ function banco(falha?: { tabela: string; code: string }) {
       { id: "p1", fazenda_id: "cliente1", nome: "Cliente 1", ativo: false },
       { id: "p2", fazenda_id: "cliente2", nome: "Cliente 2" },
     ],
+    funcionario_premiacoes: [
+      { id: "prem-antiga", funcionario_id: "p1", fazenda_id: "cliente1", mes_referencia: "2026-11", valor: 500, descricao: "Premiação histórica", lancamento_id: "prem-cp" },
+      { id: "prem-segredo", funcionario_id: "p2", fazenda_id: "cliente2", mes_referencia: "2026-11", valor: 9000, descricao: "Outro cliente" },
+    ],
     lancamentos: [
       { id: "sal", fazenda_id: "cliente1", valor: 2000, status: "em_aberto" },
       {
@@ -56,6 +60,9 @@ function banco(falha?: { tabela: string; code: string }) {
         valor_pago: 1000,
       },
       { id: "segredo", fazenda_id: "cliente2", valor: 9000, status: "baixado" },
+      { id: "prem-cp", fazenda_id: "cliente1", valor: 500, status: "baixado", valor_pago: 500 },
+      { id: "avulso", fazenda_id: "cliente1", funcionario_id: "p1", valor: 700, status: "baixado", valor_pago: 700, descricao: "Salário Nov/2026 — Histórico" },
+      { id: "avulso-segredo", fazenda_id: "cliente2", valor: 700, status: "baixado", descricao: "Salário Nov/2026 — Outro cliente" },
     ],
     funcionario_ferias: [
       {
@@ -79,6 +86,10 @@ function banco(falha?: { tabela: string; code: string }) {
         },
         in(k: string, v: unknown[]) {
           rows = rows.filter((r) => v.includes(r[k]));
+          return q;
+        },
+        ilike(k: string, v: string) {
+          rows = rows.filter(r => String(r[k] ?? "").toLowerCase().startsWith(v.replace(/%$/, "").toLowerCase()));
           return q;
         },
         gte(k: string, v: unknown) {
@@ -155,6 +166,19 @@ test("sem migração de conferência, os dados reais continuam disponíveis e o 
   assert.equal(d.conferenciaDisponivel, false);
   assert.ok(d.avisos.some((a) => a.includes("Seção 420")));
   assert.equal(d.linhas.length, 1);
+});
+test("premiações antigas e salários sem vínculo aparecem sem criar outra folha ou outro CP", async () => {
+  const { db } = banco();
+  const d = await carregarControleFolha(db, ["cliente1"], "2026-11", "2026-11");
+  assert.equal(d.premios.length, 1);
+  assert.equal(d.premios[0].origem_tabela, "funcionario_premiacoes");
+  assert.equal(d.premios[0].lancamento_id, "prem-cp");
+  const avulso = d.vinculos.find(v => v.titulo_id === "avulso");
+  assert.equal(avulso?.sem_folha, true);
+  assert.equal(avulso?.folha_id, undefined);
+  assert.equal(d.folhas.length, 1);
+  assert.ok(!d.titulos.some(t => t.id === "avulso-segredo"));
+  assert.ok(d.avisos.some(a => a.includes("sem vínculo")));
 });
 test("erro de acesso não é disfarçado como ausência de migração", async () => {
   const { db } = banco({ tabela: "folha_conferencias", code: "42501" });
