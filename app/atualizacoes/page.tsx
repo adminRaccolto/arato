@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.06-a",
+    data: "06/11/2026",
+    titulo: "Gerar por Safra refaz o que falta",
+    modulos: ["Comercial", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Gerar por Safra, nos Contratos de Arrendamento, agora recria os contratos de grãos (comprometimento em sacas) e os títulos do Contas a Pagar (pagamento em R$) que faltarem, também em parcelas que já existiam." },
+      { tipo: "correcao", texto: "A safra que não existe no cadastro é criada no cliente; se não der, o sistema avisa em vez de gravar a parcela sem safra." },
+    ],
+  },
+  {
     versao: "2026.11.05-n",
     data: "05/11/2026",
     titulo: "Bomba/tanque na entrada da NF",

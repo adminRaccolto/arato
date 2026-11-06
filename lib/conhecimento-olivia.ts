@@ -834,6 +834,8 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **NF de combustível — bomba/tanque:** com É Combustível marcado, o seletor Bomba / Tanque destino lista as bombas da fazenda da IE do produtor na nota. Se essa fazenda não tem bomba e só uma fazenda do cliente tem, o sistema usa essa; com mais de uma, aparece Fazenda da descarga para escolher. Bomba nova se cadastra em Cadastros → Combustíveis & Bombas.
 
+**Arrendamento — Gerar por Safra:** gera ou atualiza as parcelas das safras marcadas e refaz o que faltar: no pagamento em sacas, o contrato de grãos de comprometimento de cada safra (um por produto); no pagamento em R$, o título no Contas a Pagar de cada parcela não paga. Pode ser usado de novo sem duplicar: parcela, contrato e título que já existem são atualizados. Contrato que já teve entrega não é alterado. Safra que falta no cadastro é criada; parcela antiga sem safra recebe a safra pelo ano do vencimento.
+
 **Fluxo de Caixa — Excel:** em Financeiro → Relatórios Financeiros → Fluxo de Caixa, o botão ⬇ Excel, ao lado de Imprimir / PDF, exporta a visão aberta com os filtros da tela.
 - Diário: aba Resumo (escopo, período, tipo, saldo inicial com a composição quando Considerar atrasados? está ligado, totais e saldo final) e aba Fluxo Diário com uma linha por lançamento (data, fornecedor/pagador, descrição, origem, situação, entrada, saída e saldo acumulado), do saldo inicial aos totais.
 - Mensal e Anual: aba Resumo e aba com categorias nas linhas e meses (ou anos) nas colunas, separando Entradas e Saídas, com Total Entradas, Total Saídas, Saldo do mês/ano e Saldo Acumulado.

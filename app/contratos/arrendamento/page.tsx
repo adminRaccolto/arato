@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { conciliarContratos, parcelaExistente, produtoDoContrato, type ContratoArr } from "../../../lib/arrendamento/gerar";
 import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarIEsDoProdutor, baixarLancamento, listarContasBancariasDaConta } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
@@ -383,339 +384,186 @@ export default function Arrendamentos() {
       const ehSoja  = arr.forma_pagamento === "sc_soja"  || arr.forma_pagamento === "sc_soja_milho";
       const ehMilho = arr.forma_pagamento === "sc_milho" || arr.forma_pagamento === "sc_soja_milho";
       const ehBrl   = arr.forma_pagamento === "brl";
+      const fazArr  = arr.fazenda_id ?? fazendaId;
+      const propNome = arr.proprietario_nome ?? "Proprietário";
 
-      const novosPagamentos: Omit<Pagamento, "id">[] = [];
-      // Antes um erro aqui era só engolido (catch { return null }) — a parcela
-      // era criada normalmente e o alerta final dizia "sucesso", sem nenhum
-      // sinal de que o CP real nunca foi lançado.
-      const errosLancamento: string[] = [];
-
-      for (const cfg of configSafras) {
-        if (!cfg.incluir) continue;
-
-        if (ehSoja) {
-          const scHa   = parseFloat(cfg.sc_soja_ha.replace(",", ".")) || 0;
-          const sacas  = parseFloat((arr.area_ha * scHa).toFixed(4));
-          const preco  = parseFloat(cfg.preco_soja.replace(",", ".")) || null;
-          novosPagamentos.push({
-            arrendamento_id: arr.id,
-            fazenda_id: arr.fazenda_id ?? fazendaId,
-            ano_safra_id: cfg.ano_safra_id || null,
-            data_vencimento: cfg.dt_venc_soja,
-            sacas_previstas: sacas > 0 ? sacas : null,
-            commodity: "Soja",
-            preco_sc_referencia: preco,
-            valor_previsto: sacas > 0 && preco ? parseFloat((sacas * preco).toFixed(2)) : null,
-            status: "pendente",
-            observacao: arr.forma_pagamento === "sc_soja_milho" ? "sc_soja_milho:soja" : null,
-          });
-        }
-
-        if (ehMilho) {
-          const scHa   = parseFloat(cfg.sc_milho_ha.replace(",", ".")) || 0;
-          const sacas  = parseFloat((arr.area_ha * scHa).toFixed(4));
-          const preco  = parseFloat(cfg.preco_milho.replace(",", ".")) || null;
-          novosPagamentos.push({
-            arrendamento_id: arr.id,
-            fazenda_id: arr.fazenda_id ?? fazendaId,
-            ano_safra_id: cfg.ano_safra_id || null,
-            data_vencimento: cfg.dt_venc_milho,
-            sacas_previstas: sacas > 0 ? sacas : null,
-            commodity: "Milho",
-            preco_sc_referencia: preco,
-            valor_previsto: sacas > 0 && preco ? parseFloat((sacas * preco).toFixed(2)) : null,
-            status: "pendente",
-            observacao: arr.forma_pagamento === "sc_soja_milho" ? "sc_soja_milho:milho" : null,
-          });
-        }
-
-        if (ehBrl) {
-          // Um lançamento por commodity — soja usa dt_venc_soja, milho usa dt_venc_milho
-          const scSojaHaNum  = parseFloat(cfg.sc_soja_ha.replace(",",  ".")) || 0;
-          const scMilhoHaNum = parseFloat(cfg.sc_milho_ha.replace(",", ".")) || 0;
-          const precoSojaNum  = parseFloat(cfg.preco_soja.replace(",",  ".")) || 0;
-          const precoMilhoNum = parseFloat(cfg.preco_milho.replace(",", ".")) || 0;
-          const propNome  = arr.proprietario_nome ?? "Proprietário";
-          const prodId1   = arr.produtor_id || undefined;
-
-          // helper: cria um único lancamento para o produtor responsável
-          const criarLancArr = async (
-            descricao: string, data_vencimento: string,
-            valor: number, obs: string,
-          ): Promise<string | null> => {
-            try {
-              const lanc = await criarLancamento({
-                fazenda_id: arr.fazenda_id ?? fazendaId, tipo: "pagar", moeda: "BRL",
-                descricao, categoria: "Arrendamento de Terra",
-                data_lancamento: hoje(), data_vencimento,
-                valor, status: "em_aberto", auto: true,
-                observacao: obs,
-                produtor_id: prodId1,
-                pessoa_id: arr.proprietario_id || undefined,
-                ano_safra_id: cfg.ano_safra_id || undefined,
-                origem_lancamento: "arrendamento",
-              } as Parameters<typeof criarLancamento>[0]);
-              return lanc.id;
-            } catch (e) {
-              errosLancamento.push(`${descricao}: ${(e as { message?: string })?.message ?? "erro desconhecido"}`);
-              return null;
-            }
-          };
-
-          // Lançamento SOJA (se sc/ha soja preenchido)
-          if (scSojaHaNum > 0) {
-            const sacasSoja = parseFloat((arr.area_ha * scSojaHaNum).toFixed(4));
-            const valorSoja = precoSojaNum > 0
-              ? parseFloat((sacasSoja * precoSojaNum).toFixed(2))
-              : parseFloat(cfg.valor_brl.replace(",", ".")) || 0;
-            if (valorSoja > 0) {
-              const obsSoja = `Soja: ${fmtN(scSojaHaNum,4)} sc/ha × ${fmtN(arr.area_ha)} ha = ${fmtN(sacasSoja,1)} sc @ R$${fmtN(precoSojaNum,2)}/sc`;
-              const descSoja = `Arrendamento Soja — ${propNome} (${cfg.descricao})`;
-              const lancIdSoja = await criarLancArr(descSoja, cfg.dt_venc_soja, valorSoja, `Gerado automaticamente. ${obsSoja}`);
-              novosPagamentos.push({
-                arrendamento_id: arr.id, fazenda_id: arr.fazenda_id ?? fazendaId,
-                ano_safra_id: cfg.ano_safra_id || null,
-                data_vencimento: cfg.dt_venc_soja,
-                valor_previsto: valorSoja, status: "pendente",
-                lancamento_id: lancIdSoja,
-                sacas_previstas: sacasSoja, commodity: "Soja ref.",
-                preco_sc_referencia: precoSojaNum || null,
-                observacao: obsSoja,
-              } as Omit<Pagamento, "id">);
-            }
-          }
-
-          // Lançamento MILHO (se sc/ha milho preenchido)
-          if (scMilhoHaNum > 0) {
-            const sacasMilho = parseFloat((arr.area_ha * scMilhoHaNum).toFixed(4));
-            const valorMilho = precoMilhoNum > 0
-              ? parseFloat((sacasMilho * precoMilhoNum).toFixed(2))
-              : 0;
-            if (valorMilho > 0) {
-              const obsMilho = `Milho: ${fmtN(scMilhoHaNum,4)} sc/ha × ${fmtN(arr.area_ha)} ha = ${fmtN(sacasMilho,1)} sc @ R$${fmtN(precoMilhoNum,2)}/sc`;
-              const descMilho = `Arrendamento Milho — ${propNome} (${cfg.descricao})`;
-              const lancIdMilho = await criarLancArr(descMilho, cfg.dt_venc_milho, valorMilho, `Gerado automaticamente. ${obsMilho}`);
-              novosPagamentos.push({
-                arrendamento_id: arr.id, fazenda_id: arr.fazenda_id ?? fazendaId,
-                ano_safra_id: cfg.ano_safra_id || null,
-                data_vencimento: cfg.dt_venc_milho,
-                valor_previsto: valorMilho, status: "pendente",
-                lancamento_id: lancIdMilho,
-                sacas_previstas: sacasMilho, commodity: "Milho ref.",
-                preco_sc_referencia: precoMilhoNum || null,
-                observacao: obsMilho,
-              } as Omit<Pagamento, "id">);
-            }
-          }
-
-          // Fallback: valor manual único se não tiver sc/ha preenchido
-          if (scSojaHaNum === 0 && scMilhoHaNum === 0) {
-            const valorManual = parseFloat(cfg.valor_brl.replace(",", ".")) || 0;
-            if (valorManual > 0) {
-              const obsManual = `Gerado automaticamente pelo módulo de arrendamentos.`;
-              const descManual = `Arrendamento — ${propNome} (${cfg.descricao})`;
-              const lancId = await criarLancArr(descManual, cfg.dt_venc_brl, valorManual, obsManual);
-              novosPagamentos.push({
-                arrendamento_id: arr.id, fazenda_id: arr.fazenda_id ?? fazendaId,
-                ano_safra_id: cfg.ano_safra_id || null,
-                data_vencimento: cfg.dt_venc_brl,
-                valor_previsto: valorManual, status: "pendente",
-                lancamento_id: lancId,
-              } as Omit<Pagamento, "id">);
-            }
-          }
-        }
-      }
-
-      if (novosPagamentos.length === 0) {
-        alert("Nenhuma parcela configurada para gerar.");
-        setSalvando(false);
-        return;
-      }
-
-      // ── Auto-criar anos_safra ausentes ──────────────────
+      // ── Safras que faltam no cadastro: cria antes das parcelas (com o cliente). Antes o erro era engolido e a
+      // parcela ficava sem safra — sem safra não há contrato de grãos (achado 06/11/2026, Habio: 24 parcelas assim).
       const anosSafraAtualizado = [...anosSafra];
+      const prefixo = anosSafra.some(a => /^safra /i.test(a.descricao)) ? "Safra " : "";
       for (const cfg of configSafras) {
         if (!cfg.incluir || cfg.ano_safra_id) continue;
-        try {
-          const { data: novoAs } = await supabase.from("anos_safra")
-            .insert({ fazenda_id: arr.fazenda_id ?? fazendaId, descricao: cfg.descricao })
-            .select().single();
-          if (novoAs) {
-            cfg.ano_safra_id = novoAs.id;
-            anosSafraAtualizado.push(novoAs as AnoSafra);
-          }
-        } catch { /* ignora se já existe */ }
+        const ja = anosSafraAtualizado.find(a => extrairAnoFim(a.descricao) === cfg.anoFim);
+        if (ja) { cfg.ano_safra_id = ja.id; continue; }
+        const { data: novoAs, error } = await supabase.from("anos_safra")
+          .insert({ fazenda_id: fazArr, conta_id: contaId ?? null, descricao: `${prefixo}${cfg.anoFim - 1}/${cfg.anoFim}` })
+          .select().single();
+        if (error || !novoAs) throw new Error(`Não foi possível criar a safra ${cfg.anoFim - 1}/${cfg.anoFim}: ${error?.message ?? "sem retorno"}. Cadastre-a em Cadastros → Safras & Ciclos e gere de novo.`);
+        cfg.ano_safra_id = novoAs.id;
+        cfg.descricao = novoAs.descricao;
+        anosSafraAtualizado.push(novoAs as AnoSafra);
       }
       setAnosSafra(anosSafraAtualizado);
 
-      // Atualizar ano_safra_id nos pagamentos com o id recém-criado
-      for (const p of novosPagamentos) {
-        if (!p.ano_safra_id) {
-          const cfgMatch = configSafras.find(c =>
-            c.dt_venc_soja === p.data_vencimento || c.dt_venc_milho === p.data_vencimento || c.dt_venc_brl === p.data_vencimento
-          );
-          if (cfgMatch?.ano_safra_id) p.ano_safra_id = cfgMatch.ano_safra_id;
+      // ── Parcelas desejadas. Em R$ o título do CP é criado DEPOIS de achar a parcela (antes era criado sempre, e em
+      // parcela existente ficava solto, sem vínculo).
+      type Nova = Omit<Pagamento, "id"> & { _cp?: { descricao: string; obs: string } };
+      const novas: Nova[] = [];
+      const num = (v: string) => parseFloat(v.replace(",", ".")) || 0;
+      for (const cfg of configSafras) {
+        if (!cfg.incluir) continue;
+        const base = { arrendamento_id: arr.id, fazenda_id: fazArr, ano_safra_id: cfg.ano_safra_id || null, status: "pendente" as StatusPag };
+        if (ehSoja) {
+          const sacas = parseFloat((arr.area_ha * num(cfg.sc_soja_ha)).toFixed(4)); const preco = num(cfg.preco_soja) || null;
+          novas.push({ ...base, data_vencimento: cfg.dt_venc_soja, sacas_previstas: sacas > 0 ? sacas : null, commodity: "Soja", preco_sc_referencia: preco,
+            valor_previsto: sacas > 0 && preco ? parseFloat((sacas * preco).toFixed(2)) : null, observacao: arr.forma_pagamento === "sc_soja_milho" ? "sc_soja_milho:soja" : null });
+        }
+        if (ehMilho) {
+          const sacas = parseFloat((arr.area_ha * num(cfg.sc_milho_ha)).toFixed(4)); const preco = num(cfg.preco_milho) || null;
+          novas.push({ ...base, data_vencimento: cfg.dt_venc_milho, sacas_previstas: sacas > 0 ? sacas : null, commodity: "Milho", preco_sc_referencia: preco,
+            valor_previsto: sacas > 0 && preco ? parseFloat((sacas * preco).toFixed(2)) : null, observacao: arr.forma_pagamento === "sc_soja_milho" ? "sc_soja_milho:milho" : null });
+        }
+        if (ehBrl) {
+          const scSoja = num(cfg.sc_soja_ha), scMilho = num(cfg.sc_milho_ha), pSoja = num(cfg.preco_soja), pMilho = num(cfg.preco_milho);
+          if (scSoja > 0) {
+            const sacas = parseFloat((arr.area_ha * scSoja).toFixed(4));
+            const valor = pSoja > 0 ? parseFloat((sacas * pSoja).toFixed(2)) : num(cfg.valor_brl);
+            const obs = `Soja: ${fmtN(scSoja,4)} sc/ha × ${fmtN(arr.area_ha)} ha = ${fmtN(sacas,1)} sc @ R$${fmtN(pSoja,2)}/sc`;
+            if (valor > 0) novas.push({ ...base, data_vencimento: cfg.dt_venc_soja, valor_previsto: valor, sacas_previstas: sacas, commodity: "Soja ref.",
+              preco_sc_referencia: pSoja || null, observacao: obs, _cp: { descricao: `Arrendamento Soja — ${propNome} (${cfg.descricao})`, obs: `Gerado automaticamente. ${obs}` } });
+          }
+          if (scMilho > 0) {
+            const sacas = parseFloat((arr.area_ha * scMilho).toFixed(4));
+            const valor = pMilho > 0 ? parseFloat((sacas * pMilho).toFixed(2)) : 0;
+            const obs = `Milho: ${fmtN(scMilho,4)} sc/ha × ${fmtN(arr.area_ha)} ha = ${fmtN(sacas,1)} sc @ R$${fmtN(pMilho,2)}/sc`;
+            if (valor > 0) novas.push({ ...base, data_vencimento: cfg.dt_venc_milho, valor_previsto: valor, sacas_previstas: sacas, commodity: "Milho ref.",
+              preco_sc_referencia: pMilho || null, observacao: obs, _cp: { descricao: `Arrendamento Milho — ${propNome} (${cfg.descricao})`, obs: `Gerado automaticamente. ${obs}` } });
+          }
+          if (scSoja === 0 && scMilho === 0 && num(cfg.valor_brl) > 0) {
+            novas.push({ ...base, data_vencimento: cfg.dt_venc_brl, valor_previsto: num(cfg.valor_brl),
+              _cp: { descricao: `Arrendamento — ${propNome} (${cfg.descricao})`, obs: "Gerado automaticamente pelo módulo de arrendamentos." } });
+          }
         }
       }
+      if (novas.length === 0) { alert("Nenhuma parcela configurada para gerar."); setSalvando(false); return; }
 
-      // ── UPSERT: atualizar existentes, inserir novas ─────
-      const anosSelecionados = [...new Set(novosPagamentos.map(p => p.ano_safra_id).filter(Boolean))];
-      const { data: existentes } = await supabase
-        .from("arrendamento_pagamentos")
-        .select("id, ano_safra_id, commodity")
-        .eq("arrendamento_id", selArrGerador.id)
-        .in("ano_safra_id", anosSelecionados as string[]);
-
-      type ExRow = { id: string; ano_safra_id: string; commodity: string };
-      const existenteMap = new Map<string, ExRow>(
-        ((existentes ?? []) as ExRow[]).map(e => [`${e.ano_safra_id}|${e.commodity ?? ""}`, e])
-      );
-
-      const paraInserir: Omit<Pagamento, "id">[] = [];
-      const paraAtualizar: { id: string; campos: Partial<Omit<Pagamento, "id">> }[] = [];
-
-      for (const p of novosPagamentos) {
-        const chave = `${p.ano_safra_id}|${p.commodity ?? ""}`;
-        const ex = existenteMap.get(chave);
-        if (ex) {
-          paraAtualizar.push({ id: ex.id, campos: {
-            sacas_previstas:      p.sacas_previstas,
-            valor_previsto:       p.valor_previsto,
-            preco_sc_referencia:  p.preco_sc_referencia,
-            data_vencimento:      p.data_vencimento,
-            observacao:           p.observacao,
-          }});
-        } else {
-          paraInserir.push(p);
-        }
-      }
-
+      // ── Parcelas: atualiza a que já existe (inclusive a antiga sem safra, que passa a ter safra) e insere a nova
+      const { data: exData, error: exErr } = await supabase.from("arrendamento_pagamentos").select("*").eq("arrendamento_id", arr.id);
+      if (exErr) throw exErr;
+      const existentes = (exData ?? []) as Pagamento[];
+      const usados = new Set<string>();
       const atualizados: Pagamento[] = [];
-      for (const { id, campos } of paraAtualizar) {
-        const { data: upd } = await supabase
-          .from("arrendamento_pagamentos").update(campos).eq("id", id).select().single();
-        if (upd) atualizados.push(upd as Pagamento);
+      const inseridos: Pagamento[] = [];
+      const resultado: { parcela: Pagamento; cp?: Nova["_cp"] }[] = [];
+      for (const n of novas) {
+        const { _cp, ...dados } = n;
+        const ex = parcelaExistente(existentes.filter(e => !usados.has(e.id)), dados);
+        if (ex) {
+          usados.add(ex.id);
+          const { data: upd, error } = await supabase.from("arrendamento_pagamentos").update({
+            ano_safra_id: dados.ano_safra_id ?? ex.ano_safra_id, sacas_previstas: dados.sacas_previstas, valor_previsto: dados.valor_previsto,
+            preco_sc_referencia: dados.preco_sc_referencia, data_vencimento: dados.data_vencimento, observacao: dados.observacao,
+          }).eq("id", ex.id).select().single();
+          if (error) throw error;
+          atualizados.push(upd as Pagamento); resultado.push({ parcela: upd as Pagamento, cp: _cp });
+        } else {
+          const { data: ins, error } = await supabase.from("arrendamento_pagamentos").insert(dados).select().single();
+          if (error) throw error;
+          inseridos.push(ins as Pagamento); resultado.push({ parcela: ins as Pagamento, cp: _cp });
+        }
       }
 
-      let inseridos: Pagamento[] = [];
-      if (paraInserir.length > 0) {
-        const { data: ins } = await supabase.from("arrendamento_pagamentos").insert(paraInserir).select();
-        inseridos = (ins ?? []) as Pagamento[];
+      // ── R$: garante o título no Contas a Pagar de cada parcela não paga (refaz o que a limpeza apagou)
+      const errosLancamento: string[] = [];
+      let titulosCriados = 0, titulosAtualizados = 0;
+      for (const { parcela, cp } of resultado) {
+        if (!cp || parcela.status === "pago" || parcela.status === "cancelado") continue;
+        const valor = Number(parcela.valor_previsto ?? 0);
+        try {
+          const { data: t } = parcela.lancamento_id
+            ? await supabase.from("lancamentos").select("id, status, valor, data_vencimento").eq("id", parcela.lancamento_id).maybeSingle()
+            : { data: null };
+          if (t && t.status !== "cancelado") {
+            if (t.status === "em_aberto" && (Math.abs(Number(t.valor) - valor) > 0.005 || t.data_vencimento !== parcela.data_vencimento)) {
+              const { error } = await supabase.from("lancamentos").update({ valor, data_vencimento: parcela.data_vencimento }).eq("id", t.id);
+              if (error) throw error;
+              titulosAtualizados++;
+            }
+            continue;
+          }
+          const lanc = await criarLancamento({
+            fazenda_id: fazArr, tipo: "pagar", moeda: "BRL", descricao: cp.descricao, categoria: "Arrendamento de Terra",
+            data_lancamento: hoje(), data_vencimento: parcela.data_vencimento, valor, status: "em_aberto", auto: true, observacao: cp.obs,
+            produtor_id: arr.produtor_id || undefined, pessoa_id: arr.proprietario_id || undefined,
+            ano_safra_id: parcela.ano_safra_id || undefined, origem_lancamento: "arrendamento",
+          } as Parameters<typeof criarLancamento>[0]);
+          const { error } = await supabase.from("arrendamento_pagamentos").update({ lancamento_id: lanc.id }).eq("id", parcela.id);
+          if (error) throw error;
+          parcela.lancamento_id = lanc.id;
+          titulosCriados++;
+        } catch (e) {
+          errosLancamento.push(`${cp.descricao}: ${(e as { message?: string })?.message ?? "erro desconhecido"}`);
+        }
       }
 
       setPagamentos(prev => {
-        const idsAtt = new Set(atualizados.map(p => p.id));
-        return [...prev.filter(p => !idsAtt.has(p.id)), ...atualizados, ...inseridos];
+        const porId = new Map(prev.map(p => [p.id, p]));
+        for (const p of [...atualizados, ...inseridos]) porId.set(p.id, p);
+        return [...porId.values()];
       });
 
-      const safrasComNovoInsert = new Set(inseridos.map(p => p.ano_safra_id).filter(Boolean));
-
-      // ── Criar contratos de grãos para TODAS as safras selecionadas ──
+      // ── Sacas: contrato de grãos (comprometimento) de cada parcela não paga das safras escolhidas — cria o que falta
+      // e atualiza o que mudou e ainda não teve entrega
       const errosContrato: string[] = [];
-
+      let contratosCriados = 0, contratosAtualizados = 0;
       if (!ehBrl) {
+        const safrasEscolhidas = new Set(configSafras.filter(c => c.incluir && c.ano_safra_id).map(c => c.ano_safra_id));
+        const parcelasSafra = resultado.map(r => r.parcela).filter(p => p.ano_safra_id && safrasEscolhidas.has(p.ano_safra_id));
+        const { data: ctrs, error: eC } = await supabase.from("contratos").select("id, arrendamento_id, ano_safra_id, produto, entregue_sc, quantidade_sc, data_entrega")
+          .eq("arrendamento_id", arr.id).eq("is_arrendamento", true);
+        if (eC) throw eC;
+        const { criar, atualizar } = conciliarContratos(parcelasSafra, (ctrs ?? []) as ContratoArr[]);
+        const produtorId = arr.produtor_id || null;
+        const produtorNome = produtores.find(p => p.id === produtorId)?.nome || null;
+        for (const p of criar) {
+          const produto = produtoDoContrato(p.commodity)!;
+          const desc = anosSafraAtualizado.find(a => a.id === p.ano_safra_id)?.descricao ?? "";
+          const anoFim = extrairAnoFim(desc);
+          const { error } = await supabase.from("contratos").insert({
+            fazenda_id: fazArr, tipo: "venda",
+            numero: `ARR-${produto === "Soja" ? "SOJ" : "MIL"}-${anoFim}-${arr.id.slice(-4).toUpperCase()}`,
+            safra: desc, comprador: arr.proprietario_nome ?? "Arrendante", produto, modalidade: "fixo", moeda: "BRL", preco: 0,
+            quantidade_sc: p.sacas_previstas, entregue_sc: 0, ano_safra_id: p.ano_safra_id, data_contrato: hoje(), data_entrega: p.data_vencimento,
+            status: "aberto", is_arrendamento: true, arrendamento_id: arr.id,
+            observacao: `Comprometimento arrendamento — ${arr.proprietario_nome ?? "Arrendante"} · ${fmtN(arr.area_ha)} ha · Safra ${desc}`,
+            produtor_id: produtorId, produtor_nome: produtorNome, ie_id: arr.ie_id || null,
+          });
+          if (error) errosContrato.push(`${produto} ${desc}: ${error.message}`); else contratosCriados++;
+        }
+        for (const u of atualizar) {
+          const { error } = await supabase.from("contratos").update({ quantidade_sc: u.quantidade_sc, data_entrega: u.data_entrega }).eq("id", u.id);
+          if (error) errosContrato.push(error.message); else contratosAtualizados++;
+        }
         for (const cfg of configSafras) {
           if (!cfg.incluir) continue;
-          if (!safrasComNovoInsert.has(cfg.ano_safra_id || "")) continue;
-
-          const anoSafraId   = cfg.ano_safra_id || null;
-          const propNome     = arr.proprietario_nome ?? "Arrendante";
-          const descContrato = `Comprometimento arrendamento — ${propNome} · ${fmtN(arr.area_ha)} ha · Safra ${cfg.descricao}`;
-
-          const criarContrato = async (payload: Record<string, unknown>) => {
-            if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar contrato)", perigo: false }))) return;
-            const { error } = await supabase.from("contratos").insert(payload);
-            if (error) errosContrato.push(`${cfg.descricao}: ${error.message}`);
-          };
-
-          const produtorId   = arr.produtor_id   || null;
-          const produtorNome = produtores.find(p => p.id === produtorId)?.nome || null;
-          const ieId         = arr.ie_id || null;
-
-          if (ehSoja) {
-            const scHa  = parseFloat(cfg.sc_soja_ha) || 0;
-            const sacas = parseFloat((arr.area_ha * scHa).toFixed(4));
-            if (sacas > 0) {
-              await criarContrato({
-                fazenda_id:      arr.fazenda_id || fazendaId,
-                numero:          `ARR-SOJ-${cfg.anoFim}-${arr.id.slice(-4).toUpperCase()}`,
-                safra:           cfg.descricao,
-                comprador:       propNome,
-                produto:         "Soja",
-                modalidade:      "fixo",
-                moeda:           "BRL",
-                preco:           0,
-                quantidade_sc:   sacas,
-                entregue_sc:     0,
-                ano_safra_id:    anoSafraId,
-                data_contrato:   hoje(),
-                data_entrega:    cfg.dt_venc_soja,
-                status:          "aberto",
-                is_arrendamento: true,
-                arrendamento_id: arr.id,
-                observacao:      descContrato,
-                produtor_id:     produtorId,
-                produtor_nome:   produtorNome,
-                ie_id:           ieId,
-              });
-            } else {
-              errosContrato.push(`Soja ${cfg.descricao}: sc/ha não preenchido — contrato não criado.`);
-            }
-          }
-
-          if (ehMilho) {
-            const scHa  = parseFloat(cfg.sc_milho_ha) || 0;
-            const sacas = parseFloat((arr.area_ha * scHa).toFixed(4));
-            if (sacas > 0) {
-              await criarContrato({
-                fazenda_id:      arr.fazenda_id || fazendaId,
-                numero:          `ARR-MIL-${cfg.anoFim}-${arr.id.slice(-4).toUpperCase()}`,
-                safra:           cfg.descricao,
-                comprador:       propNome,
-                produto:         "Milho",
-                modalidade:      "fixo",
-                moeda:           "BRL",
-                preco:           0,
-                quantidade_sc:   sacas,
-                entregue_sc:     0,
-                ano_safra_id:    anoSafraId,
-                data_contrato:   hoje(),
-                data_entrega:    cfg.dt_venc_milho,
-                status:          "aberto",
-                is_arrendamento: true,
-                arrendamento_id: arr.id,
-                observacao:      descContrato,
-                produtor_id:     produtorId,
-                produtor_nome:   produtorNome,
-                ie_id:           ieId,
-              });
-            } else {
-              errosContrato.push(`Milho ${cfg.descricao}: sc/ha não preenchido — contrato não criado.`);
-            }
-          }
+          if (ehSoja && !(num(cfg.sc_soja_ha) > 0)) errosContrato.push(`Soja ${cfg.descricao}: sc/ha não preenchido — contrato não criado.`);
+          if (ehMilho && !(num(cfg.sc_milho_ha) > 0)) errosContrato.push(`Milho ${cfg.descricao}: sc/ha não preenchido — contrato não criado.`);
         }
       }
 
       setModalGerador(false);
-
-      const msgParcelas = [
-        atualizados.length > 0 ? `${atualizados.length} parcela(s) atualizada(s)` : "",
-        inseridos.length > 0   ? `${inseridos.length} parcela(s) nova(s) criada(s)` : "",
-      ].filter(Boolean).join(", ") || "Nenhuma alteração nas parcelas.";
-
+      const resumo = [
+        atualizados.length ? `${atualizados.length} parcela(s) atualizada(s)` : "",
+        inseridos.length ? `${inseridos.length} parcela(s) nova(s)` : "",
+        titulosCriados ? `${titulosCriados} título(s) criado(s) no Contas a Pagar` : "",
+        titulosAtualizados ? `${titulosAtualizados} título(s) atualizado(s)` : "",
+        contratosCriados ? `${contratosCriados} contrato(s) de grãos criado(s)` : "",
+        contratosAtualizados ? `${contratosAtualizados} contrato(s) de grãos atualizado(s)` : "",
+      ].filter(Boolean).join(", ") || "Nada mudou";
       const avisos: string[] = [];
-      if (errosLancamento.length > 0) {
-        avisos.push(`⚠️ CP(s) não lançado(s) em Contas a Pagar:\n${errosLancamento.join("\n")}\n\nA parcela foi salva na tela, mas SEM o lançamento financeiro correspondente — tente gerar de novo, ou lance o CP manualmente.`);
-      }
-      if (errosContrato.length > 0) {
-        avisos.push(`⚠️ Contrato(s) de grãos não criado(s):\n${errosContrato.join("\n")}\n\nVerifique se as Migrations 34 e 35 foram executadas e se o sc/ha está preenchido.`);
-      }
-      if (avisos.length > 0) {
-        alert(`${msgParcelas}.\n\n${avisos.join("\n\n")}`);
-      } else {
-        alert(msgParcelas);
-      }
+      if (errosLancamento.length) avisos.push(`⚠️ Título(s) não lançado(s) no Contas a Pagar:\n${errosLancamento.join("\n")}`);
+      if (errosContrato.length) avisos.push(`⚠️ Contrato(s) de grãos:\n${errosContrato.join("\n")}`);
+      alert(`${resumo}.${avisos.length ? `\n\n${avisos.join("\n\n")}` : ""}`);
     } catch (e) { alert((e as { message?: string })?.message ?? "Erro ao gerar parcelas"); }
     finally { setSalvando(false); }
   }
