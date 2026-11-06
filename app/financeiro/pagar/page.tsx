@@ -1,6 +1,6 @@
 "use client";
 import { exibirNoCP, exibirBorderoNoCP } from "../../../lib/financeiro/visibilidade-cp";
-import { carregarAdiantamentosTitulos } from "../../../lib/financeiro/adiantamentos-fornecedor";
+import { carregarVinculosCP } from "../../../lib/financeiro/carregamento-cp";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
 import NativeRecordPanel from '../../../components/arato-layout/NativeRecordPanel';
@@ -272,15 +272,16 @@ export default function ContasAPagarPage() {
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [carregandoDetalhes, setCarregandoDetalhes] = useState(false);
+  const [erroDetalhes, setErroDetalhes] = useState("");
   const [resultado, setResultado] = useState<RelLancamento[] | null>(null);
 
   // Filtros — barra sempre visível acima do grid, não popup. Default igual à
   // tela real: período hoje → +3 meses (traz vencidos acumulados também,
   // porque "vencido" não some do status mesmo com data < hoje).
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
-  // Padrão: títulos em aberto (inclui vencidos e parciais) até hoje + 60 dias, sem data inicial — o que está nos campos
-  // de data é exatamente o que filtra (antes a data inicial mostrava "hoje" mas os vencidos passavam por fora)
-  const [fStatus,  setFStatus]  = useState<Set<string>>(() => new Set(["em_aberto"]));
+  // Todos os status na abertura. O período continua sendo o informado nos filtros.
+  const [fStatus,  setFStatus]  = useState<Set<string>>(() => new Set());
   const [fAtalho, setFAtalho] = useState("");
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
@@ -368,7 +369,7 @@ export default function ContasAPagarPage() {
     if (!contaId) return;
     const seq = ++cargaSeq.current;
     setCarregando(true);
-    setErro("");
+    setErro(""); setErroDetalhes(""); setCarregandoDetalhes(false);
     try {
       let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "pagar");
       q = q.eq("conta_id", contaId);
@@ -382,20 +383,35 @@ export default function ContasAPagarPage() {
         registros.push(...((data ?? []) as RelLancamento[]));
         if (!data || data.length < 1000) break;
       }
-      const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros).then(t => carregarUsuariosTitulos(supabase, t)), carregarCotacoesUSD(supabase, registros)]);
-      const comAdiantamentos = await carregarAdiantamentosTitulos(supabase, comNumeros);
+      const [classificados, cots] = await Promise.all([carregarVinculosCP(supabase, registros), carregarCotacoesUSD(supabase, registros)]);
       if (seq !== cargaSeq.current) return;
       ultimaCarga.current = Date.now();
       setCotacoes(cots);
-      setResultado(comAdiantamentos);
+      setResultado(classificados);
+      // Número fiscal e usuário são detalhes: não retêm a abertura dos títulos e dos saldos.
+      setCarregandoDetalhes(true);
+      const visiveis = classificados.filter(exibirNoCP);
+      void Promise.allSettled([carregarNumerosNF(supabase, visiveis), carregarUsuariosTitulos(supabase, visiveis)]).then(([numeros, usuarios]) => {
+        if (seq !== cargaSeq.current) return;
+        const porNumero = new Map(numeros.status === "fulfilled" ? numeros.value.map(t => [`${t.origem_tabela}:${t.id}`,t.nfe_numero]) : []);
+        const porUsuario = new Map(usuarios.status === "fulfilled" ? usuarios.value.map(t => [`${t.origem_tabela}:${t.id}`,t.usuario_origem]) : []);
+        setResultado(atuais => atuais?.map(t => {
+          const chave = `${t.origem_tabela}:${t.id}`;
+          return { ...t, ...(porNumero.has(chave) ? { nfe_numero: porNumero.get(chave)! } : {}),
+            ...(porUsuario.has(chave) ? { usuario_origem: porUsuario.get(chave) } : {}) };
+        }) ?? null);
+        setCarregandoDetalhes(false);
+        if (numeros.status === "rejected" || usuarios.status === "rejected") setErroDetalhes("Os títulos foram carregados, mas não foi possível atualizar todos os números fiscais ou usuários. Clique em Atualizar para tentar novamente.");
+      });
     } catch (e: unknown) {
+      if (seq !== cargaSeq.current) return;
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
     } finally {
-      setCarregando(false);
+      if (seq === cargaSeq.current) setCarregando(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contaId ? null : fazendaId, contaId ? null : fazendaIds?.join(","), contaId]);
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); return () => { cargaSeq.current += 1; }; }, [carregar]);
   // Outra pessoa pode baixar/reabrir títulos enquanto esta tela está aberta: ao voltar para a aba, recarrega se a lista
   // tiver mais de 1 minuto (antes cada usuário via a situação do momento em que abriu a tela — achado 30/10/2026)
   useEffect(() => {
@@ -1902,7 +1918,7 @@ export default function ContasAPagarPage() {
         {/* Atalhos de status (restaurados da tela anterior): um clique aplica o filtro mais usado */}
         <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {([
-            ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"], ["previsoes", "Previsões"],
+            ["todos", "Todos"], ["em_aberto", "Em aberto"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"], ["previsoes", "Previsões"],
             ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
           ] as const).map(([k, rot]) => {
             const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
@@ -1960,6 +1976,8 @@ export default function ContasAPagarPage() {
           </div>
         )}
 
+        {carregandoDetalhes && !carregando && <div role="status" style={{ fontSize: 11, color: "#64748B", marginBottom: 6 }}>Atualizando números fiscais e usuários…</div>}
+        {erroDetalhes && <div role="alert" style={{ fontSize: 12, color: "#92400E", marginBottom: 6 }}>{erroDetalhes}</div>}
         {erro && (
           <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#791F1F" }}>
             {erro}
@@ -2381,7 +2399,7 @@ export default function ContasAPagarPage() {
                   nf: (
                     <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? "—"}</td>
                   ),
-                  usuario: (<td style={{ padding: "7px 10px" }}>{l.usuario_origem ?? "—"}</td>),
+                  usuario: (<td style={{ padding: "7px 10px" }}>{l.usuario_origem ?? (carregandoDetalhes ? "Carregando…" : erroDetalhes ? "Indisponível" : "—")}</td>),
                   lancado: (
                     <td style={{ padding: "7px 10px", color: "#888" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "—"}</td>
                   ),
