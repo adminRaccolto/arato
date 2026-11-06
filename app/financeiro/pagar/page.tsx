@@ -1,4 +1,5 @@
 "use client";
+import { exibirNoCP, exibirBorderoNoCP } from "../../../lib/financeiro/visibilidade-cp";
 import { carregarAdiantamentosTitulos } from "../../../lib/financeiro/adiantamentos-fornecedor";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
@@ -86,6 +87,7 @@ type RelLancamento = {
   usuario_origem?: string | null;
   adiantamento_fornecedor?: boolean;
   pedido_compra_id?: string | null;
+  nf_entrada_id?: string | null;
   pedido_numero?: string | null;
   id: string;
   origem_tabela: string;
@@ -445,12 +447,12 @@ export default function ContasAPagarPage() {
   }, [fazendaId, fazendaIds?.join(",")]);
   useEffect(() => { carregarBorderos(); }, [carregarBorderos]);
 
-  const todosBorderos = [...borderosPendentes, ...borderosPagos];
+  const todosBorderos = [...borderosPendentes, ...borderosPagos].filter(b => exibirBorderoNoCP(b, resultado ?? []));
   const vinculos = vinculosBorderos(todosBorderos);
   // O período padrão (hoje até hoje + 60 dias) é ignorado quando não foi escolhido à mão e: busca por fornecedor/nº NF,
   // ou atalho/status que olha o passado (Vencidos, Parciais, Baixados, Barter, Contratos, Compra de terra) — senão
   // "Vencidos" ficaria sempre vazio, já que o padrão começa hoje.
-  const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra", "pedido_compra"]);
+  const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra"]);
   // Sem período escolhido à mão, busca por fornecedor/nº NF e os atalhos de contrato (barter, contratos, compra de terra)
   // olham todas as datas — e os campos de data ficam vazios na tela, para mostrar o que está valendo.
   const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || ATALHOS_SEM_DATA.has(fAtalho));
@@ -491,15 +493,13 @@ export default function ContasAPagarPage() {
     if (fAtalho === "vencendo") return aberto && !!l.data_vencimento && l.data_vencimento >= h && l.data_vencimento <= lim.toISOString().slice(0, 10);
     if (fAtalho === "barter") return l.moeda === "barter";
     if (fAtalho === "previsoes") return ehPrevisao(l);
-    // Título de pedido cancelado é o que já foi coberto pelas NFs: não é mais compromisso
-    if (fAtalho === "pedido_compra") return l.origem_lancamento === "pedido_compra" && l.status_normalizado !== "cancelado";
     return l.origem_lancamento === fAtalho;
   };
   // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
   // Achado real 28/10/2026: o borderô ignorava esses filtros — "Compra de terra" (que desliga o período) listava todos.
   const passaExtras = (l: RelLancamento) => passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? ""));
   const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaExtras(l));
+  const linhas = (resultado ?? []).filter(l => exibirNoCP(l) && !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaExtras(l));
   // Quem fez a baixa (popup na Baixa e no Status): busca no histórico só os títulos baixados/parciais da lista
   const quemBaixou = useQuemBaixou(linhas.filter(l => l.status_normalizado === "baixado" || l.status_normalizado === "parcial").slice(0, 1500).map(l => l.id));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP)
@@ -1903,7 +1903,7 @@ export default function ContasAPagarPage() {
         <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {([
             ["em_aberto", "Em aberto"], ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"], ["previsoes", "Previsões"],
-            ["pedido_compra", "Pedidos de compra"], ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
+            ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
           ] as const).map(([k, rot]) => {
             const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
               : k === "em_aberto" || k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)

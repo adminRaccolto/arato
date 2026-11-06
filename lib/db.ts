@@ -1,4 +1,4 @@
-import { geraMovimentoBancario } from "./financeiro/adiantamentos-fornecedor";
+import { carregarPagamentosAdiantamentos, geraMovimentoBancario } from "./financeiro/adiantamentos-fornecedor";
 /**
  * Arato — camada de acesso a dados
  * Todas as queries ao Supabase ficam aqui.
@@ -7167,7 +7167,7 @@ export async function aplicarAdiantamentoFuncionarioEmCP(
 export async function listarAdiantamentos(fazenda_id: string): Promise<AdiantamentoFornecedor[]> {
   const { data, error } = await supabase.rpc("listar_creditos_fornecedor", { p_fazenda: fazenda_id });
   if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);
-  return (data ?? []) as AdiantamentoFornecedor[];
+  return carregarPagamentosAdiantamentos(supabase, (data ?? []) as AdiantamentoFornecedor[]);
 }
 
 /** Adiantamentos programados e crédito efetivamente pago do pedido. */
@@ -8382,4 +8382,13 @@ export async function estornarNotaPropriaExterna(id: string): Promise<void> {
 export async function excluirNotaPropriaExterna(id: string): Promise<void> {
   const { error } = await supabase.from("notas_proprias_externas").delete().eq("id", id);
   if (error) throw error;
+}
+
+/** Baixa o pagamento do adiantamento na própria rotina, sem criar outra obrigação. */
+export async function baixarAdiantamentoFornecedor(p: { adiantamento_id: string; lancamento_id: string; valor_pago: number; data: string; conta_bancaria: string; cotacao?: number; requisicao_id: string }): Promise<{ saldo_a_pagar: number; credito_disponivel: number }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const r=await fetch("/api/financeiro/adiantamentos/baixar",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session?.access_token ?? ""}`},body:JSON.stringify(p)});
+  const d=await r.json();
+  if (!r.ok || !d.ok) throw new Error(d.error ?? "Não foi possível baixar o adiantamento.");
+  return d;
 }

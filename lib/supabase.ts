@@ -2549,6 +2549,8 @@ export type AdiantamentoFornecedor = {
   valor: number;
   moeda: "BRL" | "USD";
   cotacao_usd?: number;
+  pagamentos?: import("./financeiro/adiantamentos-fornecedor").PagamentoAdiantamento[];
+  saldo_a_pagar?: number | null; // na moeda do adiantamento; diferente do crédito ainda não compensado
   credito_disponivel?: number; // somente o principal efetivamente pago, na moeda do adiantamento
   pedido_numero?: string | null;
   valor_aplicado: number;       // total já aplicado (acumulado)

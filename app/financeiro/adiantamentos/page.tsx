@@ -1,4 +1,6 @@
 "use client";
+import { saldoPagamentoAdiantamento } from "../../../lib/financeiro/adiantamentos-fornecedor";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -9,7 +11,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
 import {
-  listarAdiantamentos, criarAdiantamento, cancelarAdiantamento,
+  listarAdiantamentos, criarAdiantamento, cancelarAdiantamento, baixarAdiantamentoFornecedor,
   aplicarAdiantamento, listarAplicacoesAdiantamento,
   listarPessoasDaConta, listarContas, listarAnosSafra, listarFazendasDaConta,
   listarPedidosCompraRelDaConta, atualizarAdiantamento,
@@ -54,7 +56,7 @@ function badge(status: AdiantamentoFornecedor["status"]) {
 function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+      <div role="dialog" aria-modal="true" aria-label={titulo} data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
         <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
           <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</OperationalButton>
@@ -74,7 +76,7 @@ const VAZIO_FORM = {
 const VAZIO_APLIQ = { valor_aplicado: "", data_aplicacao: "", descricao: "", nr_nf: "" };
 
 export default function AdiantamentosPage() {
-  const { fazendaId, contaId, anoSafraVigenteId } = useAuth();
+  const { fazendaId, fazendaIds = [], contaId, anoSafraVigenteId } = useAuth();
   // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
   // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
@@ -111,6 +113,11 @@ export default function AdiantamentosPage() {
   useEffect(() => {
     if (modalNovo && anoSafraVigenteId && !form.ano_safra_id) setForm(f => f.ano_safra_id ? f : { ...f, ano_safra_id: anoSafraVigenteId });
   }, [modalNovo, anoSafraVigenteId, form.ano_safra_id]);
+  const [modalBaixa, setModalBaixa] = useState<AdiantamentoFornecedor | null>(null);
+  const [baixa, setBaixa] = useState({ parcela: "", data: hojeLocal(), valor: 0, conta: "", cotacao: 0, requisicao: "" });
+  const [erroBaixa, setErroBaixa] = useState("");
+  const [salvandoBaixa, setSalvandoBaixa] = useState(false);
+
   const [fApliq, setFApliq] = useState({ ...VAZIO_APLIQ });
 
   useEffect(() => {
@@ -119,14 +126,14 @@ export default function AdiantamentosPage() {
     Promise.all([
       listarAdiantamentos(fazAtiva),
       listarPessoasDaConta(fazAtiva),
-      listarContas(fazAtiva),
+      listarContas(fazendaIds.length ? fazendaIds : fazAtiva),
       listarAnosSafra(fazAtiva),
     ]).then(([a, p, c, s]) => {
       setAdiantamentos(a); setPessoas(p); setContas(c); setAnosSafra(s);
     }).catch(e => setErro(e.message)).finally(() => setCarregando(false));
     // Lista de apoio: sem ela o adiantamento continua funcionando, só sem o vínculo opcional
     listarPedidosCompraRelDaConta(fazAtiva).then(setPedidos).catch(() => setPedidos([]));
-  }, [fazAtiva]);
+  }, [fazAtiva, fazendaIds.join(",")]);
 
   // ── Pedido de compra (opcional) ───────────────────────────────
   const rotuloPedido = (p: RelPedidoCompra) => `${p.nr_pedido || `#${p.numero ?? "—"}`} — ${p.fornecedor_nome ?? "sem fornecedor"} — ${p.moeda === "USD" ? "US$ " : "R$ "}${(p.total_financeiro ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -175,6 +182,7 @@ export default function AdiantamentosPage() {
     if (!form.data_emissao) erros.push("Data de Emissão");
     if (!form.valor) erros.push("Valor");
     if (!form.ano_safra_id) erros.push("Ano Safra");
+    if (form.ja_quitado && !form.conta_bancaria_id) erros.push("Conta bancária do pagamento");
     if (erros.length) { setErro(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
     setSalvando(true); setErro("");
     try {
@@ -194,7 +202,8 @@ export default function AdiantamentosPage() {
         observacao:       form.observacao || undefined,
         status:           "em_aberto",
       }, form.ja_quitado);
-      setAdiantamentos(p => [novo, ...p]);
+      setAdiantamentos(p => [{ ...novo, saldo_a_pagar: form.ja_quitado ? 0 : novo.valor }, ...p]);
+      void listarAdiantamentos(fazAtiva).then(setAdiantamentos).catch(() => setErro("Adiantamento salvo. Atualize a lista para conferir o pagamento."));
       setModalNovo(false);
       setForm({ ...VAZIO_FORM });
     } catch (e) { setErro(msgErroPedido(e)); }
@@ -224,11 +233,52 @@ export default function AdiantamentosPage() {
     finally { setSalvando(false); }
   };
 
+  const fmtMoeda = (v: number, moeda: string) => v.toLocaleString("pt-BR", { style: "currency", currency: moeda });
+  const parcelasAbertas = (a: AdiantamentoFornecedor) => (a.pagamentos ?? []).filter(p => (saldoPagamentoAdiantamento(p) ?? 0) > 0);
+  const statusPagamento = (a: AdiantamentoFornecedor) => a.status === "cancelado" ? "Cancelado"
+    : a.saldo_a_pagar == null ? "Conferir saldo"
+    : a.saldo_a_pagar > 0 ? (a.pagamentos?.some(p => Number(p.valor_pago) > 0 || p.status === "baixado") ? "Parcial" : "Pendente")
+    : a.lancamento_id && (a.credito_disponivel || a.valor_aplicado || a.pagamentos?.some(p => p.status === "baixado")) ? "Pago" : "Sem pagamento";
+  async function abrirBaixa(a: AdiantamentoFornecedor) {
+    setErro(""); setErroBaixa("");
+    try {
+      const atualizados = await listarAdiantamentos(a.fazenda_id);
+      const atual = atualizados.find(x => x.id === a.id);
+      if (!atual) throw new Error("Adiantamento não encontrado. Atualize a lista.");
+      const abertas = parcelasAbertas(atual);
+      if (!abertas.length) throw new Error("Não há parcela com saldo disponível para baixa. Confira o histórico do adiantamento.");
+      const p = abertas[0]; const cot = atual.moeda === "USD" ? Number(p.cotacao_usd ?? atual.cotacao_usd ?? 0) : 1;
+      setAdiantamentos(atualizados);
+      setBaixa({ parcela: p.id, data: hojeLocal(), valor: Math.round((saldoPagamentoAdiantamento(p) ?? 0) * cot * 100)/100,
+        conta: "", cotacao: cot, requisicao: crypto.randomUUID() });
+      setModalBaixa(atual);
+    } catch(e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao consultar o pagamento."); }
+  }
+  async function salvarBaixa() {
+    if (!modalBaixa || salvandoBaixa) return;
+    if (!baixa.conta || !baixa.data || !(baixa.valor > 0) || (modalBaixa.moeda === "USD" && !(baixa.cotacao > 0))) {
+      setErroBaixa("Informe data, conta bancária, valor positivo e a cotação quando em dólar."); return;
+    }
+    setSalvandoBaixa(true); setErroBaixa("");
+    try {
+      if (!(await confirmarAcao({ titulo: "Pagar adiantamento ao fornecedor", mensagem: `${fmtBRL(baixa.valor)} sairão da conta ${contas.find(c => c.id === baixa.conta)?.nome ?? "selecionada"}, em ${fmtData(baixa.data)}, para ${modalBaixa.descricao}.`, perigo: false }))) return;
+      const r = await baixarAdiantamentoFornecedor({ adiantamento_id: modalBaixa.id, lancamento_id: baixa.parcela,
+        valor_pago: baixa.valor, data: baixa.data, conta_bancaria: baixa.conta, cotacao: baixa.cotacao, requisicao_id: baixa.requisicao });
+      setAdiantamentos(prev => prev.map(a => a.id === modalBaixa.id ? { ...a, saldo_a_pagar: r.saldo_a_pagar, credito_disponivel: r.credito_disponivel } : a));
+      setModalBaixa(null); setModalDetalhe(null);
+      try { setAdiantamentos(await listarAdiantamentos(modalBaixa.fazenda_id)); }
+      catch { setErro("Pagamento registrado. Atualize a lista para conferir o histórico completo."); }
+    } catch(e: unknown) { setErroBaixa(e instanceof Error ? e.message : "Erro ao baixar o adiantamento."); }
+    finally { setSalvandoBaixa(false); }
+  }
+
   // ── Cancelar ──────────────────────────────────────────────────
   const handleCancelar = async (id: string) => {
     if (!confirm("Cancelar este adiantamento?")) return;
-    await cancelarAdiantamento(id);
-    setAdiantamentos(p => p.map(a => a.id === id ? { ...a, status: "cancelado" } : a));
+    try {
+      await cancelarAdiantamento(id);
+      setAdiantamentos(p => p.map(a => a.id === id ? { ...a, status: "cancelado" } : a));
+    } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao cancelar adiantamento."); }
   };
 
   // ── Abrir detalhe ─────────────────────────────────────────────
@@ -254,7 +304,7 @@ export default function AdiantamentosPage() {
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
           <div>
             <div data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Adiantamentos a Fornecedores</div>
           </div>
@@ -272,8 +322,10 @@ export default function AdiantamentosPage() {
 
         {erro && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, padding: "10px 14px", color: "#791F1F", marginBottom: 16, fontSize: 13 }}>{erro}</div>}
 
+        <p style={{ fontSize: 12, color: "var(--text-2)" }}>Lance e pague os adiantamentos nesta tela. Os compromissos aparecem no Fluxo de Caixa; as NFs continuam no Contas a Pagar.</p>
+
         {/* KPI Cards */}
-        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Total Adiantado (ativos)", valor: fmtBRL(totalAdiantado), cor: "#111111", bg: "#E8E8E8" },
             { label: "Total Aplicado",           valor: fmtBRL(totalAplicado),  cor: "#1A5C38", bg: "#D5F0DD" },
@@ -289,7 +341,7 @@ export default function AdiantamentosPage() {
         </div>
 
         {/* Tabela */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflowX: "auto" }}>
 
           {/* Tabs + Busca */}
           <OperationalFilters data-arato-filters="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -316,7 +368,7 @@ export default function AdiantamentosPage() {
             <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
-                  {["Fornecedor", "Descrição", "Nº Doc", "Emissão", "Previsão Entrega", "Valor", "Aplicado", "Saldo", "Status", ""].map((h, i) => (
+                  {["Fornecedor", "Descrição", "Nº Doc", "Emissão", "Previsão Entrega", "Valor", "Aplicado", "Crédito a compensar", "Pagamento", "Aplicação", ""].map((h, i) => (
                     <th key={i} style={{ ...thS, textAlign: i >= 5 && i <= 7 ? "right" : "left" }}>{h}</th>
                   ))}
                 </tr>
@@ -346,20 +398,22 @@ export default function AdiantamentosPage() {
                           return <span style={{ color: cor }}>{fmtData(a.data_previsao)}{dias < 0 ? " (atrasado)" : dias <= 7 ? ` (${dias}d)` : ""}</span>;
                         })() : "—"}
                       </td>
-                      <td style={{ ...tdS, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(a.valor)}</td>
+                      <td style={{ ...tdS, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtMoeda(a.valor,a.moeda)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
-                        <div style={{ fontVariantNumeric: "tabular-nums", color: pctApliq > 0 ? "#1A5C38" : "var(--text-muted)" }}>{fmtBRL(a.valor_aplicado ?? 0)}</div>
+                        <div style={{ fontVariantNumeric: "tabular-nums", color: pctApliq > 0 ? "#1A5C38" : "var(--text-muted)" }}>{fmtMoeda(a.valor_aplicado ?? 0,a.moeda)}</div>
                         {pctApliq > 0 && (
                           <div style={{ height: 3, borderRadius: 2, background: "#D5F0DD", marginTop: 3, position: "relative", overflow: "hidden" }}>
                             <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(pctApliq, 100)}%`, background: "#1A5C38" }} />
                           </div>
                         )}
                       </td>
-                      <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: saldo > 0 ? "#7A5520" : "#1A5C38", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(saldo)}<div style={{ fontSize: 10, fontWeight: 400 }}>Crédito pago: {fmtBRL(a.credito_disponivel ?? 0)}</div></td>
+                      <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: saldo > 0 ? "#7A5520" : "#1A5C38", fontVariantNumeric: "tabular-nums" }}>{fmtMoeda(saldo,a.moeda)}<div style={{ fontSize: 10, fontWeight: 400 }}>Crédito pago: {fmtMoeda(a.credito_disponivel ?? 0,a.moeda)}</div></td>
+                      <td style={tdS}>{statusPagamento(a)}<div style={{ fontSize: 11 }}>A pagar: {a.saldo_a_pagar == null ? "Conferir" : fmtMoeda(a.saldo_a_pagar, a.moeda)}</div></td>
                       <td style={tdS}>{badge(a.status)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <OperationalButton data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</OperationalButton>
+                          {a.status !== "cancelado" && Number(a.saldo_a_pagar) > 0 && <OperationalButton data-arato-button="primary" style={{ ...btnSm, background: "#1A5C38", color: "#fff" }} onClick={() => abrirBaixa(a)}>Baixar pagamento</OperationalButton>}
                           {(a.status === "em_aberto" || a.status === "parcial") && (a.credito_disponivel ?? 0) > 0 && (
                             <OperationalButton data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
                               onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: hojeLocal() }); setErro(""); }}>
@@ -468,7 +522,7 @@ export default function AdiantamentosPage() {
             <div data-arato-panel="true" style={{ gridColumn: "1/-1", background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <input type="checkbox" id="jaQuitado" checked={form.ja_quitado} onChange={e => setForm(p => ({ ...p, ja_quitado: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
               <label data-arato-label="true" htmlFor="jaQuitado" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>
-                Pagamento já realizado — gera CP como <strong>baixado</strong> (saída de caixa já ocorreu)
+                Pagamento já realizado — registra a saída de caixa e libera o crédito
               </label>
             </div>
           </div>
@@ -482,6 +536,34 @@ export default function AdiantamentosPage() {
           </div>
         </Modal>
       )}
+
+      {modalBaixa && <Modal titulo="Baixar pagamento do adiantamento" onClose={() => { if (!salvandoBaixa) setModalBaixa(null); }} width={600}>
+        <p>{nomePessoa(modalBaixa.pessoa_id)} · {modalBaixa.descricao}</p>
+        <p style={{ fontSize: 12 }}>O pagamento aparece no Fluxo de Caixa e na conciliação bancária. Somente o valor pago é liberado como crédito do fornecedor.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+          <label style={lbl}>Parcela a pagar
+            <SelectField aria-label="Parcela a pagar" style={inp} value={baixa.parcela} disabled={salvandoBaixa} onChange={e => {
+              const p = parcelasAbertas(modalBaixa).find(p => p.id === e.target.value);
+              setBaixa(b => ({ ...b, parcela: e.target.value, valor: Math.round((p ? saldoPagamentoAdiantamento(p) ?? 0 : 0) * b.cotacao * 100)/100 }));
+            }}>{parcelasAbertas(modalBaixa).map(p => <option key={p.id} value={p.id}>{fmtData(p.data_vencimento ?? undefined)} · {fmtMoeda(saldoPagamentoAdiantamento(p) ?? 0, modalBaixa.moeda)}</option>)}</SelectField>
+          </label>
+          <label style={lbl}>Data do pagamento *<InputData aria-label="Data do pagamento" style={inp} type="date" value={baixa.data} disabled={salvandoBaixa} onChange={e => setBaixa(b => ({ ...b, data: e.target.value }))} /></label>
+          <label style={lbl}>Conta bancária (R$) *<SelectField aria-label="Conta bancária do pagamento" style={inp} value={baixa.conta} disabled={salvandoBaixa} onChange={e => setBaixa(b => ({ ...b, conta: e.target.value }))}>
+            <option value="">— selecione —</option>{contas.filter(c => c.ativa !== false && (c.moeda ?? "BRL") === "BRL").map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </SelectField></label>
+          {modalBaixa.moeda === "USD" && <label style={lbl}>Cotação do dólar *<input aria-label="Cotação do dólar" type="number" step="0.0001" min="0.0001" style={inp} value={baixa.cotacao || ""} disabled={salvandoBaixa} onChange={e => {
+            const cot = Number(e.target.value); const p = parcelasAbertas(modalBaixa).find(p => p.id === baixa.parcela);
+            setBaixa(b => ({ ...b, cotacao: cot, valor: Math.round((p ? saldoPagamentoAdiantamento(p) ?? 0 : 0) * cot * 100)/100 }));
+          }} /></label>}
+          <label style={lbl}>Valor a pagar agora (R$) *<InputMonetario aria-label="Valor a pagar agora" style={inp} value={baixa.valor} disabled={salvandoBaixa} onChange={valor => setBaixa(b => ({ ...b, valor }))} /></label>
+        </div>
+        <p style={{ fontSize: 12 }}>Para pagamento parcial, informe um valor menor. O saldo restante continuará nesta tela e no fluxo de caixa.</p>
+        {erroBaixa && <p role="alert" style={{ color: "#B91C1C" }}>{erroBaixa}</p>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <OperationalButton data-arato-button="secondary" disabled={salvandoBaixa} style={btnR} onClick={() => setModalBaixa(null)}>Cancelar</OperationalButton>
+          <OperationalButton data-arato-button="primary" disabled={salvandoBaixa} style={btnV} onClick={salvarBaixa}>{salvandoBaixa ? "Registrando…" : "Confirmar pagamento"}</OperationalButton>
+        </div>
+      </Modal>}
 
       {/* ── Modal Aplicar ──────────────────────────────────────── */}
       {modalApliq && (
@@ -539,9 +621,11 @@ export default function AdiantamentosPage() {
               ["Fornecedor", nomePessoa(modalDetalhe.pessoa_id)],
               ["Emissão", fmtData(modalDetalhe.data_emissao)],
               ["Nº Documento", modalDetalhe.nr_documento ?? "—"],
-              ["Valor Total", fmtBRL(modalDetalhe.valor)],
-              ["Aplicado", fmtBRL(modalDetalhe.valor_aplicado ?? 0)],
-              ["Saldo", fmtBRL(modalDetalhe.valor - (modalDetalhe.valor_aplicado ?? 0))],
+              ["Valor Total", fmtMoeda(modalDetalhe.valor,modalDetalhe.moeda)],
+              ["Aplicado", fmtMoeda(modalDetalhe.valor_aplicado ?? 0,modalDetalhe.moeda)],
+              ["Crédito pago disponível", fmtMoeda(modalDetalhe.credito_disponivel ?? 0, modalDetalhe.moeda)],
+              ["Pagamento", statusPagamento(modalDetalhe)],
+              ["Saldo a pagar", modalDetalhe.saldo_a_pagar == null ? "Conferir" : fmtMoeda(modalDetalhe.saldo_a_pagar, modalDetalhe.moeda)],
             ].map(([k, v]) => (
               <div key={k} style={{ background: "var(--bg-card)", borderRadius: 8, padding: "10px 12px" }}>
                 <div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{k}</div>
@@ -571,6 +655,13 @@ export default function AdiantamentosPage() {
               </div>
             </div>
           )}
+
+          <h3 style={{ fontSize: 13 }}>Histórico de pagamentos</h3>
+          {(modalDetalhe.pagamentos ?? []).filter(p => p.status === "baixado" || Number(p.valor_pago) > 0).map(p => <div key={p.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-table)", fontSize: 12 }}>
+            {fmtData(p.data_baixa ?? undefined)} · {fmtBRL(Number(p.valor_pago ?? (p.moeda === "USD" ? p.valor * Number(p.cotacao_usd ?? 0) : p.valor)))} · {contas.find(c => c.id === p.conta_bancaria)?.nome ?? "Conta não informada"}
+          </div>)}
+          {!(modalDetalhe.pagamentos ?? []).some(p => p.status === "baixado" || Number(p.valor_pago) > 0) && <p style={{ fontSize: 12 }}>Nenhum pagamento registrado.</p>}
+          {modalDetalhe.status !== "cancelado" && Number(modalDetalhe.saldo_a_pagar) > 0 && <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirBaixa(modalDetalhe)}>Baixar pagamento</OperationalButton>}
 
           {/* Histórico de Aplicações */}
           <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Histórico de Aplicações</div>

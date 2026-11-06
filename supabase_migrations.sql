@@ -20307,3 +20307,148 @@ CREATE POLICY folha_divergencias_leitura ON folha_divergencias_decisoes FOR SELE
 -- Escrita pela API autenticada: valida cliente, permissão, cadastro atual, competência e motivo.
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 423 — Baixa do fornecedor na rotina de adiantamentos (com pagamento parcial)
+-- Pedidos e adiantamentos continuam no financeiro para o Fluxo de Caixa e conciliação.
+-- =============================================================================
+BEGIN;
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS adiantamento_pagamento_ref uuid;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_adiantamento_pagamento_ref ON lancamentos(adiantamento_pagamento_ref)
+  WHERE adiantamento_pagamento_ref IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.adiantamento_saldo_pagar(p_adi uuid) RETURNS numeric
+LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
+  SELECT CASE WHEN bool_or(l.moeda='USD' AND coalesce(l.valor_pago,0)>0 AND coalesce(l.cotacao_usd,0)<=0) THEN NULL
+    ELSE coalesce(round(sum(greatest(0,l.valor - CASE WHEN coalesce(l.valor_pago,0)>0
+      THEN greatest(0,l.valor_pago-coalesce(l.valor_juros,0)-coalesce(l.valor_multa,0)+coalesce(l.valor_desconto,0))
+        / CASE WHEN l.moeda='USD' THEN nullif(l.cotacao_usd,0) ELSE 1 END ELSE 0 END)),2),0) END
+  FROM adiantamentos_fornecedor a JOIN lancamentos l ON l.id=a.lancamento_id OR l.titulo_origem_id=a.lancamento_id
+  WHERE a.id=p_adi AND l.status IN ('em_aberto','vencido','vencendo','parcial');
+$$;
+GRANT EXECUTE ON FUNCTION public.adiantamento_saldo_pagar(uuid) TO authenticated,service_role;
+
+-- A normalização controlada conserva os dados bancários da parte já paga e o saldo em outra parte.
+CREATE OR REPLACE FUNCTION public.fn_proteger_adiantamento_compensado() RETURNS trigger
+LANGUAGE plpgsql SET search_path=public AS $$
+BEGIN
+  IF TG_OP='UPDATE' AND current_setting('arato.baixando_adiantamento',true)='1' THEN RETURN NEW; END IF;
+  IF EXISTS (SELECT 1 FROM adiantamentos_fornecedor a WHERE a.status<>'cancelado'
+    AND (a.lancamento_id=OLD.id OR a.lancamento_id=OLD.titulo_origem_id)) THEN
+    IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Cancele o adiantamento na rotina de Adiantamentos antes de excluir seu CP.'; END IF;
+    IF NEW.moeda IS DISTINCT FROM OLD.moeda OR NEW.pessoa_id IS DISTINCT FROM OLD.pessoa_id
+       OR NEW.fazenda_id IS DISTINCT FROM OLD.fazenda_id
+       OR (NEW.valor IS DISTINCT FROM OLD.valor AND NOT (coalesce(NEW.pagamento_parcial,false)
+         AND NEW.status IN ('baixado','pago') AND coalesce(OLD.valor_pago,0)=0)) THEN
+      RAISE EXCEPTION 'O financeiro do adiantamento deve preservar valor, fornecedor, moeda e fazenda da origem.';
+    END IF;
+  END IF;
+  IF TG_OP='UPDATE' AND NEW.status='cancelado' AND EXISTS (SELECT 1 FROM adiantamentos_fornecedor a
+    WHERE a.status<>'cancelado' AND (a.lancamento_id=OLD.id OR a.lancamento_id=OLD.titulo_origem_id)) THEN
+    RAISE EXCEPTION 'Cancele em Financeiro → Adiantamentos para atualizar também o saldo do pedido.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM adiantamentos_fornecedor a WHERE a.valor_aplicado>0
+    AND (a.lancamento_id=OLD.id OR a.lancamento_id=OLD.titulo_origem_id)) THEN
+    IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Adiantamento utilizado: regularize as compensações antes de excluir.'; END IF;
+    IF ((OLD.status IN ('baixado','pago','parcial') OR coalesce(OLD.valor_pago,0)>0) AND
+      (NEW.status IS DISTINCT FROM OLD.status OR NEW.valor IS DISTINCT FROM OLD.valor OR NEW.valor_pago IS DISTINCT FROM OLD.valor_pago
+       OR NEW.cotacao_usd IS DISTINCT FROM OLD.cotacao_usd)) OR NEW.status='cancelado' THEN
+      RAISE EXCEPTION 'Adiantamento utilizado: não altere o pagamento que financiou a compensação.';
+    END IF;
+  END IF;
+  IF OLD.forma_pagamento='Compensação de adiantamento a fornecedor' THEN
+    IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Não exclua o registro da compensação.'; END IF;
+    IF NEW.status IS DISTINCT FROM OLD.status OR NEW.valor IS DISTINCT FROM OLD.valor OR NEW.valor_pago IS DISTINCT FROM OLD.valor_pago THEN
+      RAISE EXCEPTION 'Título compensado não pode ser reaberto como pagamento bancário.';
+    END IF;
+  END IF;
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.baixar_adiantamento_fornecedor(
+  p_adi uuid,p_cp uuid,p_valor_brl numeric,p_data date,p_conta uuid,p_requisicao uuid,p_cotacao numeric DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE
+  a adiantamentos_fornecedor%ROWTYPE; c lancamentos%ROWTYPE; anterior lancamentos%ROWTYPE;
+  v_cot numeric; v_pago_antigo numeric; v_saldo numeric; v_nominal numeric; v_parte uuid; v_cols text; v_j jsonb;
+  v_contexto text:=current_setting('arato.baixando_adiantamento',true);
+BEGIN
+  IF p_valor_brl IS NULL OR p_valor_brl<=0 OR p_valor_brl::text IN ('NaN','Infinity','-Infinity') OR p_data IS NULL OR p_requisicao IS NULL THEN
+    RAISE EXCEPTION 'Informe valor positivo, data e identificação do pagamento.';
+  END IF;
+  SELECT * INTO a FROM adiantamentos_fornecedor WHERE id=p_adi FOR UPDATE;
+  IF NOT FOUND OR a.status='cancelado' THEN RAISE EXCEPTION 'Adiantamento não disponível para pagamento.'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM contas_bancarias b LEFT JOIN fazendas fb ON fb.id=b.fazenda_id
+    JOIN fazendas fa ON fa.id=a.fazenda_id
+    WHERE b.id=p_conta AND b.ativa IS DISTINCT FROM false AND coalesce(b.moeda,'BRL')='BRL'
+      AND (b.fazenda_id=a.fazenda_id OR coalesce(b.conta_id,fb.conta_id)=fa.conta_id)) THEN
+    RAISE EXCEPTION 'Selecione uma conta bancária em reais do mesmo cliente.';
+  END IF;
+  SELECT * INTO anterior FROM lancamentos WHERE adiantamento_pagamento_ref=p_requisicao;
+  IF FOUND THEN
+    IF (anterior.id IS DISTINCT FROM a.lancamento_id AND anterior.titulo_origem_id IS DISTINCT FROM a.lancamento_id)
+      OR anterior.valor_pago IS DISTINCT FROM round(p_valor_brl,2) OR anterior.conta_bancaria IS DISTINCT FROM p_conta
+      OR anterior.data_baixa IS DISTINCT FROM p_data THEN RAISE EXCEPTION 'Identificação de pagamento já utilizada com outros dados.'; END IF;
+    RETURN jsonb_build_object('ok',true,'repetido',true,'pagamento_id',anterior.id,
+      'saldo_a_pagar',public.adiantamento_saldo_pagar(a.id),'credito_disponivel',public.adiantamento_credito_pago(a.id));
+  END IF;
+  PERFORM id FROM lancamentos WHERE id=a.lancamento_id OR titulo_origem_id=a.lancamento_id ORDER BY id FOR UPDATE;
+  SELECT * INTO c FROM lancamentos WHERE id=p_cp FOR UPDATE;
+  IF NOT FOUND OR (c.id IS DISTINCT FROM a.lancamento_id AND c.titulo_origem_id IS DISTINCT FROM a.lancamento_id)
+    OR c.tipo<>'pagar' OR c.moeda IS DISTINCT FROM a.moeda THEN RAISE EXCEPTION 'A parcela não pertence a este adiantamento.'; END IF;
+  IF c.status NOT IN ('em_aberto','vencido','vencendo','parcial') OR c.lote_id IS NOT NULL OR c.fatura_cartao_id IS NOT NULL OR c.contrato_financeiro_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Escolha uma parcela em aberto, fora de borderô, cartão ou contrato financeiro.';
+  END IF;
+  v_cot:=CASE WHEN c.moeda='USD' THEN coalesce(p_cotacao,c.cotacao_usd) ELSE 1 END;
+  IF v_cot IS NULL OR v_cot<=0 OR v_cot::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Informe a cotação do dólar no pagamento.'; END IF;
+  v_pago_antigo:=coalesce(c.valor_pago,0);
+  IF v_pago_antigo>0 AND c.moeda='USD' AND coalesce(c.cotacao_usd,0)<=0 THEN RAISE EXCEPTION 'Confira a cotação histórica da baixa parcial anterior.'; END IF;
+  v_pago_antigo:=greatest(0,v_pago_antigo-coalesce(c.valor_juros,0)-coalesce(c.valor_multa,0)+coalesce(c.valor_desconto,0))
+    / CASE WHEN c.moeda='USD' THEN coalesce(nullif(c.cotacao_usd,0),v_cot) ELSE 1 END;
+  v_saldo:=round(c.valor-v_pago_antigo,2);
+  v_nominal:=round(p_valor_brl/v_cot,2);
+  IF v_nominal<=0 OR v_nominal>v_saldo OR abs(round(v_nominal*v_cot,2)-round(p_valor_brl,2))>0.01 THEN
+    RAISE EXCEPTION 'Valor superior ao saldo da parcela ou incompatível com a cotação informada.';
+  END IF;
+  SELECT string_agg(quote_ident(column_name),',' ORDER BY ordinal_position) INTO v_cols FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='lancamentos' AND column_name NOT IN ('id','created_at') AND is_identity='NO' AND is_generated='NEVER';
+  PERFORM set_config('arato.baixando_adiantamento','1',true);
+  IF coalesce(c.valor_pago,0)>0 THEN
+    -- Parcial antigo: o título original continua sendo o pagamento já conciliável, com o mesmo banco/data/valor pago.
+    v_j:=to_jsonb(c)||jsonb_build_object('valor',v_saldo,'valor_pago',NULL,'status','em_aberto','conta_bancaria',NULL,
+      'data_baixa',NULL,'conciliado',false,'valor_juros',NULL,'valor_multa',NULL,'valor_desconto',NULL,
+      'titulo_origem_id',a.lancamento_id,'valor_titulo_origem',coalesce(c.valor_titulo_origem,c.valor),
+      'pagamento_parcial',false,'vencimento_saldo',NULL,'adiantamento_pagamento_ref',NULL);
+    EXECUTE format('INSERT INTO public.lancamentos(%s) SELECT %s FROM jsonb_populate_record(NULL::public.lancamentos,$1) RETURNING id',v_cols,v_cols) INTO v_parte USING v_j;
+    UPDATE lancamentos SET valor=round(v_pago_antigo,2),status='baixado',pagamento_parcial=true,
+      titulo_origem_id=a.lancamento_id,valor_titulo_origem=coalesce(c.valor_titulo_origem,c.valor) WHERE id=c.id;
+    SELECT * INTO c FROM lancamentos WHERE id=v_parte;
+  END IF;
+  IF v_nominal<v_saldo THEN
+    v_j:=to_jsonb(c)||jsonb_build_object('valor',v_nominal,'valor_pago',round(p_valor_brl,2),'status','baixado',
+      'conta_bancaria',p_conta,'data_baixa',p_data,'forma_pagamento','Pagamento de adiantamento a fornecedor',
+      'conciliado',false,'cotacao_usd',CASE WHEN c.moeda='USD' THEN v_cot ELSE c.cotacao_usd END,
+      'valor_juros',NULL,'valor_multa',NULL,'valor_desconto',NULL,'adiantamento_pagamento_ref',p_requisicao,
+      'titulo_origem_id',a.lancamento_id,'valor_titulo_origem',coalesce(c.valor_titulo_origem,c.valor),
+      'pagamento_parcial',true,'vencimento_saldo',NULL);
+    EXECUTE format('INSERT INTO public.lancamentos(%s) SELECT %s FROM jsonb_populate_record(NULL::public.lancamentos,$1) RETURNING id',v_cols,v_cols) INTO v_parte USING v_j;
+    UPDATE lancamentos SET valor=round(v_saldo-v_nominal,2),valor_pago=NULL,status='em_aberto',data_baixa=NULL,
+      titulo_origem_id=a.lancamento_id,valor_titulo_origem=coalesce(c.valor_titulo_origem,c.valor) WHERE id=c.id;
+  ELSE
+    v_parte:=c.id;
+    UPDATE lancamentos SET valor_pago=round(p_valor_brl,2),status='baixado',data_baixa=p_data,conta_bancaria=p_conta,
+      forma_pagamento='Pagamento de adiantamento a fornecedor',conciliado=false,adiantamento_pagamento_ref=p_requisicao,
+      valor_juros=NULL,valor_multa=NULL,valor_desconto=NULL,
+      cotacao_usd=CASE WHEN c.moeda='USD' THEN v_cot ELSE c.cotacao_usd END WHERE id=c.id;
+  END IF;
+  PERFORM set_config('arato.baixando_adiantamento',coalesce(v_contexto,''),true);
+  RETURN jsonb_build_object('ok',true,'pagamento_id',v_parte,'saldo_a_pagar',public.adiantamento_saldo_pagar(a.id),
+    'credito_disponivel',public.adiantamento_credito_pago(a.id));
+END;
+$$;
+REVOKE ALL ON FUNCTION public.baixar_adiantamento_fornecedor(uuid,uuid,numeric,date,uuid,uuid,numeric) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.baixar_adiantamento_fornecedor(uuid,uuid,numeric,date,uuid,uuid,numeric) TO service_role;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

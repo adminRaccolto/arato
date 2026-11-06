@@ -41,6 +41,10 @@ test("Seção 421: crédito pago, pedido opcional, compensação atômica e prot
     await db.exec(partial);
     await db.exec("CREATE TRIGGER trg_0_dividir_titulo_parcial BEFORE UPDATE ON lancamentos FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();");
     await db.exec(section); await db.exec(section);
+    await db.exec(`CREATE TABLE contas_bancarias(id uuid PRIMARY KEY,fazenda_id uuid,conta_id uuid,ativa boolean,moeda text);
+      INSERT INTO contas_bancarias VALUES('${id(90)}','${id(1)}','${id(10)}',true,'BRL'),('${id(91)}','${id(2)}','${id(20)}',true,'BRL');`);
+    const baixaSection = source.slice(source.indexOf("-- Seção 423 —"));
+    await db.exec(baixaSection); await db.exec(baixaSection);
     const value = async (sql: string) => (await db.query<Record<string, unknown>>(sql)).rows[0];
     const apply = (v: number, adi = 30, cp = 32, cot: number | null = null) => db.query<{ r: Record<string, unknown> }>(
       "SELECT aplicar_adiantamento_fornecedor_cp($1,$2,$3,'2026-11-06','Teste',$4) r", [id(adi), id(cp), v, cot]);
@@ -116,6 +120,51 @@ test("Seção 421: crédito pago, pedido opcional, compensação atômica e prot
       assert.equal((await db.query("SELECT listar_creditos_fornecedor($1) v",[id(2)])).rows.length,0);
       assert.equal((await value(`SELECT adiantamento_credito_pago('${id(80)}') v`)).v,null);
     });
+    const pagar = (valor: number, ref=100, cot: number | null=null, banco=90, cp=31) => db.query<{r:Record<string,unknown>}>(
+      "SELECT baixar_adiantamento_fornecedor($1,$2,$3,'2026-11-06',$4,$5,$6) r",[id(30),id(cp),valor,id(banco),id(ref),cot]);
+    await scenario("baixa parcial mantém o saldo e cada pagamento bancário separado",async()=>{
+      await fixture(6,null);
+      const r=(await pagar(10)).rows[0].r;
+      assert.equal(r.saldo_a_pagar,20);assert.equal(r.credito_disponivel,10);
+      assert.equal((await value(`SELECT sum(valor) v FROM lancamentos WHERE id='${id(31)}' OR titulo_origem_id='${id(31)}'`)).v,"30.00");
+      assert.equal((await value(`SELECT conta_bancaria FROM lancamentos WHERE adiantamento_pagamento_ref='${id(100)}'`)).conta_bancaria,id(90));
+      await apply(5);
+      const restante=(await pagar(20,101)).rows[0].r;
+      assert.equal(restante.saldo_a_pagar,0);assert.equal(restante.credito_disponivel,25);
+    });
+    await scenario("repetir a mesma requisição não duplica a saída bancária",async()=>{
+      await fixture(6,null);await pagar(10);assert.equal((await pagar(10)).rows[0].r.repetido,true);
+      assert.equal((await value(`SELECT count(*) n FROM lancamentos WHERE adiantamento_pagamento_ref='${id(100)}'`)).n,1);
+      assert.equal((await value(`SELECT adiantamento_saldo_pagar('${id(30)}') v`)).v,"20.00");
+    });
+    await scenario("baixa parcial antiga conserva o banco, valor e data já pagos",async()=>{
+      await fixture(6,15);await db.exec(`UPDATE lancamentos SET status='parcial',conta_bancaria='${id(90)}',data_baixa='2026-10-20',conciliado=true WHERE id='${id(31)}'`);
+      await apply(5);const r=(await pagar(15)).rows[0].r;assert.equal(r.saldo_a_pagar,0);assert.equal(r.credito_disponivel,25);
+      const original=await value(`SELECT valor_pago,conta_bancaria,data_baixa,conciliado FROM lancamentos WHERE id='${id(31)}'`);
+      assert.equal(original.valor_pago,"15");assert.equal(original.conta_bancaria,id(90));assert.equal(original.conciliado,true);assert.equal(new Date(String(original.data_baixa)).toISOString().slice(0,10),"2026-10-20");
+    });
+    await scenario("pagamentos em dólar preservam a cotação de cada saída e o crédito nominal",async()=>{
+      await fixture(6,null);await db.exec(`DELETE FROM adiantamentos_fornecedor WHERE id='${id(30)}'; UPDATE lancamentos SET moeda='USD',cotacao_usd=5 WHERE id IN ('${id(31)}','${id(32)}'); INSERT INTO adiantamentos_fornecedor(id,fazenda_id,pessoa_id,lancamento_id,valor,moeda) VALUES('${id(30)}','${id(1)}','${id(3)}','${id(31)}',30,'USD')`);
+      assert.equal((await pagar(50,100,5)).rows[0].r.saldo_a_pagar,20);
+      await db.query("SELECT aplicar_adiantamento_fornecedor_cp($1,$2,25,'2026-11-06','Crédito',5)",[id(30),id(32)]);
+      const r=(await pagar(120,101,6)).rows[0].r;assert.equal(r.saldo_a_pagar,0);assert.equal(r.credito_disponivel,25);
+      assert.equal((await value(`SELECT sum(valor_pago) total FROM lancamentos WHERE id='${id(31)}' OR titulo_origem_id='${id(31)}'`)).total,"170.00");
+    });
+    await scenario("não paga com conta de outro cliente",async()=>{await fixture(6,null);await assert.rejects(pagar(10,100,null,91),/mesmo cliente/);});
+    await scenario("não paga outra obrigação com o identificador do adiantamento",async()=>{await fixture(6,null);await assert.rejects(pagar(10,100,null,90,32),/não pertence/);});
+    await scenario("não paga acima do saldo nem reutiliza identificação com dados diferentes",async()=>{await fixture(6,null);await pagar(10);await db.exec("SAVEPOINT excesso");await assert.rejects(pagar(21,101),/superior ao saldo/);await db.exec("ROLLBACK TO excesso");await assert.rejects(pagar(11),/outros dados/);});
+    await scenario("falha no registro do novo pagamento desfaz a normalização antiga",async()=>{
+      await fixture(6,15);await db.exec(`UPDATE lancamentos SET status='parcial' WHERE id='${id(31)}'; ALTER TABLE lancamentos ADD CONSTRAINT rejeita_pagamento CHECK(adiantamento_pagamento_ref IS NULL); SAVEPOINT normalizacao`);
+      await assert.rejects(pagar(15));await db.exec("ROLLBACK TO normalizacao");
+      const original=await value(`SELECT valor,valor_pago,status FROM lancamentos WHERE id='${id(31)}'`);
+      assert.equal(original.valor,"30");assert.equal(original.valor_pago,"15");assert.equal(original.status,"parcial");
+      assert.equal((await value(`SELECT count(*) n FROM lancamentos WHERE titulo_origem_id='${id(31)}'`)).n,0);
+    });
+    await scenario("pagamento utilizado continua protegido após sair da rotina de baixa",async()=>{
+      await fixture(6,null);await pagar(30);await apply(5);
+      await assert.rejects(db.exec(`UPDATE lancamentos SET status='em_aberto',valor_pago=NULL WHERE id='${id(31)}'`),/Adiantamento utilizado/);
+    });
+    await scenario("baixa administrativa não é liberada diretamente ao usuário autenticado",async()=>{await db.exec("SET LOCAL ROLE authenticated");await assert.rejects(pagar(10),/permission denied/);});
     await scenario("usuário autenticado não pode chamar RPC administrativa", async () => { await db.exec("SET LOCAL ROLE authenticated"); await assert.rejects(apply(10), /permission denied/); });
   } finally { await db.close(); }
 });

@@ -10,7 +10,7 @@ test("Seção 422: histórico persistente, motivo obrigatório e isolamento de c
       INSERT INTO fazendas VALUES('${f1}'),('${f2}');INSERT INTO funcionarios VALUES('${f1}'),('${f2}');
       CREATE FUNCTION rls_minhas_fazendas() RETURNS SETOF uuid LANGUAGE sql AS $$SELECT '${f1}'::uuid$$;
       CREATE FUNCTION rls_sou_raccotlo() RETURNS boolean LANGUAGE sql AS $$SELECT false$$;`);
-    const s=readFileSync(new URL("../../supabase_migrations.sql",import.meta.url),"utf8");const section=s.slice(s.indexOf("-- Seção 422 —"));await db.exec(section);await db.exec(section);
+    const s=readFileSync(new URL("../../supabase_migrations.sql",import.meta.url),"utf8");const section=s.slice(s.indexOf("-- Seção 422 —"),s.indexOf("-- Seção 423 —"));await db.exec(section);await db.exec(section);
     const insert="INSERT INTO folha_divergencias_decisoes(fazenda_id,funcionario_id,funcionario_nome,competencia,assinatura,acao,motivo,usuario_id,usuario_nome) VALUES($1,$1,'Ana','2026-11','v1',$2,$3,$1,'Gestor')";
     await db.query(insert,[f1,"confirmar_fora","Licença no mês"]);await db.query(insert,[f1,"reabrir","Rever situação"]);await db.query(insert,[f2,"confirmar_fora","Outra empresa"]);
     await assert.rejects(db.query(insert,[f1,"confirmar_fora"," "]));
