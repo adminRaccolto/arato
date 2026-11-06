@@ -51,3 +51,15 @@ export function conciliarContratos(parcelas: ParcelaArr[], contratos: ContratoAr
   }
   return { criar, atualizar };
 }
+
+/**
+ * Datas de uma safra nova (anos_safra exige data_inicio — sem ela a criação falhava e a parcela ficava sem safra):
+ * repete o dia e o mês da safra mais recente do cliente; sem nenhuma, 01/07 a 30/06.
+ */
+export function datasSafraNova(anoFim: number, existentes: { data_inicio?: string | null; data_fim?: string | null }[]) {
+  const ref = [...existentes].filter(a => a.data_inicio && a.data_fim).sort((a, b) => String(b.data_inicio).localeCompare(String(a.data_inicio)))[0];
+  const mdIni = ref ? String(ref.data_inicio).slice(5, 10) : "07-01";
+  const mdFim = ref ? String(ref.data_fim).slice(5, 10) : "06-30";
+  const fimNoAnoSeguinte = !ref || String(ref.data_fim).slice(0, 4) > String(ref.data_inicio).slice(0, 4);
+  return { data_inicio: `${fimNoAnoSeguinte ? anoFim - 1 : anoFim}-${mdIni}`, data_fim: `${anoFim}-${mdFim}` };
+}

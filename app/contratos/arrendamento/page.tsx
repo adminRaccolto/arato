@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { conciliarContratos, parcelaExistente, produtoDoContrato, type ContratoArr } from "../../../lib/arrendamento/gerar";
+import { conciliarContratos, datasSafraNova, parcelaExistente, produtoDoContrato, type ContratoArr } from "../../../lib/arrendamento/gerar";
 import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarIEsDoProdutor, baixarLancamento, listarContasBancariasDaConta } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
@@ -396,7 +396,7 @@ export default function Arrendamentos() {
         const ja = anosSafraAtualizado.find(a => extrairAnoFim(a.descricao) === cfg.anoFim);
         if (ja) { cfg.ano_safra_id = ja.id; continue; }
         const { data: novoAs, error } = await supabase.from("anos_safra")
-          .insert({ fazenda_id: fazArr, conta_id: contaId ?? null, descricao: `${prefixo}${cfg.anoFim - 1}/${cfg.anoFim}` })
+          .insert({ fazenda_id: fazArr, conta_id: contaId ?? null, descricao: `${prefixo}${cfg.anoFim - 1}/${cfg.anoFim}`, ...datasSafraNova(cfg.anoFim, anosSafraAtualizado) })
           .select().single();
         if (error || !novoAs) throw new Error(`Não foi possível criar a safra ${cfg.anoFim - 1}/${cfg.anoFim}: ${error?.message ?? "sem retorno"}. Cadastre-a em Cadastros → Safras & Ciclos e gere de novo.`);
         cfg.ano_safra_id = novoAs.id;

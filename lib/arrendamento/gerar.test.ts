@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { conciliarContratos, parcelaExistente, produtoDoContrato } from "./gerar.ts";
+import { conciliarContratos, datasSafraNova, parcelaExistente, produtoDoContrato } from "./gerar.ts";
 
 test("parcela existente: mesma safra e commodity; sem safra casa pelo ano do vencimento", () => {
   const ex = [
@@ -31,4 +31,10 @@ test("contrato de grãos só para parcela em sacas, com safra e ainda não paga"
   const r = conciliarContratos(parcelas, contratos);
   assert.deepEqual(r.criar.map(p => p.id), ["1"]);
   assert.deepEqual(r.atualizar, [{ id: "c28", quantidade_sc: 100, data_entrega: "2028-04-30" }]); // c31 já teve entrega
+});
+
+test("safra nova segue o dia e mês da safra mais recente do cliente", () => {
+  const ex = [{ data_inicio: "2026-08-01", data_fim: "2027-07-31" }, { data_inicio: "2034-07-01", data_fim: "2035-06-30" }];
+  assert.deepEqual(datasSafraNova(2036, ex), { data_inicio: "2035-07-01", data_fim: "2036-06-30" });
+  assert.deepEqual(datasSafraNova(2024, []), { data_inicio: "2023-07-01", data_fim: "2024-06-30" });
 });
