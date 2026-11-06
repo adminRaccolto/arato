@@ -4,7 +4,8 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { buscarAbastecimentos } from "../../../lib/estoque/abastecimentos-leitura";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -71,12 +72,17 @@ export default function AbastecimentoPage() {
   const [insumos,      setInsumos]      = useState<InsumoCombo[]>([]);
   const [historico,    setHistorico]    = useState<Abastecimento[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [erroCarga, setErroCarga] = useState("");
+  const [aviso, setAviso] = useState("");
+  const cargaAtual = useRef(0);
   const [fazNomes,     setFazNomes]     = useState<Map<string, string>>(new Map());
   const sufFaz = (id?: string | null) => (fazNomes.size > 1 && id ? ` · ${fazNomes.get(id) ?? ""}` : "");
 
   // Filtros
   const [filtroBomba,   setFiltroBomba]   = useState("");
-  const [filtroMes,     setFiltroMes]     = useState(() => new Date().toISOString().substring(0, 7));
+  const [filtroMes,     setFiltroMes]     = useState(() => hojeLocal().slice(0, 7));
+  const escopoFazendas = (fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : []).join(",");
+  useEffect(() => { setFiltroBomba(""); setAviso(""); setHistorico([]); setBombas([]); setInsumos([]); }, [contaId]);
 
   // Modal
   const [modal,         setModal]         = useState(false);
@@ -104,9 +110,12 @@ export default function AbastecimentoPage() {
 
   // ─── Carga inicial ──────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    const carga = ++cargaAtual.current;
+    if (!fazendaId) { setHistorico([]); setLoading(false); return; }
     setLoading(true);
-    const idsConta = fazendaIds?.length ? fazendaIds : [fazendaId];
+    setErroCarga("");
+    const idsConta = escopoFazendas.split(",").filter(Boolean);
+    try {
     // Bombas, máquinas e funcionários são do CLIENTE (todas as fazendas da conta), não da fazenda ativa
     const [b, m, f, fz] = await Promise.all([
       supabase.from("bombas_combustivel").select("*").in("fazenda_id", idsConta).order("nome")
@@ -115,35 +124,18 @@ export default function AbastecimentoPage() {
       listarFuncionarios(idsConta),
       supabase.from("fazendas").select("id,nome").in("id", idsConta),
     ]);
-    setFazNomes(new Map(((fz.data ?? []) as { id: string; nome: string }[]).map(x => [x.id, x.nome])));
-    setBombas(b);
-    setMaquinas(m);
-    setFuncionarios(f);
+    if (fz.error) throw fz.error;
 
     // Insumos de combustível cadastrados
-    const { data: ins } = await supabase.from("insumos")
+    const { data: ins, error: erroInsumos } = await supabase.from("insumos")
       .select("id, fazenda_id, nome, estoque, custo_medio, unidade")
-      .in("fazenda_id", fazendaIds)
+      .in("fazenda_id", idsConta)
       .eq("categoria", "combustivel")
       .order("nome");
-    setInsumos((ins ?? []) as InsumoCombo[]);
+    if (erroInsumos) throw erroInsumos;
 
     // Histórico de abastecimentos
-    const inicio = filtroMes + "-01";
-    const fim    = filtroMes + "-31";
-    const { data: hist } = await supabase.from("abastecimentos")
-      .select(`
-        *,
-        bombas_combustivel(nome),
-        maquinas(nome),
-        funcionarios(nome),
-        ciclos(descricao, cultura)
-      `)
-      .in("fazenda_id", fazendaIds)
-      .gte("data", inicio)
-      .lte("data", fim)
-      .order("data", { ascending: false })
-      .order("created_at", { ascending: false });
+    const hist = await buscarAbastecimentos<Record<string, unknown>>(supabase, idsConta, filtroMes, filtroBomba);
 
     const normalizado: Abastecimento[] = (hist ?? []).map((r: Record<string, unknown>) => {
       const ciclo = r.ciclos as Record<string, string> | null;
@@ -156,11 +148,19 @@ export default function AbastecimentoPage() {
       };
     }) as Abastecimento[];
 
-    setHistorico(filtroBomba ? normalizado.filter(h => h.bomba_id === filtroBomba) : normalizado);
-    setLoading(false);
-  }, [fazendaId, filtroMes, filtroBomba]);
+    if (carga !== cargaAtual.current) return;
+    setFazNomes(new Map(((fz.data ?? []) as { id: string; nome: string }[]).map(x => [x.id, x.nome])));
+    setBombas(b); setMaquinas(m); setFuncionarios(f);
+    setInsumos((ins ?? []) as InsumoCombo[]);
+    setHistorico(normalizado);
+    } catch (e) {
+      if (carga === cargaAtual.current) setErroCarga(e instanceof Error ? e.message : (e as { message?: string })?.message || "Não foi possível carregar os abastecimentos.");
+    } finally {
+      if (carga === cargaAtual.current) setLoading(false);
+    }
+  }, [fazendaId, escopoFazendas, filtroMes, filtroBomba]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { void carregar(); return () => { cargaAtual.current++; }; }, [carregar]);
 
   // O combustível da bomba é o insumo da MESMA fazenda da bomba (o estoque é físico, por propriedade)
   const insumoDaBomba = (bomba: BombaCombustivel) => {
@@ -231,8 +231,12 @@ export default function AbastecimentoPage() {
         }
         await inserirNovo(qtd, vUnit, bomba);
       }
+      const mesSalvo = fData.slice(0, 7);
+      const mudouFiltro = filtroMes !== mesSalvo || (!!filtroBomba && filtroBomba !== fBomba);
       fecharModal();
-      await carregar();
+      setAviso(mudouFiltro ? "Abastecimento salvo. O histórico foi ajustado para mostrar o mês e a bomba do lançamento." : "Abastecimento salvo.");
+      if (mudouFiltro) { setFiltroMes(mesSalvo); if (filtroBomba) setFiltroBomba(fBomba); }
+      else await carregar();
     } catch (e) {
       setErroModal((e as Error).message);
     }
@@ -245,7 +249,6 @@ export default function AbastecimentoPage() {
   // security policy" mesmo com a policy certa (JWT expirado na sessão,
   // mesmo padrão já resolvido em outras telas — ver lib/db.ts pattern).
   async function salvarEdicao(ab: Abastecimento, qtdNova: number, vUnit: number, bomba: BombaCombustivel) {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar edicao)", perigo: false }))) return;
     if (!fazendaId) return;
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
     const res = await fetch("/api/campo/abastecimento-acao", {
@@ -263,7 +266,6 @@ export default function AbastecimentoPage() {
   }
 
   async function inserirNovo(qtd: number, vUnit: number, bomba: BombaCombustivel) {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Inserir novo)", perigo: false }))) return;
     if (!fazendaId) return;
     const fazBomba = bomba.fazenda_id || fazendaId;   // o abastecimento pertence à fazenda da bomba
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
@@ -368,6 +370,7 @@ export default function AbastecimentoPage() {
             + Registrar Abastecimento
           </OperationalButton>
         </OperationalHeading>
+        {aviso && <p role="status" style={{ padding: "10px 14px", border: "1px solid #86c9a0", borderRadius: 8, color: "var(--text-1)", background: "var(--bg-card)", fontSize: 13 }}>{aviso}</p>}
 
         {/* KPIs */}
         <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
@@ -426,8 +429,9 @@ export default function AbastecimentoPage() {
         <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
           <InputData
             type="month"
+            aria-label="Mês do histórico de abastecimentos"
             value={filtroMes}
-            onChange={e => setFiltroMes(e.target.value)}
+            onChange={e => { if (e.target.value) setFiltroMes(e.target.value); }}
             style={{ ...inp, width: 160 }}
           />
           <SelectField
@@ -438,6 +442,7 @@ export default function AbastecimentoPage() {
             <option value="">Todas as bombas</option>
             {bombas.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
           </SelectField>
+          <OperationalButton data-arato-button="secondary" onClick={() => void carregar()} disabled={loading}>Atualizar</OperationalButton>
           <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>
             {historico.length} registro{historico.length !== 1 ? "s" : ""}
           </div>
@@ -447,6 +452,8 @@ export default function AbastecimentoPage() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
           {loading ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
+          ) : erroCarga ? (
+            <div role="alert" style={{ padding: 24, color: "#a32929", fontSize: 13 }}>Não foi possível carregar o histórico: {erroCarga}. Use Atualizar para tentar novamente.</div>
           ) : historico.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
               Nenhum abastecimento no período selecionado.
