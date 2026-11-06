@@ -147,85 +147,18 @@ export async function POST(req: NextRequest) {
     // Abate o saldo de um adiantamento a fornecedor diretamente na baixa do CP
     // (parcial ou total) — sem conta bancária, é crédito já pago antes.
     if (body.acao === "aplicar_adiantamento") {
-      const adiantamentoId = body.adiantamento_id;
-      const valorAplicado  = body.valor_aplicado ?? 0;
-      if (!adiantamentoId || valorAplicado <= 0) {
-        return NextResponse.json({ ok: false, error: "Adiantamento e valor a aplicar são obrigatórios" }, { status: 400 });
-      }
-
-      const { data: adiant } = await sb.from("adiantamentos_fornecedor").select("*").eq("id", adiantamentoId).single();
-      if (!adiant) return NextResponse.json({ ok: false, error: "Adiantamento não encontrado" }, { status: 404 });
-      if (adiant.lancamento_id === id) {
-        return NextResponse.json({ ok: false, error: "Não é possível aplicar um adiantamento no próprio lançamento que ele gerou." }, { status: 400 });
-      }
-      // Adiantamento a fornecedor só quita CP do MESMO fornecedor (mesmo cadastro ou mesmo CPF/CNPJ). Antes só a tela
-      // filtrava; o servidor aceitava qualquer combinação. Pagar conta de outro com adiantamento: só o de funcionário.
-      const { data: cpPessoa } = await sb.from("lancamentos").select("pessoa_id").eq("id", id).maybeSingle();
-      if (!adiant.pessoa_id || !cpPessoa?.pessoa_id) {
-        return NextResponse.json({ ok: false, error: "Adiantamento e título precisam ter o fornecedor informado." }, { status: 400 });
-      }
-      if (adiant.pessoa_id !== cpPessoa.pessoa_id) {
-        const { data: ps } = await sb.from("pessoas").select("id, cpf_cnpj").in("id", [adiant.pessoa_id, cpPessoa.pessoa_id]);
-        const docs = new Set((ps ?? []).map(x => String(x.cpf_cnpj ?? "").replace(/\D/g, "")));
-        if ((ps ?? []).length !== 2 || docs.size !== 1 || docs.has("")) {
-          return NextResponse.json({ ok: false, error: "O adiantamento é de outro fornecedor. Adiantamento a fornecedor só quita título do mesmo fornecedor." }, { status: 400 });
-        }
-      }
-      const saldoAdiantamento = adiant.valor - (adiant.valor_aplicado ?? 0);
-      if (valorAplicado > saldoAdiantamento + 0.01) {
-        return NextResponse.json({ ok: false, error: `Valor maior que o saldo do adiantamento (${saldoAdiantamento.toFixed(2)})` }, { status: 400 });
-      }
-
-      const { data: cp } = await sb.from("lancamentos").select("valor, valor_pago, cotacao_usd, moeda, contrato_financeiro_id, data_vencimento").eq("id", id).single();
-      if (!cp) return NextResponse.json({ ok: false, error: "Lançamento (CP) não encontrado" }, { status: 404 });
-      const cotacaoCp    = (cp.cotacao_usd as number | null) ?? 5.12;
-      const valorTotalCp = cp.moeda === "USD" ? (cp.valor ?? 0) * cotacaoCp : (cp.valor ?? 0);
-      const jaPagoCp     = (cp.valor_pago as number | null) ?? 0;
-      const saldoCp      = valorTotalCp - jaPagoCp;
-      if (valorAplicado > saldoCp + 0.01) {
-        return NextResponse.json({ ok: false, error: `Valor maior que o saldo devedor do CP (${saldoCp.toFixed(2)})` }, { status: 400 });
-      }
-
-      // 1. Registra a aplicação, ligada a este CP
-      const { error: eApl } = await sb.from("adiantamentos_aplicacoes").insert({
-        adiantamento_id: adiantamentoId,
-        fazenda_id:      adiant.fazenda_id,
-        descricao:       body.descricao || "Aplicado na baixa de CP",
-        valor_aplicado:  valorAplicado,
-        data_aplicacao:  body.data_aplicacao,
-        lancamento_id:   id,
+      const { data, error } = await sb.rpc("aplicar_adiantamento_fornecedor_cp", {
+        p_adi: body.adiantamento_id, p_cp: id, p_valor_brl: body.valor_aplicado,
+        p_data: body.data_aplicacao, p_descricao: body.descricao ?? null, p_cotacao: body.cotacao_usd ?? null,
       });
-      if (eApl) return NextResponse.json({ ok: false, error: eApl.message }, { status: 400 });
-
-      // 2. Reduz o saldo do adiantamento
-      const novoTotalAdiantamento  = (adiant.valor_aplicado ?? 0) + valorAplicado;
-      const novoStatusAdiantamento = novoTotalAdiantamento >= adiant.valor - 0.01 ? "aplicado" : "parcial";
-      const { error: eAdiant } = await sb.from("adiantamentos_fornecedor")
-        .update({ valor_aplicado: novoTotalAdiantamento, status: novoStatusAdiantamento })
-        .eq("id", adiantamentoId);
-      if (eAdiant) return NextResponse.json({ ok: false, error: eAdiant.message }, { status: 400 });
-      // Crédito usado deixa de abater o título do pedido ligado a este adiantamento
-      if (adiant.pedido_compra_id) await ajustarSaldoPedidoNoFC(sb, adiant.pedido_compra_id, ptaxDoDiaQualquerLado).catch(e => console.error("[saldo-pedido]", e));
-
-      // 3. Abate o CP — mesma lógica de "baixar", sem tocar conta_bancaria
-      // (nenhum dinheiro saiu de banco nesta parte, foi crédito já pago antes)
-      const novoTotalCp  = jaPagoCp + valorAplicado;
-      const novoStatusCp = novoTotalCp >= valorTotalCp - 0.01 ? "baixado" : "parcial";
-      const { error: eCp } = await sb.from("lancamentos")
-        .update({ status: novoStatusCp, valor_pago: novoTotalCp, data_baixa: body.data_aplicacao })
-        .eq("id", id);
-      if (eCp) return NextResponse.json({ ok: false, error: eCp.message }, { status: 400 });
-
-      await sb.from("parcelas_pagamento")
-        .update({ status: novoStatusCp === "baixado" ? "pago" : "parcial", data_pagamento: body.data_aplicacao })
-        .eq("lancamento_id", id);
-
-      return NextResponse.json({
-        ok: true,
-        novo_status_cp: novoStatusCp,
-        novo_total_cp: novoTotalCp,
-        novo_saldo_adiantamento: adiant.valor - novoTotalAdiantamento,
-      });
+      if (error) return NextResponse.json({ ok: false, error: error.code === "PGRST202"
+        ? "Execute a Seção 421 do supabase_migrations.sql para aplicar o crédito com segurança." : error.message }, { status: 400 });
+      let aviso: string | undefined;
+      if (data.pedido_compra_id) {
+        try { await ajustarSaldoPedidoNoFC(sb, data.pedido_compra_id, ptaxDoDiaQualquerLado); }
+        catch (e) { console.error("[saldo-pedido]", e); aviso = "Crédito aplicado. Reabra o pedido para atualizar sua projeção no fluxo de caixa."; }
+      }
+      return NextResponse.json({ ...data, aviso });
     }
 
     // ── BAIXAR ──────────────────────────────────────────────────────────────

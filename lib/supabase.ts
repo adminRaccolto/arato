@@ -2549,6 +2549,8 @@ export type AdiantamentoFornecedor = {
   valor: number;
   moeda: "BRL" | "USD";
   cotacao_usd?: number;
+  credito_disponivel?: number; // somente o principal efetivamente pago, na moeda do adiantamento
+  pedido_numero?: string | null;
   valor_aplicado: number;       // total já aplicado (acumulado)
   status: "em_aberto" | "parcial" | "aplicado" | "cancelado";
   lancamento_id?: string;       // FK lancamentos — CP gerado

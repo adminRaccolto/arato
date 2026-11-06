@@ -1,3 +1,4 @@
+import { FORMA_COMPENSACAO_FORNECEDOR } from "./adiantamentos-fornecedor.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface LancamentoConciliacao {
@@ -30,7 +31,7 @@ export async function buscarLancamentosConciliacao(
   for (const tabela of ["lancamentos", "empresa_lancamentos"] as const) {
     const empresa = tabela === "empresa_lancamentos";
     const dataPagamento = empresa ? "data_pagamento" : "data_baixa";
-    const campos = `id,tipo,descricao,valor,valor_pago,data_vencimento,${dataPagamento},status,categoria,conta_bancaria,conciliado,moeda,pessoa_id,lote_id${empresa ? "" : ",produtor_id"}`;
+    const campos = `id,tipo,descricao,valor,valor_pago,forma_pagamento,data_vencimento,${dataPagamento},status,categoria,conta_bancaria,conciliado,moeda,pessoa_id,lote_id${empresa ? "" : ",produtor_id"}`;
     for (let inicio = 0; ; inicio += 1000) {
       let q = sb.from(tabela).select(campos)
         .in("fazenda_id", fazendaIds).neq("status", "cancelado");
@@ -46,6 +47,7 @@ export async function buscarLancamentosConciliacao(
       if (error) throw error;
       const linhas = (data ?? []) as unknown as Record<string, unknown>[];
       for (const linha of linhas) {
+        if (linha.forma_pagamento === FORMA_COMPENSACAO_FORNECEDOR) continue;
         todos.push({
           id: String(linha.id), tipo: linha.tipo as "pagar" | "receber",
           descricao: String(linha.descricao ?? ""), valor: Number(linha.valor ?? 0),

@@ -220,3 +220,13 @@ test("sem fazendas não consulta; falha na empresa não retorna uma lista incomp
   assert.deepEqual(consultas, []);
   await assert.rejects(() => buscarLancamentosConciliacao(sb, ["faz-1"]), /Leitura negada/);
 });
+
+
+test("compensação de fornecedor não é saída bancária para conciliar", async () => {
+  const { sb } = bancoConciliacao({ lancamentos: [
+    { ...empresaBaixada, id: "compensado", data_baixa: "2026-11-05", status: "baixado", forma_pagamento: "Compensação de adiantamento a fornecedor" },
+    { ...empresaBaixada, id: "adiantamento-pago", data_baixa: "2026-11-05", status: "baixado", forma_pagamento: "PIX" },
+  ] });
+  const titulos = await buscarLancamentosConciliacao(sb, ["faz-1"]);
+  assert.deepEqual(titulos.map(t => t.id), ["adiantamento-pago"]);
+});

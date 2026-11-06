@@ -1,4 +1,5 @@
 "use client";
+import { carregarAdiantamentosTitulos } from "../../../lib/financeiro/adiantamentos-fornecedor";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
 import NativeRecordPanel from '../../../components/arato-layout/NativeRecordPanel';
@@ -83,6 +84,9 @@ import InputNumerico from "../../../components/InputNumerico";
 
 type RelLancamento = {
   usuario_origem?: string | null;
+  adiantamento_fornecedor?: boolean;
+  pedido_compra_id?: string | null;
+  pedido_numero?: string | null;
   id: string;
   origem_tabela: string;
   fazenda_id: string | null;
@@ -377,10 +381,11 @@ export default function ContasAPagarPage() {
         if (!data || data.length < 1000) break;
       }
       const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros).then(t => carregarUsuariosTitulos(supabase, t)), carregarCotacoesUSD(supabase, registros)]);
+      const comAdiantamentos = await carregarAdiantamentosTitulos(supabase, comNumeros);
       if (seq !== cargaSeq.current) return;
       ultimaCarga.current = Date.now();
       setCotacoes(cots);
-      setResultado(comNumeros);
+      setResultado(comAdiantamentos);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
     } finally {
@@ -567,9 +572,9 @@ export default function ContasAPagarPage() {
 
   // Título lançado à mão e sem NF: antes de baixar, oferece vincular uma NF (restaurado da tela anterior).
   const [alertaNF, setAlertaNF] = useState<RelLancamento | null>(null);
-  const CATEGORIAS_SEM_NF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto"];
+  const CATEGORIAS_SEM_NF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto", "Adiantamento a Fornecedores"];
   const precisaVincularNF = (l: RelLancamento) =>
-    l.origem_tabela === "lancamentos" && l.moeda !== "barter" && !l.nfe_numero
+    !l.adiantamento_fornecedor && l.origem_tabela === "lancamentos" && l.moeda !== "barter" && !l.nfe_numero
     && (l.origem_lancamento == null || l.origem_lancamento === "manual")
     && !CATEGORIAS_SEM_NF.includes(l.categoria ?? "");
 
@@ -598,9 +603,9 @@ export default function ContasAPagarPage() {
         .then(setAdiFuncDisp).catch(() => setAdiFuncDisp([]));
     }
     if (l.origem_tabela === "lancamentos" && l.moeda !== "barter" && l.pessoa_id && (l.fazenda_id ?? fazendaId)) {
-      listarAdiantamentosDisponiveis((l.fazenda_id ?? fazendaId)!, l.pessoa_id, l.moeda ?? "BRL")
+      listarAdiantamentosDisponiveis((l.fazenda_id ?? fazendaId)!, l.pessoa_id, l.moeda ?? "BRL", l.id)
         .then(list => setAdiantamentosDisp(list))
-        .catch(() => setAdiantamentosDisp([]));
+        .catch(e => setErroAcao(e instanceof Error ? e.message : "Erro ao consultar adiantamentos."));
     }
     setBValor(saldoBase(l).toFixed(2).replace(".", ","));
     setBCotacao(ehUSD(l.moeda) ? (cotDe(l) ?? 0).toFixed(4).replace(".", ",") : "");
@@ -628,23 +633,25 @@ export default function ContasAPagarPage() {
   // Aplica o adiantamento como pagamento (parcial ou total) do título; o saldo a pagar pelo banco é recalculado
   async function aplicarAdiantNoModal(adiant: AdiantamentoFornecedor, valorExibido: number) {
     if (!modalBaixa) return;
-    const saldoAdiant = adiant.valor - (adiant.valor_aplicado ?? 0);
-    const saldoCp = Math.max(0, saldoBase(modalBaixa));
+    const cot = ehUSD(modalBaixa.moeda) ? numBR(bCotacao) : 1;
+    const saldoAdiant = (adiant.credito_disponivel ?? 0) * cot;
+    const saldoCp = Math.max(0, saldoModal(modalBaixa));
     const valor = valorExibido || 0;
     if (valor <= 0) return;
     if (valor > saldoAdiant + 0.01) { setErroAcao(`Valor maior que o saldo do adiantamento (${fmtBRL(saldoAdiant)}).`); return; }
     if (valor > saldoCp + 0.01) { setErroAcao(`Valor maior que o saldo devedor do título (${fmtBRL(saldoCp)}).`); return; }
     setAplicandoAdiant(adiant.id); setErroAcao("");
     try {
-      const r = await aplicarAdiantamentoEmCP(adiant.id, modalBaixa.id, valor, bData || hojeISO(), `Adiantamento aplicado — ${modalBaixa.descricao}`);
+      const r = await aplicarAdiantamentoEmCP(adiant.id, modalBaixa.id, valor, bData || hojeISO(), `Adiantamento aplicado — ${modalBaixa.descricao}`, cot);
       setAdiantamentosDisp(prev => prev
-        .map(a => a.id === adiant.id ? { ...a, valor_aplicado: (a.valor_aplicado ?? 0) + valor } : a)
-        .filter(a => (a.valor - (a.valor_aplicado ?? 0)) > 0.01));
+        .map(a => a.id === adiant.id ? { ...a, valor_aplicado: (a.valor_aplicado ?? 0) + valor / cot, credito_disponivel: r.novoSaldoAdiantamento } : a)
+        .filter(a => (a.credito_disponivel ?? 0) > 0.005));
       setValorAdiantAplicar(prev => { const n = { ...prev }; delete n[adiant.id]; return n; });
-      const novoSaldo = Math.max(0, (modalBaixa.valor ?? 0) - r.novoTotalCp);
-      setBValor(novoSaldo.toFixed(2).replace(".", ","));
-      setModalBaixa(prev => prev ? { ...prev, valor_pago: r.novoTotalCp } : prev);
+      const novoSaldo = r.novoSaldoCp;
+      setBValor(Math.max(0, novoSaldo + numBR(bMulta) + numBR(bJuros) - numBR(bDesc)).toFixed(2).replace(".", ","));
+      setModalBaixa(prev => prev ? { ...prev, valor: r.novoValorCp, valor_pago: r.novoTotalCp, status_normalizado: r.novoStatusCp } : prev);
       await carregar();
+      if (r.aviso) alert(r.aviso);
       if (r.novoStatusCp === "baixado") { alert("Título totalmente coberto pelo adiantamento — nada a pagar pelo banco."); setModalBaixa(null); }
     } catch (e: unknown) {
       setErroAcao("Erro ao aplicar adiantamento: " + (e instanceof Error ? e.message : String(e)));
@@ -2063,6 +2070,7 @@ export default function ContasAPagarPage() {
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
                     <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.numero}</div>
                   </div>}
+                  {l.adiantamento_fornecedor && <div><div style={{ color: "#888", fontSize: 10 }}>Adiantamento a fornecedor</div><strong>{l.pedido_compra_id ? `Pedido nº ${l.pedido_numero ?? l.pedido_compra_id.slice(0, 8)}` : "Sem pedido vinculado"}</strong><div>O pagamento deste título gera crédito; a compensação na NF não gera nova saída bancária.</div></div>}
                   {l.origem_lancamento && <div>
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Origem do lançamento</div>
                     <div style={{ color: "#1a1a1a" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento] ?? l.origem_lancamento}</div>
@@ -2314,6 +2322,7 @@ export default function ContasAPagarPage() {
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>
                       {l.descricao ?? "—"}
+                      {l.adiantamento_fornecedor && <span style={{ marginLeft: 6, padding: "2px 6px", borderRadius: 4, background: "#FFF0CD", color: "#765000", fontWeight: 700, fontSize: 10 }}>Adiantamento{l.pedido_compra_id ? ` · Pedido nº ${l.pedido_numero ?? l.pedido_compra_id.slice(0, 8)}` : " · Sem pedido"}</span>}
                       {l.origem_lancamento === "pedido_compra" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>Pedido de Compra</span>}
                       {l.origem_lancamento === "pedido_compra" && motivoDaObservacao(l.observacao) && (
                         <div style={{ fontSize: 10, color: "#666", marginTop: 2, fontStyle: "normal" }}>Valor reduzido: {motivoDaObservacao(l.observacao)}</div>
@@ -2575,6 +2584,7 @@ export default function ContasAPagarPage() {
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
                     <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.numero}</div>
                   </div>}
+                  {l.adiantamento_fornecedor && <div><div style={{ color: "#888", fontSize: 10 }}>Adiantamento a fornecedor</div><strong>{l.pedido_compra_id ? `Pedido nº ${l.pedido_numero ?? l.pedido_compra_id.slice(0, 8)}` : "Sem pedido vinculado"}</strong><div>O pagamento deste título gera crédito; a compensação na NF não gera nova saída bancária.</div></div>}
                   {l.origem_lancamento && <div>
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Origem do lançamento</div>
                     <div style={{ color: "#1a1a1a" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento] ?? l.origem_lancamento}</div>
@@ -2955,15 +2965,15 @@ export default function ContasAPagarPage() {
             {adiantamentosDisp.length > 0 && (
               <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>💰 Adiantamento disponível deste fornecedor</div>
-                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>O valor é editável: dá para usar só uma parte do adiantamento. O saldo que sobrar continua disponível para outros títulos do fornecedor.</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>Somente crédito já pago. Adiantamento vinculado a pedido só pode abater títulos daquele pedido. A compensação reduz o saldo a pagar pelo banco.</div>
                 {adiantamentosDisp.map(a => {
-                  const saldoAdiant = a.valor - (a.valor_aplicado ?? 0);
-                  const valorSugerido = Math.min(saldoAdiant, Math.max(0, saldoBase(modalBaixa)));
+                  const saldoAdiant = (a.credito_disponivel ?? 0) * (ehUSD(modalBaixa.moeda) ? numBR(bCotacao) : 1);
+                  const valorSugerido = Math.min(saldoAdiant, Math.max(0, saldoModal(modalBaixa)));
                   const valorAtual = valorAdiantAplicar[a.id] ?? valorSugerido;
                   return (
                     <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <div style={{ flex: 1, fontSize: 12, color: "var(--text-1)" }}>
-                        {a.descricao} <span style={{ color: "var(--text-3)" }}>— saldo {fmtBRL(saldoAdiant)}</span>
+                        {a.descricao}{a.pedido_compra_id ? ` · Pedido nº ${a.pedido_numero ?? a.pedido_compra_id.slice(0, 8)}` : " · Sem pedido vinculado"} <span style={{ color: "var(--text-3)" }}>— saldo {fmtBRL(saldoAdiant)}</span>
                       </div>
                       <InputMonetario value={valorAtual} onChange={v => setValorAdiantAplicar(p => ({ ...p, [a.id]: v }))} style={{ ...inp, width: 120, fontSize: 12, padding: "5px 8px" }} />
                       <button disabled={aplicandoAdiant === a.id} onClick={() => aplicarAdiantNoModal(a, valorAtual)}

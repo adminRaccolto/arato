@@ -170,6 +170,7 @@ export default function AdiantamentosPage() {
   const salvarNovo = async () => {
     if (!fazAtiva) return;
     const erros: string[] = [];
+    if (!form.pessoa_id) erros.push("Fornecedor");
     if (!form.descricao.trim()) erros.push("Descrição");
     if (!form.data_emissao) erros.push("Data de Emissão");
     if (!form.valor) erros.push("Valor");
@@ -207,9 +208,10 @@ export default function AdiantamentosPage() {
     if (!fApliq.valor_aplicado) errosAp.push("Valor a Aplicar");
     if (!fApliq.data_aplicacao) errosAp.push("Data de Aplicação");
     if (!fApliq.descricao.trim()) errosAp.push("Descrição");
+    if (!fApliq.nr_nf.trim()) errosAp.push("NF (ou aplique pela baixa do CP)");
     if (errosAp.length) { setErro(`Preencha antes de salvar: ${errosAp.join(", ")}`); return; }
     const val = Number(fApliq.valor_aplicado);
-    const saldo = modalApliq.valor - (modalApliq.valor_aplicado ?? 0);
+    const saldo = modalApliq.credito_disponivel ?? 0;
     if (val > saldo + 0.01) { setErro(`Valor maior que o saldo disponível (${fmtBRL(saldo)})`); return; }
     setSalvando(true); setErro("");
     try {
@@ -275,7 +277,7 @@ export default function AdiantamentosPage() {
           {[
             { label: "Total Adiantado (ativos)", valor: fmtBRL(totalAdiantado), cor: "#111111", bg: "#E8E8E8" },
             { label: "Total Aplicado",           valor: fmtBRL(totalAplicado),  cor: "#1A5C38", bg: "#D5F0DD" },
-            { label: "Saldo Disponível",         valor: fmtBRL(saldoDisp),      cor: saldoDisp > 0 ? "#7A5520" : "var(--text-2)", bg: saldoDisp > 0 ? "#FBF3E0" : "var(--bg-page)" },
+            { label: "Saldo a compensar",         valor: fmtBRL(saldoDisp),      cor: saldoDisp > 0 ? "#7A5520" : "var(--text-2)", bg: saldoDisp > 0 ? "#FBF3E0" : "var(--bg-page)" },
             { label: "Fornecedores c/ saldo",    valor: String(nFornecedores),  cor: "var(--text-2)", bg: "var(--bg-page)" },
           ].map(c => (
             <div data-arato-statistic="display" key={c.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border)" }}>
@@ -353,12 +355,12 @@ export default function AdiantamentosPage() {
                           </div>
                         )}
                       </td>
-                      <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: saldo > 0 ? "#7A5520" : "#1A5C38", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(saldo)}</td>
+                      <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: saldo > 0 ? "#7A5520" : "#1A5C38", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(saldo)}<div style={{ fontSize: 10, fontWeight: 400 }}>Crédito pago: {fmtBRL(a.credito_disponivel ?? 0)}</div></td>
                       <td style={tdS}>{badge(a.status)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <OperationalButton data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</OperationalButton>
-                          {(a.status === "em_aberto" || a.status === "parcial") && (
+                          {(a.status === "em_aberto" || a.status === "parcial") && (a.credito_disponivel ?? 0) > 0 && (
                             <OperationalButton data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
                               onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: hojeLocal() }); setErro(""); }}>
                               Aplicar
@@ -383,7 +385,7 @@ export default function AdiantamentosPage() {
         <Modal titulo="Novo Adiantamento a Fornecedor" onClose={() => setModalNovo(false)} width={720}>
           <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1/-1" }}>
-              <label data-arato-label="true" style={lbl}>Fornecedor</label>
+              <label data-arato-label="true" style={lbl}>Fornecedor *</label>
               <SelectField style={inp} value={form.pessoa_id} onChange={e => {
                 const pessoa_id = e.target.value;
                 // Fornecedor trocado: o pedido escolhido só continua se for desse fornecedor
@@ -487,9 +489,10 @@ export default function AdiantamentosPage() {
           <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Fornecedor</div><div style={{ fontWeight: 600 }}>{nomePessoa(modalApliq.pessoa_id)}</div></div>
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Valor Total</div><div style={{ fontWeight: 600 }}>{fmtBRL(modalApliq.valor)}</div></div>
-            <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Saldo Disponível</div><div style={{ fontWeight: 700, color: "#7A5520", fontSize: 16 }}>{fmtBRL(modalApliq.valor - (modalApliq.valor_aplicado ?? 0))}</div></div>
+            <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Crédito pago disponível</div><div style={{ fontWeight: 700, color: "#7A5520", fontSize: 16 }}>{fmtBRL(modalApliq.credito_disponivel ?? 0)}</div></div>
           </div>
 
+          <p style={{ fontSize: 12, color: "var(--text-2)" }}>A aplicação abate o CP da NF. Se houver mais de uma parcela, selecione o título em Contas a Pagar e aplique o crédito na baixa.</p>
           <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label data-arato-label="true" style={lbl}>Valor a Aplicar *</label>
@@ -510,10 +513,10 @@ export default function AdiantamentosPage() {
           </div>
 
           {/* Botão "Aplicar Tudo" */}
-          {(modalApliq.valor - (modalApliq.valor_aplicado ?? 0)) > 0 && (
+          {(modalApliq.credito_disponivel ?? 0) > 0 && (
             <OperationalButton data-arato-button="secondary" style={{ ...btnSm, marginTop: 8, color: "#7A5520", background: "#FBF3E0", border: "0.5px solid #C9921B40" }}
-              onClick={() => setFApliq(p => ({ ...p, valor_aplicado: String(modalApliq.valor - (modalApliq.valor_aplicado ?? 0)) }))}>
-              Aplicar saldo total ({fmtBRL(modalApliq.valor - (modalApliq.valor_aplicado ?? 0))})
+              onClick={() => setFApliq(p => ({ ...p, valor_aplicado: String(modalApliq.credito_disponivel ?? 0) }))}>
+              Aplicar saldo total ({fmtBRL(modalApliq.credito_disponivel ?? 0)})
             </OperationalButton>
           )}
 

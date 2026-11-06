@@ -1,3 +1,4 @@
+import { geraMovimentoBancario } from "./financeiro/adiantamentos-fornecedor";
 /**
  * Arato — camada de acesso a dados
  * Todas as queries ao Supabase ficam aqui.
@@ -1034,15 +1035,15 @@ export async function listarLancamentosContaPeriodo(
 export async function calcularSaldoAnterior(fazenda_id: string, dataInicio: string): Promise<number> {
   const { data, error } = await supabase
     .from("lancamentos")
-    .select("tipo, valor, valor_pago, cotacao_usd, moeda")
+    .select("tipo, valor, valor_pago, cotacao_usd, moeda, forma_pagamento")
     .eq("fazenda_id", fazenda_id)
     .eq("status", "baixado")
     .lt("data_vencimento", dataInicio)
     .neq("moeda", "barter");
   if (error) throw error;
-  return (data ?? []).reduce((acc, l) => {
-    const v = l.valor_pago ?? l.valor ?? 0;
-    const brl = l.moeda === "USD" ? v * (l.cotacao_usd ?? 5.12) : v;
+  return (data ?? []).filter(geraMovimentoBancario).reduce((acc, l) => {
+    // valor_pago já é em reais, inclusive em títulos denominados em dólar.
+    const brl = l.valor_pago ?? (l.moeda === "USD" ? Number(l.valor ?? 0) * (l.cotacao_usd ?? 5.12) : Number(l.valor ?? 0));
     return acc + (l.tipo === "receber" ? brl : -brl);
   }, 0);
 }
@@ -7087,22 +7088,12 @@ import type { AdiantamentoFornecedor, AdiantamentoAplicacao } from "./supabase";
 // Adiantamentos do fornecedor com saldo disponível (em_aberto ou parcial),
 // pra oferecer na tela de baixa de CP — "usar adiantamento como pagamento".
 export async function listarAdiantamentosDisponiveis(
-  fazenda_id: string,
-  pessoa_id: string,
-  moeda?: string,
+  fazenda_id: string, pessoa_id: string, moeda?: string, lancamento_cp_id?: string,
 ): Promise<AdiantamentoFornecedor[]> {
-  if (!pessoa_id) return [];
-  const { data, error } = await supabase
-    .from("adiantamentos_fornecedor")
-    .select("*")
-    .eq("fazenda_id", fazenda_id)
-    .eq("pessoa_id", pessoa_id)
-    .in("status", ["em_aberto", "parcial"])
-    .order("data_emissao");
-  if (error) throw error;
-  return (data ?? []).filter(a =>
-    (!moeda || a.moeda === moeda) && (a.valor - (a.valor_aplicado ?? 0)) > 0.01
-  );
+  if (!pessoa_id || !lancamento_cp_id) return [];
+  const { data, error } = await supabase.rpc("adiantamentos_disponiveis_cp", { p_cp: lancamento_cp_id });
+  if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql para consultar os créditos pagos." : error.message);
+  return (data ?? []) as AdiantamentoFornecedor[];
 }
 
 // Aplica um adiantamento diretamente na baixa de um CP — abate o saldo do
@@ -7116,12 +7107,13 @@ export async function aplicarAdiantamentoEmCP(
   valor_aplicado: number,
   data_aplicacao: string,
   descricao?: string,
-): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number }> {
+  cotacao_usd?: number,
+): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number; novoValorCp: number; novoSaldoCp: number; aviso?: string }> {
   const res = await fetch("/api/financeiro/baixar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      acao: "aplicar_adiantamento",
+      acao: "aplicar_adiantamento", cotacao_usd,
       adiantamento_id,
       lancamento_id: lancamento_cp_id,
       valor_aplicado,
@@ -7129,12 +7121,13 @@ export async function aplicarAdiantamentoEmCP(
       descricao,
     }),
   });
-  const json = await res.json() as { ok: boolean; error?: string; novo_status_cp?: string; novo_total_cp?: number; novo_saldo_adiantamento?: number };
+  const json = await res.json() as { ok: boolean; error?: string; novo_status_cp?: string; novo_total_cp?: number; novo_saldo_adiantamento?: number; novo_valor_cp?: number; novo_saldo_cp?: number; aviso?: string };
   if (!json.ok) throw new Error(json.error ?? "Erro ao aplicar adiantamento");
   return {
     novoStatusCp: json.novo_status_cp!,
     novoTotalCp: json.novo_total_cp!,
     novoSaldoAdiantamento: json.novo_saldo_adiantamento!,
+    novoValorCp: json.novo_valor_cp!, novoSaldoCp: json.novo_saldo_cp!, aviso: json.aviso,
   };
 }
 
@@ -7172,20 +7165,16 @@ export async function aplicarAdiantamentoFuncionarioEmCP(
 }
 
 export async function listarAdiantamentos(fazenda_id: string): Promise<AdiantamentoFornecedor[]> {
-  const { data, error } = await supabase
-    .from("adiantamentos_fornecedor")
-    .select("*")
-    .eq("fazenda_id", fazenda_id)
-    .order("data_emissao", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const { data, error } = await supabase.rpc("listar_creditos_fornecedor", { p_fazenda: fazenda_id });
+  if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);
+  return (data ?? []) as AdiantamentoFornecedor[];
 }
 
-/** Adiantamentos ligados a um pedido de compra. Sem a Seção 419 no banco, volta vazio para não travar o pedido. */
+/** Adiantamentos programados e crédito efetivamente pago do pedido. */
 export async function listarAdiantamentosDoPedido(pedido_compra_id: string): Promise<AdiantamentoFornecedor[]> {
-  const { data, error } = await supabase.from("adiantamentos_fornecedor").select("*")
-    .eq("pedido_compra_id", pedido_compra_id).neq("status", "cancelado").order("data_emissao");
-  return error ? [] : (data ?? []);
+  const { data, error } = await supabase.rpc("listar_creditos_fornecedor", { p_pedido: pedido_compra_id });
+  if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);
+  return ((data ?? []) as AdiantamentoFornecedor[]).filter(a => a.status !== "cancelado");
 }
 
 export async function listarAplicacoesAdiantamento(adiantamento_id: string): Promise<AdiantamentoAplicacao[]> {
@@ -7202,41 +7191,11 @@ export async function criarAdiantamento(
   a: Omit<AdiantamentoFornecedor, "id" | "created_at" | "valor_aplicado" | "lancamento_id">,
   jaQuitado: boolean,
 ): Promise<AdiantamentoFornecedor> {
-  const { data: adiant, error: eAdiant } = await supabase
-    .from("adiantamentos_fornecedor")
-    .insert({ ...a, valor_aplicado: 0, status: "em_aberto" })
-    .select()
-    .single();
-  if (eAdiant) throw eAdiant;
-
-  const ogAdiantamento = await resolverOperacaoGerencialPorClassificacao(a.fazenda_id, "2.01.01.09.001");
-  const { data: lanc, error: eLanc } = await supabase
-    .from("lancamentos")
-    .insert({
-      fazenda_id:      a.fazenda_id,
-      tipo:            "pagar",
-      moeda:           a.moeda,
-      cotacao_usd:     a.cotacao_usd ?? null,
-      descricao:       `Adiantamento — ${a.descricao}`,
-      categoria:       "Adiantamento a Fornecedores",
-      operacao_gerencial_id: ogAdiantamento ?? null,
-      data_lancamento: a.data_emissao,
-      data_vencimento: a.data_emissao,
-      valor:           a.valor,
-      status:          jaQuitado ? "baixado" : "em_aberto",
-      data_baixa:      jaQuitado ? a.data_emissao : null,
-      pessoa_id:       a.pessoa_id ?? null,
-      conta_bancaria:  a.conta_bancaria_id ?? null,
-      ano_safra_id:    a.ano_safra_id ?? null,
-      auto:            true,
-    })
-    .select()
-    .single();
-  if (eLanc) throw eLanc;
-
-  await supabase.from("adiantamentos_fornecedor").update({ lancamento_id: lanc.id }).eq("id", adiant.id);
+  const og = await resolverOperacaoGerencialPorClassificacao(a.fazenda_id, "2.01.01.09.001");
+  const { data, error } = await supabase.rpc("criar_adiantamento_fornecedor", { p_dados: a, p_quitado: jaQuitado, p_og: og ?? null });
+  if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);
   await reajustarPedidoDoAdiantamento(a.pedido_compra_id);
-  return { ...adiant, lancamento_id: lanc.id };
+  return data as AdiantamentoFornecedor;
 }
 
 // O título do pedido vale o saldo menos os adiantamentos ligados: recalcula sempre que um deles muda.
@@ -7259,8 +7218,8 @@ export async function atualizarAdiantamento(id: string, data: Partial<Adiantamen
 
 export async function cancelarAdiantamento(id: string): Promise<void> {
   const { data: atual } = await supabase.from("adiantamentos_fornecedor").select("*").eq("id", id).maybeSingle();
-  const { error } = await supabase.from("adiantamentos_fornecedor").update({ status: "cancelado" }).eq("id", id);
-  if (error) throw error;
+  const { error } = await supabase.rpc("cancelar_adiantamento_fornecedor", { p_id: id });
+  if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);
   await reajustarPedidoDoAdiantamento((atual as AdiantamentoFornecedor | null)?.pedido_compra_id);
 }
 
@@ -7272,31 +7231,25 @@ export async function aplicarAdiantamento(
   nrNf?: string,
   nfEntradaId?: string,
 ): Promise<AdiantamentoAplicacao> {
-  const novoTotal = (adiantamento.valor_aplicado ?? 0) + valorAplicado;
-  const novoStatus: AdiantamentoFornecedor["status"] =
-    novoTotal >= adiantamento.valor ? "aplicado" : "parcial";
-
-  const { data: apl, error: eApl } = await supabase
-    .from("adiantamentos_aplicacoes")
-    .insert({
-      adiantamento_id: adiantamento.id,
-      fazenda_id:      adiantamento.fazenda_id,
-      descricao,
-      valor_aplicado:  valorAplicado,
-      data_aplicacao:  dataAplicacao,
-      nr_nf:           nrNf ?? null,
-      nf_entrada_id:   nfEntradaId ?? null,
-    })
-    .select()
-    .single();
-  if (eApl) throw eApl;
-
-  await supabase
-    .from("adiantamentos_fornecedor")
-    .update({ valor_aplicado: novoTotal, status: novoStatus })
-    .eq("id", adiantamento.id);
-  await reajustarPedidoDoAdiantamento(adiantamento.pedido_compra_id);
-
+  let q = supabase.from("lancamentos").select("id,nf_entrada_id,cotacao_usd,moeda")
+    .eq("fazenda_id", adiantamento.fazenda_id).eq("tipo", "pagar").in("status", ["em_aberto", "vencido", "vencendo"]);
+  if (nfEntradaId) q = q.eq("nf_entrada_id", nfEntradaId);
+  else if (nrNf) {
+    const { data: nfs, error } = await supabase.from("nf_entradas").select("id")
+      .eq("fazenda_id", adiantamento.fazenda_id).eq("numero", nrNf);
+    if (error) throw error;
+    q = q.in("nf_entrada_id", (nfs ?? []).map(n => n.id));
+  } else throw new Error("Informe a NF ou aplique o crédito diretamente na baixa do CP. Uma anotação isolada não abate o financeiro.");
+  const { data: titulos, error } = await q;
+  if (error) throw error;
+  if (titulos?.length !== 1) throw new Error("Selecione o título na tela de Contas a Pagar e use Aplicar adiantamento na baixa (NF sem título único em aberto).");
+  const cp = titulos[0];
+  const cot = cp.moeda === "USD" ? Number(cp.cotacao_usd) : 1;
+  if (!(cot > 0)) throw new Error("Informe a cotação na baixa do CP para aplicar este adiantamento.");
+  await aplicarAdiantamentoEmCP(adiantamento.id, cp.id, valorAplicado * cot, dataAplicacao, descricao, cot);
+  const { data: apl, error: erroApl } = await supabase.from("adiantamentos_aplicacoes").select("*")
+    .eq("adiantamento_id", adiantamento.id).order("created_at", { ascending: false }).limit(1).single();
+  if (erroApl) throw erroApl;
   return apl;
 }
 

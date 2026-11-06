@@ -1,4 +1,5 @@
 "use client";
+import { geraMovimentoBancario } from "../../lib/financeiro/adiantamentos-fornecedor";
 import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
@@ -287,7 +288,7 @@ export default function Financeiro() {
         listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, undefined, fazendaId),
         calcularSaldoAnterior(fazendaId!, periodoInicio).then(setSaldoAnterior).catch(() => setSaldoAnterior(0)),
       ]);
-      setLancamentos(lans);
+      setLancamentos(lans.filter(geraMovimentoBancario));
       listarSimulacoes(contaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
       if (fazendaId) listarPagamentoLotes(fazendaIds.length ? fazendaIds : fazendaId, "pagar").then(lotes => setBorderosPagos(lotes.filter(l => l.status === "pago"))).catch(() => {});
       if (contaId) listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(ps => setProdutoresConta(ps.map(p => ({ id: p.id, nome: p.nome })))).catch(() => {});

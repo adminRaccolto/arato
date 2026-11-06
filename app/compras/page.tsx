@@ -2569,13 +2569,17 @@ export default function ComprasPage() {
           const v = adiantPedido.filter(a => a.moeda === m).reduce((s, a) => s + a.valor, 0);
           return v > 0 ? (m === "USD" ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fmtBRL(v)) : "";
         }).filter(Boolean).join(" + ");
+        const creditoPagoTxt = (["BRL", "USD"] as const).map(m => {
+          const v = adiantPedido.filter(a => a.moeda === m).reduce((s, a) => s + Number(a.credito_disponivel ?? 0), 0);
+          return v > 0 ? v.toLocaleString("pt-BR", { style: "currency", currency: m }) : "";
+        }).filter(Boolean).join(" + ") || "R$ 0,00";
         const motivoTitulo = motivoDaObservacao(tituloPedido?.observacao);
         const cartoesValor: [string, string, string?][] = [
           ["Valor do pedido", fmtValorPedido(resumoValor.total)],
           ["Valor entregue", entregueNaMoeda === null ? "Sem cotação" : fmtValorPedido(resumoValor.entregue), pedidoUSD && ehFiscal && nfsFiscais.some(n => n.status === "processada") ? `NFs: ${fmtBRL(totalNFs)}` : undefined],
           ["Saldo a entregar", entregueNaMoeda === null ? "—" : fmtValorPedido(resumoValor.saldo)],
           ...(resumoValor.cancelado > 0 ? [["Cancelado", fmtValorPedido(resumoValor.cancelado)] as [string, string]] : []),
-          ...(adiantadoTxt ? [["Adiantado", adiantadoTxt, `${adiantPedido.length} ${adiantPedido.length === 1 ? "adiantamento" : "adiantamentos"}`] as [string, string, string]] : []),
+          ...(adiantadoTxt ? [["Adiantamentos", adiantadoTxt, `Crédito pago disponível: ${creditoPagoTxt}`] as [string, string, string]] : []),
           ...(tituloPedido ? [["Título no CP", tituloPedido.status === "cancelado" ? fmtValorPedido(0) : fmtValorPedido(Number(tituloPedido.valor)), tituloPedido.status === "cancelado" ? "Saldo zerado" : undefined] as [string, string, string?]] : []),
         ];
         // Lista mostra só as NFs processadas (as que contam como entregue); NF ainda pendente que aponta para o pedido

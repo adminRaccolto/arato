@@ -1,4 +1,5 @@
 "use client";
+import AvisoAdiantamentoFornecedor from "../financeiro/AvisoAdiantamentoFornecedor";
 // ═══════════════════════════════════════════════════════════════════════════
 // Modal de NF de Serviço — extraído de app/compras/nf-servico/page.tsx
 // (01/10/2026, Fase 2 da unificação de Documentos Fiscais) pra ser montado
@@ -725,9 +726,10 @@ export default function ModalNfServico({
                 <div style={{ height: 1, background: "var(--bg-tag)", margin: "18px 0" }} />
 
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Identificação da Nota</div>
+                    <AvisoAdiantamentoFornecedor fazendaId={cab.fazenda_id || fazendaId} pessoaId={cab.prestador_id} pedidoId={cab.pedido_compra_id} />
                 <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                   <div>
-                    <label data-arato-label="true" style={lbl}>Número NF / RPS *</label>
+              <label data-arato-label="true" style={lbl}>Número NF / RPS *</label>
                     <input value={cab.numero_nf} onChange={e => setCab(p=>({...p,numero_nf:e.target.value}))} style={inp} />
                   </div>
                   <div>

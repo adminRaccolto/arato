@@ -1,4 +1,5 @@
 "use client";
+import AvisoAdiantamentoFornecedor from "../financeiro/AvisoAdiantamentoFornecedor";
 // ═══════════════════════════════════════════════════════════════════════════
 // Modal de NF de Produtos (NF-e de entrada/compra) — extraído de
 // app/compras/nf/page.tsx (01/10/2026, Fase 2 da unificação de Documentos
@@ -2881,6 +2882,8 @@ export default function ModalNf({
                       </div>
                     )}
                   </div>
+
+                  <AvisoAdiantamentoFornecedor fazendaId={nfEdit?.fazenda_id || fazendaId} pessoaId={cab.pessoa_id} pedidoId={cab.pedido_compra_id} />
 
                   <div data-arato-nf-fields="identity" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                     <div>
