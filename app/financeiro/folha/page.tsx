@@ -1287,7 +1287,8 @@ export default function FolhaPagamentoPage() {
           abaLegada={aba} onAbaLegada={setAba}
           onPeriodo={(de, ate) => { setFComp(de); setFCompAte(ate); }}
           empregador={v => ({ chave: chaveEmpregador(v), nome: nomeEmpregador(v) })}
-          onGerar={() => abrirFolha()}
+          onGerar={(empregador, comp) => abrirFolha(undefined, { empregador, comp })}
+          onPreparar={(id, incluir) => { const f = folhas.find(f => f.id === id); if (f) void abrirFolha(f, { incluir }); }}
           onAbrir={(id) => { const f = folhas.find(f => f.id === id); if (f) void abrirFolha(f); }}
           onCriar={(id, comp) => { const f = funcionarios.find(f => f.id === id); if (f) void abrirFolha(undefined, { empregador: chaveEmpregador(f), comp, incluir: [id] }); }}
           onFechar={ids => { const lista = folhas.filter(f => ids.includes(f.id) && f.status === "rascunho"); if (lista.length) void fecharFolhas(lista); }}

@@ -1,5 +1,6 @@
 import { carregarControleFolha, validarPeriodoControle } from "../../../../lib/folha/controle-server";
 import { assinaturaConferencia, podeUsarControleFolha } from "../../../../lib/folha/controle";
+import { prepararConferenciaEmLote } from "../../../../lib/folha/por-empregador";
 import { descontoNoSalario } from "../../../../lib/folha/gratificacoes";
 import { soDigitos } from "../../../../lib/folha/empregador";
 import { falharSeErro } from "../../../../lib/db-util";
@@ -383,7 +384,7 @@ export async function POST(req: Request) {
     }
 
     let perfilControle: {nome:string|null;role:string|null} | null = null;
-    if (["listar_controle", "conferir_funcionario"].includes(operacao)) {
+    if (["listar_controle", "conferir_funcionario", "conferir_folhas"].includes(operacao)) {
       const { data: perfil, error: ePerfil } = await sb.from("perfis").select("nome,role").eq("user_id", user.id).maybeSingle();
       if (ePerfil) throw ePerfil;
       perfilControle = perfil;
@@ -394,7 +395,7 @@ export async function POST(req: Request) {
         const grupo = Array.isArray(usuario?.grupos_usuarios) ? usuario.grupos_usuarios[0] : usuario?.grupos_usuarios;
         permissao = grupo?.permissoes?.folha;
       }
-      if (!podeUsarControleFolha(perfil?.role, permissao, operacao === "conferir_funcionario")) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
+      if (!podeUsarControleFolha(perfil?.role, permissao, operacao !== "listar_controle")) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
     }
 
     if (operacao === "listar_controle") {
@@ -404,6 +405,21 @@ export async function POST(req: Request) {
       if (!ids.length) return NextResponse.json({ error: "Informe as fazendas do cliente." }, { status: 400 });
       const data = await carregarControleFolha(sb, ids, de, ate);
       return NextResponse.json({ ok: true, data });
+    }
+    if (operacao === "conferir_folhas") {
+      if (!alvos.folhas.length) return NextResponse.json({ error: "Selecione ao menos uma folha." }, { status: 400 });
+      const { data: folhas, error: ef } = await sb.from("folha_pagamento").select("id,fazenda_id,competencia").in("id", alvos.folhas);
+      if (ef) throw ef;
+      if (!folhas?.length || folhas.length !== alvos.folhas.length) return NextResponse.json({ error: "Folha não encontrada." }, { status: 404 });
+      const comps = folhas.map(f => f.competencia).sort();
+      const dados = await carregarControleFolha(sb, [...new Set([...alvos.fazendas, ...folhas.map(f => f.fazenda_id)])], comps[0], comps[comps.length - 1]);
+      if (!dados.conferenciaDisponivel) return NextResponse.json({ error: "Aplique a Seção 420 para registrar a conferência." }, { status: 409 });
+      let registros;
+      try { registros = prepararConferenciaEmLote(dados, alvos.folhas, payload.assinaturas); }
+      catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 409 }); }
+      const { error } = await sb.from("folha_conferencias").upsert(registros.map(r => ({ ...r, usuario_id: user.id, usuario_nome: perfilControle?.nome || user.email || "Usuário" })), { onConflict: "linha_id,assinatura_hash", ignoreDuplicates: true });
+      if (error) throw error;
+      return NextResponse.json({ ok: true, conferidos: registros.length });
     }
     if (operacao === "conferir_funcionario") {
       const { data: folha, error: ef } = await sb.from("folha_pagamento").select("id,fazenda_id,competencia").eq("id", payload.folha_id).single();

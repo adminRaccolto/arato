@@ -26,3 +26,9 @@ test("listas e referências da folha", () => {
   const u = alvosFolha("upsert_folha", { fazenda_id: "a", empresa_id: "e", produtor_id: null })!;
   assert.deepEqual([u.fazendas, u.empresas, u.produtores], [["a"], ["e"], []]);
 });
+
+test("conferir folhas em lote declara todas as folhas e fazendas para a autorização", () => {
+  const alvos = alvosFolha("conferir_folhas", { folha_ids: ["folha1", "folha2", "folha1"], fazenda_ids: ["faz1", "faz2"] });
+  assert.deepEqual(alvos?.folhas, ["folha1", "folha2"]);
+  assert.deepEqual(alvos?.fazendas, ["faz1", "faz2"]);
+});

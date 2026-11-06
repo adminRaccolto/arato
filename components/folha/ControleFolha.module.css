@@ -694,6 +694,17 @@
 .filters {
   grid-template-columns: 150px 150px minmax(200px, 1fr) minmax(180px, 1fr) auto;
 }
+.groupActions {
+  min-width: 240px;
+  max-width: 320px;
+}
+.existing > summary,
+.card > summary {
+  cursor: pointer;
+  padding: 12px;
+  font-weight: 600;
+  color: var(--text-2, #43566d);
+}
 .native .heading h1 {
   color: var(--text-1);
   font-size: 30px;

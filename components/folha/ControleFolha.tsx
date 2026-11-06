@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import InputData from "../InputData";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   OperationalButton as Button,
@@ -23,6 +24,7 @@ import {
   type FinanceiroControle,
 } from "../../lib/folha/controle";
 import { mesAnterior } from "../../lib/folha/empregador";
+import { agruparPorEmpregador } from "../../lib/folha/por-empregador";
 import s from "./ControleFolha.module.css";
 
 export type TipoMovimentoFolha =
@@ -49,7 +51,7 @@ const tipos: [TipoMovimentoFolha, string][] = [
   ["decimo2", "13º · 2ª parcela"],
 ];
 const abas = [
-  "Competência",
+  "Folhas",
   "Movimentos",
   "Conferência",
   "Pagamentos",
@@ -82,7 +84,8 @@ type Props = {
   onPeriodo: (de: string, ate: string) => void;
   onAbaLegada: (a: Props["abaLegada"]) => void;
   empregador: (v: Empregador) => { chave: string; nome: string };
-  onGerar: () => void;
+  onGerar: (empregador?: string, competencia?: string) => void;
+  onPreparar: (folhaId: string, incluir: string[]) => void;
   onAbrir: (folhaId: string, funcionarioId?: string) => void;
   onCriar: (funcionarioId: string, competencia: string) => void;
   onFechar: (ids: string[]) => void;
@@ -179,7 +182,7 @@ function Painel({
 export default function ControleFolha(p: Props) {
   const novoLayout = useOperationalPresentation();
   const [aba, setAba] = useState<Aba>(
-    p.abaLegada === "decimo" ? "13º salário" : "Competência",
+    p.abaLegada === "decimo" ? "13º salário" : "Folhas",
   );
   const [emp, setEmp] = useState("");
   const [busca, setBusca] = useState("");
@@ -199,6 +202,9 @@ export default function ControleFolha(p: Props) {
   const [compMov, setCompMov] = useState(p.de);
   const [soPendentes, setSoPendentes] = useState(false);
   const [gestao, setGestao] = useState(false);
+  const [revisaoIndividual, setRevisaoIndividual] = useState(false);
+  const [grupoAberto, setGrupoAberto] = useState<string | null>(null);
+  const [gruposSelecionados, setGruposSelecionados] = useState<string[]>([]);
   const token = async () => {
     const {
       data: { session },
@@ -232,6 +238,8 @@ export default function ControleFolha(p: Props) {
     setAberto(null);
     setNovo(false);
     setAviso("");
+    setGrupoAberto(null);
+    setGruposSelecionados([]);
   }, [identidade]);
   useEffect(() => {
     let atual = true;
@@ -367,20 +375,27 @@ export default function ControleFolha(p: Props) {
             t.funcionario_id === l.linha?.funcionario_id
           : t.funcionario_id === l.pessoa?.id && dono(t).chave === l.chave),
     );
-  const conferida = (l: LinhaVista) =>
-    l.linha && dados ? conferenciaAtual(l.linha, dados) : undefined;
+  const linhasRevisadas = new Set(dados?.conferencias.map(c => c.linha_id));
+  const revisoes = new Map<string, ReturnType<typeof conferenciaAtual>>();
+  const revisaoAtual = (l: LinhaControle) => {
+    if (!dados || !linhasRevisadas.has(l.id)) return undefined;
+    if (!revisoes.has(l.id)) revisoes.set(l.id, conferenciaAtual(l, dados, fin));
+    return revisoes.get(l.id);
+  };
+  const conferida = (l: LinhaVista) => l.linha ? revisaoAtual(l.linha) : undefined;
   const folhaStatus = (f: FolhaControle) =>
     f.status !== "rascunho"
       ? "Fechada"
       : dados?.linhas.filter((l) => l.folha_id === f.id).length &&
           dados.linhas
             .filter((l) => l.folha_id === f.id)
-            .every((l) => conferenciaAtual(l, dados))
+            .every((l) => revisaoAtual(l))
         ? "Conferida"
         : "Em preparação";
-  const total = titulos.reduce((v, t) => v + t.valor, 0),
-    pago = titulos.reduce((v, t) => v + t.pago, 0),
-    saldo = titulos.reduce((v, t) => v + t.saldo, 0);
+  const titulosResumo = fin.filter(t => t.competencia >= p.de && t.competencia <= p.ate && (!emp || dono(t).chave === emp));
+  const total = titulosResumo.reduce((v, t) => v + t.valor, 0),
+    pago = titulosResumo.reduce((v, t) => v + t.pago, 0),
+    saldo = titulosResumo.reduce((v, t) => v + t.saldo, 0);
   const folhasPeriodo = (dados?.folhas ?? []).filter(
     (f) =>
       f.competencia >= p.de &&
@@ -388,6 +403,34 @@ export default function ControleFolha(p: Props) {
       (!emp || p.empregador(f).chave === emp),
   );
   const selecionada = todasLinhas.find((l) => l.id === aberto);
+  // A busca pode localizar um funcionário, mas nunca reduz os totais nem o processamento do empregador.
+  const grupos = agruparPorEmpregador(
+    todasLinhas.filter(l => !emp || l.chave === emp), folhasPeriodo, p.empregador,
+  ).filter(g => !busca || `${g.nome} ${g.funcionarios.map(l => l.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const grupoDetalhado = grupos.find(g => g.id === grupoAberto);
+  const folhasSelecionadas = grupos.filter(g => gruposSelecionados.includes(g.id)).flatMap(g => g.folhas);
+  const marcarGrupo = (id: string) => setGruposSelecionados(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
+  function prepararGrupo(g: (typeof grupos)[number]) {
+    if (!g.folhas.length) { p.onGerar(g.chave, g.competencia); return; }
+    const faltantes = g.funcionarios.filter(l => !l.linha && l.pessoa).map(l => l.pessoa!.id);
+    p.onPreparar(g.folhas[0].id, faltantes);
+  }
+  async function conferirGrupo(g: (typeof grupos)[number]) {
+    if (!dados) return;
+    setGravando(true);
+    setAviso("");
+    try {
+      await api({
+        operacao: "conferir_folhas",
+        fazenda_ids: p.fazendaIds,
+        folha_ids: g.folhas.map(f => f.id),
+        assinaturas: g.funcionarios.filter(l => l.linha).map(l => ({ linha_id: l.linha!.id, assinatura: assinaturaConferencia(l.linha!, dados, fin) })),
+      });
+      setRefresh(v => v + 1);
+      setAviso(`${g.nome}: folha conferida em conjunto (${g.gerados} funcionários).`);
+    } catch (e) { setAviso(e instanceof Error ? e.message : String(e)); }
+    finally { setGravando(false); }
+  }
   async function conferir(l: LinhaVista) {
     if (!l.linha || !dados) return;
     setGravando(true);
@@ -398,7 +441,7 @@ export default function ControleFolha(p: Props) {
         fazenda_ids: p.fazendaIds,
         folha_id: l.folha!.id,
         linha_id: l.linha.id,
-        assinatura: assinaturaConferencia(l.linha, dados),
+        assinatura: assinaturaConferencia(l.linha, dados, fin),
       });
       setRefresh((v) => v + 1);
       setAviso(`${l.nome}: conferência registrada.`);
@@ -465,7 +508,7 @@ export default function ControleFolha(p: Props) {
     setAba(a);
     setGestao(false);
     if (a === "13º salário") p.onAbaLegada("decimo");
-    else if (a === "Competência") p.onAbaLegada("processamento");
+    else if (a === "Folhas") p.onAbaLegada("processamento");
     else if (a === "Movimentos") p.onAbaLegada("adiantamentos");
   };
   const historico = (dados?.historico ?? []).filter((h) => {
@@ -489,30 +532,30 @@ export default function ControleFolha(p: Props) {
           <p>FINANCEIRO / CONTROLE POR COMPETÊNCIA</p>
           <h1>Folha de pagamento</h1>
           <span>
-            Funcionários, composição e situação financeira no mesmo controle.
+            Gere e processe a folha por empregador. Funcionários ficam no detalhamento e nos ajustes.
           </span>
         </div>
         <div className={s.actions}>
           <Button onClick={exportar} disabled={!dados || loading}>
             Exportar controle
           </Button>
-          <Button onClick={p.onGerar} disabled={p.salvando}>
-            Gerar folhas
+          <Button className={s.primary} onClick={() => p.onGerar(emp || undefined)} disabled={p.salvando}>
+            Gerar folha por empregador
           </Button>
           <Button
-            className={s.primary}
             onClick={() => novoMovimento()}
             disabled={!dados || loading}
           >
-            + Novo movimento
+            + Movimento individual
           </Button>
         </div>
       </OperationalHeading>
       <OperationalFilters className={s.filters}>
         <label>
           De
-          <input
+          <InputData
             type="month"
+            aria-label="Competência inicial"
             value={p.de}
             onChange={(e) => {
               if (e.target.value)
@@ -525,8 +568,9 @@ export default function ControleFolha(p: Props) {
         </label>
         <label>
           Até
-          <input
+          <InputData
             type="month"
+            aria-label="Competência final"
             value={p.ate}
             min={p.de}
             onChange={(e) => {
@@ -547,11 +591,11 @@ export default function ControleFolha(p: Props) {
           </select>
         </label>
         <label>
-          Funcionário
+          Localizar folha ou funcionário
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar nome ou cargo"
+            placeholder="Empregador ou funcionário"
           />
         </label>
         <Button onClick={() => setRefresh((v) => v + 1)} disabled={busy}>
@@ -612,45 +656,21 @@ export default function ControleFolha(p: Props) {
           <span>Valores reais dos títulos do CP</span>
         </div>
         <div>
-          <small>CONFERÊNCIA</small>
+          <small>FOLHAS POR EMPREGADOR</small>
           <strong>
             {dados
-              ? `${linhas.filter((l) => conferida(l)).length} / ${linhas.length}`
+              ? `${grupos.filter(g => g.folhas.length && g.folhas.every(f => f.status !== "rascunho")).length} / ${grupos.length}`
               : "—"}
           </strong>
-          <span>Revisões válidas para os valores atuais</span>
+          <span>Fechadas / empregadores e competências</span>
         </div>
       </div>
       <div className={s.process}>
-        <span>
-          Preparar → Conferir → Fechar <span className={s.separator}>|</span>{" "}
-          Pagamento acompanhado por título
-        </span>
-        <div className={s.actions}>
-          <Button
-            onClick={() => {
-              p.onAbaLegada("processamento");
-              setAba("Competência");
-              setGestao((v) => !v);
-            }}
-          >
-            Gerenciar folhas por empregador
-          </Button>
-          <Button
-            disabled={
-              busy || !folhasPeriodo.some((f) => f.status === "rascunho")
-            }
-            onClick={() =>
-              p.onFechar(
-                folhasPeriodo
-                  .filter((f) => f.status === "rascunho")
-                  .map((f) => f.id),
-              )
-            }
-          >
-            Fechar folhas em rascunho
-          </Button>
-        </div>
+        <span>Empregador e competência → Preparação em conjunto → Fechamento da folha → Pagamento no CP</span>
+        <Button disabled={busy || !folhasSelecionadas.some(f => f.status === "rascunho")}
+          onClick={() => p.onFechar(folhasSelecionadas.filter(f => f.status === "rascunho").map(f => f.id))}>
+          Fechar folhas selecionadas
+        </Button>
       </div>
       <nav className={s.tabs} aria-label="Áreas do controle da folha">
         {abas.map((a) => (
@@ -668,18 +688,57 @@ export default function ControleFolha(p: Props) {
           Carregando linhas, vínculos financeiros e conferências…
         </p>
       )}
-      {dados && !loading && aba === "Competência" && (
+      {dados && !loading && (aba === "Folhas" || aba === "Conferência") && (
         <section className={s.card}>
           <div className={s.sectionHeading}>
             <div>
-              <h2>Pessoas e valores da competência</h2>
-              <p>
-                As linhas preservam o empregador da folha e incluem o histórico
-                de funcionários desligados.
-              </p>
+              <h2>{aba === "Conferência" ? "Conferência das folhas por empregador" : "Folhas por empregador e competência"}</h2>
+              <p>Uma linha por empregador e competência. A preparação e o fechamento abrangem todos os funcionários da folha.</p>
             </div>
-            <span className={s.badge}>{linhas.length} linhas</span>
+            <span className={s.badge}>{grupos.length} folhas</span>
           </div>
+          {aba === "Conferência" && <p className={s.note}>A conferência registrada é opcional. Você pode conferir a folha inteira em um clique; não é necessário marcar cada funcionário.</p>}
+          <div className={s.tableWrap}>
+            <Grid data-op-title="Folhas por empregador">
+              <thead><tr>
+                <th><input type="checkbox" aria-label="Selecionar todas as folhas" checked={grupos.length > 0 && grupos.every(g => gruposSelecionados.includes(g.id))}
+                  onChange={e => setGruposSelecionados(e.target.checked ? grupos.map(g => g.id) : [])} /></th>
+                {["Empregador", "Competência", "Funcionários", "Bruto", "Complemento", "Descontos", "Líquido", "Encargos", "Situação", "Ações"].map(h => <th key={h}>{h}</th>)}
+              </tr></thead>
+              <tbody>{grupos.map(g => {
+                const revisados = g.funcionarios.filter(l => l.linha && conferida(l)).length;
+                const fechadas = g.folhas.length > 0 && g.folhas.every(f => f.status !== "rascunho");
+                return <tr key={g.id}>
+                  <td><input type="checkbox" aria-label={`Selecionar ${g.nome} — ${mes(g.competencia)}`} checked={gruposSelecionados.includes(g.id)} onChange={() => marcarGrupo(g.id)} /></td>
+                  <td><Button className={s.name} onClick={() => setGrupoAberto(g.id)}>{g.nome || "Sem empregador"}</Button></td>
+                  <td>{mes(g.competencia)}</td>
+                  <td>{g.gerados}<small>{g.faltantes ? `${g.faltantes} fora da folha` : "Todos incluídos"}</small></td>
+                  <td>{moeda(g.bruto)}</td><td>{moeda(g.complemento)}</td><td>{moeda(g.descontos)}</td>
+                  <td className={s.amount}>{moeda(g.liquido)}</td><td>{moeda(g.encargos)}</td>
+                  <td><span className={fechadas ? s.good : s.badge}>{!g.folhas.length ? "Não gerada" : fechadas ? "Fechada" : "Em preparação"}</span>
+                    <small>{g.gerados && revisados === g.gerados ? "Folha conferida" : "Conferência opcional"}</small></td>
+                  <td><div className={`${s.actions} ${s.groupActions}`}>
+                    <Button disabled={busy} onClick={() => prepararGrupo(g)}>{g.folhas.length ? fechadas ? "Abrir folha" : "Preparar folha" : "Gerar folha"}</Button>
+                    <Button onClick={() => setGrupoAberto(g.id)}>Conferir totais e funcionários</Button>
+                    {!!g.gerados && <Button disabled={busy || !p.podeConferir || !dados.conferenciaDisponivel || g.faltantes > 0 || revisados === g.gerados} onClick={() => conferirGrupo(g)}>{revisados === g.gerados ? "✓ Folha conferida" : "Marcar folha conferida"}</Button>}
+                    {g.folhas.some(f => f.status === "rascunho") && <Button disabled={busy} onClick={() => p.onFechar(g.folhas.filter(f => f.status === "rascunho").map(f => f.id))}>Fechar folha</Button>}
+                    {g.folhas.length === 1 && <Button disabled={busy} onClick={() => p.onReplicar(g.folhas[0].id)}>Replicar</Button>}
+                  </div></td>
+                </tr>;
+              })}</tbody>
+            </Grid>
+          </div>
+          {!grupos.length && <p className={s.empty}>Nenhuma folha encontrada. Ajuste o período e o empregador ou gere uma nova folha.</p>}
+        </section>
+      )}
+      {dados && !loading && grupoDetalhado && (aba === "Folhas" || aba === "Conferência") && (
+        <section className={s.card}>
+          <div className={s.sectionHeading}>
+            <div><h2>{grupoDetalhado.nome} · {mes(grupoDetalhado.competencia)}</h2><p>Detalhamento da folha. Edite a grade de preparação para ajustar os funcionários sem abrir um formulário por pessoa.</p></div>
+            <div className={s.actions}><Button onClick={() => prepararGrupo(grupoDetalhado)}>Abrir preparação de todos</Button><Button onClick={() => setGrupoAberto(null)}>Fechar detalhamento</Button></div>
+          </div>
+          {!!grupoDetalhado.faltantes && <p className={s.notice}>{grupoDetalhado.faltantes} funcionário(s) fora da folha. “Abrir preparação de todos” inclui os faltantes para você salvar ou reprocessar em conjunto.</p>}
+          {grupoDetalhado.folhas.length > 1 && <div className={s.actions}>{grupoDetalhado.folhas.map(f => <Button key={f.id} onClick={() => p.onAbrir(f.id)}>Abrir registro {f.id.slice(0, 8)}</Button>)}</div>}
           <div className={s.tableWrap}>
             <Grid data-op-title="Pessoas e valores da folha">
               <thead>
@@ -700,7 +759,7 @@ export default function ControleFolha(p: Props) {
                 </tr>
               </thead>
               <tbody>
-                {linhas.map((l) => {
+                {grupoDetalhado.funcionarios.map((l) => {
                   const ts = documentos(l);
                   const ps = dados.premios.filter(
                     (x) =>
@@ -776,27 +835,11 @@ export default function ControleFolha(p: Props) {
               </tbody>
             </Grid>
           </div>
-          {!linhas.length && (
-            <p className={s.empty}>
-              Nenhum funcionário encontrado no período e filtros selecionados.
-            </p>
-          )}
-          <div className={s.employers}>
-            {folhasPeriodo.map((f) => (
-              <div key={f.id}>
-                <strong>{p.empregador(f).nome}</strong>
-                <span>
-                  {mes(f.competencia)} · {folhaStatus(f)}
-                </span>
-                <Button onClick={() => p.onAbrir(f.id)}>Abrir</Button>
-                <Button onClick={() => p.onReplicar(f.id)}>Replicar</Button>
-              </div>
-            ))}
-          </div>
         </section>
       )}
       {dados && !loading && aba === "Conferência" && (
-        <section className={s.card}>
+        <details className={s.card} onToggle={e => setRevisaoIndividual(e.currentTarget.open)}><summary>Comparar e revisar funcionários individualmente (opcional)</summary>
+          {revisaoIndividual && <>
           <div className={s.sectionHeading}>
             <div>
               <h2>Conferência por funcionário</h2>
@@ -891,7 +934,8 @@ export default function ControleFolha(p: Props) {
               Gere a folha ou ajuste o período para iniciar a conferência.
             </p>
           )}
-        </section>
+          </>}
+        </details>
       )}
       {dados && !loading && aba === "Pagamentos" && (
         <section className={s.card}>
@@ -975,7 +1019,7 @@ export default function ControleFolha(p: Props) {
               </p>
             </div>
             <Button className={s.primary} onClick={() => novoMovimento()}>
-              + Novo movimento
+              + Movimento individual
             </Button>
           </div>
           <div className={s.tableWrap}>
@@ -1128,7 +1172,8 @@ export default function ControleFolha(p: Props) {
           filtros.
         </p>
       )}
-      {(aba === "Movimentos" || aba === "13º salário" || gestao || !!erro) && (
+      {aba === "Folhas" && <details className={s.existing} onToggle={e => setGestao(e.currentTarget.open)}><summary>Outras ações da folha: excluir, reabrir e manutenção</summary>{gestao && p.children}</details>}
+      {(aba === "Movimentos" || aba === "13º salário" || !!erro) && (
         <section className={s.existing}>
           <div className={s.actions}>
             {aba === "Movimentos" && (
@@ -1354,7 +1399,7 @@ export default function ControleFolha(p: Props) {
                       ? "Esta rotina usa o cadastro do funcionário, mantendo os cálculos, períodos e regras atuais."
                       : tipo.startsWith("decimo")
                         ? "O controle anual mantém avos, base, parcelas e proteção dos pagamentos já realizados."
-                        : "A edição é feita na folha do funcionário. Folhas fechadas seguem pela prévia de reprocessamento e títulos já pagos permanecem protegidos."}
+                        : "Horas extras e descontos podem ser ajustados na grade de todos os funcionários do empregador. Folhas fechadas seguem pela prévia de reprocessamento e títulos já pagos permanecem protegidos."}
               </p>
               <footer className={s.actions}>
                 <Button onClick={() => setNovo(false)}>Cancelar</Button>

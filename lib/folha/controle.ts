@@ -238,6 +238,7 @@ export function assinaturaConferencia(
     ControleDados,
     "adiantamentos" | "premios" | "folhas" | "titulos" | "vinculos"
   >,
+  financeiros?: FinanceiroControle[],
 ): string {
   const f = d.folhas.find((f) => f.id === l.folha_id);
   const campos = [
@@ -300,7 +301,7 @@ export function assinaturaConferencia(
       p.lancamento_id,
       p.data_pagamento,
     ]);
-  const valores = financeirosControle(d)
+  const valores = (financeiros ?? financeirosControle(d))
     .filter(
       (t) =>
         t.funcionario_id === l.funcionario_id &&
@@ -314,8 +315,9 @@ export function assinaturaConferencia(
 export function conferenciaAtual(
   l: LinhaControle,
   d: ControleDados,
+  financeiros?: FinanceiroControle[],
 ): ConferenciaControle | undefined {
-  const assinatura = assinaturaConferencia(l, d);
+  const assinatura = assinaturaConferencia(l, d, financeiros);
   return d.conferencias.find(
     (c) => c.linha_id === l.id && c.assinatura === assinatura,
   );

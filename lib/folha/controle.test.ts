@@ -207,3 +207,64 @@ test("permissões distinguem visualização, conferência e o padrão de grupo n
   assert.equal(podeUsarControleFolha("cliente", undefined, true), true);
   assert.equal(podeUsarControleFolha("raccotlo", "nenhum", true), true);
 });
+
+test("folha principal agrupa mil funcionários por empregador e competência sem perder totais", async () => {
+  const { agruparPorEmpregador } = await import("./por-empregador.ts");
+  const folhas = [{ id: "nov", fazenda_id: "faz", competencia: "2026-11", status: "rascunho", empresa_id: "emp" }, { id: "dez", fazenda_id: "faz", competencia: "2026-12", status: "rascunho", empresa_id: "emp" }];
+  const linhas = Array.from({ length: 1000 }, (_, i) => ({ competencia: "2026-11", chave: "cnpj", empregador: "Empresa", linha: { id: `l${i}`, folha_id: "nov", funcionario_id: `p${i}`, nome_funcionario: `Pessoa ${i}`, salario_bruto: 3000, complemento_salarial: 500, inss_trabalhador: 250, irrf: 50, adiantamento: 400, outros_descontos: 100, fgts: 240, inss_patronal: 840 } }));
+  const grupos = agruparPorEmpregador(linhas, folhas, () => ({ chave: "cnpj", nome: "Empresa" }));
+  assert.equal(grupos.length, 2);
+  const novembro = grupos.find(g => g.competencia === "2026-11")!;
+  assert.equal(novembro.gerados, 1000);
+  assert.equal(novembro.bruto, 3000000);
+  assert.equal(novembro.complemento, 500000);
+  assert.equal(novembro.descontos, 800000);
+  assert.equal(novembro.liquido, 2700000);
+  assert.equal(novembro.encargos, 1080000);
+});
+
+test("agrupamento preserva registros antigos do mesmo CNPJ, faltantes e empregadores diferentes", async () => {
+  const { agruparPorEmpregador } = await import("./por-empregador.ts");
+  const d = dados();
+  d.folhas.push({ ...d.folhas[0], id: "folha-antiga", empresa_id: null, produtor_id: "pj-mesmo-cnpj" });
+  const linhas = [
+    { competencia: "2026-11", chave: "cnpj", empregador: "Empresa", linha: d.linhas[0] },
+    { competencia: "2026-11", chave: "cnpj", empregador: "Empresa" },
+    { competencia: "2026-11", chave: "cpf-outro", empregador: "Produtor" },
+  ];
+  const grupos = agruparPorEmpregador(linhas, d.folhas, () => ({ chave: "cnpj", nome: "Empresa" }));
+  assert.equal(grupos.length, 2);
+  const empresa = grupos.find(g => g.chave === "cnpj")!;
+  assert.equal(empresa.folhas.length, 2);
+  assert.equal(empresa.gerados, 1);
+  assert.equal(empresa.faltantes, 1);
+  assert.equal(empresa.liquido, 3000);
+  assert.equal(grupos.find(g => g.chave === "cpf-outro")?.folhas.length, 0);
+});
+
+test("conferência em lote registra todos de uma vez e recusa composição ou valores desatualizados", async () => {
+  const { prepararConferenciaEmLote } = await import("./por-empregador.ts");
+  const d = dados();
+  d.linhas.push({ ...d.linhas[0], id: "linha2", funcionario_id: "func2", nome_funcionario: "Outra pessoa", cp_lancamento_id: null });
+  const versoes = d.linhas.map(l => ({ linha_id: l.id, assinatura: assinaturaConferencia(l, d) }));
+  assert.equal(prepararConferenciaEmLote(d, ["folha"], versoes).length, 2);
+  assert.throws(() => prepararConferenciaEmLote(d, ["folha"], versoes.slice(0, 1)), /composição/);
+  assert.throws(() => prepararConferenciaEmLote(d, ["folha"], [versoes[0], versoes[0]]), /inválida/);
+  assert.throws(() => prepararConferenciaEmLote(d, ["outra-folha"], versoes), /não encontrados/);
+  d.linhas[1].salario_bruto = 3200;
+  assert.throws(() => prepararConferenciaEmLote(d, ["folha"], versoes), /valores.*mudaram/);
+});
+
+test("conferência de mil funcionários reaproveita a leitura financeira sem alterar as assinaturas", async () => {
+  const { prepararConferenciaEmLote } = await import("./por-empregador.ts");
+  const d = dados();
+  d.linhas = Array.from({ length: 1000 }, (_, i) => ({ id: `linha-${i}`, folha_id: "folha", funcionario_id: `func-${i}`, nome_funcionario: `Pessoa ${i}`, salario_bruto: 3000, cp_lancamento_id: `cp-${i}` }));
+  d.titulos = d.linhas.map((l, i) => ({ id: `cp-${i}`, fazenda_id: "faz", valor: 3000, status: "em_aberto" }));
+  d.vinculos = d.linhas.map(l => ({ titulo_id: l.cp_lancamento_id!, folha_id: l.folha_id, funcionario_id: l.funcionario_id!, competencia: "2026-11", grupo: "salario", descricao: "Salário" }));
+  const financeiros = financeirosControle(d);
+  const versoes = d.linhas.map(l => ({ linha_id: l.id, assinatura: assinaturaConferencia(l, d, financeiros) }));
+  assert.equal(versoes[0].assinatura, assinaturaConferencia(d.linhas[0], d));
+  const registros = prepararConferenciaEmLote(d, ["folha"], versoes);
+  assert.equal(registros.length, 1000);
+  assert.equal(registros[999].linha_id, "linha-999");
+});
