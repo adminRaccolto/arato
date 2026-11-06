@@ -1,4 +1,5 @@
 "use client";
+import { assinaturaAusencia, confirmacaoAusencia, type DecisaoDivergencia } from "../../../lib/folha/divergencias";
 import { useOperationalPresentation } from "../../../components/arato-layout/presentation-mode";
 import folhaStyles from "./FolhaPagamento.module.css";
 import { descontoNoSalario } from "../../../lib/folha/gratificacoes";
@@ -221,7 +222,7 @@ const ST_COLOR: Record<string,string>  = { rascunho:"#888", fechado:"#C9921B", p
 const ADI_LABEL: Record<string,string> = { pendente:"Pendente", descontado:"Descontado", cancelado:"Cancelado" };
 const ADI_COLOR: Record<string,string> = { pendente:"#C9921B", descontado:"#16A34A", cancelado:"#888" };
 
-type Aba = "processamento" | "adiantamentos" | "gratificacoes" | "decimo";
+type Aba = "processamento" | "adiantamentos" | "gratificacoes" | "decimo" | "divergencias";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
@@ -256,6 +257,15 @@ export default function FolhaPagamentoPage() {
   const [empNova, setEmpNova] = useState("");
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
   const [premiacoes,   setPremiacoes]   = useState<Premiacao[]>([]);
+
+  const [decisoesDivergencias, setDecisoesDivergencias] = useState<DecisaoDivergencia[]>([]);
+  const [decisoesDisponiveis, setDecisoesDisponiveis] = useState(false);
+  const [erroDivergencias, setErroDivergencias] = useState("");
+  const [mostrarConfirmadas, setMostrarConfirmadas] = useState(false);
+  const [revisaoAusencia, setRevisaoAusencia] = useState<{ comp: string; funcs: Funcionario[] } | null>(null);
+  const [motivoAusencia, setMotivoAusencia] = useState("");
+  const [salvandoRevisao, setSalvandoRevisao] = useState(false);
+  const [erroRevisao, setErroRevisao] = useState("");
 
   // filtros processamento
   const [fComp,    setFComp]    = useState(compAtual());
@@ -346,6 +356,7 @@ export default function FolhaPagamentoPage() {
         adiPremRes,
         { data: emps },
         { data: prods },
+        decisoesRes,
       ] = await Promise.all([
         // Busca funcionários de todas as fazendas da conta via fazendaIds (join !inner
         // filtrado por conta_id falha silenciosamente no Supabase JS — usar in() diretamente)
@@ -364,9 +375,13 @@ export default function FolhaPagamentoPage() {
         contaId
           ? supabase.from("produtores").select("id,nome,cpf_cnpj").eq("conta_id", contaId).order("nome")
           : Promise.resolve({ data: [] }),
+        apiPost({ operacao: "listar_divergencias_decisoes", fazenda_ids: fids }),
       ]);
       const { data: funcs } = funcsRes as { data: any[] | null };
 
+      setDecisoesDivergencias(decisoesRes.ok ? decisoesRes.data ?? [] : []);
+      setDecisoesDisponiveis(decisoesRes.ok && decisoesRes.disponivel === true);
+      setErroDivergencias(decisoesRes.ok ? "" : decisoesRes.error ?? "Não foi possível consultar as decisões anteriores.");
       if (!folhasRes.ok) setMsg(`Erro ao carregar folhas: ${folhasRes.error ?? "desconhecido"}`);
       if (!adiPremRes.ok) setMsg(`Erro ao carregar adiantamentos: ${adiPremRes.error ?? "desconhecido"}`);
 
@@ -616,6 +631,20 @@ export default function FolhaPagamentoPage() {
     setDataPgto(vencimentoSalario(modalCompDe, diaPagamentoPadrao()));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalFolha, folhaEdit.id, modalCompDe, folhas]);
+
+  async function decidirAusencia(comp: string, funcs: Funcionario[], acao: "confirmar_fora" | "reabrir") {
+    setSalvandoRevisao(true); setErroRevisao("");
+    try {
+      const r = await apiFolha({ operacao: "decidir_divergencias", competencia: comp, acao, motivo: motivoAusencia,
+        rows: funcs.map(f => ({ funcionario_id: f.id, assinatura: assinaturaAusencia(comp, f) })) });
+      setDecisoesDivergencias(atual => [...atual, ...r.data]);
+      setRevisaoAusencia(null); setMotivoAusencia("");
+      setMsg(acao === "reabrir" ? "Análise reaberta na aba Divergências." : `Ausência confirmada para ${funcs.length} funcionário(s) em ${nomeMes(comp)}. A folha e o cadastro não foram alterados.`);
+    } catch (e: unknown) {
+      const texto = e instanceof Error ? e.message : "Não foi possível registrar a decisão.";
+      if (acao === "reabrir") setMsg("Erro: " + texto); else setErroRevisao(texto);
+    } finally { setSalvandoRevisao(false); }
+  }
 
   async function apiFolha(body: Record<string, unknown>) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1157,6 +1186,21 @@ export default function FolhaPagamentoPage() {
   const empregadoresFiltro = [...new Map([...folhas, ...funcionarios].map(f => [chaveEmpregador(f), nomeEmpregador(f)])).entries()].filter(([id]) => !!id).sort((a,b) => a[1].localeCompare(b[1]));
   const folhasFiltradas   = folhas.filter(f => f.competencia >= fComp && f.competencia <= fCompAte && (!fEmpregador || chaveEmpregador(f) === fEmpregador));
   const folhasForaPeriodo = folhas.filter(f => (!fEmpregador || chaveEmpregador(f) === fEmpregador) && (f.competencia < fComp || f.competencia > fCompAte));
+  const divergenciasFolha = [...new Set(folhasFiltradas.map(f => f.competencia))].sort().map(comp => {
+    const doMes = folhas.filter(f => f.competencia === comp);
+    const naMes = new Set(doMes.flatMap(f => f.funcionario_ids ?? []));
+    const naAnterior = new Set(folhas.filter(f => f.competencia === mesAnterior(comp)).flatMap(f => f.funcionario_ids ?? []));
+    const fora = (funcionariosSemFolha(comp, funcionarios, naMes, naAnterior) as Funcionario[])
+      .filter(f => !fEmpregador || chaveEmpregador(f) === fEmpregador);
+    const porEmp = new Map<string, { funcionario: Funcionario; confirmacao?: DecisaoDivergencia }[]>();
+    for (const funcionario of fora) {
+      const ch = chaveEmpregador(funcionario);
+      porEmp.set(ch, [...(porEmp.get(ch) ?? []), { funcionario, confirmacao: confirmacaoAusencia(comp, funcionario, decisoesDivergencias) }]);
+    }
+    return { comp, doMes, porEmp };
+  }).filter(d => d.porEmp.size);
+  const pendenciasFolha = divergenciasFolha.reduce((s, d) => s + [...d.porEmp.values()].flat().filter(f => !f.confirmacao).length, 0);
+  const confirmadasFolha = divergenciasFolha.reduce((s, d) => s + [...d.porEmp.values()].flat().filter(f => !!f.confirmacao).length, 0);
   // A folha aparece como UMA por mês. Por dentro segue uma por empregador: FGTS e INSS Patronal são recolhidos por
   // empregador, e cada folha gera os títulos de encargo dele. Empregadores do mês ficam a um clique, em "Abrir".
   const mesesFolha: [string, Folha[]][] = [];
@@ -1224,12 +1268,13 @@ export default function FolhaPagamentoPage() {
           {([
             ["processamento", "Processamento"], ["adiantamentos", "Adiantamentos"],
             ["gratificacoes", "Gratificações"], ["decimo", "13º Salário"],
+            ["divergencias", `Divergências${pendenciasFolha ? ` (${pendenciasFolha})` : ""}`],
           ] as [Aba, string][]).map(([id, label]) => (
             <OperationalButton key={id} type="button" role="tab" id={`folha-tab-${id}`}
               aria-selected={aba === id} tabIndex={aba === id ? 0 : -1} onKeyDown={e => {
                 if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
                 e.preventDefault();
-                const ids: Aba[] = ["processamento", "adiantamentos", "gratificacoes", "decimo"];
+                const ids: Aba[] = ["processamento", "adiantamentos", "gratificacoes", "decimo", "divergencias"];
                 const index = e.key === "Home" ? 0 : e.key === "End" ? ids.length - 1 : (ids.indexOf(id) + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length;
                 setAba(ids[index]); document.getElementById(`folha-tab-${ids[index]}`)?.focus();
               }} aria-controls={`folha-painel-${id}`}
@@ -1241,11 +1286,9 @@ export default function FolhaPagamentoPage() {
         {/* ══════════════════ ABA 13º SALÁRIO ══════════════════ */}
         {aba === "decimo" && <DecimoTerceiro />}
 
-        {/* ══════════════════ ABA PROCESSAMENTO ══════════════════ */}
-        {aba === "processamento" && (
-          <>
+        {(aba === "processamento" || aba === "divergencias") && (
             <OperationalFilters className={folhaStyles.filters} data-arato-filters="true" style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap", maxWidth: "100%" }}>
                 <div>
                   <label data-arato-label="true" style={S.label}>De</label>
                   <InputData type="month" aria-label="Competência inicial" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
@@ -1274,57 +1317,57 @@ export default function FolhaPagamentoPage() {
               </div>
             </OperationalFilters>
 
-            {/* Funcionários ativos que ficaram fora da folha do mês (estavam no mês anterior ou foram admitidos agora) */}
-            {!loading && (() => {
-              const avisos = [...new Set(folhasFiltradas.map(f => f.competencia))].sort().map(comp => {
-                const doMes = folhas.filter(f => f.competencia === comp);
-                const naMes = new Set(doMes.flatMap(f => f.funcionario_ids ?? []));
-                const naAnterior = new Set(folhas.filter(f => f.competencia === mesAnterior(comp)).flatMap(f => f.funcionario_ids ?? []));
-                const fora = (funcionariosSemFolha(comp, funcionarios, naMes, naAnterior) as Funcionario[]).filter(f => !fEmpregador || chaveEmpregador(f) === fEmpregador);
-                const porEmp = new Map<string, Funcionario[]>();
-                for (const f of fora) { const ch = chaveEmpregador(f); porEmp.set(ch, [...(porEmp.get(ch) ?? []), f]); }
-                return { comp, doMes, porEmp };
-              }).filter(a => a.porEmp.size);
-              if (!avisos.length) return null;
-              return (
-                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "10px 16px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>
-                  {avisos.map(a => (
-                    <div key={a.comp} style={{ marginBottom: 4 }}>
-                      <strong>⚠ {nomeMes(a.comp)}: funcionários ativos fora da folha</strong>
-                      {[...a.porEmp.entries()].map(([ch, fs]) => {
-                        const folhaEmp = a.doMes.find(f => chaveEmpregador(f) === ch);
-                        return (
-                          <div key={ch} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                            <span><strong>{nomeEmpregador(fs[0])}</strong>: {fs.map(f => f.nome).join(", ")}</span>
-                            <OperationalButton data-arato-button="secondary" onClick={() => folhaEmp ? abrirFolha(folhaEmp, { incluir: fs.map(f => f.id) }) : abrirFolha(undefined, { empregador: ch, comp: a.comp })}
-                              style={{ fontSize: 11, color: "#791F1F", background: "#fff", border: "0.5px solid #E24B4A", borderRadius: 5, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
-                              {folhaEmp ? "Incluir na folha" : "Criar a folha"}
-                            </OperationalButton>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+        )}
 
-            {/* Aviso de folhas fora do período filtrado */}
-            {folhasForaPeriodo.length > 0 && (
-              <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 16px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <span style={{ fontSize: 12, color: "#92400E", fontWeight: 600 }}>
-                  ⚠ {new Set(folhasForaPeriodo.map(f => f.competencia)).size} folha{new Set(folhasForaPeriodo.map(f => f.competencia)).size > 1 ? "s" : ""} fora do período filtrado:
-                  {" "}{[...new Set(folhasForaPeriodo.map(f => f.competencia))].map(nomeMes).join(", ")}
-                </span>
-                <OperationalButton data-arato-button="secondary" onClick={() => {
-                  const todas = folhas.filter(f => !fEmpregador || chaveEmpregador(f) === fEmpregador).map(f => f.competencia).sort();
-                  if (todas.length) { setFComp(todas[0]); setFCompAte(todas[todas.length - 1]); }
-                }} style={{ fontSize: 11, color: "#92400E", background: "#FDE68A", border: "0.5px solid #F0C060", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
-                  Ver todas
-                </OperationalButton>
-              </div>
+        {aba === "divergencias" && (
+          <div className={folhaStyles.divergences}>
+            <header><h2>Conferência de divergências</h2>
+              <p>Funcionários ativos que estavam na folha anterior ou foram admitidos recentemente, mas não constam na folha desta competência. Confira se precisam ser incluídos ou se a ausência é esperada.</p>
+              <p>Confirmar a ausência registra o motivo somente para esse mês. Não altera o cadastro nem os valores da folha; a análise pode ser reaberta.</p>
+            </header>
+            <div className={folhaStyles.divergenceToolbar}>
+              <strong>{pendenciasFolha} pendência(s) · {confirmadasFolha} ausência(s) confirmada(s)</strong>
+              <label><input type="checkbox" checked={mostrarConfirmadas} onChange={e => setMostrarConfirmadas(e.target.checked)} /> Mostrar ausências confirmadas</label>
+            </div>
+            {erroDivergencias && <p role="alert">Não foi possível conferir as decisões anteriores: {erroDivergencias} <OperationalButton onClick={carregar} style={S.btn("#F4F6FA", "#1A4870")}>Tentar novamente</OperationalButton></p>}
+            {!erroDivergencias && !decisoesDisponiveis && !loading && <p role="status">Para registrar as decisões, execute a Seção 422 do supabase_migrations.sql. Os avisos continuam disponíveis para consulta.</p>}
+            {loading ? <p>Carregando divergências…</p> : (
+              <>
+                {pendenciasFolha === 0 && <p className={folhaStyles.divergenceEmpty}>Nenhuma ausência pendente de análise neste período.</p>}
+                {divergenciasFolha.flatMap(d => [...d.porEmp.entries()].map(([ch, todos]) => {
+                  const visiveis = todos.filter(f => mostrarConfirmadas || !f.confirmacao);
+                  if (!visiveis.length) return null;
+                  const pendentes = todos.filter(f => !f.confirmacao).map(f => f.funcionario);
+                  const folhaEmp = d.doMes.find(f => chaveEmpregador(f) === ch);
+                  return <details key={`${d.comp}:${ch}`} className={folhaStyles.divergenceGroup}>
+                    <summary>{nomeMes(d.comp)} · {nomeEmpregador(todos[0].funcionario)} <span>{pendentes.length} pendente(s) · {todos.length - pendentes.length} confirmada(s)</span></summary>
+                    {pendentes.length > 0 && <div className={folhaStyles.divergenceActions}>
+                      {ch ? <OperationalButton onClick={() => folhaEmp ? abrirFolha(folhaEmp, { incluir: pendentes.map(f => f.id) }) : abrirFolha(undefined, { empregador: ch, comp: d.comp })} style={S.btn("#1A4870")}>{folhaEmp ? "Incluir pendentes na folha" : "Criar folha do empregador"}</OperationalButton> : <span>Informe o empregador no cadastro antes de gerar a folha.</span>}
+                      <OperationalButton disabled={!decisoesDisponiveis || salvandoRevisao || !podeAcao("folha", "editar")} onClick={() => { setRevisaoAusencia({ comp: d.comp, funcs: pendentes }); setMotivoAusencia(""); setErroRevisao(""); }} style={S.btn("#F4F6FA", "#1A4870")}>Confirmar grupo fora neste mês</OperationalButton>
+                    </div>}
+                    <div className={folhaStyles.tableWrap}><OperationalGrid style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["Funcionário", "Situação", "Motivo / responsável", "Ações"].map(t => <th key={t} style={S.th}>{t}</th>)}</tr></thead><tbody>
+                      {visiveis.map(({ funcionario: f, confirmacao }) => <tr key={f.id}>
+                        <td style={S.td}>{f.nome}</td>
+                        <td style={S.td}>{confirmacao ? "Ausência confirmada" : "Fora da folha · A conferir"}</td>
+                        <td style={S.td}>{confirmacao ? <>{confirmacao.motivo}<small className={folhaStyles.decisionAuthor}>{confirmacao.usuario_nome} · {new Date(confirmacao.created_at).toLocaleString("pt-BR")}</small></> : "Ausência ainda não confirmada nesta competência."}</td>
+                        <td style={S.td}>{confirmacao ? <OperationalButton disabled={salvandoRevisao || !podeAcao("folha", "editar")} onClick={() => decidirAusencia(d.comp, [f], "reabrir")} style={S.btn("#F4F6FA", "#1A4870")}>Reabrir análise</OperationalButton> : <OperationalButton disabled={!decisoesDisponiveis || salvandoRevisao || !podeAcao("folha", "editar")} onClick={() => { setRevisaoAusencia({ comp: d.comp, funcs: [f] }); setMotivoAusencia(""); setErroRevisao(""); }} style={S.btn("#F4F6FA", "#1A4870")}>Confirmar fora neste mês</OperationalButton>}</td>
+                      </tr>)}
+                    </tbody></OperationalGrid></div>
+                  </details>;
+                }))}
+                {folhasForaPeriodo.length > 0 && <details className={folhaStyles.divergenceGroup}>
+                  <summary>Folhas fora do período selecionado <span>Informativo · {new Set(folhasForaPeriodo.map(f => f.competencia)).size} competência(s)</span></summary>
+                  <p>Essas folhas estão ocultas pelo filtro, sem indicar erro: {[...new Set(folhasForaPeriodo.map(f => f.competencia))].sort().map(nomeMes).join(", ")}.</p>
+                  <OperationalButton style={S.btn("#F4F6FA", "#1A4870")} onClick={() => { const comps = folhas.filter(f => !fEmpregador || chaveEmpregador(f) === fEmpregador).map(f => f.competencia).sort(); if (comps.length) { setFComp(comps[0]); setFCompAte(comps[comps.length - 1]); setAba("processamento"); } }}>Ver todas as folhas</OperationalButton>
+                </details>}
+              </>
             )}
+          </div>
+        )}
 
+        {/* ══════════════════ ABA PROCESSAMENTO ══════════════════ */}
+        {aba === "processamento" && (
+          <>
             {loading ? (
               <div style={{ textAlign:"center", padding:40, color:"#888" }}>Carregando...</div>
             ) : folhasFiltradas.length === 0 ? (
@@ -2238,6 +2281,22 @@ export default function FolhaPagamentoPage() {
           </div>
         </div>
       )}
+
+      {revisaoAusencia && <div data-arato-overlay="true" className={folhaStyles.decisionOverlay}>
+        <div role="dialog" aria-modal="true" aria-labelledby="confirmar-ausencia-titulo" className={folhaStyles.decisionModal} data-arato-dialog="drawer">
+          <h2 id="confirmar-ausencia-titulo">Confirmar ausência em {nomeMes(revisaoAusencia.comp)}</h2>
+          <p>Registre por que {revisaoAusencia.funcs.length === 1 ? "este funcionário deve" : "esses funcionários devem"} ficar fora da folha nesta competência.</p>
+          <ul>{revisaoAusencia.funcs.map(f => <li key={f.id}>{f.nome}</li>)}</ul>
+          <label htmlFor="motivo-ausencia">Motivo da ausência *</label>
+          <textarea id="motivo-ausencia" autoFocus maxLength={1000} rows={3} value={motivoAusencia} onChange={e => setMotivoAusencia(e.target.value)} placeholder="Explique por que a ausência na folha é esperada neste mês." style={{ ...S.inp, width: "100%" }} />
+          <p>A confirmação organiza os avisos. Não altera a folha, o cadastro nem impede uma inclusão manual posterior.</p>
+          {erroRevisao && <p role="alert">{erroRevisao}</p>}
+          <div className={folhaStyles.divergenceActions}>
+            <OperationalButton disabled={salvandoRevisao} onClick={() => setRevisaoAusencia(null)} style={S.btn("#F4F6FA", "#555")}>Cancelar</OperationalButton>
+            <OperationalButton disabled={salvandoRevisao || motivoAusencia.trim().length < 3} onClick={() => decidirAusencia(revisaoAusencia.comp, revisaoAusencia.funcs, "confirmar_fora")} style={S.btn("#1A4870")}>{salvandoRevisao ? "Registrando…" : "Confirmar fora neste mês"}</OperationalButton>
+          </div>
+        </div>
+      </div>}
 
     </div>
   );

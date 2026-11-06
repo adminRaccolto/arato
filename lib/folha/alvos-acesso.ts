@@ -13,6 +13,7 @@ const linhas = (p: P) => (Array.isArray(p.rows) ? p.rows : []) as P[];
 export function alvosFolha(operacao: string, p: P): AlvosFolha | null {
   const a: AlvosFolha = { fazendas: [], folhas: [], adiantamentos: [], premiacoes: [], funcionarios: [], empresas: [], produtores: [] };
   switch (operacao) {
+    case "listar_divergencias_decisoes":
     case "listar_folhas":
     case "listar_adi_prem":
     case "listar_controle":
@@ -35,6 +36,8 @@ export function alvosFolha(operacao: string, p: P): AlvosFolha | null {
       a.folhas = ids(p.folha_id); break;
     case "insert_funcionarios":
       a.folhas = ids(linhas(p).map(r => r.folha_id)); a.funcionarios = ids(linhas(p).map(r => r.funcionario_id)); break;
+    case "decidir_divergencias":
+      a.funcionarios = ids(linhas(p).map(r => r.funcionario_id)); break;
     case "salvar_adiantamento":
     case "salvar_premiacao":
       a.fazendas = ids(p.fazenda_id); a.funcionarios = ids(p.funcionario_id); break;

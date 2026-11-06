@@ -163,3 +163,20 @@
     padding-bottom: 12px;
   }
 }
+.divergences { padding: 18px; border: 1px solid var(--border-table, #dce3ed); border-radius: 10px; background: var(--bg-card, #fff); }
+.divergences h2 { margin: 0 0 8px; font-size: 18px; }
+.divergences p { font-size: 13px; color: var(--text-2, #586b82); line-height: 1.5; }
+.divergenceToolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0; font-size: 13px; }
+.divergenceToolbar label { display: flex; gap: 6px; align-items: center; }
+.divergenceGroup { border: 1px solid var(--border-table, #dce3ed); border-radius: 8px; margin: 10px 0; padding: 12px; }
+.divergenceGroup summary { cursor: pointer; font-size: 13px; font-weight: 700; line-height: 1.6; }
+.divergenceGroup summary span { display: inline-block; margin-left: 12px; font-weight: 400; color: var(--text-2, #586b82); }
+.divergenceActions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.decisionAuthor { display: block; margin-top: 4px; color: var(--text-2, #586b82); }
+.divergenceEmpty { background: var(--bg-page, #f5f8fa); padding: 12px; border-radius: 6px; }
+.decisionOverlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #132b4480; z-index: 10000; padding: 16px; }
+.decisionModal { background: var(--bg-card, #fff); border-radius: 12px; padding: 24px; width: min(100%, 620px); max-height: 90vh; overflow-y: auto; box-shadow: 0 16px 60px #132b4440; }
+.decisionModal h2 { margin: 0; font-size: 18px; }
+.decisionModal p, .decisionModal label, .decisionModal li { font-size: 13px; line-height: 1.5; }
+.decisionModal ul { max-height: 140px; overflow-y: auto; padding-left: 20px; }
+.decisionModal textarea { margin-top: 6px; resize: vertical; }

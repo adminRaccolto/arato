@@ -1,3 +1,4 @@
+import { assinaturaAusencia, validarDecisaoAusencia } from "../../../../lib/folha/divergencias";
 import { carregarControleFolha, validarPeriodoControle } from "../../../../lib/folha/controle-server";
 import { assinaturaConferencia, podeUsarControleFolha } from "../../../../lib/folha/controle";
 import { prepararConferenciaEmLote } from "../../../../lib/folha/por-empregador";
@@ -369,8 +370,13 @@ export async function POST(req: Request) {
     if (!alvos) return NextResponse.json({ error: "Operação inválida." }, { status: 400 });
     const fazendaDe = async (tabela: string, lista: string[]) => {
       if (!lista.length) return [] as string[];
-      const { data } = await sb.from(tabela).select("fazenda_id").in("id", lista);
-      return (data ?? []).map((r: { fazenda_id: string | null }) => r.fazenda_id).filter((f): f is string => !!f);
+      const fazendas: string[] = [];
+      for (let inicio = 0; inicio < lista.length; inicio += 100) {
+        const { data, error } = await sb.from(tabela).select("fazenda_id").in("id", lista.slice(inicio, inicio + 100));
+        if (error) throw error;
+        fazendas.push(...(data ?? []).map((r: { fazenda_id: string | null }) => r.fazenda_id).filter((f): f is string => !!f));
+      }
+      return fazendas;
     };
     const fazendasAlvo = [
       ...alvos.fazendas,
@@ -386,7 +392,7 @@ export async function POST(req: Request) {
     }
 
     let perfilControle: {nome:string|null;role:string|null} | null = null;
-    if (["listar_controle", "conferir_funcionario", "conferir_folhas"].includes(operacao)) {
+    if (["listar_controle", "conferir_funcionario", "conferir_folhas", "listar_divergencias_decisoes", "decidir_divergencias"].includes(operacao)) {
       const { data: perfil, error: ePerfil } = await sb.from("perfis").select("nome,role").eq("user_id", user.id).maybeSingle();
       if (ePerfil) throw ePerfil;
       perfilControle = perfil;
@@ -397,7 +403,48 @@ export async function POST(req: Request) {
         const grupo = Array.isArray(usuario?.grupos_usuarios) ? usuario.grupos_usuarios[0] : usuario?.grupos_usuarios;
         permissao = grupo?.permissoes?.folha;
       }
-      if (!podeUsarControleFolha(perfil?.role, permissao, operacao !== "listar_controle")) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
+      if (!podeUsarControleFolha(perfil?.role, permissao, !["listar_controle", "listar_divergencias_decisoes"].includes(operacao))) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
+    }
+
+    if (operacao === "listar_divergencias_decisoes") {
+      const ids = alvos.fazendas;
+      if (!ids.length) return NextResponse.json({ ok: true, data: [], disponivel: true });
+      try {
+        const data = await buscarPaginado((de, ate) => sb.from("folha_divergencias_decisoes").select("*")
+          .in("fazenda_id", ids).order("id").range(de, ate));
+        return NextResponse.json({ ok: true, data, disponivel: true });
+      } catch (e: unknown) {
+        const erro = e as { code?: string; message?: string };
+        if (["42P01", "PGRST205"].includes(erro.code ?? "")) return NextResponse.json({ ok: true, data: [], disponivel: false });
+        throw e;
+      }
+    }
+
+    if (operacao === "decidir_divergencias") {
+      const erro = validarDecisaoAusencia({ competencia: payload.competencia, acao: payload.acao, motivo: payload.motivo });
+      const rows = payload.rows as { funcionario_id: string; assinatura: string }[];
+      if (erro || !Array.isArray(rows) || !rows.length || rows.length > 500 || new Set(rows.map(r => r.funcionario_id)).size !== rows.length) {
+        return NextResponse.json({ error: erro ?? "Selecione entre 1 e 500 funcionários, sem repetição." }, { status: 400 });
+      }
+      const funcs: { id: string; fazenda_id: string; nome: string; empresa_id: string | null; produtor_id: string | null; ativo: boolean; data_admissao: string | null; data_demissao: string | null }[] = [];
+      for (let inicio = 0; inicio < rows.length; inicio += 100) {
+        const { data, error } = await sb.from("funcionarios")
+          .select("id,fazenda_id,nome,empresa_id,produtor_id,ativo,data_admissao,data_demissao").in("id", rows.slice(inicio, inicio + 100).map(r => r.funcionario_id));
+        if (error) throw error;
+        funcs.push(...(data ?? []));
+      }
+      if (funcs?.length !== rows.length || funcs.some(f => assinaturaAusencia(String(payload.competencia), f) !== rows.find(r => r.funcionario_id === f.id)?.assinatura)) {
+        return NextResponse.json({ error: "O cadastro mudou. Atualize a tela antes de confirmar a ausência." }, { status: 409 });
+      }
+      const { data, error } = await sb.from("folha_divergencias_decisoes").insert(funcs.map(f => ({
+        fazenda_id: f.fazenda_id, funcionario_id: f.id, funcionario_nome: f.nome,
+        competencia: payload.competencia, assinatura: assinaturaAusencia(String(payload.competencia), f), acao: payload.acao,
+        motivo: payload.acao === "reabrir" ? "Análise reaberta pelo usuário." : String(payload.motivo).trim(),
+        usuario_id: user.id, usuario_nome: perfilControle?.nome || user.email || "Usuário",
+      }))).select("*");
+      if (error) return NextResponse.json({ error: ["42P01", "PGRST205"].includes(error.code)
+        ? "Execute a Seção 422 do supabase_migrations.sql para registrar a decisão." : error.message }, { status: 400 });
+      return NextResponse.json({ ok: true, data });
     }
 
     if (operacao === "listar_controle") {

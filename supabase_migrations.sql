@@ -20280,3 +20280,30 @@ REVOKE ALL ON FUNCTION public.cancelar_adiantamento_fornecedor(uuid) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.cancelar_adiantamento_fornecedor(uuid) TO authenticated, service_role;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 422 — Decisões sobre divergências da folha, por competência e funcionário
+-- Guarda o motivo e o usuário; reabrir a análise acrescenta um evento ao histórico.
+-- =============================================================================
+BEGIN;
+CREATE TABLE IF NOT EXISTS folha_divergencias_decisoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  funcionario_id uuid REFERENCES funcionarios(id) ON DELETE SET NULL,
+  funcionario_nome text NOT NULL,
+  competencia text NOT NULL CHECK (competencia ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  assinatura text NOT NULL,
+  acao text NOT NULL CHECK (acao IN ('confirmar_fora','reabrir')),
+  motivo text NOT NULL CHECK (length(trim(motivo)) BETWEEN 3 AND 1000),
+  usuario_id uuid NOT NULL,
+  usuario_nome text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX IF NOT EXISTS idx_folha_divergencias_comp ON folha_divergencias_decisoes(fazenda_id,competencia,created_at DESC);
+ALTER TABLE folha_divergencias_decisoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS folha_divergencias_leitura ON folha_divergencias_decisoes;
+CREATE POLICY folha_divergencias_leitura ON folha_divergencias_decisoes FOR SELECT TO authenticated
+  USING (fazenda_id IN (SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+-- Escrita pela API autenticada: valida cliente, permissão, cadastro atual, competência e motivo.
+COMMIT;
+NOTIFY pgrst, 'reload schema';
