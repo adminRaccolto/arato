@@ -1,4 +1,6 @@
 "use client";
+import { centroServicoMaquinas } from "../../lib/fiscal/servico-maquina";
+import PatrimonioServico from "./PatrimonioServico";
 import AvisoAdiantamentoFornecedor from "../financeiro/AvisoAdiantamentoFornecedor";
 // ═══════════════════════════════════════════════════════════════════════════
 // Modal de NF de Serviço — extraído de app/compras/nf-servico/page.tsx
@@ -71,6 +73,7 @@ interface NfServico {
   valor_liquido: number;
   operacao_gerencial_id?: string;
   centro_custo_id?: string;
+  maquina_id?: string | null;
   ano_safra_id?: string;
   pedido_compra_id?: string;
   empresa_id?: string;
@@ -100,7 +103,7 @@ const CAB_VAZIO = () => ({
   valor_servico: "", valor_deducoes: "0",
   aliquota_iss: "3", iss_retido: false,
   valor_inss: "0", valor_ir: "0", valor_outras_retencoes: "0",
-  operacao_gerencial_id: "", centro_custo_id: "",
+  operacao_gerencial_id: "", centro_custo_id: "", maquina_id: "",
   ano_safra_id: "", pedido_compra_id: "",
   empresa_id: "",
   data_vencimento_cp: "", observacao: "",
@@ -305,6 +308,7 @@ export default function ModalNfServico({
         valor_outras_retencoes: String(nf.valor_outras_retencoes),
         operacao_gerencial_id:  nf.operacao_gerencial_id ?? "",
         centro_custo_id:        nf.centro_custo_id ?? "",
+        maquina_id:            nf.maquina_id ?? "",
         ano_safra_id:           nf.ano_safra_id ?? "",
         pedido_compra_id:       nf.pedido_compra_id ?? "",
         empresa_id:             nf.empresa_id ?? "",
@@ -385,6 +389,7 @@ export default function ModalNfServico({
       valor_liquido:         vLiquido,
       operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
       centro_custo_id:       cab.centro_custo_id       || undefined,
+      maquina_id:            cab.maquina_id || null,
       ano_safra_id:          cab.ano_safra_id           || undefined,
       pedido_compra_id:      cab.pedido_compra_id       || undefined,
       empresa_id:            cab.empresa_id || undefined,
@@ -405,7 +410,8 @@ export default function ModalNfServico({
         }
       }
       if (nfEdit) {
-        await supabase.from("nf_servicos").update(payload).eq("id", nfEdit.id);
+        const { error: erroAtualizacao } = await supabase.from("nf_servicos").update(payload).eq("id", nfEdit.id);
+        if (erroAtualizacao) throw new Error(erroAtualizacao.message);
       } else {
         const { data: inserted, error: insErr } = await supabase
           .from("nf_servicos").insert(payload).select("id").single();
@@ -439,6 +445,10 @@ export default function ModalNfServico({
           numero_documento: cab.numero_nf,
           forma_pagamento:  cab.forma_pagamento || undefined,
           origem:           "nf_servico" as const,
+          operacao_gerencial_id: cab.operacao_gerencial_id || null,
+          centro_custo_id: cab.centro_custo_id || null,
+          ano_safra_id: cab.ano_safra_id || null,
+          maquina_id: cab.maquina_id || null,
         };
         const empRows = nfCondicao === "prazo" && nfParcelas.length > 1
           ? nfParcelas.map((parc, i) => ({ ...baseEmp, data_vencimento: parc.data, valor: parseFloat(parc.valorMask.replace(/\./g, "").replace(",", ".")) || 0, observacao: `Parcela ${i + 1}/${nfParcelas.length}` }))
@@ -470,6 +480,7 @@ export default function ModalNfServico({
           origem_lancamento:     "nf_servico" as const,
           operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
           centro_custo_id:       cab.centro_custo_id       || undefined,
+          maquina_id:            cab.maquina_id || null,
           ano_safra_id:          cab.ano_safra_id           || undefined,
           forma_pagamento:       cab.forma_pagamento        || undefined,
         };
@@ -497,7 +508,8 @@ export default function ModalNfServico({
         primeiroLancId = lancJson.ids?.[0] ?? null;
 
         if (primeiroLancId) {
-          await supabase.from("nf_servicos").update({ lancamento_id: primeiroLancId }).eq("id", nfId);
+          const { error: erroVinculo } = await supabase.from("nf_servicos").update({ lancamento_id: primeiroLancId }).eq("id", nfId);
+          if (erroVinculo) throw new Error(erroVinculo.message);
         }
       }
 
@@ -900,11 +912,14 @@ export default function ModalNfServico({
                   </div>
                   <div>
                     <label data-arato-label="true" style={lbl}>Centro de Custo</label>
-                    <SelectField value={cab.centro_custo_id} onChange={e => setCab(p=>({...p,centro_custo_id:e.target.value}))} style={inp}>
+                    <SelectField value={cab.centro_custo_id} onChange={e => setCab(p=>({...p,centro_custo_id:e.target.value,maquina_id:""}))} style={inp}>
                       <option value="">Sem centro de custo</option>
                       {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
                     </SelectField>
                   </div>
+                  {(centroServicoMaquinas(cab.centro_custo_id, centros) || !!cab.maquina_id) && <PatrimonioServico
+                    fazendaId={cab.fazenda_id || fazendaId || ""} value={cab.maquina_id}
+                    onChange={maquina_id => setCab(p => ({ ...p, maquina_id }))} disabled={saving || viewOnly} />}
                 </div>
                 <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                   <div>

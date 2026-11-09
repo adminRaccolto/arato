@@ -385,6 +385,7 @@ export type Lancamento = {
 
 // ── Lançamento Financeiro de Empresa (tabela isolada) ─────────
 export type EmpresaLancamento = {
+  maquina_id?: string | null;
   id: string;
   fazenda_id: string;
   empresa_id: string;
@@ -1339,6 +1340,7 @@ export type HistoricoManutencao = {
   descricao: string;
   custo?: number;
   nf_entrada_item_id?: string;
+  nf_servico_id?: string | null; // origem da apropriação de NFS-e
   created_at?: string;
 };
 

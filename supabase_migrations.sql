@@ -20462,3 +20462,74 @@ ALTER TABLE funcionario_rescisoes
   ADD COLUMN IF NOT EXISTS adiantamentos_ids     uuid[];
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 425 — NFS-e: patrimônio e apropriação do serviço no custo da máquina
+-- Usa o mesmo histórico de manutenção da NF de produtos; uma apropriação por nota.
+-- =============================================================================
+BEGIN;
+ALTER TABLE nf_servicos ADD COLUMN IF NOT EXISTS maquina_id uuid REFERENCES maquinas(id) ON DELETE SET NULL;
+ALTER TABLE empresa_lancamentos ADD COLUMN IF NOT EXISTS maquina_id uuid REFERENCES maquinas(id) ON DELETE SET NULL;
+ALTER TABLE historico_manutencao ADD COLUMN IF NOT EXISTS nf_servico_id uuid REFERENCES nf_servicos(id) ON DELETE CASCADE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_historico_manutencao_nf_servico ON historico_manutencao(nf_servico_id) WHERE nf_servico_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_nf_servicos_maquina ON nf_servicos(maquina_id) WHERE maquina_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.fn_nfse_valida_patrimonio() RETURNS trigger
+LANGUAGE plpgsql SET search_path=public AS $$
+DECLARE v_maquinas boolean; v_conta uuid;
+BEGIN
+  IF NEW.maquina_id IS NULL THEN RETURN NEW; END IF;
+  -- Uma mudança posterior no cadastro do patrimônio não invalida o vínculo histórico já gravado.
+  IF TG_OP='UPDATE' AND NEW.maquina_id IS NOT DISTINCT FROM OLD.maquina_id
+    AND NEW.centro_custo_id IS NOT DISTINCT FROM OLD.centro_custo_id AND NEW.fazenda_id IS NOT DISTINCT FROM OLD.fazenda_id
+    AND (NEW.status IS NOT DISTINCT FROM OLD.status OR NEW.status<>'processada') THEN RETURN NEW; END IF;
+  SELECT conta_id INTO v_conta FROM fazendas WHERE id=NEW.fazenda_id;
+  IF NOT EXISTS(SELECT 1 FROM maquinas m JOIN fazendas f ON f.id=m.fazenda_id WHERE m.id=NEW.maquina_id
+    AND (m.fazenda_id=NEW.fazenda_id OR (v_conta IS NOT NULL AND f.conta_id=v_conta))) THEN
+    RAISE EXCEPTION 'O patrimônio selecionado não pertence ao cliente da NFS-e.';
+  END IF;
+  WITH RECURSIVE centros AS (
+    SELECT c.id,c.parent_id,c.nome,c.manutencao_maquinas,ARRAY[c.id] caminho FROM centros_custo c
+    JOIN fazendas f ON f.id=c.fazenda_id WHERE c.id=NEW.centro_custo_id
+      AND (c.fazenda_id=NEW.fazenda_id OR (v_conta IS NOT NULL AND f.conta_id=v_conta))
+    UNION ALL
+    SELECT c.id,c.parent_id,c.nome,c.manutencao_maquinas,p.caminho||c.id FROM centros_custo c
+    JOIN centros p ON c.id=p.parent_id JOIN fazendas f ON f.id=c.fazenda_id
+    WHERE NOT c.id=ANY(p.caminho) AND (c.fazenda_id=NEW.fazenda_id OR (v_conta IS NOT NULL AND f.conta_id=v_conta))
+  ) SELECT coalesce(bool_or(manutencao_maquinas OR translate(lower(nome),'áàâãäéèêëíìîïóòôõöúùûüç','aaaaaeeeeiiiiooooouuuuc')
+    ~ '(^|[^a-z])(maquinas?|maquinarios?)([^a-z]|$)'),false) INTO v_maquinas FROM centros;
+  IF NOT v_maquinas THEN RAISE EXCEPTION 'Selecione um centro de custos de máquinas para vincular o patrimônio.'; END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_nfse_valida_patrimonio ON nf_servicos;
+CREATE TRIGGER trg_nfse_valida_patrimonio BEFORE INSERT OR UPDATE ON nf_servicos
+  FOR EACH ROW EXECUTE FUNCTION public.fn_nfse_valida_patrimonio();
+
+CREATE OR REPLACE FUNCTION public.fn_nfse_apropria_patrimonio() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+  IF NEW.status='processada' AND NEW.maquina_id IS NOT NULL THEN
+    IF NEW.valor_servico<0 OR NEW.valor_servico::text IN ('NaN','Infinity','-Infinity') THEN
+      RAISE EXCEPTION 'Valor do serviço inválido para apropriação.';
+    END IF;
+    -- Retenções reduzem o pagamento ao prestador, não o custo do serviço executado.
+    INSERT INTO historico_manutencao(fazenda_id,maquina_id,data,tipo,descricao,custo,nf_servico_id)
+    VALUES(NEW.fazenda_id,NEW.maquina_id,NEW.data_prestacao,'corretiva',
+      concat_ws(' — ','NFS-e '||NEW.numero_nf,nullif(NEW.prestador_nome,''),nullif(NEW.discriminacao,'')),
+      round(coalesce(NEW.valor_servico,0),2),NEW.id)
+    ON CONFLICT(nf_servico_id) WHERE nf_servico_id IS NOT NULL DO UPDATE SET
+      fazenda_id=EXCLUDED.fazenda_id,maquina_id=EXCLUDED.maquina_id,data=EXCLUDED.data,
+      tipo=EXCLUDED.tipo,descricao=EXCLUDED.descricao,custo=EXCLUDED.custo;
+  ELSE
+    -- Estorno/cancelamento remove só o custo gerado por esta NFS-e; reprocessar o recria uma única vez.
+    DELETE FROM historico_manutencao WHERE nf_servico_id=NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_nfse_apropria_patrimonio ON nf_servicos;
+CREATE TRIGGER trg_nfse_apropria_patrimonio AFTER INSERT OR UPDATE ON nf_servicos
+  FOR EACH ROW EXECUTE FUNCTION public.fn_nfse_apropria_patrimonio();
+COMMIT;
+NOTIFY pgrst, 'reload schema';
