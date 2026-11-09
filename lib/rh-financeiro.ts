@@ -193,6 +193,7 @@ export function estimarSaldoFgts(salario: number, admissao: string, desligamento
 export async function lancarRescisao(func: Funcionario, fazendaId: string, p: {
   desligamento: string; tipo: TipoDesligamento; aviso: AvisoPrevio; salario: number; saldoFgts: number;
   verbas: VerbaRescisao[]; multaFgts: number; dataPagamento: string; obs?: string;
+  fgtsMes?: number; adiantamentoIds?: string[];
 }) {
   const proventos = r2(p.verbas.filter(v => v.tipo === "provento").reduce((s, v) => s + v.valor, 0));
   const descontos = r2(p.verbas.filter(v => v.tipo === "desconto").reduce((s, v) => s + v.valor, 0));
@@ -200,22 +201,45 @@ export async function lancarRescisao(func: Funcionario, fazendaId: string, p: {
   const adm = func.area_trabalho === "administrativo";
   const ids: string[] = [];
   if (liquido > 0) ids.push(await criarCP(func, fazendaId, `Rescisão — ${func.nome}`, adm ? "RESCISÃO - ADM" : "RESCISÃO - FAZ", liquido, p.dataPagamento, "008"));
+  if ((p.fgtsMes ?? 0) > 0) ids.push(await criarCP(func, fazendaId, `FGTS do mês da rescisão — ${func.nome}`, adm ? "FGTS - ADM" : "FGTS - FAZ", r2(p.fgtsMes!), p.dataPagamento, "013"));
   if (p.multaFgts > 0) ids.push(await criarCP(func, fazendaId, `Multa rescisória do FGTS — ${func.nome}`, adm ? "FGTS - ADM" : "FGTS - FAZ", p.multaFgts, p.dataPagamento, "013"));
-  const { data, error } = await supabase.from("funcionario_rescisoes").insert({
+
+  // Salários previstos depois do desligamento (folha em rascunho, previsões) deixam de existir
+  const { data: prev } = await supabase.from("lancamentos").select("id").eq("funcionario_id", func.id).eq("natureza", "previsao")
+    .in("status", ["em_aberto", "vencido"]).gt("data_vencimento", p.desligamento);
+  const previsoes = (prev ?? []).map(l => l.id as string);
+  if (previsoes.length) {
+    const c = await supabase.from("lancamentos").update({ status: "cancelado" }).in("id", previsoes);
+    if (c.error) throw c.error;
+  }
+  // Adiantamentos pendentes descontados na rescisão
+  const adis = p.adiantamentoIds ?? [];
+  if (adis.length) {
+    const a = await supabase.from("adiantamentos_salario").update({ status: "descontado" }).in("id", adis).eq("status", "pendente");
+    if (a.error) throw a.error;
+  }
+
+  const registro = {
     funcionario_id: func.id, fazenda_id: fazendaId, data_desligamento: p.desligamento, tipo_desligamento: p.tipo, aviso_previo: p.aviso,
     salario_base: p.salario, saldo_fgts: p.saldoFgts, verbas: p.verbas, total_proventos: proventos, total_descontos: descontos,
     total_liquido: liquido, multa_fgts: p.multaFgts, data_pagamento: p.dataPagamento, lancamento_ids: ids, status: "lancada", obs: p.obs || null,
-  }).select().single();
-  if (error) throw error;
+  };
+  // Seção 424: guarda o FGTS do mês e o que foi cancelado/descontado, para o estorno desfazer. Sem a seção, grava o resto.
+  let ins = await supabase.from("funcionario_rescisoes").insert({ ...registro, fgts_mes: r2(p.fgtsMes ?? 0), previsoes_canceladas: previsoes, adiantamentos_ids: adis }).select().single();
+  if (ins.error && /fgts_mes|previsoes_canceladas|adiantamentos_ids/.test(ins.error.message ?? "")) {
+    ins = await supabase.from("funcionario_rescisoes").insert({ ...registro, obs: [p.obs, previsoes.length || adis.length ? `Previsões canceladas: ${previsoes.join(",")} · Adiantamentos descontados: ${adis.join(",")}` : ""].filter(Boolean).join(" · ") || null }).select().single();
+  }
+  if (ins.error) throw ins.error;
   const up = await supabase.from("funcionarios").update({ ativo: false, data_demissao: p.desligamento }).eq("id", func.id);
   if (up.error) throw up.error;
-  return data as RescisaoRegistro;
+  return ins.data as RescisaoRegistro;
 }
 
 export type RescisaoRegistro = {
   id: string; funcionario_id: string; fazenda_id: string; data_desligamento: string; tipo_desligamento: TipoDesligamento; aviso_previo: AvisoPrevio;
   salario_base?: number; saldo_fgts?: number; verbas: VerbaRescisao[]; total_proventos: number; total_descontos: number; total_liquido: number;
   multa_fgts: number; data_pagamento?: string; lancamento_ids?: string[]; status: "lancada" | "estornada"; obs?: string;
+  fgts_mes?: number | null; previsoes_canceladas?: string[] | null; adiantamentos_ids?: string[] | null; created_at?: string;
 };
 
 export async function listarRescisoes(funcionarioId: string): Promise<RescisaoRegistro[]> {
@@ -226,6 +250,15 @@ export async function listarRescisoes(funcionarioId: string): Promise<RescisaoRe
 
 export async function estornarRescisao(r: RescisaoRegistro) {
   await excluirCPsAbertos(r.lancamento_ids ?? []);
+  // Desfaz o que a rescisão mexeu: previsões de salário voltam e adiantamentos voltam a pendentes
+  if (r.previsoes_canceladas?.length) {
+    const e = await supabase.from("lancamentos").update({ status: "em_aberto" }).in("id", r.previsoes_canceladas).eq("status", "cancelado");
+    if (e.error) throw e.error;
+  }
+  if (r.adiantamentos_ids?.length) {
+    const e = await supabase.from("adiantamentos_salario").update({ status: "pendente" }).in("id", r.adiantamentos_ids).eq("status", "descontado");
+    if (e.error) throw e.error;
+  }
   const a = await supabase.from("funcionario_rescisoes").update({ status: "estornada" }).eq("id", r.id);
   if (a.error) throw a.error;
   const b = await supabase.from("funcionarios").update({ ativo: true, data_demissao: null }).eq("id", r.funcionario_id);

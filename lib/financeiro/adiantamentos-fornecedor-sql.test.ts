@@ -43,7 +43,9 @@ test("Seção 421: crédito pago, pedido opcional, compensação atômica e prot
     await db.exec(section); await db.exec(section);
     await db.exec(`CREATE TABLE contas_bancarias(id uuid PRIMARY KEY,fazenda_id uuid,conta_id uuid,ativa boolean,moeda text);
       INSERT INTO contas_bancarias VALUES('${id(90)}','${id(1)}','${id(10)}',true,'BRL'),('${id(91)}','${id(2)}','${id(20)}',true,'BRL');`);
-    const baixaSection = source.slice(source.indexOf("-- Seção 423 —"));
+    const ini423 = source.indexOf("-- Seção 423 —");
+    const fim423 = source.indexOf("\n-- Seção ", ini423 + 10);   // só a Seção 423: as seções seguintes são de outras tabelas
+    const baixaSection = source.slice(ini423, fim423 < 0 ? undefined : fim423);
     await db.exec(baixaSection); await db.exec(baixaSection);
     const value = async (sql: string) => (await db.query<Record<string, unknown>>(sql)).rows[0];
     const apply = (v: number, adi = 30, cp = 32, cot: number | null = null) => db.query<{ r: Record<string, unknown> }>(

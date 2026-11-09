@@ -20452,3 +20452,13 @@ REVOKE ALL ON FUNCTION public.baixar_adiantamento_fornecedor(uuid,uuid,numeric,d
 GRANT EXECUTE ON FUNCTION public.baixar_adiantamento_fornecedor(uuid,uuid,numeric,date,uuid,uuid,numeric) TO service_role;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 424 — Rescisão: FGTS do mês e o que o lançamento cancelou/descontou (para o estorno desfazer)
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+ALTER TABLE funcionario_rescisoes
+  ADD COLUMN IF NOT EXISTS fgts_mes              numeric(14,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS previsoes_canceladas  uuid[],
+  ADD COLUMN IF NOT EXISTS adiantamentos_ids     uuid[];
+
+NOTIFY pgrst, 'reload schema';

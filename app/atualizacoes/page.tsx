@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.09-a",
+    data: "09/11/2026",
+    titulo: "Rescisões na Folha de Pagamento",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "novidade", texto: "Nova aba Rescisões na Folha de Pagamento: lista das rescisões e + Nova rescisão, com comprovante para assinatura." },
+      { tipo: "melhoria", texto: "Cálculo sobre o salário base, com INSS, IRRF e FGTS do mês automáticos; o complemento salarial entra no valor pago, sem impostos. Adiantamentos pendentes e 13º já pago são descontados. Todos os valores são editáveis." },
+      { tipo: "melhoria", texto: "Ao lançar, os salários previstos depois do desligamento são cancelados; o estorno devolve tudo." },
+    ],
+  },
+  {
     versao: "2026.11.06-a",
     data: "06/11/2026",
     titulo: "Gerar por Safra refaz o que falta",
