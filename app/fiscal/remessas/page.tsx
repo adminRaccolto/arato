@@ -19,6 +19,7 @@ import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/
 import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
 import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
 import { cstExibicaoPorCfop } from "../../../lib/nfe/cst-por-cfop";
+import { OPERACOES_REMESSA, infoFiscalRemessa, operacaoPorCfop, type OperacaoFiscalCadastro } from "../../../lib/fiscal/remessa-operacoes";
 import { ratearDescontoNf } from "../../../lib/nfe/remessa";
 import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
@@ -35,14 +36,6 @@ const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", 
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const th: React.CSSProperties = { padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "8px 12px", fontSize: 12, borderBottom: "0.5px solid var(--border-row)", verticalAlign: "top" };
-// Natureza da operação sugerida pelo CFOP da remessa
-const NATUREZA_REMESSA: Record<string, string> = {
-  "5905": "Remessa para depósito em armazém geral", "6905": "Remessa para depósito em armazém geral",
-  "5934": "Remessa simbólica para armazém geral", "6934": "Remessa simbólica para armazém geral",
-  "5901": "Remessa para industrialização por encomenda", "6901": "Remessa para industrialização por encomenda",
-  "5924": "Remessa para industrialização por conta e ordem do adquirente", "6924": "Remessa para industrialização por conta e ordem do adquirente",
-  "5915": "Remessa para conserto ou reparo", "6915": "Remessa para conserto ou reparo",
-};
 const ehDepTerceiro = (d: Deposito) => ["terceiro", "armazem_terceiro"].includes(d.tipo);
 
 const STATUS_BADGE: Record<string, { bg: string; cl: string; label: string }> = {
@@ -124,11 +117,13 @@ function RemessasConteudo() {
   async function carregar() {
     if (!contaId || !ids.length) return;
     setLoading(true);
-    const [r, p, ins, dep, { data: fz }] = await Promise.all([
+    const [r, p, ins, dep, { data: fz }, { data: opsF }] = await Promise.all([
       listarNfRemessasLogisticas(contaId), listarPessoasDaConta(fazendaId ?? ids[0]),
       listarInsumosParaConta(contaId, fazendaId ?? undefined), listarDepositosMulti(ids),
       supabase.from("fazendas").select("id, estado").in("id", ids),
+      supabase.from("operacoes_fiscais").select("fazenda_id, nome, cfop_interno, cfop_externo, icms_cst_interno, icms_cst_externo, inf_cpl_template, ativa").in("fazenda_id", ids),
     ]);
+    setOpsFiscais((opsF ?? []) as (OperacaoFiscalCadastro & { fazenda_id: string })[]);
     setRemessas(r); setPessoas(p); setInsumos(ins.filter(insumoAtivo)); setDepositos(dep);
     setUfFazenda(new Map(((fz ?? []) as { id: string; estado: string | null }[]).map(f => [f.id, f.estado ?? ""])));
     setLoading(false);
@@ -146,6 +141,11 @@ function RemessasConteudo() {
   const [depOrigem, setDepOrigem] = useState("");
   const [depTerceiro, setDepTerceiro] = useState("");
   const [cfop, setCfop] = useState("5905");
+  // Operação da remessa (o CFOP sai dela pela UF); "outro" = CFOP digitado; cfopXml = CFOP da remessa emitida fora
+  const [tipoRem, setTipoRem] = useState("armazem");
+  const [cfopOutro, setCfopOutro] = useState("");
+  const [cfopXml, setCfopXml] = useState("");
+  const [opsFiscais, setOpsFiscais] = useState<(OperacaoFiscalCadastro & { fazenda_id: string })[]>([]);
   const [cstRem, setCstRem] = useState("");   // CST do ICMS escolhido à mão ("" = automático pelo CFOP)
   const [natureza, setNatureza] = useState("Remessa para depósito em armazém geral");
   const [dataRem, setDataRem] = useState(hojeLocal());
@@ -160,6 +160,17 @@ function RemessasConteudo() {
   const insumoPorId = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
   const armazem = pessoas.find(p => p.id === armazemId);
   const fazendaRem = nfOrigem?.fazenda_id ?? depositos.find(d => d.id === depOrigem)?.fazenda_id ?? fazendaId ?? ids[0];
+  // Informações fiscais da operação: CFOP pela UF do emitente × destinatário; CST e texto do cadastro de Operações
+  // Fiscais da fazenda emitente quando houver, senão da regra do CFOP
+  const opRem = OPERACOES_REMESSA.find(o => o.chave === tipoRem);
+  const fiscal = opRem ? infoFiscalRemessa(opRem, ufFazenda.get(fazendaRem ?? "") ?? "", armazem?.estado ?? "", opsFiscais.filter(o => o.fazenda_id === fazendaRem)) : null;
+  const cfopEfetivo = modo === "externa" && cfopXml ? cfopXml : tipoRem === "outro" ? cfopOutro.replace(/\D/g, "").slice(0, 4) : fiscal?.cfop ?? "";
+  useEffect(() => { setCfop(cfopEfetivo); }, [cfopEfetivo]);
+  function escolherTipoRem(chave: string) {
+    setTipoRem(chave); setCfopXml("");
+    const op = OPERACOES_REMESSA.find(o => o.chave === chave);
+    if (op) setNatureza(op.natureza);
+  }
   // IEs do emitente escolhido (ou de todos, no automático) e a sugerida pela fazenda da remessa
   const cpfEmitenteSel = dados.emitentes.find(e => `${e.modulo}|${e.fazenda_id}` === emitenteSel)?.cpf ?? "";
   const iesRemessa = dados.inscricoes.filter(i => !cpfEmitenteSel || i.cpf === cpfEmitenteSel.replace(/\D/g, ""));
@@ -170,7 +181,7 @@ function RemessasConteudo() {
 
   function abrirNova() {
     setModo("arato"); setNfOrigem(null); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
-    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setCstRem(""); setNatureza("Remessa para depósito em armazém geral");
+    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setTipoRem("armazem"); setCfopOutro(""); setCfopXml(""); setCstRem(""); setNatureza("Remessa para depósito em armazém geral");
     setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
     setErro(""); setModal(true);
   }
@@ -209,8 +220,7 @@ function RemessasConteudo() {
     const p = pessoas.find(x => x.id === id);
     const dep = depositos.find(d => ehDepTerceiro(d) && d.pessoa_id === id);
     setDepTerceiro(dep?.id ?? "");
-    const ufOrig = ufFazenda.get(fazendaRem ?? "") ?? "";
-    if (p?.estado && ufOrig) setCfop(p.estado === ufOrig ? "5905" : "6905");
+    void p;   // o CFOP interno/interestadual sai da operação escolhida pela UF do destinatário (cfopEfetivo)
   }
 
   async function criarDepositoArmazem() {
@@ -234,7 +244,8 @@ function RemessasConteudo() {
     setExt({ numero: x.numero, serie: x.serie, chave: x.chave, xml });
     if (x.data_emissao) setDataRem(x.data_emissao);
     if (x.natureza) setNatureza(x.natureza);
-    const c = x.itens[0]?.cfop; if (c) setCfop(c);
+    const c = (x.itens[0]?.cfop ?? "").replace(/\D/g, "");
+    if (c) { const op = operacaoPorCfop(c); setTipoRem(op?.chave ?? "outro"); if (!op) setCfopOutro(c); setCfopXml(c); }
     const doc = x.cnpj_destinatario.replace(/\D/g, "");
     const p = pessoas.find(pp => (pp.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
     if (p) escolherArmazem(p.id);
@@ -312,8 +323,8 @@ function RemessasConteudo() {
               municipio_ibge: armazem.municipio_ibge || undefined, municipio_nome: armazem.municipio || undefined, uf: armazem.estado || undefined,
               cep: (armazem.cep ?? "").replace(/\D/g, "") || undefined,
             },
-            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, cst_icms: cstRem || undefined })),
-            natureza, inf_cpl: [obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
+            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, cst_icms: cstRem || (fiscal?.cstDoCadastro ? fiscal.cst : undefined) })),
+            natureza, inf_cpl: [fiscal?.infCpl, obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
             frete: tr.frete, transporte, tipo: "1",
           }),
         });
@@ -588,14 +599,15 @@ function RemessasConteudo() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "110px 2fr 2fr", gap: 12 }}>
-                <div><label style={lbl}>CFOP *</label><input value={cfop} onChange={e => {
-                  const c = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setCfop(c);
-                  // Natureza sugerida pelo CFOP (só troca o texto padrão; o que o usuário digitou fica)
-                  const nat = NATUREZA_REMESSA[c];
-                  if (nat && (!natureza || Object.values(NATUREZA_REMESSA).includes(natureza))) setNatureza(nat);
-                }} style={inp} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>Operação da remessa *</label>
+                  <select value={tipoRem} onChange={e => escolherTipoRem(e.target.value)} style={inp}>
+                    {OPERACOES_REMESSA.map(o => <option key={o.chave} value={o.chave}>{o.nome} — {o.interno}/{o.externo}</option>)}
+                    <option value="outro">Outro CFOP (digitar)</option>
+                  </select>
+                  {tipoRem === "outro" && <input value={cfopOutro} onChange={e => setCfopOutro(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="CFOP, ex.: 5949" style={{ ...inp, marginTop: 6 }} />}
+                </div>
                 <div><label style={lbl}>Natureza da operação</label><input value={natureza} onChange={e => setNatureza(e.target.value)} style={inp} /></div>
                 {modo === "arato" ? (
                   <div>
@@ -607,13 +619,21 @@ function RemessasConteudo() {
                   </div>
                 ) : <div />}
               </div>
+              {cfop && (
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "8px 12px", background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)" }}>
+                  <span><strong style={{ color: "#0B2D50" }}>CFOP {cfop}</strong>{tipoRem !== "outro" && fiscal ? (fiscal.ufIndefinida ? " · interno (informe a UF do destinatário para conferir)" : fiscal.interestadual ? " · interestadual" : " · dentro do estado") : ""}</span>
+                  <span>CST ICMS <strong>{cstRem || (tipoRem !== "outro" && fiscal ? fiscal.cst : cstExibicaoPorCfop(cfop))}</strong>{cstRem ? " (escolhido à mão)" : tipoRem !== "outro" && fiscal?.cstDoCadastro ? ` (Operação Fiscal "${fiscal.operacaoFiscal}")` : " (regra do CFOP)"}</span>
+                  {tipoRem !== "outro" && fiscal?.infCpl && <span title={fiscal.infCpl}>Texto legal: {fiscal.infCpl.length > 70 ? fiscal.infCpl.slice(0, 70) + "…" : fiscal.infCpl}</span>}
+                  {tipoRem !== "outro" && fiscal && !fiscal.operacaoFiscal && <span style={{ color: "#7A5500" }}>Sem Operação Fiscal com este CFOP no cadastro: CST pela regra, sem texto legal. Cadastre em Fiscal → Operações Fiscais.</span>}
+                </div>
+              )}
               {modo === "arato" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
                   <div>
                     <label style={lbl}>CST do ICMS</label>
                     <select value={cstRem} onChange={e => setCstRem(e.target.value)} style={inp}>
-                      <option value="">Automático pelo CFOP — {cstExibicaoPorCfop(cfop)}</option>
+                      <option value="">Automático — {tipoRem !== "outro" && fiscal ? fiscal.cst : cstExibicaoPorCfop(cfop)}</option>
                       <option value="40">040 — Isenta</option>
                       <option value="41">041 — Não tributada</option>
                       <option value="50">050 — Suspensão (industrialização, conserto…)</option>

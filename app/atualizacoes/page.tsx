@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.09-b",
+    data: "09/11/2026",
+    titulo: "Remessa: operação no lugar do CFOP digitado",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "Na Nova Remessa, o CFOP virou o seletor Operação da remessa (armazém geral, simbólica, empréstimo, conserto, industrialização, demonstração, comodato e outras). O CFOP interno ou interestadual sai pela UF do destinatário." },
+      { tipo: "melhoria", texto: "A remessa traz o CST do ICMS e o texto legal da Operação Fiscal cadastrada com o mesmo CFOP; sem cadastro, usa a regra do CFOP e avisa." },
+    ],
+  },
+  {
     versao: "2026.11.09-a",
     data: "09/11/2026",
     titulo: "Rescisões na Folha de Pagamento",
