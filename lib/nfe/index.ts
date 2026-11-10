@@ -9,7 +9,7 @@
 
 import { createClient } from "../supabase-servidor";
 import { buildNFe }        from "./builder";
-import { assinarNFe } from "./signer";
+import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";
 import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
@@ -17,8 +17,6 @@ import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesm
 import { configComIdentidade, buscarTitularCadastro, produtoresDoDocumento } from "./titular-cadastro";
 import { maiorNumeroDaSerie, mensagemNumeroEmUso, numeroJaEmUso } from "./numero-em-uso";
 import { usaTextosDeVenda } from "./textos-automaticos";
-import { carregarCertificadoEmitente, baixarA1Exato, contextoCertificados } from "./certificado-emitente";
-import type { PemPair } from "./signer";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
 const soDig = (v?: string | null) => String(v ?? "").replace(/\D/g, "");
 
@@ -61,7 +59,7 @@ export async function buscarConfEmitente(
   // Carrega em paralelo: config do emitente + ambiente global + todos os certs cadastrados
   // Config base do emitente: primeiro tenta na fazenda exata (pode ter dados específicos dela,
   // ex: endereço); moduloKey em si é o titular (CPF/CNPJ), não a fazenda.
-  const [emitLocalResult, { data: globalRows }] = await Promise.all([
+  const [emitLocalResult, { data: globalRows }, { data: certRows }] = await Promise.all([
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).maybeSingle(),
     // "fiscal_global" (o botão Ambiente SEFAZ — master switch) é do CLIENTE, não da fazenda ativa:
     // achado real 27/09/2026 — cliente com várias fazendas trocava pra Produção vendo a tela conta-wide
@@ -69,6 +67,7 @@ export async function buscarConfEmitente(
     // verdade) só olhava a fazenda exata da emissão. Mesma classe de bug de emitData logo abaixo:
     // busca em todas as fazendas da conta e fica com a mais recente (updated_at), igual à tela.
     sb().from("configuracoes_modulo").select("config, updated_at").in("fazenda_id", fazendaIdsConta).eq("modulo", "fiscal_global").order("updated_at", { ascending: false }).limit(1),
+    sb().from("configuracoes_modulo").select("modulo, config").in("fazenda_id", fazendaIdsConta).like("modulo", "certificado_a1_%"),
   ]);
   const globalData = globalRows?.[0] ?? null;
 
@@ -96,6 +95,22 @@ export async function buscarConfEmitente(
   const cfg = await configComIdentidade(sb(), fazendaIdsConta, moduloKey, { ...emitData.config } as Record<string, string>);
   if (documentoModulo && !cfg.razao_social) {
     throw new Error(`O titular ${documentoModulo} não está em Cadastros → Produtores nem em Cadastros → Empresas. Cadastre antes de emitir.`);
+  }
+
+  // Resolve cert_a1_path: corrige URL inválida ou tenta achar em certificado_a1_*
+  const certPath = cfg.cert_a1_path ?? "";
+  const certPathInvalid = !certPath || certPath.startsWith("http") || !/\.(pfx|p12|cer|crt)$/i.test(certPath);
+  if (certPathInvalid && certRows?.length) {
+    // Busca certificado pelo CPF/CNPJ do emitente nos módulos certificado_a1_*
+    const cpfDigits = (cfg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
+    const found = certRows.find(r => {
+      const c = r.config as Record<string, string>;
+      return (c.cpf_cnpj ?? "").replace(/\D/g, "") === cpfDigits && c.storage_path;
+    });
+    if (found) {
+      const c = found.config as Record<string, string>;
+      cfg.cert_a1_path = c.storage_path;
+    }
   }
 
   // Resolve IE: configs antigas (de antes do modelo "Parâmetros Fiscais por IE")
@@ -162,6 +177,22 @@ export async function buscarConfEmitente(
     throw new Error("A IE selecionada não corresponde ao estabelecimento da configuração fiscal.");
   }
 
+  // Senha do certificado ausente nesta cópia da config: procura a MESMA config (mesmo módulo) em outra
+  // fazenda do cliente — a config fiscal é do cliente e pode existir em mais de uma fazenda.
+  if (!cfg.cert_a1_senha) {
+    const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    if (faz?.conta_id) {
+      const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
+      const { data: copias } = await sb().from("configuracoes_modulo").select("config")
+        .in("fazenda_id", (fzs ?? []).map(f => f.id as string)).eq("modulo", moduloKey);
+      const comSenha = (copias ?? []).map(c => c.config as Record<string, string>).find(c => c?.cert_a1_senha);
+      if (comSenha) {
+        cfg.cert_a1_senha = comSenha.cert_a1_senha;
+        if (!cfg.cert_a1_path && comSenha.cert_a1_path) cfg.cert_a1_path = comSenha.cert_a1_path;
+      }
+    }
+  }
+
   // Ambiente global sobrepõe o ambiente do emitente — é o "master switch"
   const ambienteGlobal = globalData?.config?.ambiente as string | undefined;
   return {
@@ -171,9 +202,60 @@ export async function buscarConfEmitente(
 }
 
 // ─── Carrega PFX do Supabase Storage ─────────────────────────────────────────
-export async function carregarPfx(storagePath:string,fazendaId:string):Promise<Buffer> {
-  const db=sb();const {ids}=await contextoCertificados(db,fazendaId);
-  return baixarA1Exato(db,storagePath,ids);
+async function tentarDownload(path: string): Promise<Buffer | null> {
+  const { data, error } = await sb().storage.from("certificados").download(path);
+  if (!error && data) return Buffer.from(await data.arrayBuffer());
+  return null;
+}
+
+export async function carregarPfx(
+  storagePath: string,
+  fazendaId: string,
+): Promise<Buffer> {
+  // 1. Caminho exato registrado no banco
+  const r1 = await tentarDownload(storagePath);
+  if (r1) return r1;
+
+  // 2/3. Procura nas pastas das fazendas do MESMO cliente (a fazenda que emite primeiro). O certificado é do
+  //      titular, e o upload pode ter sido feito com outra fazenda do cliente. Nunca escanear a raiz do
+  //      bucket nem pastas de outro cliente.
+  const { data: fzCert } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  let pastas = [fazendaId];
+  if (fzCert?.conta_id) {
+    const { data: fzsCert } = await sb().from("fazendas").select("id").eq("conta_id", fzCert.conta_id);
+    pastas = [fazendaId, ...(fzsCert ?? []).map((f: { id: string }) => f.id).filter((id: string) => id !== fazendaId)];
+  }
+  const filename = storagePath.split("/").pop() ?? "";
+  for (const pasta of pastas) {
+    if (filename && !storagePath.startsWith(pasta)) {
+      const r2 = await tentarDownload(`${pasta}/${filename}`);
+      if (r2) return r2;
+    }
+  }
+  for (const pasta of pastas) {
+    const { data: fazFiles } = await sb().storage.from("certificados").list(pasta, { limit: 100 });
+    for (const f of fazFiles ?? []) {
+      if (/\.(pfx|p12)$/i.test(f.name)) {
+        const r3 = await tentarDownload(`${pasta}/${f.name}`);
+        if (r3) return r3;
+      }
+      // Sub-pasta dentro da fazenda (ex: fazendaId/pf/ ou fazendaId/pj/)
+      if (!f.name.includes(".")) {
+        const { data: sub } = await sb().storage.from("certificados").list(`${pasta}/${f.name}`, { limit: 20 });
+        for (const sf of sub ?? []) {
+          if (/\.(pfx|p12)$/i.test(sf.name)) {
+            const r4 = await tentarDownload(`${pasta}/${f.name}/${sf.name}`);
+            if (r4) return r4;
+          }
+        }
+      }
+    }
+  }
+
+  throw new Error(
+    `Certificado não encontrado. Acesse Configurações → Parâmetros → Fiscal ` +
+    `e faça o upload do .pfx na seção "Certificado Digital" do emitente.`
+  );
 }
 
 // ─── Monta nfeProc (XML final arquivável) ─────────────────────────────────────
@@ -451,9 +533,26 @@ export async function emitirNFe(
     } catch { /* API do IBGE fora do ar — segue sem o fallback, cai no erro CFG normal abaixo */ }
   }
 
-  let pem: PemPair;
-  try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
-  catch(e) { return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível carregar o certificado A1 deste titular."}; }
+  const certPath = confg.cert_a1_path;
+  const certSenha = confg.cert_a1_senha;
+  if (!certPath || !certSenha)
+    return { sucesso: false, cStat: "501", xMotivo: !certPath
+      ? `Certificado A1 (arquivo) não enviado para o emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} em Parâmetros → Fiscal`
+      : `A senha do certificado A1 do emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} não está salva. Em Parâmetros → Fiscal, envie o certificado de novo informando a senha` };
+
+  // 2. Certificado
+  let pfxBuffer: Buffer;
+  try {
+    pfxBuffer = await carregarPfx(certPath, fazendaId);
+  } catch (e) {
+    return { sucesso: false, cStat: "502", xMotivo: String(e) };
+  }
+  let pem: ReturnType<typeof pfxParaPem>;
+  try {
+    pem = pfxParaPem(pfxBuffer, certSenha);
+  } catch (e) {
+    return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}` };
+  }
 
   const cpfCnpjEmit = (confg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
   const isCPFEmit   = cpfCnpjEmit.length === 11;
@@ -744,9 +843,25 @@ export async function cancelarNFeEmitida(
   const confg = await buscarConfEmitente(fazendaId, moduloKey, undefined, { eventoDeNotaEmitida: true });
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada para cancelamento` };
 
-  let pem: PemPair;
-  try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
-  catch(e) { return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível carregar o certificado A1 deste titular."}; }
+  const certPath = confg.cert_a1_path;
+  const certSenha = confg.cert_a1_senha;
+  if (!certPath || !certSenha)
+    return { sucesso: false, cStat: "501", xMotivo: !certPath
+      ? `Certificado A1 (arquivo) não enviado para o emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} em Parâmetros → Fiscal`
+      : `A senha do certificado A1 do emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} não está salva. Em Parâmetros → Fiscal, envie o certificado de novo informando a senha` };
+
+  let pfxBuffer: Buffer;
+  try {
+    pfxBuffer = await carregarPfx(certPath, fazendaId);
+  } catch (e) {
+    return { sucesso: false, cStat: "502", xMotivo: String(e) };
+  }
+  let pem: ReturnType<typeof pfxParaPem>;
+  try {
+    pem = pfxParaPem(pfxBuffer, certSenha);
+  } catch (e) {
+    return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}` };
+  }
 
   try {
     const resultado = await cancelarNFe(pem, {
@@ -793,9 +908,25 @@ export async function corrigirNFeEmitida(
   const confg = await buscarConfEmitente(fazendaId, moduloKey, undefined, { eventoDeNotaEmitida: true });
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada`, nSeqEvento };
 
-  let pem: PemPair;
-  try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
-  catch(e) { return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível carregar o certificado A1 deste titular.",nSeqEvento}; }
+  const certPath = confg.cert_a1_path;
+  const certSenha = confg.cert_a1_senha;
+  if (!certPath || !certSenha)
+    return { sucesso: false, cStat: "501", nSeqEvento, xMotivo: !certPath
+      ? `Certificado A1 (arquivo) não enviado para o emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} em Parâmetros → Fiscal`
+      : `A senha do certificado A1 do emitente ${moduloKey.replace(/^fiscal_(pf|emp)_/, "")} não está salva. Em Parâmetros → Fiscal, envie o certificado de novo informando a senha` };
+
+  let pfxBuffer: Buffer;
+  try {
+    pfxBuffer = await carregarPfx(certPath, fazendaId);
+  } catch (e) {
+    return { sucesso: false, cStat: "502", xMotivo: String(e), nSeqEvento };
+  }
+  let pem: ReturnType<typeof pfxParaPem>;
+  try {
+    pem = pfxParaPem(pfxBuffer, certSenha);
+  } catch (e) {
+    return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}`, nSeqEvento };
+  }
 
   try {
     const resultado = await emitirCartaCorrecao(pem, {
