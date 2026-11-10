@@ -17,6 +17,7 @@ const RELEASES = [
       { tipo: "melhoria", texto: "Venda da produção separada em Venda por Contrato e Venda Avulsa: cada uma lista só as suas notas e o botão já abre a emissão certa." },
       { tipo: "melhoria", texto: "Remessa de grãos (armazém geral, entrega futura, venda à ordem) e retorno de armazém geral abrem pelo link de grãos da tela Remessas." },
       { tipo: "melhoria", texto: "Notas de Terceiro passou a se chamar Notas de Fornecedores." },
+      { tipo: "melhoria", texto: "Regras de Classificação Automática e Pendências de Classificação passaram para Documentos Fiscais (saíram de Comercial e de Configurações)." },
     ],
   },
   {
