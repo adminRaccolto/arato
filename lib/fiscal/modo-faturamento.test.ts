@@ -16,6 +16,9 @@ test("cada NF de saída cai no seu modo", () => {
   assert.equal(modoDaNota({ cfop: "6.117" }), "remessa");
   assert.equal(modoDaNota({ cfop: "6.923" }), "remessa");
   assert.equal(modoDaNota({ cfop: "5.949" }), "remessa");
-  assert.equal(modoDaNota({ cfop: "5.555" }), "avulsa");
+  assert.equal(modoDaNota({ cfop: "5.555" }), "devolucao");
+  assert.equal(modoDaNota({ cfop: "6.556" }), "devolucao");
+  assert.equal(modoDaNota({ cfop: "5.202" }), "devolucao");
+  assert.equal(lerModoFaturamento("devolucao"), "devolucao");
   assert.equal(modoDaNota({ cfop: "" }), null);
 });

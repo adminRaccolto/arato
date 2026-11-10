@@ -431,6 +431,7 @@ function FaturamentoInner() {
     abrirModal();
     if (modo === "contrato") setPasso("contrato");
     else if (modo === "avulsa") { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }
+    else if (modo === "devolucao") { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "5.555"); }
   }
 
   // ── Recebimento por carga: NF-e autorizada de contrato com essa opção abate o CR do contrato e vira CR da carga ──
@@ -1851,7 +1852,16 @@ function FaturamentoInner() {
               <div style={{ fontSize:17, fontWeight:700, color:"var(--text-1)", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
               <div style={{ fontSize:13, color:"#666", marginBottom:24 }}>Como deseja iniciar a emissão?</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
-                {modo !== "remessa" && <>
+                {modo === "devolucao" && (
+                  <OperationalButton data-arato-button="secondary"
+                    onClick={() => { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "5.555"); }}
+                    style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", gridColumn:"1 / -1" }}>
+                    <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:4 }}>Devolução</div>
+                    <div style={{ fontSize:12, color:"var(--text-2)" }}>Bem de terceiro recebido para uso, como máquina em comodato ou empréstimo (5.555 no estado, 6.555 fora). Informe na aba Fiscal a chave da NF de remessa recebida.</div>
+                  </OperationalButton>
+                )}
+                {(!modo || modo === "contrato" || modo === "avulsa") && <>
                 <OperationalButton data-arato-button="secondary"
                   onClick={() => setPasso("contrato")}
                   style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
@@ -1893,7 +1903,7 @@ function FaturamentoInner() {
                 </>}
               </div>
               <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:16 }}>
-                Devolução de mercadoria comprada ou vendida não é emitida aqui — veja Documentos Fiscais → Notas de Terceiro.
+                Devolução de bem de terceiro: Documentos Fiscais → Saídas → Devoluções. Devolução de compra: botão ↩ Devolver na nota, em Notas de Fornecedores.
               </div>
               <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</OperationalButton>
             </div>

@@ -118,6 +118,7 @@ export const NAV: NavItem[] = [
       { id: "docfis-venda-contrato", label: "Venda por Contrato",            path: "/comercial/faturamento?modo=contrato", moduleId: "contratos", bloco: "Venda de Produção Agrícola" },
       { id: "docfis-venda-avulsa",   label: "Venda Avulsa",                  path: "/comercial/faturamento?modo=avulsa",   moduleId: "contratos", bloco: "Venda de Produção Agrícola" },
       { id: "docfis-remessas",   label: "Remessas",                          path: "/fiscal/remessas",               moduleId: "fiscal_nfe" },
+      { id: "docfis-devolucoes", label: "Devoluções",                        path: "/comercial/faturamento?modo=devolucao", moduleId: "contratos" },
       { type: "divider", label: "Transporte" },
       { id: "docfis-cte",        label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",                moduleId: "transporte" },
       { id: "docfis-mdfe",       label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",               moduleId: "transporte" },
