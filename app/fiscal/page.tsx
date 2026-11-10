@@ -908,7 +908,7 @@ function FiscalInner() {
   useEffect(() => {
     const ids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!ids.length) return;
-    supabase.from("insumos").select("id, nome, ncm, unidade, ativo").in("fazenda_id", ids).eq("categoria", "produto_agricola").order("nome")
+    supabase.from("insumos").select("id, nome, ncm, unidade, ativo").in("fazenda_id", ids).eq("categoria", "produto_agricola").or("ativo.is.null,ativo.eq.true").order("nome")
       .then(({ data }) => setProdutosCad(((data ?? []) as { id: string; nome: string; ncm: string | null; unidade: string | null; ativo?: boolean }[]).filter(p => p.ativo !== false)));
   }, [fazendaIds?.join(","), fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   // Opções de NCM: as do cadastro primeiro, depois a lista de referência

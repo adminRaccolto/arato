@@ -129,6 +129,7 @@ export default function AbastecimentoPage() {
     // Insumos de combustível cadastrados
     const { data: ins, error: erroInsumos } = await supabase.from("insumos")
       .select("id, fazenda_id, nome, estoque, custo_medio, unidade")
+      .or("ativo.is.null,ativo.eq.true")
       .in("fazenda_id", idsConta)
       .eq("categoria", "combustivel")
       .order("nome");

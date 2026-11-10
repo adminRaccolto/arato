@@ -811,7 +811,7 @@ function CadastrosInner() {
     }
     if (aba === "culturas" || aba === "safras" || aba === "produtos") {
       // Produto agrícola só nasce por "Carregar Padrões" ou "+ Novo Produto": nada é criado ao abrir a tela
-      supabase.from("insumos").select("id,nome,unidade").in("fazenda_id", fazendaIds).eq("categoria","produto_agricola").order("nome")
+      supabase.from("insumos").select("id,nome,unidade").in("fazenda_id", fazendaIds).eq("categoria","produto_agricola").or("ativo.is.null,ativo.eq.true").order("nome")
         .then(({ data }) => setInsumosPA((data ?? []) as Insumo[]));
       supabase.from("culturas").select("*").in("fazenda_id", fazendaIds).order("ordem").order("nome")
         .then(async ({ data, error }) => {
@@ -2043,7 +2043,7 @@ function CadastrosInner() {
     let paList = insumosPA;
     if (paList.length === 0) {
       const { data: paData } = await supabase.from("insumos").select("id,nome,unidade")
-        .eq("fazenda_id", fid).eq("categoria", "produto_agricola").order("nome");
+        .eq("fazenda_id", fid).eq("categoria", "produto_agricola").or("ativo.is.null,ativo.eq.true").order("nome");
       paList = (paData ?? []) as Insumo[];
       if (paList.length > 0) setInsumosPA(paList);
     }
@@ -2100,6 +2100,9 @@ function CadastrosInner() {
       }
     });
     if (errosArea.length > 0) { alert("Área excedida:\n\n" + errosArea.join("\n")); return; }
+    // Todo ciclo produz um produto agrícola (regra do dono, 10/11/2026): é ele que liga o ciclo à colheita, aos contratos
+    // de venda e aos filtros. Sem ele o ciclo não é salvo.
+    if (!fCiclo.produto_agricola_id) { alert("Escolha o Produto Agrícola que este ciclo produz. Se ele não existir, cadastre em Cadastros → Produtos Agrícolas (Carregar Padrões)."); return; }
     const payload = {
       descricao: fCiclo.descricao, cultura: fCiclo.cultura,
       data_inicio: fCiclo.data_inicio, data_fim: fCiclo.data_fim,
@@ -2182,7 +2185,7 @@ function CadastrosInner() {
   // ─────────────── BOMBAS ───────────────
   const carregarInsumosCombDaFazenda = async (fazId: string) => {
     if (!fazId) { setInsumosComb([]); return; }
-    const { data } = await supabase.from("insumos").select("id, nome").eq("fazenda_id", fazId).eq("categoria", "combustivel").order("nome");
+    const { data } = await supabase.from("insumos").select("id, nome").eq("fazenda_id", fazId).eq("categoria", "combustivel").or("ativo.is.null,ativo.eq.true").order("nome");
     setInsumosComb((data ?? []) as { id: string; nome: string }[]);
   };
   const abrirModalBomba = async (b?: BombaCombustivel, fazendaPadrao?: string) => {

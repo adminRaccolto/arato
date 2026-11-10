@@ -374,7 +374,7 @@ function normalizarFreteIA(frete?: string): string {
 }
 
 export default function Contratos() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, podeEscrever, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides, podeEscrever, nomeUsuario, anoSafraVigenteId } = useAuth();
 
   // ── dados ────────────────────────────────────────────────────
   const [contratos, setContratos]     = useState<ContratoVM[]>([]);
@@ -399,6 +399,10 @@ export default function Contratos() {
   const [filtroAno,     setFiltroAno]     = useState("");
   const [filtroCiclo,   setFiltroCiclo]   = useState("");
   const [ciclosFiltro,  setCiclosFiltro]  = useState<Ciclo[]>([]);
+  // Ciclos da safra vigente (filtro de produto quando nenhuma safra foi escolhida) e o produto de cada ciclo, já
+  // resolvendo o cadastro mesclado. Os ciclos são sempre de uma safra: nunca a lista de todas as safras.
+  const [ciclosTodos,   setCiclosTodos]   = useState<Ciclo[]>([]);
+  const [nomesProdutoCiclo, setNomesProdutoCiclo] = useState<Map<string, { id: string; nome: string }>>(new Map());
   const [filtroProduto, setFiltroProduto] = useState("");
   const [filtroStatus,  setFiltroStatus]  = useState("");
   const [filtroComprador, setFiltroComprador] = useState("");
@@ -793,6 +797,23 @@ export default function Contratos() {
     listarCiclosDoCliente(fazendaIds, fazendaId, fC.ano_safra_id).then(setCiclos).catch(() => setCiclos([]));
   }, [fC.ano_safra_id, fazendaId, fazendaIds]);
 
+  // ── ciclos do cliente e o produto de cada ciclo (para o filtro de produto) ──
+  useEffect(() => {
+    listarCiclosDoCliente(fazendaIds, fazendaId).then(async todos => {
+      setCiclosTodos(anoSafraVigenteId ? todos.filter(c => c.ano_safra_id === anoSafraVigenteId) : []);
+      const ids = [...new Set([...todos.map(c => (c as { produto_agricola_id?: string | null }).produto_agricola_id),
+        ...contratos.map(c => c.produto_agricola_id)].filter((x): x is string => !!x))];
+      if (!ids.length) { setNomesProdutoCiclo(new Map()); return; }
+      const { data } = await supabase.from("insumos").select("id, nome, mesclado_em").in("id", ids);
+      const lista = (data ?? []) as { id: string; nome: string; mesclado_em: string | null }[];
+      const destinos = [...new Set(lista.map(p => p.mesclado_em).filter((x): x is string => !!x))];
+      const { data: dest } = destinos.length ? await supabase.from("insumos").select("id, nome").in("id", destinos) : { data: [] };
+      const nomeDest = new Map(((dest ?? []) as { id: string; nome: string }[]).map(d => [d.id, d.nome]));
+      // Cadastro mesclado aponta para o principal: o filtro mostra e compara pelo principal
+      setNomesProdutoCiclo(new Map(lista.map(p => [p.id, p.mesclado_em ? { id: p.mesclado_em, nome: nomeDest.get(p.mesclado_em) ?? p.nome } : { id: p.id, nome: p.nome }])));
+    }).catch(() => setCiclosTodos([]));
+  }, [fazendaId, fazendaIds, contratos.length, anoSafraVigenteId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── ciclos: carrega quando filtro de ano muda ────────────────
   useEffect(() => {
     if (!filtroAno) { setCiclosFiltro([]); setFiltroCiclo(""); return; }
@@ -819,7 +840,8 @@ export default function Contratos() {
         listarFazendas(fazendaId ?? undefined),
         supabase.from("culturas").select("*").in("fazenda_id", hintIds).eq("ativa", true).order("ordem").order("nome"),
         // Produtos agrícolas do cliente (todas as fazendas): o contrato se liga ao cadastro, que dá nome/NCM da NF de venda
-        supabase.from("insumos").select("*").in("fazenda_id", fazendaIds?.length ? fazendaIds : [fazendaId!]).eq("categoria", "produto_agricola").order("nome"),
+        // Só ativos: o cadastro mesclado (duplicado) fica inativo e não pode voltar a aparecer nas listas
+        supabase.from("insumos").select("*").in("fazenda_id", fazendaIds?.length ? fazendaIds : [fazendaId!]).eq("categoria", "produto_agricola").or("ativo.is.null,ativo.eq.true").order("nome"),
         supabase.from("adiantamentos_cliente").select("*").in("fazenda_id", hintIds).order("data"),
       ]);
       const rMap: Record<string,Romaneio[]> = {};
@@ -1014,10 +1036,39 @@ export default function Contratos() {
   };
 
   // ── listas dinâmicas — prioridade: produtos agrícolas > culturas > hardcoded ──
-  const PRODUTOS_DIN: string[] =
-    prodAgricolas.length > 0 ? prodAgricolas.map(p => p.nome) :
-    culturasCont.length  > 0 ? culturasCont.map(c => c.nome)  :
-    PRODUTOS;
+  // Um nome por produto: o mesmo produto pode existir em mais de uma fazenda do cliente
+  const PRODUTOS_DIN: string[] = [...new Set(
+    (prodAgricolas.length > 0 ? prodAgricolas.map(p => p.nome) : culturasCont.length > 0 ? culturasCont.map(c => c.nome) : PRODUTOS)
+      .map(p => p.trim()).filter(Boolean))];
+
+  // Filtro de produto: só o que os ciclos produzem (regra do dono, 10/11/2026) — da safra filtrada (sem filtro, a
+  // safra vigente), ou só do ciclo escolhido. Contrato ligado ao cadastro casa pelo produto; contrato só
+  // com o nome ("Soja") casa pela cultura ("Soja Intacta" → soja).
+  const culturaBase = (n?: string | null) => String(n ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\(.*?\)/g, " ").replace(/\b\d+\s*[ªaº]?\b/g, " ").trim().split(/\s+/)[0] ?? "";
+  const ciclosDoFiltro = (filtroAno ? ciclosFiltro : ciclosTodos).filter(c => !filtroCiclo || c.id === filtroCiclo);
+  const produtosFiltro = (() => {
+    const m = new Map<string, { label: string; ids: Set<string>; base: string }>();
+    for (const c of ciclosDoFiltro) {
+      const pid = (c as { produto_agricola_id?: string | null }).produto_agricola_id ?? null;
+      const prod = pid ? nomesProdutoCiclo.get(pid) : undefined;
+      const label = (prod?.nome ?? String(c.cultura ?? "").replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+\d+\s*[ªº]\s*/g, " ").trim()) || "";
+      if (!label) continue;
+      const k = label.toLowerCase();
+      const g = m.get(k) ?? { label, ids: new Set<string>(), base: culturaBase(label) };
+      if (prod?.id) g.ids.add(prod.id);
+      m.set(k, g);
+    }
+    return [...m.values()].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  })();
+  const produtoFiltroSel = produtosFiltro.find(p => p.label === filtroProduto);
+  const contratoNoProduto = (c: { produto?: string | null; produto_agricola_id?: string | null }) => {
+    if (!filtroProduto) return true;
+    if (!produtoFiltroSel) return c.produto === filtroProduto;
+    const pid = c.produto_agricola_id ? (nomesProdutoCiclo.get(c.produto_agricola_id)?.id ?? c.produto_agricola_id) : null;
+    if (pid && produtoFiltroSel.ids.size) return produtoFiltroSel.ids.has(pid);
+    return culturaBase(c.produto) === produtoFiltroSel.base;
+  };
   const COMMODITIES_VFE_DIN: string[] = culturasCont.length > 0
     ? culturasCont.filter(c => c.categoria === "graos").map(c => c.nome)
     : COMMODITIES_VFE;
@@ -1716,7 +1767,7 @@ export default function Contratos() {
       if (!porId && !porText) return false;
     }
     if (filtroCiclo    && c.ciclo_id !== filtroCiclo) return false;
-    if (filtroProduto  && c.produto  !== filtroProduto) return false;
+    if (!contratoNoProduto(c)) return false;
     if (filtroStatus   && c.status   !== filtroStatus)  return false;
     if (filtroComprador && c.comprador !== filtroComprador) return false;
     if (filtroBusca) {
@@ -1869,7 +1920,7 @@ export default function Contratos() {
                     <SelectField value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)}
                       style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none" }}>
                       <option value="">Todos os produtos</option>
-                      {PRODUTOS_DIN.map(p => <option key={p} value={p}>{p}</option>)}
+                      {produtosFiltro.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
                     </SelectField>
                     {/* comprador */}
                     <SelectField value={filtroComprador} onChange={e => setFiltroComprador(e.target.value)}

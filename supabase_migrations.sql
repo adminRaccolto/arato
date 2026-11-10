@@ -20548,3 +20548,26 @@ UPDATE operacoes_gerenciais SET permite_combustivel = true
  WHERE classificacao = '2.01.02.01.05.001' AND coalesce(permite_combustivel, false) = false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 427 — Todo ciclo ligado a um produto agrícola (regra do dono, 10/11/2026)
+--   Liga o ciclo sem produto ao produto agrícola ATIVO do mesmo cliente cujo nome é a cultura do ciclo
+--   ("Milho 2ª (Safrinha)" → "Milho", "Soja" → "Soja"). Prefere o da mesma fazenda. O que não achar par fica como está
+--   e aparece na consulta final para cadastrar o produto e ligar à mão.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+WITH alvo AS (
+  SELECT DISTINCT ON (c.id) c.id AS ciclo_id, p.id AS produto_id
+    FROM ciclos c
+    JOIN fazendas fc ON fc.id = c.fazenda_id
+    JOIN insumos p   ON p.categoria = 'produto_agricola' AND coalesce(p.ativo, true)
+    JOIN fazendas fp ON fp.id = p.fazenda_id
+   WHERE c.produto_agricola_id IS NULL
+     AND coalesce(p.conta_id, fp.conta_id) = fc.conta_id
+     AND lower(trim(p.nome)) = lower(split_part(trim(regexp_replace(c.cultura, '\s*\(.*\)', '', 'g')), ' ', 1))
+   ORDER BY c.id, (p.fazenda_id = c.fazenda_id) DESC, p.created_at
+)
+UPDATE ciclos c SET produto_agricola_id = a.produto_id FROM alvo a WHERE c.id = a.ciclo_id;
+
+-- Ciclos que continuam sem produto (cadastrar o produto agrícola e ligar no ciclo)
+SELECT c.id, f.nome AS fazenda, c.descricao, c.cultura FROM ciclos c JOIN fazendas f ON f.id = c.fazenda_id
+ WHERE c.produto_agricola_id IS NULL ORDER BY f.nome, c.descricao;

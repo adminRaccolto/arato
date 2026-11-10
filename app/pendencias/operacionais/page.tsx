@@ -107,7 +107,7 @@ export default function PendenciasOperacionais() {
     setBuscaInsumo(modal.produto_nome_pendente ?? "");
     setMsgModal(null);
     supabase.from("insumos").select("id, nome, unidade, estoque, custo_medio")
-      .in("fazenda_id", fazendaIds).order("nome")
+      .in("fazenda_id", fazendaIds).or("ativo.is.null,ativo.eq.true").order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
   }, [modal, fazendaId]);
 

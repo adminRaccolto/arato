@@ -200,7 +200,7 @@ export default function Arrendamentos() {
       supabase.from("pessoas").select("id,nome").in("fazenda_id", fids).order("nome").limit(5000),
       supabase.from("fazendas").select("id,nome,produtor_id").in("id", fids),
       listarProdutoresDaConta(contaId ?? "", fazendaId),
-      supabase.from("insumos").select("id,nome").in("fazenda_id", fids).eq("categoria","produto_agricola").order("nome"),
+      supabase.from("insumos").select("id,nome").in("fazenda_id", fids).eq("categoria","produto_agricola").or("ativo.is.null,ativo.eq.true").order("nome"),
     ]).then(([arrR, pagR, anos, pesR, fazR, prods, paR]) => {
       setArrendamentos((arrR.data ?? []) as Arrendamento[]);
       setPagamentos((pagR.data ?? []) as Pagamento[]);

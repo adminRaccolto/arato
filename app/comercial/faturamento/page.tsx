@@ -102,7 +102,7 @@ async function produtosAgricolasDoCliente(contaId: string | null | undefined, fa
   const ids = (fzs ?? []).map(f => f.id as string);
   if (!ids.length && fazendaId) ids.push(fazendaId);
   return supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade,ativo").in("fazenda_id", ids.length ? ids : [""])
-    .eq("categoria", "produto_agricola").order("nome");
+    .eq("categoria", "produto_agricola").or("ativo.is.null,ativo.eq.true").order("nome");
 }
 // kg por saca de referência para conversão de preço R$/sc → R$/kg
 const KG_SACA: Record<string, number> = {

@@ -102,7 +102,7 @@ export default function PendenciasNfPage() {
 
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).order("nome")
+    supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).or("ativo.is.null,ativo.eq.true").order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
     supabase.from("centros_custo").select("id, nome, codigo").in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setCentrosCusto((data ?? []) as CentroCusto[]));

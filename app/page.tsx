@@ -163,7 +163,7 @@ export default function Dashboard() {
           supabase.from("lancamentos").select("id, descricao, valor, tipo").in("fazenda_id", fazendaIds).ilike("descricao", `%${q}%`).in("status", ["em_aberto", "vencido", "vencendo"]).limit(3),
           supabase.from("contratos").select("id, numero_contrato, cliente").in("fazenda_id", fazendaIds).or(`numero_contrato.ilike.%${q}%,cliente.ilike.%${q}%`).limit(3),
           supabase.from("ciclos").select("id, descricao, cultura").in("fazenda_id", fazendaIds).ilike("descricao", `%${q}%`).limit(3),
-          supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("insumos").select("id, nome, categoria").in("fazenda_id", fazendaIds).or("ativo.is.null,ativo.eq.true").ilike("nome", `%${q}%`).limit(3),
           supabase.from("pessoas").select("id, nome, cpf_cnpj").in("fazenda_id", fazendaIds).ilike("nome", `%${q}%`).limit(3),
         ]);
         const res: ResultadoBusca[] = [];
@@ -297,7 +297,7 @@ export default function Dashboard() {
       // Insumos com estoque negativo
       supabase.from("insumos")
         .select("id, nome, estoque, unidade")
-        .in("fazenda_id", fazendaIds)
+        .in("fazenda_id", fazendaIds).or("ativo.is.null,ativo.eq.true")
         .lt("estoque", 0),
 
       // Solicitações de transferência — via API route (service_role_key, sem RLS)

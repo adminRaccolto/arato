@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-b",
+    data: "10/11/2026",
+    titulo: "Produtos repetidos nas listas e filtro pelos ciclos",
+    modulos: ["Comercial", "Cadastros", "Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Produtos e insumos mesclados (duplicados) não aparecem mais nas listas de escolha de contratos, faturamento, arrendamento, NF-e, cadastros, abastecimento e pendências." },
+      { tipo: "melhoria", texto: "O filtro de produto dos Contratos de Grãos mostra só o que os ciclos da safra produzem." },
+      { tipo: "melhoria", texto: "Todo ciclo passa a exigir o Produto Agrícola que produz." },
+    ],
+  },
+  {
     versao: "2026.11.10-a",
     data: "10/11/2026",
     titulo: "NF de posto: máquina, veículo e motorista",
