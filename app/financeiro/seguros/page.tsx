@@ -397,6 +397,25 @@ export default function SegurosPage() {
     }
   }
 
+  // Exclui a apólice, os prêmios e sinistros dela e os títulos de prêmio ainda em aberto no CP
+  async function excluirApolice() {
+    if (!apoliceEdit) return;
+    if (!(await confirmarAcao({ titulo: "Excluir apólice", mensagem: `Excluir a apólice ${apoliceEdit.numero_apolice}? Os prêmios e sinistros dela e os títulos de prêmio em aberto no Contas a Pagar também serão excluídos. Não dá para desfazer.`, perigo: true }))) return;
+    setASaving(true); setAErr("");
+    try {
+      const res = await fetch("/api/financeiro/seguros", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "excluir_apolice", apolice_id: apoliceEdit.id, payload: {}, gerar_parcelas: false }) });
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao excluir.");
+      await carregar();
+      setModalApolice(false);
+    } catch (e: unknown) {
+      setAErr(e instanceof Error ? e.message : "Erro ao excluir.");
+    } finally {
+      setASaving(false);
+    }
+  }
+
   async function salvarApolice() {
     if (!fazendaId) return;
     if (!aForm.numero_apolice.trim()) { setAErr("Informe o número da apólice."); return; }
@@ -1090,6 +1109,9 @@ export default function SegurosPage() {
             <div data-arato-dialog-body="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{aErr}</div>}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                {apoliceEdit && (
+                  <OperationalButton data-arato-button="danger" onClick={excluirApolice} disabled={aSaving} style={{ ...btnR, marginRight: "auto", borderColor: "#E24B4A30", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir apólice</OperationalButton>
+                )}
                 <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalApolice(false)}>Cancelar</OperationalButton>
                 <OperationalButton data-arato-button="primary" onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, opacity: aSaving ? 0.6 : 1, cursor: aSaving ? "default" : "pointer" }}>
                   {aSaving ? "Salvando…" : "Salvar Apólice"}

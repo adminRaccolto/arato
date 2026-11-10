@@ -15,6 +15,7 @@ const RELEASES = [
       { tipo: "correcao", texto: "Título com vencimento de hoje em diante não aparece mais como Vencido (havia salários reprogramados marcados assim)." },
       { tipo: "correcao", texto: "NFS-e processada: o botão ↺ Estornar aparece logo ao abrir a nota, sem precisar entrar em edição." },
       { tipo: "melhoria", texto: "NF de posto: máquina/veículo, horímetro/hodômetro e motorista são todos opcionais e independentes." },
+      { tipo: "novidade", texto: "Seguros: botão Excluir apólice no modal da apólice. Exclui prêmios, sinistros e os títulos de prêmio em aberto; com prêmio já pago, pede para estornar antes." },
     ],
   },
   {

@@ -206,10 +206,33 @@ async function pagarPremio(req: NextRequest, sb: SbAdmin, premioId: string | und
   return NextResponse.json({ ok: true });
 }
 
+// Exclui a apólice com prêmios e sinistros (cascata no banco) e os títulos de prêmio ainda em aberto no CP.
+// Se algum prêmio já foi pago, baixado, conciliado ou está em borderô, não exclui: o pagamento tem de ser estornado antes.
+async function excluirApolice(req: NextRequest, sb: SbAdmin, apoliceId?: string) {
+  if (!apoliceId) return NextResponse.json({ ok: false, error: "Apólice não informada." }, { status: 400 });
+  const negado = await exigirAcessoRegistro(req, "apolices_seguro", apoliceId);
+  if (negado) return negado;
+  const { data: premios, error: ePr } = await sb.from("pagamentos_premio_seguro").select("id, pago, lancamento_id").eq("apolice_id", apoliceId);
+  if (ePr) throw ePr;
+  const lancIds = (premios ?? []).map(p => p.lancamento_id as string | null).filter((x): x is string => !!x);
+  const { data: lancs, error: eL } = lancIds.length
+    ? await sb.from("lancamentos").select("id, status, valor_pago, conciliado, lote_id").in("id", lancIds)
+    : { data: [] as { id: string; status: string; valor_pago: number | null; conciliado: boolean | null; lote_id: string | null }[], error: null };
+  if (eL) throw eL;
+  const travados = (lancs ?? []).filter(l => !["em_aberto", "vencido", "vencendo"].includes(String(l.status)) || Number(l.valor_pago ?? 0) > 0 || l.conciliado || l.lote_id);
+  const pagos = (premios ?? []).filter(p => p.pago).length;
+  if (travados.length || pagos) {
+    return NextResponse.json({ ok: false, error: `Esta apólice tem ${Math.max(travados.length, pagos)} prêmio(s) já pago(s), conciliado(s) ou em borderô. Estorne esses pagamentos no Contas a Pagar antes de excluir.` }, { status: 409 });
+  }
+  if (lancIds.length) await falharSeErro(sb.from("lancamentos").delete().in("id", lancIds), "excluir títulos do prêmio");
+  await falharSeErro(sb.from("apolices_seguro").delete().eq("id", apoliceId), "excluir apólice");
+  return NextResponse.json({ ok: true, titulos_excluidos: lancIds.length });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
-      acao?: "salvar_sinistro" | "pagar_premio";
+      acao?: "salvar_sinistro" | "pagar_premio" | "excluir_apolice";
       id?: string;
       premio_id?: string;
       data_pagamento?: string;
@@ -223,6 +246,7 @@ export async function POST(req: NextRequest) {
     const sb = admin();
     if (body.acao === "salvar_sinistro") return await salvarSinistro(req, sb, body.id, body.payload ?? {});
     if (body.acao === "pagar_premio") return await pagarPremio(req, sb, body.premio_id, body.data_pagamento);
+    if (body.acao === "excluir_apolice") return await excluirApolice(req, sb, body.apolice_id);
     const today = hojeLocal();
     // Apólice existente: tem de ser do cliente; fazenda do payload (nova ou trocada) também.
     const fazPayload = body.payload?.fazenda_id as string | undefined;
