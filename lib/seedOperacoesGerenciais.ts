@@ -1212,7 +1212,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   // 2.02.01.05 — Frota de Veículos
   grp("2.01.02.01.05",   "FROTA DE VEÍCULOS",               "despesa"),
   desp("2.01.02.01.05.001", "ABASTECIMENTO POSTO", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false,
+    permite_notas_fiscais: true, permite_combustivel: true, tipo_lcdpr: "5", custo_absorcao: false,
     conta_debito: "6.4.5", conta_credito: "2.1.1.1",
     ref_id: 730,
   }),

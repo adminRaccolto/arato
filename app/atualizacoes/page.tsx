@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-a",
+    data: "10/11/2026",
+    titulo: "NF de posto: máquina, veículo e motorista",
+    modulos: ["Documentos Fiscais", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "A operação Abastecimento Posto passa a ser de combustível: a NF de posto com Apropriação Direta pede a máquina ou o veículo que abasteceu e gera o abastecimento." },
+      { tipo: "novidade", texto: "No item da NF de posto dá para escolher veículos do cadastro de Transporte (além das máquinas) e o motorista; o abastecimento sai com o motorista e os km." },
+    ],
+  },
+  {
     versao: "2026.11.09-b",
     data: "09/11/2026",
     titulo: "Remessa: operação no lugar do CFOP digitado",

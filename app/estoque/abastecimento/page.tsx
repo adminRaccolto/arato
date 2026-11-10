@@ -471,7 +471,10 @@ export default function AbastecimentoPage() {
                 {historico.map((h, idx) => {
                   const bomba = bombas.find(b => b.id === h.bomba_id);
                   const [cbg, ccl] = COMB_COR[bomba?.combustivel ?? ""] ?? ["#F1EFE8", "var(--text-2)"];
-                  const destino = h.maquina_nome ?? h.funcionario_nome ?? h.destino_livre ?? "—";
+                  // Abastecimento em posto pela NF: veículo da Transporte vem em maquina_descricao; o motorista acompanha
+                  const veiculoNf = (h as { maquina_descricao?: string | null }).maquina_descricao;
+                  const destino = [h.maquina_nome ?? veiculoNf ?? h.funcionario_nome ?? h.destino_livre ?? "—",
+                    (h.maquina_nome || veiculoNf) && h.funcionario_nome ? `· ${h.funcionario_nome}` : ""].filter(Boolean).join(" ");
                   return (
                     <tr key={h.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                       <td style={{ padding: "10px 14px", fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>

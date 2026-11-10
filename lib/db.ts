@@ -3223,11 +3223,17 @@ async function lancarItensDaNf(
     // combustível, valor/L e valor total já vêm da NF; só falta o
     // hodômetro/horímetro, informado no item. Atualiza também
     // maquinas.horimetro_atual, igual ao abastecimento pela bomba faz.
-    if (item.tipo_apropiacao === "direto" && item.e_combustivel && item.maquina_id) {
-      await supabase.from("abastecimentos").insert({
+    if (item.tipo_apropiacao === "direto" && item.e_combustivel && (item.maquina_id || item.veiculo_id)) {
+      // Veículo do cadastro de Transporte (Seção 426) ou máquina; o motorista vai em funcionario_id. Veículo grava km.
+      const { data: veic } = item.veiculo_id ? await supabase.from("veiculos").select("placa, tipo").eq("id", item.veiculo_id).maybeSingle() : { data: null };
+      const extra: Record<string, unknown> = {
+        ...(item.veiculo_id ? { veiculo_id: item.veiculo_id, maquina_descricao: [veic?.placa, veic?.tipo].filter(Boolean).join(" — ") || null, km: item.horimetro ?? null } : {}),
+        ...(item.funcionario_id ? { funcionario_id: item.funcionario_id } : {}),
+      };
+      const base = {
         fazenda_id,
         bomba_id:            null,
-        maquina_id:          item.maquina_id,
+        maquina_id:          item.maquina_id || null,
         quantidade_l:        item.quantidade,
         valor_unitario:      item.quantidade > 0 ? valorItemAjustado / item.quantidade : item.valor_unitario * fatorAjuste,
         valor_total:         valorItemAjustado,
@@ -3235,8 +3241,11 @@ async function lancarItensDaNf(
         data:                dataEntrada,
         observacao:          `NF ${nfId} — Apropriação Direta (${emitente})`,
         nf_entrada_item_id:  item.id,
-      });
-      if (item.horimetro) {
+      };
+      let ab = await supabase.from("abastecimentos").insert({ ...base, ...extra, ...(item.veiculo_id ? { horimetro: null } : {}) });
+      if (ab.error && /veiculo_id/.test(ab.error.message ?? "")) { const { veiculo_id: _v, ...semVeiculo } = extra; void _v; ab = await supabase.from("abastecimentos").insert({ ...base, ...semVeiculo, horimetro: null }); }
+      if (ab.error) throw ab.error;
+      if (item.horimetro && item.maquina_id) {
         await supabase.from("maquinas").update({ horimetro_atual: item.horimetro }).eq("id", item.maquina_id);
       }
     }

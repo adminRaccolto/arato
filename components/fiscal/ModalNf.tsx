@@ -43,7 +43,7 @@ import {
   aplicarRegraClassificacao,
   listarOperacoesGerenciaisAtivasDaConta,
   verificarExclusaoNf,
-  listarMaquinas, criarMaquina, ogDaLista,
+  listarMaquinas, criarMaquina, ogDaLista, listarVeiculosUnificados, listarFuncionarios, type VeiculoUnificado,
   listarBombasDoCliente,
   listarAnosSafra,
   listarCiclosDoCliente,
@@ -314,6 +314,8 @@ interface ItemRascunho {
   // (combustível não precisa de campo próprio — usa maquina_id acima; o modo
   // do item vem da Operação Gerencial do cabeçalho, não de um estado por item)
   maquinas_rateio: { maquina_id: string; percentual: number }[];
+  veiculo_id: string;       // abastecimento em posto: veículo do cadastro de Transporte
+  funcionario_id: string;   // abastecimento em posto: motorista/operador
   // Apropriação Direta — hodômetro/horímetro do veículo, só no modo combustível.
   horimetro: number;
   // ICMS retido na origem (Substituição Tributária) — lido do XML, item a item (CST 10/30/60/70
@@ -337,7 +339,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   lotes_semente: [],
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
-  maquinas_rateio: [], horimetro: 0,
+  maquinas_rateio: [], horimetro: 0, veiculo_id: "", funcionario_id: "",
   cst_icms: "", icms_retido: false, valor_icms_st: 0,
 });
 
@@ -412,6 +414,8 @@ export default function ModalNf({
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
   const [centros, setCentros]     = useState<CentroCusto[]>([]);
   const [maquinas, setMaquinas]   = useState<Maquina[]>([]);
+  const [veiculosAbast, setVeiculosAbast] = useState<VeiculoUnificado[]>([]);
+  const [motoristas, setMotoristas] = useState<{ id: string; nome: string }[]>([]);
   const [pedidos, setPedidos]     = useState<PedidoMin[]>([]);
   const [pedidoItensVinculado, setPedidoItensVinculado] = useState<PedidoCompraItem[]>([]);
   const [regrasClass, setRegrasClass] = useState<RegraClassificacao[]>([]);
@@ -628,6 +632,9 @@ export default function ModalNf({
     setPessoas(pesData);
     try { setCentros(await listarCentrosCustoGeralDaConta(fazendaId)); } catch {}
     try { setMaquinas(await listarMaquinas(fazendaId)); } catch {}
+    // Abastecimento em posto: máquinas e veículos (Transporte) de todas as fazendas do cliente, e os motoristas
+    try { setVeiculosAbast(await listarVeiculosUnificados(idsParaNf, "todos")); } catch {}
+    try { setMotoristas((await listarFuncionarios(idsParaNf)).filter(f => f.ativo !== false).map(f => ({ id: f.id, nome: f.nome }))); } catch {}
     try { setRegrasClass(await listarRegrasClassificacao(fazendaIds.length ? fazendaIds : fazendaId)); } catch {}
     // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (antes só CP/CR: OG só de NF nem aparecia)
     try {
@@ -817,6 +824,8 @@ export default function ModalNf({
             maquina_id:         i.maquina_id          ?? "",
             centro_custo_id:    i.centro_custo_id     ?? "",
             maquinas_rateio:    Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
+            veiculo_id:         i.veiculo_id          ?? "",
+            funcionario_id:     i.funcionario_id      ?? "",
             cst_icms:           (i as Record<string, unknown>).cst_icms as string ?? "",
             icms_retido:        !!(i as Record<string, unknown>).icms_retido,
             valor_icms_st:      (i as Record<string, unknown>).valor_icms_st as number ?? 0,
@@ -908,7 +917,7 @@ export default function ModalNf({
             deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
             maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
             maquinas_rateio: Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
-            horimetro: i.horimetro ?? 0,
+            horimetro: i.horimetro ?? 0, veiculo_id: i.veiculo_id ?? "", funcionario_id: i.funcionario_id ?? "",
             lotes_semente: Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto: !!i.principio_ativo_id,
@@ -1164,7 +1173,7 @@ export default function ModalNf({
             tipo_apropiacao: tipoApropDeCfop(CFOP, "estoque"),
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
-            maquinas_rateio: [], horimetro: 0,
+            maquinas_rateio: [], horimetro: 0, veiculo_id: "", funcionario_id: "",
             cst_icms: cstIcms, icms_retido: icmsRetido, valor_icms_st: vIcmsSt,
           };
         }));
@@ -1502,7 +1511,7 @@ export default function ModalNf({
         // reposição de tanque/bomba, ver o botão "É reposição de tanque" acima). Continua
         // disponível pra quem quer registrar no histórico de abastecimento; se informar o
         // veículo, o horímetro continua pedido (é o que alimenta esse histórico).
-        if (modoDireto === "combustivel" && it.maquina_id && !it.horimetro) {
+        if (modoDireto === "combustivel" && (it.maquina_id || it.veiculo_id) && !it.horimetro) {
           setErr(`Item "${it.descricao_nf}": informe o hodômetro/horímetro do veículo — obrigatório pra registrar no histórico de abastecimento.`);
           return;
         }
@@ -1677,6 +1686,9 @@ export default function ModalNf({
           e_combustivel:       (tipo === "custo_direto" && modoDireto === "combustivel") ? true : undefined,
           maquinas_rateio:     tipo === "custo_direto" && it.maquinas_rateio.length ? it.maquinas_rateio : undefined,
           horimetro:           (tipo === "custo_direto" && modoDireto === "combustivel" && it.horimetro) ? it.horimetro : undefined,
+          // Só vão quando usados (Seção 426): sem a seção, NF que não aponta veículo da Transporte/motorista segue normal
+          veiculo_id:          (tipo === "custo_direto" && modoDireto === "combustivel" && it.veiculo_id) ? it.veiculo_id : undefined,
+          funcionario_id:      (tipo === "custo_direto" && modoDireto === "combustivel" && it.funcionario_id) ? it.funcionario_id : undefined,
           lotes_semente:       it.lotes_semente?.length ? it.lotes_semente : undefined,
           lote_semente:        it.lotes_semente?.length === 1 ? it.lotes_semente[0].numero : undefined,
           alerta_preco:        false,
@@ -3853,15 +3865,21 @@ export default function ModalNf({
                                   OG dentro de cada item. */}
                               {modoDireto === "combustivel" ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                  <SelectField value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }}>
-                                    <option value="">⛽ Veículo que abasteceu —</option>
-                                    {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                  <SelectField value={it.veiculo_id ? `v:${it.veiculo_id}` : it.maquina_id ? `m:${it.maquina_id}` : ""}
+                                    onChange={e => { const v = e.target.value; setItem(it.key, { maquina_id: v.startsWith("m:") ? v.slice(2) : "", veiculo_id: v.startsWith("v:") ? v.slice(2) : "" }); }}
+                                    style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF8E8" }}>
+                                    <option value="">⛽ Máquina ou veículo que abasteceu —</option>
+                                    {(veiculosAbast.length ? veiculosAbast : maquinas.map(m => ({ ref: `m:${m.id}`, label: m.nome } as VeiculoUnificado))).map(v => <option key={v.ref} value={v.ref}>{v.label}</option>)}
+                                  </SelectField>
+                                  <SelectField value={it.funcionario_id} onChange={e => setItem(it.key, { funcionario_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF8E8" }}>
+                                    <option value="">👤 Motorista / operador —</option>
+                                    {motoristas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                                   </SelectField>
                                   {/* Data, tipo de combustível, valor/L e valor total já vêm da NF —
                                       só falta o hodômetro/horímetro pra alimentar o histórico de
                                       abastecimento do veículo (mesmo registro que o abastecimento
                                       pela bomba em Estoque já cria). */}
-                                  <InputNumerico decimais={1} value={it.horimetro || ""} onChange={v => setItem(it.key, { horimetro: parseFloat(v) || 0 })} placeholder="Hodômetro/Horímetro" style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }} />
+                                  <InputNumerico decimais={1} value={it.horimetro || ""} onChange={v => setItem(it.key, { horimetro: parseFloat(v) || 0 })} placeholder={it.veiculo_id ? "Hodômetro (km)" : "Hodômetro/Horímetro"} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }} />
                                 </div>
                               ) : modoDireto === "manutencao" ? (
                                 <span style={{ fontSize: 11, color: "var(--text-3)" }}>🔧 Rateio por frota abaixo ↓</span>

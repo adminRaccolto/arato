@@ -20533,3 +20533,18 @@ CREATE TRIGGER trg_nfse_apropria_patrimonio AFTER INSERT OR UPDATE ON nf_servico
   FOR EACH ROW EXECUTE FUNCTION public.fn_nfse_apropria_patrimonio();
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 426 — Abastecimento em posto pela NF: veículo da Transporte e motorista; OG em modo combustível
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+ALTER TABLE nf_entrada_itens
+  ADD COLUMN IF NOT EXISTS veiculo_id     uuid REFERENCES veiculos(id)     ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS funcionario_id uuid REFERENCES funcionarios(id) ON DELETE SET NULL;
+ALTER TABLE abastecimentos
+  ADD COLUMN IF NOT EXISTS veiculo_id     uuid REFERENCES veiculos(id)     ON DELETE SET NULL;
+
+-- "Abastecimento Posto" sempre foi combustível: sem a marca, a NF não pedia veículo nem gerava o abastecimento
+UPDATE operacoes_gerenciais SET permite_combustivel = true
+ WHERE classificacao = '2.01.02.01.05.001' AND coalesce(permite_combustivel, false) = false;
+
+NOTIFY pgrst, 'reload schema';

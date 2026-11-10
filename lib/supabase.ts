@@ -1557,6 +1557,9 @@ export type NfEntradaItem = {
   // abastecimento (item combustível) — alimenta abastecimentos.horimetro e
   // maquinas.horimetro_atual, igual ao abastecimento pela bomba em Estoque.
   horimetro?: number;
+  // Abastecimento em posto (Apropriação Direta, Seção 426): veículo da Transporte e motorista do abastecimento
+  veiculo_id?: string | null;
+  funcionario_id?: string | null;
   alerta_preco: boolean;
   // ICMS retido na origem (Substituição Tributária), lido do XML da NF — CST/CSOSN do item e o
   // valor do ICMS-ST, quando informado pelo fornecedor. Informativo: o valor já está embutido em
