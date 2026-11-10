@@ -1,4 +1,5 @@
 /** Cancelamento oficial de CT-e (evento 110111). */
+import { textoLivreSefaz } from "../fiscal/texto-sefaz";
 import { assinarXmlPorId, type PemPair } from "../nfe/signer";
 import { gerarDhEmi } from "../nfe/builder";
 import { consultarSituacaoCTe, transmitirEventoCTe } from "./transmitter";
@@ -49,7 +50,7 @@ export function montarEventoCancelamentoCTe(input: CancelamentoCTeInput): { xml:
     `<eventoCTe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">` +
       `<infEvento Id="${id}"><cOrgao>${cOrgao}</cOrgao><tpAmb>${tpAmb}</tpAmb><${tagDoc}>${emitente}</${tagDoc}>` +
       `<chCTe>${chave}</chCTe><dhEvento>${gerarDhEmi(input.uf)}</dhEvento><tpEvento>${tpEvento}</tpEvento><nSeqEvento>${nSeqEvento}</nSeqEvento>` +
-      `<detEvento versaoEvento="4.00"><evCancCTe><descEvento>Cancelamento</descEvento><nProt>${protocolo}</nProt><xJust>${esc(justificativa.slice(0, 255))}</xJust></evCancCTe></detEvento>` +
+      `<detEvento versaoEvento="4.00"><evCancCTe><descEvento>Cancelamento</descEvento><nProt>${protocolo}</nProt><xJust>${esc(textoLivreSefaz(justificativa).slice(0, 255))}</xJust></evCancCTe></detEvento>` +
       `</infEvento></eventoCTe>`;
   return { xml, id };
 }
@@ -137,7 +138,7 @@ export function montarEventoCCeCTe(input: CartaCorrecaoCTeInput): { xml: string;
   const cOrgao = CUF[input.uf.trim().toUpperCase()] ?? chave.slice(0, 2);
   const infCorrecao = input.correcoes.map(c =>
     `<infCorrecao><grupoAlterado>${esc(c.grupo.trim())}</grupoAlterado><campoAlterado>${esc(c.campo.trim())}</campoAlterado>` +
-    `<valorAlterado>${esc(c.valor.trim())}</valorAlterado>${c.item ? `<nroItemAlterado>${c.item.trim()}</nroItemAlterado>` : ""}</infCorrecao>`
+    `<valorAlterado>${esc(textoLivreSefaz(c.valor))}</valorAlterado>${c.item ? `<nroItemAlterado>${c.item.trim()}</nroItemAlterado>` : ""}</infCorrecao>`
   ).join("");
   const xml = `<?xml version="1.0" encoding="UTF-8"?>` +
     `<eventoCTe xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">` +

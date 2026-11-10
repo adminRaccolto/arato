@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-g",
+    data: "10/11/2026",
+    titulo: "Carta de correção com quebra de linha",
+    modulos: ["Documentos Fiscais", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Carta de correção e justificativa de cancelamento (NF-e, CT-e e MDF-e) aceitam texto em várias linhas: as quebras viram espaço antes de ir à SEFAZ (evita a rejeição 588)." },
+    ],
+  },
+  {
     versao: "2026.11.10-f",
     data: "10/11/2026",
     titulo: "Status Vencido, estorno de NFS-e e abastecimento sem horímetro",

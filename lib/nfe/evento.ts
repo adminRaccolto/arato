@@ -10,6 +10,7 @@
  * menos 15 caracteres.
  */
 
+import { textoLivreSefaz } from "../fiscal/texto-sefaz";
 import { soDigitos, gerarDhEmi } from "./builder";
 import { assinarXmlPorId, type PemPair } from "./signer";
 import { transmitirEvento } from "./transmitter";
@@ -50,7 +51,7 @@ function removerAcentos(s: string): string {
 }
 
 function validarJustificativa(s: string): string {
-  const trimmed = s.trim();
+  const trimmed = textoLivreSefaz(s);
   if (trimmed.length < 15) {
     throw new Error("Justificativa do cancelamento precisa ter pelo menos 15 caracteres (exigência da SEFAZ)");
   }
@@ -162,7 +163,8 @@ const X_COND_USO_CCE =
   "remetente ou do destinatario; III - a data de emissao ou de saida.";
 
 function validarCorrecao(s: string): string {
-  const trimmed = s.trim();
+  // Quebras de linha do texto digitado viram espaço: a SEFAZ rejeita (588) caracteres de edição
+  const trimmed = textoLivreSefaz(s);
   if (trimmed.length < 15) {
     throw new Error("Texto da correção precisa ter pelo menos 15 caracteres (exigência da SEFAZ)");
   }
