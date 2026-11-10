@@ -1,4 +1,6 @@
 "use client";
+import { ehRetornoBemTerceiro, finalidadeDoRetorno } from "../../../lib/fiscal/retorno-bem-terceiro";
+import { cstExibicaoPorCfop } from "../../../lib/nfe/cst-por-cfop";
 import { MODOS_FATURAMENTO, lerModoFaturamento, modoDaNota } from "../../../lib/fiscal/modo-faturamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDoProdutor } from "../../../lib/fazenda-de";
@@ -89,6 +91,12 @@ const NATUREZAS_VENDA = [
 const NATUREZAS_DEVOLUCAO = [
   { codigo: "6.555", descricao: "Devolução de bem do ativo de terceiro — interestadual (CFOP 6.555)", obs: "Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento." },
   { codigo: "5.555", descricao: "Devolução de bem do ativo de terceiro — interna (CFOP 5.555)", obs: "Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento." },
+  { codigo: "5.909", descricao: "Retorno de bem recebido em comodato — interna (CFOP 5.909)", obs: "Retorno de bem recebido por conta de contrato de comodato. Não incidência do ICMS." },
+  { codigo: "6.909", descricao: "Retorno de bem recebido em comodato — interestadual (CFOP 6.909)", obs: "Retorno de bem recebido por conta de contrato de comodato. Não incidência do ICMS." },
+  { codigo: "5.913", descricao: "Retorno de mercadoria recebida para demonstração — interna (CFOP 5.913)", obs: "Retorno de mercadoria recebida para demonstração." },
+  { codigo: "6.913", descricao: "Retorno de mercadoria recebida para demonstração — interestadual (CFOP 6.913)", obs: "Retorno de mercadoria recebida para demonstração." },
+  { codigo: "5.916", descricao: "Retorno de mercadoria recebida para conserto — interna (CFOP 5.916)", obs: "Retorno de mercadoria recebida para conserto ou reparo. ICMS suspenso." },
+  { codigo: "6.916", descricao: "Retorno de mercadoria recebida para conserto — interestadual (CFOP 6.916)", obs: "Retorno de mercadoria recebida para conserto ou reparo. ICMS suspenso." },
   { codigo: "2.201", descricao: "Devolução de venda de produção — interestadual (CFOP 2.201)", obs: "Devolução de mercadoria originada em venda interestadual. ICMS diferido estornado conforme emissão original. Funrural não incide sobre devolução." },
   { codigo: "1.201", descricao: "Devolução de venda de produção — intraestadual (CFOP 1.201)", obs: "Devolução de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissão original." },
   { codigo: "2.202", descricao: "Devolução de mercadoria adquirida — interestadual (CFOP 2.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação interestadual." },
@@ -155,7 +163,8 @@ const FVENDA_INICIAL = {
 };
 
 // Devolução de bem de terceiro: finalidade de devolução e NF de remessa referenciada são obrigatórias na SEFAZ
-const ehDevolucaoBem = (cfop: string) => cfop === "5.555" || cfop === "6.555";
+// Devolução/retorno de bem de terceiro (5555/6555, 5909/6909, 5913/6913, 5916/6916): referencia a NF de remessa recebida
+const ehDevolucaoBem = (cfop: string) => ehRetornoBemTerceiro(cfop);
 
 const FRETES = [
   { v: "0", l: "Por conta do Emitente (CIF)" }, { v: "1", l: "Por conta do Destinatário (FOB)" },
@@ -431,7 +440,7 @@ function FaturamentoInner() {
     abrirModal();
     if (modo === "contrato") setPasso("contrato");
     else if (modo === "avulsa") { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }
-    else if (modo === "devolucao") { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "5.555"); }
+    else if (modo === "devolucao") { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "5.909"); }
   }
 
   // ── Recebimento por carga: NF-e autorizada de contrato com essa opção abate o CR do contrato e vira CR da carga ──
@@ -1015,7 +1024,7 @@ function FaturamentoInner() {
               inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
               frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
               nfe_ref:   fVenda.nf_ref_chave || undefined,
-              fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? "4" : undefined,
+              fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? finalidadeDoRetorno([fVenda.cfop]) : undefined,
               tipo:      "1" as const,
               // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
               transporte: fVenda.transportadora || fVenda.placa ? {
@@ -1349,7 +1358,7 @@ function FaturamentoInner() {
           {ehDevolucaoBem(fVenda.cfop) && (
             <div>
               <label data-arato-label="true" style={lbl}>CST do ICMS (automático)</label>
-              <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value="050 — Suspensão" readOnly />
+              <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={cstExibicaoPorCfop(fVenda.cfop) === "041" ? "041 — Não tributada" : "050 — Suspensão"} readOnly />
             </div>
           )}
           {["5.556","6.556"].includes(fVenda.cfop) && (<>
@@ -1473,8 +1482,8 @@ function FaturamentoInner() {
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {ehDevolucaoBem(fVenda.cfop) && (
             <div data-arato-panel="true" style={{ background:"#FBF3E0", border:"0.5px solid #C9921B", borderRadius:10, padding:14 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:"#7A5A12", marginBottom:10 }}>Devolução de bem de terceiro: NF de remessa referenciada (obrigatória)</div>
-              <label data-arato-label="true" style={lbl}>Chave da NF de remessa recebida, CFOP 5554/6554 (44 dígitos)</label>
+              <div style={{ fontSize:12, fontWeight:700, color:"#7A5A12", marginBottom:10 }}>Devolução ou retorno de bem de terceiro: NF de remessa referenciada (obrigatória)</div>
+              <label data-arato-label="true" style={lbl}>Chave da NF de remessa recebida (comodato 5908/6908, uso 5554/6554, demonstração 5912/6912, conserto 5915/6915), 44 dígitos</label>
               <input style={inp} value={fVenda.nf_ref_chave} onChange={e => fv({ nf_ref_chave: e.target.value.replace(/\D/g,"").slice(0,44) })} maxLength={44} />
               {fVenda.nf_ref_chave && fVenda.nf_ref_chave.length !== 44 && (
                 <div style={{ fontSize:10, color:"#E24B4A", marginTop:3 }}>Chave deve ter 44 dígitos ({fVenda.nf_ref_chave.length} digitados)</div>
@@ -1854,11 +1863,11 @@ function FaturamentoInner() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
                 {modo === "devolucao" && (
                   <OperationalButton data-arato-button="secondary"
-                    onClick={() => { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "5.555"); }}
+                    onClick={() => { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "5.909"); }}
                     style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", gridColumn:"1 / -1" }}>
                     <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
                     <div style={{ fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:4 }}>Devolução</div>
-                    <div style={{ fontSize:12, color:"var(--text-2)" }}>Bem de terceiro recebido para uso, como máquina em comodato ou empréstimo (5.555 no estado, 6.555 fora). Informe na aba Fiscal a chave da NF de remessa recebida.</div>
+                    <div style={{ fontSize:12, color:"var(--text-2)" }}>Retorno de bem de terceiro: comodato (5.909/6.909), bem recebido para uso (5.555/6.555), demonstração (5.913) ou conserto (5.916). Escolha a natureza no formulário e informe na aba Fiscal a chave da NF de remessa recebida.</div>
                   </OperationalButton>
                 )}
                 {(!modo || modo === "contrato" || modo === "avulsa") && <>

@@ -8,7 +8,7 @@ export const MODOS_FATURAMENTO: Record<ModoFaturamento, { titulo: string; subtit
   contrato: { titulo: "Venda de Produção — Por Contrato", subtitulo: "NF-e de venda de grãos ligada a um contrato de venda", botao: "+ Nova NF-e por Contrato" },
   avulsa:   { titulo: "Venda de Produção — Avulsa", subtitulo: "NF-e de venda de produção agrícola sem contrato", botao: "+ Nova NF-e Avulsa" },
   remessa:  { titulo: "Remessa de Grãos e Retorno de Armazém", subtitulo: "Depósito em armazém geral, entrega futura, venda à ordem e retorno de armazém geral", botao: "+ Nova Remessa / Retorno" },
-  devolucao: { titulo: "Devoluções", subtitulo: "Devolução de bem de terceiro recebido para uso, como máquina em comodato ou empréstimo (CFOP 5.555/6.555), referenciando a NF de remessa recebida", botao: "+ Nova Devolução" },
+  devolucao: { titulo: "Devoluções", subtitulo: "Retorno de bem de terceiro: comodato (5.909/6.909), bem recebido para uso (5.555/6.555), demonstração (5.913) ou conserto (5.916), referenciando a NF de remessa recebida", botao: "+ Nova Devolução" },
 };
 
 export function lerModoFaturamento(v: string | null | undefined): ModoFaturamento | null {
@@ -19,14 +19,16 @@ const so = (cfop: string | null | undefined) => String(cfop ?? "").replace(/\D/g
 // Remessa/retorno: toda 59xx/69xx (armazém, simbólica, outras saídas) + faturamento antecipado e venda à ordem
 const REMESSA_EXTRA = new Set(["5117", "6117", "5119", "6119"]);
 // Devolução emitida pela fazenda: de compra (52xx, 5410-5412, 5553, 5556) e de bem de terceiro recebido para uso (5555)
+// Retorno de bem de terceiro recebido em comodato, demonstração ou conserto: fica com as devoluções
+const RETORNO_BEM = new Set(["5909", "6909", "5913", "6913", "5916", "6916"]);
 const DEVOLUCAO = /^[56](2\d\d|41[0-2]|55[356])$/;
 
 /** Em qual modo da tela uma NF de saída aparece. */
 export function modoDaNota(n: { cfop?: string | null; dados_nf_json?: unknown }): ModoFaturamento | null {
   const c = so(n.cfop);
   if (!c) return null;
+  if (DEVOLUCAO.test(c) || RETORNO_BEM.has(c)) return "devolucao";
   if (c[1] === "9" || REMESSA_EXTRA.has(c)) return "remessa";
-  if (DEVOLUCAO.test(c)) return "devolucao";
   const dj = (n.dados_nf_json ?? {}) as { contrato_id?: string | null };
   return dj.contrato_id ? "contrato" : "avulsa";
 }

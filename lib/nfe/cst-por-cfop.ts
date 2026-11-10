@@ -20,6 +20,13 @@ export const CFOPS_INDUSTRIALIZACAO = new Set(["5901", "6901", "5924", "6924", "
 // dono, 04/11/2026). Sem esta regra o 6555 caía no ICMS de 12% da venda interestadual, sobre o valor inteiro da máquina.
 export const CFOPS_DEVOLUCAO_BEM_TERCEIRO = new Set(["5555", "6555"]);
 
+// Retorno de bem de terceiro recebido em comodato (5909/6909), demonstração (5913/6913) ou conserto (5916/6916):
+// a mercadoria volta ao dono. Comodato e demonstração não são fato gerador de ICMS → CST 41 (não tributada);
+// retorno de conserto → CST 50 (suspensão). O cadastro de Operações Fiscais do cliente, quando houver, prevalece.
+export const CST_RETORNO_BEM_TERCEIRO: Record<string, string> = {
+  "5909": "41", "6909": "41", "5913": "41", "6913": "41", "5916": "50", "6916": "50",
+};
+
 /** CST de exibição com origem (3 dígitos), como aparece na DANFE (coluna O/CST). */
 export function cstExibicaoPorCfop(cfop?: string | null): string {
   const cod = String(cfop ?? "").replace(/\D/g, "");
@@ -28,6 +35,7 @@ export function cstExibicaoPorCfop(cfop?: string | null): string {
   if (p4 === "5905" || p4 === "6905" || p4 === "5934" || p4 === "6934") return "041";
   if (p4 === "5556" || p4 === "6556") return "020";
   if (CFOPS_DEVOLUCAO_BEM_TERCEIRO.has(p4)) return "050";
+  if (CST_RETORNO_BEM_TERCEIRO[p4]) return "0" + CST_RETORNO_BEM_TERCEIRO[p4];
   if (CFOPS_INDUSTRIALIZACAO.has(p4)) return "050";
   if (p4 === "5501" || p4 === "6501") return "040";
   if (CFOPS_TRANSFERENCIA.has(p4)) return "041";

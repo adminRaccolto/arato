@@ -5,6 +5,7 @@ import { carregarPagamentosAdiantamentos, geraMovimentoBancario } from "./financ
  * Os componentes importam essas funções e não chamam supabase diretamente.
  */
 
+import { ehRetornoBemTerceiro } from "./fiscal/retorno-bem-terceiro";
 import { motivoBloqueioExclusao, notaDoTitulo } from "./financeiro/bloqueio-exclusao";
 import { statusDoContrato } from "./financeiro/refinanciamento";
 import { cotacaoDoContrato } from "./financeiro/moeda";
@@ -4041,7 +4042,10 @@ export async function processarDevolucaoCompra(
     }
   }
 
-  // 3. Cria CR — fornecedor deve devolver o valor
+  // 3. Cria CR — fornecedor deve devolver o valor. Retorno de bem de terceiro (comodato, uso, demonstração,
+  //    conserto) não teve compra: não gera Conta a Receber nem encontro de contas.
+  const semFinanceiro = itens.length > 0 && itens.every(i => ehRetornoBemTerceiro(i.cfop));
+  if (!semFinanceiro) {
   const ogDevolucao = await resolverOperacaoGerencialPorClassificacao(fazenda_id, "1.02.01.03.001");
   const { data: crDev, error: errCR } = await supabase.from("lancamentos").insert({
     fazenda_id,
@@ -4064,6 +4068,7 @@ export async function processarDevolucaoCompra(
   try {
     await compensarDevolucao(supabase, { nfDevId: nfDev.id, nfOrigemId: nf_origem_id, numeroDev: numero, valor: valorTotal, data: data_emissao, crId: crDev?.id ?? null });
   } catch (e) { console.error("[devolucao] encontro de contas não feito:", e); }
+  }
 
   // 4. Só agora, com itens/estoque/CR confirmados, marca a devolução como concluída
   const { error: errStatus } = await supabase

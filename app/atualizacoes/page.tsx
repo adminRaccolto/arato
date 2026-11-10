@@ -15,6 +15,7 @@ const RELEASES = [
       { tipo: "correcao", texto: "Título com vencimento de hoje em diante não aparece mais como Vencido (havia salários reprogramados marcados assim)." },
       { tipo: "correcao", texto: "NFS-e processada: o botão ↺ Estornar aparece logo ao abrir a nota, sem precisar entrar em edição." },
       { tipo: "melhoria", texto: "NF de posto: máquina/veículo, horímetro/hodômetro e motorista são todos opcionais e independentes." },
+      { tipo: "novidade", texto: "Retorno de bem de terceiro no sistema todo: comodato (5.909/6.909), demonstração (5.913/6.913) e conserto (5.916/6.916), além de 5.555/6.555. O ↩ Devolver da nota recebida já sugere o CFOP de retorno pela remessa (ex.: 6.908 → 6.909) e não gera Conta a Receber." },
       { tipo: "novidade", texto: "Documentos Fiscais → Saídas → Devoluções: emissão da devolução de bem de terceiro (máquina em comodato ou empréstimo, CFOP 5.555/6.555), com lista só dessas notas." },
       { tipo: "novidade", texto: "Seguros: botão Excluir apólice no modal da apólice. Exclui prêmios, sinistros e os títulos de prêmio em aberto; com prêmio já pago, pede para estornar antes." },
     ],

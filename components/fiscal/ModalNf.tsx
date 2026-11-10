@@ -1,4 +1,5 @@
 "use client";
+import { RETORNO_DE_REMESSA, finalidadeDoRetorno, naturezaDoRetorno } from "../../lib/fiscal/retorno-bem-terceiro";
 import AvisoAdiantamentoFornecedor from "../financeiro/AvisoAdiantamentoFornecedor";
 // ═══════════════════════════════════════════════════════════════════════════
 // Modal de NF de Produtos (NF-e de entrada/compra) — extraído de
@@ -382,6 +383,15 @@ const CFOPS_DEVOLUCAO: { v: string; l: string }[] = [
   { v: "6556", l: "6556 — Dev. compra de material de uso ou consumo (interestadual)" },
   { v: "5413", l: "5413 — Dev. material de uso ou consumo c/ substituição tributária" },
   { v: "6413", l: "6413 — Dev. material de uso ou consumo c/ substituição tributária (interestadual)" },
+  // Bem de terceiro recebido (comodato, uso, demonstração, conserto): retorno ao dono, sem Conta a Receber
+  { v: "5909", l: "5909 — Retorno de bem recebido em comodato" },
+  { v: "6909", l: "6909 — Retorno de bem recebido em comodato (interestadual)" },
+  { v: "5555", l: "5555 — Devolução de bem do ativo de terceiro recebido para uso" },
+  { v: "6555", l: "6555 — Devolução de bem do ativo de terceiro recebido para uso (interestadual)" },
+  { v: "5913", l: "5913 — Retorno de mercadoria recebida para demonstração" },
+  { v: "6913", l: "6913 — Retorno de mercadoria recebida para demonstração (interestadual)" },
+  { v: "5916", l: "5916 — Retorno de mercadoria recebida para conserto" },
+  { v: "6916", l: "6916 — Retorno de mercadoria recebida para conserto (interestadual)" },
 ];
 
 export default function ModalNf({
@@ -1992,6 +2002,8 @@ export default function ModalNf({
       "6101": "6201", "6102": "6202", "6103": "6201", "6105": "6201", "6401": "6410", "6403": "6411", "6405": "6411",
       // Entrega de compra para entrega futura
       "5116": "5201", "5117": "5202", "6116": "6201", "6117": "6202", "1116": "5201", "1117": "5202", "2116": "6201", "2117": "6202",
+      // Remessa de bem de terceiro recebida (comodato, uso, demonstração, conserto) → retorno correspondente
+      ...RETORNO_DE_REMESSA,
     };
     const cfopPadrao = CFOP_DEV[(nf.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? "5201";
     setDevCfop(cfopPadrao);
@@ -2105,7 +2117,7 @@ export default function ModalNf({
           await criarNotaFiscal({
             fazenda_id: devNfOrig.fazenda_id, numero: devExt.numero.trim(), serie, tipo: "saida",
             cfop: cfopCab.length === 4 ? `${cfopCab.slice(0, 1)}.${cfopCab.slice(1)}` : cfopCab,
-            natureza: "Devolução de Compra", destinatario: devNfOrig.emitente_nome,
+            natureza: naturezaDoRetorno(itensParaDevolver.map(i => i.cfop)) ?? "Devolução de Compra", destinatario: devNfOrig.emitente_nome,
             cnpj_destinatario: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
             valor_total: itensParaDevolver.reduce((t, i) => t + i.valor_total, 0), data_emissao: devData,
             status: "autorizada", chave_acesso: chave || undefined, auto: false, tipo_emissao: 1,
@@ -2188,12 +2200,13 @@ export default function ModalNf({
             cep:            destCep || undefined,
           },
           itens:    itensNfe,
-          natureza: "Devolução de Compra",
+          natureza: naturezaDoRetorno(itensParaDevolver.map(i => i.cfop)) ?? "Devolução de Compra",
           inf_cpl:  `Devolução referente à NF ${devNfOrig.numero}/${devNfOrig.serie}${devNfOrig.chave_acesso ? ` — chave ${devNfOrig.chave_acesso}` : ""}.${devObs ? ` ${devObs}` : ""}`,
           frete:    "9",
           nfe_ref:  devNfOrig.chave_acesso || undefined,
           tipo:     "1",
-          fin_nfe:  "4",   // devolução — SEFAZ rejeita (328) CFOP de devolução sem essa finalidade
+          // devolução: SEFAZ rejeita (328) CFOP de devolução sem finNFe 4; retorno de comodato/demonstração/conserto é NF normal
+          fin_nfe:  finalidadeDoRetorno(itensParaDevolver.map(i => i.cfop)),
         }),
       });
       const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string; xmlUrl?: string; emit_razao?: string; emit_cnpj?: string; emit_ie?: string; emit_endereco?: string; emit_numero?: string; emit_bairro?: string; emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string };
@@ -2224,7 +2237,7 @@ export default function ModalNf({
         await criarNotaFiscal({
           fazenda_id: devNfOrig.fazenda_id, numero: res.numero ?? "", serie: serieReal, tipo: "saida",
           cfop: cfopCab.length === 4 ? `${cfopCab.slice(0, 1)}.${cfopCab.slice(1)}` : cfopCab,
-          natureza: "Devolução de Compra", destinatario: devNfOrig.emitente_nome,
+          natureza: naturezaDoRetorno(itensParaDevolver.map(i => i.cfop)) ?? "Devolução de Compra", destinatario: devNfOrig.emitente_nome,
           cnpj_destinatario: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
           valor_total: itensParaDevolver.reduce((s, i) => s + i.valor_total, 0), data_emissao: devData,
           status: "autorizada", chave_acesso: res.chave, xml_url: res.xmlUrl, auto: false, tipo_emissao: 1,
