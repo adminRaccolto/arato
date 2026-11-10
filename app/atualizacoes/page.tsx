@@ -16,7 +16,7 @@ const RELEASES = [
       { tipo: "melhoria", texto: "O Monitor NF-e Emitidas virou Painel de Notas e saiu do menu Fiscal: é onde se acompanha, cancela, corrige, complementa e reimprime a nota." },
       { tipo: "melhoria", texto: "Venda da produção separada em Venda por Contrato e Venda Avulsa: cada uma lista só as suas notas e o botão já abre a emissão certa." },
       { tipo: "melhoria", texto: "Remessa de grãos (armazém geral, entrega futura, venda à ordem) e retorno de armazém geral abrem pelo link de grãos da tela Remessas." },
-      { tipo: "melhoria", texto: "Notas de Terceiro passou a se chamar Notas de Fornecedores; Notas Capturadas (SIEG) foi para Documentos Fiscais → Entradas." },
+      { tipo: "melhoria", texto: "Notas de Terceiro passou a se chamar Notas de Fornecedores." },
     ],
   },
   {
