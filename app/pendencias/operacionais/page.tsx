@@ -96,7 +96,7 @@ export default function PendenciasOperacionais() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -109,7 +109,7 @@ export default function PendenciasOperacionais() {
     supabase.from("insumos").select("id, nome, unidade, estoque, custo_medio")
       .in("fazenda_id", fazendaIds).or("ativo.is.null,ativo.eq.true").order("nome")
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
-  }, [modal, fazendaId]);
+  }, [modal, fazendaId, fazendaIds]);
 
   const insumosFiltrados = buscaInsumo.trim()
     ? insumos.filter(i => i.nome.toLowerCase().includes(buscaInsumo.toLowerCase()))

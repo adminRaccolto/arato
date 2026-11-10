@@ -191,7 +191,7 @@ export default function TriangulacaoPage() {
     setPessoas(todasPessoas as Pessoa[]);  // já ordenado por localeCompare pt-BR
     setProdutores((prod ?? []) as Produtor[]);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

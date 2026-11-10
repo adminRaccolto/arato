@@ -266,7 +266,7 @@ function FinanceiroRelatoriosInner() {
         : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
       abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo, nomeArquivo: nomeRelatorio("CP CR", clienteRelatorio, inicioCPCR, fimCPCR) });
     })();
-  }, [cpcrEmitir]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cpcrEmitir, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
 
   // ── Grid configurável CP/CR ──────────────────────────────────

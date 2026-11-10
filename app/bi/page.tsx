@@ -3,14 +3,14 @@ import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import PlanoGate from "../../components/PlanoGate";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import type { PrecosData } from "../api/precos/route";
-import { listarAlertasController, reconhecerAlerta, resolverAlerta, listarContratosFinanceirosDaConta } from "../../lib/db";
+import { listarAnosSafra, listarAlertasController, reconhecerAlerta, resolverAlerta, listarContratosFinanceirosDaConta } from "../../lib/db";
 import { rodarChecksController } from "../../lib/controller-checks";
 import type { ControllerAlerta } from "../../lib/supabase";
 import { HedgePainel } from "../comercial/hedge/panel";
@@ -309,6 +309,7 @@ export default function BI() {
 
   const [fazenda,     setFazenda]     = useState<Fazenda | null>(null);
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
+  const cargaSeq = useRef(0);
   const [ciclos,      setCiclos]      = useState<Ciclo[]>([]);
   const [plantios,    setPlantios]    = useState<Plantio[]>([]);
   const [colheitas,   setColheitas]   = useState<Colheita[]>([]);
@@ -407,12 +408,14 @@ export default function BI() {
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
+    const seq = ++cargaSeq.current;
     setLoading(true);
     // Usa fazendaIds para cobrir todas as fazendas da conta (multi-fazenda)
     const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [fazR, safR, cicR, plaR, colR, arrR, arrBaseR, lanR, conR, cesR, precR, fazsR, talR, cctR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
-      supabase.from("anos_safra").select("*").in("fazenda_id", fazendaIds).order("descricao"),
+      // Safra é do cliente (conta), não da fazenda onde foi cadastrada
+      listarAnosSafra(fazendaId).then(data => ({ data })),
       supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha,produto_agricola_id").in("fazenda_id", fids),
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids).eq("status_campo", "aprovado"),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids).eq("status_campo", "aprovado"),
@@ -428,6 +431,8 @@ export default function BI() {
       supabase.from("cct_pagamentos").select("id,fazenda_id,moeda_parcela,quantidade_sacas,status,ciclo_id,ano_safra_id")
         .in("fazenda_id", fids).in("moeda_parcela", ["saca_soja","saca_milho","saca_algodao"]).neq("status","pago"),
     ]);
+    // Uma carga mais nova (ex.: chegou a lista completa de fazendas) já começou: descarta esta
+    if (seq !== cargaSeq.current) return;
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
     if (safR.status === "fulfilled") setAnosSafra((safR.value.data ?? []) as AnoSafra[]);
     const cicData = cicR.status === "fulfilled" ? (cicR.value.data ?? []) as (Ciclo & { produto_agricola_id?: string | null })[] : [];
@@ -469,10 +474,10 @@ export default function BI() {
     })));
     // Carrega culturas para lookup preciso de fator_conversao_kg
     supabase.from("culturas").select("id,nome,fator_conversao_kg")
-      .in("fazenda_id", fazendaIds).eq("ativa", true)
+      .in("fazenda_id", fids).eq("ativa", true)
       .then(({ data }) => setCulturasBi((data ?? []) as CulturaBI[]));
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => {
     if (["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "") && fazendaId && fazendaIds.length > 0) carregar();
@@ -624,7 +629,7 @@ export default function BI() {
     if (plFulR.status  === "fulfilled") setPlantiosFull((plFulR.value.data ?? []) as BiPlantioFull[]);
     setOpsLoaded(true);
     setOpsLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => {
     if (aba === "custos" && fazendaId && !opsLoaded && !opsLoading) carregarOps();

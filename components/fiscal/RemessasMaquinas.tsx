@@ -198,7 +198,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       setIesProdutores((await listarIEsDeMultiplosProdutores(prods.map(x => x.id))).filter(ie => ie.ativa));
       setLoading(false);
     })();
-  }, [contaId, fazendaId]);
+  }, [contaId, fazendaId, fazendaIds]);
 
   // Vindo da tela Retornos ("Registrar retorno" de uma máquina): abre o retorno dela
   useEffect(() => {

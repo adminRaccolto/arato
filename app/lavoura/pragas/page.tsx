@@ -198,7 +198,7 @@ export default function PragasPage() {
     setCiclos((cic ?? []) as Ciclo[]);
     setRecs((recsData ?? []) as Recomendacao[]);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

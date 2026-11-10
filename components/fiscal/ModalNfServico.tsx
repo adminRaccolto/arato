@@ -200,7 +200,7 @@ export default function ModalNfServico({
     listarEmpresasDaConta(fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []).then(setEmpresas).catch(() => {});
     if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregarApoio(); }, [carregarApoio]);
 

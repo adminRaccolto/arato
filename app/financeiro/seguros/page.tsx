@@ -277,7 +277,7 @@ export default function SegurosPage() {
     setProdutores(prod);
     setFuncionarios(func);
     setFazendas(faz);
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, fazendaIds]);
 
   useEffect(() => { carregar(); carregarCatalogos(); }, [carregar, carregarCatalogos]);
 

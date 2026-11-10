@@ -266,7 +266,7 @@ export default function NfServicoPage() {
     // um terceiro do cadastro geral de Pessoas. Sem isso, o tomador certo
     // nunca aparecia na lista.
     if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -295,7 +295,7 @@ export default function NfServicoPage() {
         setSiegProdutores(todos);
       } catch {}
     })();
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   // Busca pessoa já cadastrada pelo CPF/CNPJ, comparando dígitos puros —
   // acha o cadastro (prestador) mesmo quando um lado está com máscara.

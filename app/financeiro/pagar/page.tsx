@@ -565,7 +565,7 @@ export default function ContasAPagarPage() {
     const f = modalBaixa?.fazenda_id ?? fazendaId;
     if (!bClass.ano_safra_id || !f) { setBCiclos([]); return; }
     listarCiclosDoCliente(fazendaIds, f, bClass.ano_safra_id).then(c => setBCiclos(c as { id: string; descricao?: string | null; cultura?: string | null; rotulo?: string }[])).catch(() => setBCiclos([]));
-  }, [bClass.ano_safra_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bClass.ano_safra_id, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvandoAcao, setSalvandoAcao] = useState(false);
   const [erroAcao,     setErroAcao]     = useState("");
 
@@ -959,7 +959,7 @@ export default function ContasAPagarPage() {
     const f = fazendaId; if (!f) return;
     const faltam = [...new Set(parcelasNovo.map(p => p.ano_safra_id).filter((x): x is string => !!x))].filter(id => !ciclosPorSafra[id]);
     faltam.forEach(id => listarCiclosDoCliente(fazendaIds, f, id).then(c => setCiclosPorSafra(prev => ({ ...prev, [id]: c as never }))).catch(() => {}));
-  }, [parcelasNovo, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parcelasNovo, fazendaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   // Título gravado com a cópia da OG de outra fazenda (ou a global): o campo passa a apontar para a cópia que está na

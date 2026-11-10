@@ -290,7 +290,7 @@ function CustosInner() {
         setCicloIds((doAno.length > 0 ? doAno : cs).map(c => c.id));
       }
     }).finally(() => setInitLoading(false));
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   // ── Carrega dados da DRE quando cicloIds muda ────────────
   useEffect(() => {
@@ -338,7 +338,7 @@ function CustosInner() {
       setRatLinhas((rlR.data ?? []) as RatLinha[]);
       setRatRegras((rrR.data ?? []) as RatRegra[]);
     }).finally(() => setDreLoading(false));
-  }, [fazendaId, cicloIds.join(","), anoSafraId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, cicloIds.join(","), anoSafraId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ═══════════════════════════════════════════════════════════
   // CÁLCULOS DA DRE

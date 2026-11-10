@@ -195,7 +195,7 @@ export default function EstoqueGraosPage() {
     setAnosSafra((anos ?? []) as AnoSafra[]);
     setCiclos((cic ?? []) as Ciclo[]);
     setQuebConfig((cfg ?? []) as QuebConfig[]);
-  }, [fazAtiva]);
+  }, [fazAtiva, fazendaIds]);
 
   // ── Posição ─────────────────────────────────────────────────────────────────
   const carregarPosicao = useCallback(async () => {

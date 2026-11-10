@@ -142,7 +142,7 @@ export default function TransporteCadastrosPage() {
     const { data: emp } = await supabase.from("empresas").select("id, nome, razao_social, cpf_cnpj, inscricao_est, rntrc, cep, logradouro, numero, bairro, municipio, estado, telefone, email, finalidades").in("fazenda_id", fazendaIds).order("nome");
     if (emp) setEmpresas(emp);
     setLoading(false);
-  }, [fazendaId, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, contaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 

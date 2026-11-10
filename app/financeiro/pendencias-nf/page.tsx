@@ -96,7 +96,7 @@ export default function PendenciasNfPage() {
       }))
     );
     setLoading(false);
-  }, [fazendaId, filtroStatus]);
+  }, [fazendaId, filtroStatus, fazendaIds]);
 
   useEffect(() => { carregarNfs(); }, [carregarNfs]);
 
@@ -106,7 +106,7 @@ export default function PendenciasNfPage() {
       .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
     supabase.from("centros_custo").select("id, nome, codigo").in("fazenda_id", fazendaIds).order("nome")
       .then(({ data }) => setCentrosCusto((data ?? []) as CentroCusto[]));
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   // ── Abre modal e carrega itens ───────────────────────────
 

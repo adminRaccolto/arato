@@ -163,7 +163,7 @@ export default function RomaneioEntradaPage() {
       setTalhoes(t);
       setProdutores(prods);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, fazendaIds]);
 
   // Ciclos filtrados pelo ano selecionado no modal
   const ciclosFiltro = useMemo(() =>

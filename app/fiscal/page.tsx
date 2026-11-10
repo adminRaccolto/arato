@@ -775,7 +775,7 @@ function FiscalInner() {
   useEffect(() => {
     if (!fazendaId) return;
     listarDepositos(fazendaIds.length ? fazendaIds : fazendaId).then(setDepositos).catch(() => setDepositos([]));
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   // Remessa a partir da NF de entrada agora é emitida na tela Remessas (diretriz 27/10/2026): o endereço antigo
   // (?modo=remessa&nf_entrada_id=) vai para lá. O pré-preenchimento abaixo ficou sem entrada.
@@ -866,7 +866,7 @@ function FiscalInner() {
       setModalVenda(true);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modoParam, nfEntradaIdParam, fazendaId]);
+  }, [modoParam, nfEntradaIdParam, fazendaId, fazendaIds]);
 
   // Filtro de status — aba Notas de Venda
   const [filtroStatusVenda, setFiltroStatusVenda] = useState<string | null>(null);
@@ -1263,7 +1263,7 @@ function FiscalInner() {
           }
         }
       });
-  }, [fazendaId, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, contaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quando o usuário troca de emitente, atualiza danfeCfg com o config correto
   useEffect(() => {

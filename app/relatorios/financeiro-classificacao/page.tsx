@@ -272,7 +272,7 @@ function RelFinClassInner() {
         );
         setClassifOpts(sorted);
       });
-  }, [fazendaId, ops]);
+  }, [fazendaId, ops, fazendaIds]);
 
   // fechar dropdowns ao clicar fora
   useEffect(() => {

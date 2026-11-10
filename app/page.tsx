@@ -187,7 +187,7 @@ export default function Dashboard() {
       setBuscandoGlobal(false);
     }, 350);
     return () => clearTimeout(timer);
-  }, [buscaGlobal, fazendaId]);
+  }, [buscaGlobal, fazendaId, fazendaIds]);
 
   // ── Fecha busca ao clicar fora ──
   useEffect(() => {
@@ -588,7 +588,7 @@ export default function Dashboard() {
       ]);
       setConciliPend(((pend ?? []) as ConciliPendencia[]).filter(p => p.conta_id && vivas.has(`${p.conta_id}|${p.fitid}`)));
     })();
-  }, [fazendaId, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazendaId, contaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ignorarInconsistencia(id: string) {
     await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", id);

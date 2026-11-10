@@ -120,7 +120,7 @@ export default function Pluviometria() {
       const row = r as Record<string, unknown>;
       return { ...row, talhao_nome: (row.talhoes as { nome: string } | null)?.nome } as LeituraManual;
     }));
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -131,7 +131,7 @@ export default function Pluviometria() {
     if (faz) setFazenda(faz as Fazenda);
     if (tal) setTalhoes(tal as Talhao[]);
     await carregarLeituras();
-  }, [fazendaId, carregarLeituras]);
+  }, [fazendaId, carregarLeituras, fazendaIds]);
 
   async function salvarLeitura() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar leitura)", perigo: false }))) return;

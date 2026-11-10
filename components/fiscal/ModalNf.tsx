@@ -1387,7 +1387,7 @@ export default function ModalNf({
       setVefSel(porRef.length ? porRef : lista.map(v => v.nf_id));
     })().catch(() => setVefSaldos([]));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo, nfEdit?.id, cab.emitente_cnpj]);
+  }, [tipo, nfEdit?.id, cab.emitente_cnpj, fazendaIds]);
 
   // ── Processar NF (finalizar) ──────────────────────────────
   // Trava de clique: dois cliques seguidos em Processar disparavam dois processamentos ao mesmo tempo, e cada um criava

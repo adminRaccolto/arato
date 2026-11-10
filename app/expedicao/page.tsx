@@ -176,7 +176,7 @@ export default function Expedicao() {
       .then(({ data }) => data && setVeiculos(data));
     supabase.from("motoristas").select("id,nome").in("fazenda_id", fazendaIds).eq("ativo", true)
       .then(({ data }) => data && setMotori(data));
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   // ── Carregar contratos ────────────────────────────────────────────────────
   const carregarContratos = useCallback(async () => {

@@ -601,7 +601,7 @@ function ConciliacaoInner() {
       .select("descricao,tipo,conta_bancaria_id").in("fazenda_id", fazendaIds).eq("conciliado", false).not("conta_bancaria_id", "is", null).order("id").range(de, ate))
       .then(setPendGlobais).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abaAtiva, fazendaId]);
+  }, [abaAtiva, fazendaId, fazendaIds]);
 
   const [lancRefresh, setLancRefresh] = useState(false);
   async function recarregarLancamentos() {

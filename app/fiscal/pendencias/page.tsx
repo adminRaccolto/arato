@@ -75,7 +75,7 @@ export default function PendenciasFiscaisPage() {
     const { data } = await q;
     setPendencias((data as Pendencia[]) ?? []);
     setLoading(false);
-  }, [fazendaId, filtroStatus, filtroTipo]);
+  }, [fazendaId, filtroStatus, filtroTipo, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

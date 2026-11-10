@@ -497,7 +497,7 @@ export default function ContratosFinanceiros() {
         }));
       }).catch(() => {});
     }
-  }, [contratoModal, abaModal, fazendaId]);
+  }, [contratoModal, abaModal, fazendaId, fazendaIds]);
 
   async function salvar(fn: () => Promise<void>) {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;

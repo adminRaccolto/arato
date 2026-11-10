@@ -201,7 +201,7 @@ export default function ModalProcessarLote({
       } catch { setPedidos([]); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batchFazendaId]);
+  }, [batchFazendaId, fazendaIds]);
 
   // Ciclos do ano safra escolhido
   useEffect(() => {

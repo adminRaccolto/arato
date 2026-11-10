@@ -263,7 +263,7 @@ export default function Planejamento() {
     })
     .catch(e => setErroInit((e as { message?: string })?.message ?? "Erro ao carregar"))
     .finally(() => setLoading(false));
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   // ── ciclos filtrados pelo ano selecionado ───────────────
   const ciclosFiltrados = anoSelOrc ? ciclos.filter(c => c.ano_safra_id === anoSelOrc) : ciclos;
@@ -292,7 +292,7 @@ export default function Planejamento() {
         }
         setLoadingOrc(false);
       });
-  }, [cicloSelOrc, fazendaId]);
+  }, [cicloSelOrc, fazendaId, fazendaIds]);
 
   // ── carregar realizado ao mudar ciclo (comparativo) ─────
   useEffect(() => {

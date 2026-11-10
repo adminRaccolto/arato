@@ -377,7 +377,7 @@ export default function SpedContabilPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, entidade, anoExercicio, vinculos]);
+  }, [fazendaId, entidade, anoExercicio, vinculos, fazendaIds]);
 
   const VINCULOS_DISPONIVEIS = [
     { id: "rural",           label: "Atividade Rural",       cor: "#16A34A", bg: "#E8F5E9" },

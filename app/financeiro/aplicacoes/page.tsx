@@ -135,7 +135,7 @@ export default function AplicacoesFinanceirasPage() {
     setAplicacoes(ap ?? []);
     setMovimentos(mv ?? []);
     setContas(cb ?? []);
-  }, [fazAtiva]);
+  }, [fazAtiva, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

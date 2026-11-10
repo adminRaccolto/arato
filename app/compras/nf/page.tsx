@@ -788,7 +788,7 @@ export default function NfCompraPage() {
       } catch {}
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, fazendaIds]);
 
   // Carrega ciclos quando o ano safra muda no formulário
   useEffect(() => {

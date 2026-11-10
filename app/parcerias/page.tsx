@@ -235,7 +235,7 @@ export default function ParceriasPage() {
     setProdutores(prods ?? []);
     setCiclos(cics ?? []);
     setTalhoes(tlhs ?? []);
-  }, [contaId, fazendaId]);
+  }, [contaId, fazendaId, fazendaIds]);
 
   useEffect(() => {
     carregarParcerias();

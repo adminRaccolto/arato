@@ -164,7 +164,7 @@ export default function TesourariaPage() {
     setContas(cb ?? []);
     setOpsTesouraria(ob ?? []);
     setOgs(gsb ?? []);
-  }, [fazAtiva, contaId]);
+  }, [fazAtiva, contaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

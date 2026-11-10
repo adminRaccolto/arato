@@ -59,7 +59,7 @@ export default function MigrarNF() {
     if (cts) setContratos(cts as Contrato[]);
     if (lg) setLogs(lg as MigracaoLog[]);
     setLoadLogs(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

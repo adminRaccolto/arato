@@ -448,7 +448,7 @@ export default function ExecucaoPage() {
       .order("data_prevista_inicio", { ascending: true });
     setRecs((data ?? []) as Recomendacao[]);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

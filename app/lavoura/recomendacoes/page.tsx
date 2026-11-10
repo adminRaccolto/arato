@@ -836,7 +836,7 @@ export default function RecomendacoesPage() {
       .order("data_recomendacao", { ascending: false });
     setRecs((data ?? []) as Recomendacao[]);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, fazendaIds]);
 
   useEffect(() => {
     if (!fazendaId) return;

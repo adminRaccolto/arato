@@ -225,7 +225,7 @@ export default function ApoioFinanceiroPage() {
       setOpGerenciais(o);
       setContasBancarias(cb);
     });
-  }, [fazAtiva]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fazAtiva, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ciclos filtrados por ano safra ────────────────────────────────────────
   const ciclosFiltrados = formApoio.ano_safra_id

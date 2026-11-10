@@ -567,7 +567,7 @@ function MdfePageInner() {
       });
     return () => { cancelado = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modal, mdfeEdit, form.emitente_id, empresasTransp.length]);
+  }, [modal, mdfeEdit, form.emitente_id, empresasTransp.length, fazendaIds]);
 
   // ── Abrir modal ──────────────────────────────────────────
   function resetCiot() {

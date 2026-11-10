@@ -541,7 +541,7 @@ export default function ContasAReceberPage() {
     const f = modalBaixa?.fazenda_id ?? fazendaId;
     if (!bClass.ano_safra_id || !f) { setBCiclos([]); return; }
     listarCiclosDoCliente(fazendaIds, f, bClass.ano_safra_id).then(c => setBCiclos(c as { id: string; descricao?: string | null; cultura?: string | null; rotulo?: string }[])).catch(() => setBCiclos([]));
-  }, [bClass.ano_safra_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bClass.ano_safra_id, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvandoAcao, setSalvandoAcao] = useState(false);
   const [erroAcao,     setErroAcao]     = useState("");
 

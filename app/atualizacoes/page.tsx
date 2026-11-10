@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-c",
+    data: "10/11/2026",
+    titulo: "Telas com todas as fazendas do cliente",
+    modulos: ["Raccolto Intelligence", "Financeiro", "Produção", "Documentos Fiscais", "Comercial"],
+    itens: [
+      { tipo: "correcao", texto: "O Raccolto Intelligence passa a somar todas as fazendas do cliente; antes podia ficar só com a primeira fazenda aberta (área, ciclos, financeiro e contratos incompletos)." },
+      { tipo: "correcao", texto: "O filtro de safra do Raccolto Intelligence mostra todas as safras do cliente, mesmo as cadastradas em outra fazenda (ex.: 2026/2027 do Grupo Ogliari)." },
+      { tipo: "correcao", texto: "Outras 40 telas que carregavam antes da lista completa de fazendas chegar agora recarregam com todas as fazendas do cliente." },
+    ],
+  },
+  {
     versao: "2026.11.10-b",
     data: "10/11/2026",
     titulo: "Produtos repetidos nas listas e filtro pelos ciclos",

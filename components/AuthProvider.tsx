@@ -114,7 +114,12 @@ function ordenarFazendasDoCliente<T extends { id: string; created_at?: string | 
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [fazendaId,              setFazendaId]              = useState<string | null>(null);
-  const [fazendaIds,             setFazendaIds]             = useState<string[]>([]);
+  const [fazendaIds,             setFazendaIdsRaw]          = useState<string[]>([]);
+  // Mesma lista de fazendas = mesma referência: as telas recarregam quando a lista muda de verdade
+  // (ex.: chega a lista completa do cliente), e não a cada nova consulta com o mesmo conteúdo.
+  const setFazendaIds = useCallback((ids: string[]) => {
+    setFazendaIdsRaw(prev => (prev.length === ids.length && prev.every((v, i) => v === ids[i]) ? prev : ids));
+  }, []);
   const [contaId,                setContaId]                = useState<string | null>(null);
   const [contaNome,              setContaNome]              = useState<string | null>(null);
   const [nomeUsuario,            setNomeUsuario]            = useState<string | null>(null);

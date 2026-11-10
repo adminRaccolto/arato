@@ -863,7 +863,7 @@ function CadastrosInner() {
           }));
         });
     }
-  }, [aba, fazendaId, contaId, fazBombasView]);
+  }, [aba, fazendaId, contaId, fazBombasView, fazendaIds]);
 
   // Depósitos: useEffect separado que observa `fazendas` para evitar race condition
   // (aba=depositos pode estar ativa antes de fazendas terminar de carregar)
