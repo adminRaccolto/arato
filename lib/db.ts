@@ -1268,7 +1268,7 @@ export async function criarPagamentoLote(
   // 1. Cria o lote
   const { data: lote, error: le } = await supabase
     .from("pagamento_lotes")
-    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, data_vencimento, numero_titulo, valor_total, descricao, status })
+    .insert({ fazenda_id, tipo, conta_bancaria: null, data_pagamento: null, data_vencimento, numero_titulo, valor_total, descricao, status: "pendente" })
     .select()
     .single();
   if (le) throw le;
@@ -1277,39 +1277,14 @@ export async function criarPagamentoLote(
   // título já estiver em outro borderô, inclusive em requisições concorrentes.
   await vincularItensBordero(supabase, lote.id, tipo, itens);
 
-  const itensProd = itens.filter(i => (i.origem_tabela ?? "lancamentos") === "lancamentos");
-  const itensEmp  = itens.filter(i => i.origem_tabela === "empresa_lancamentos");
-
   if (status === "pago") {
-    // 3. Baixa cada lançamento — acumula sobre o que já tinha sido pago (um
-    // título "parcial" selecionado pro lote não pode ter o valor_pago
-    // anterior sobrescrito) e decide baixado/parcial com a mesma regra da
-    // baixa individual (/api/financeiro/baixar), agora considerando também
-    // o desconto informado por item.
-    const [atuaisProd, atuaisEmp] = await Promise.all([
-      itensProd.length ? supabase.from("lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago").in("id", itensProd.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
-      itensEmp.length  ? supabase.from("empresa_lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago").in("id", itensEmp.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
-    ]);
-    const mapaProd = new Map((atuaisProd.data ?? []).map(l => [l.id as string, l]));
-    const mapaEmp  = new Map((atuaisEmp.data ?? []).map(l => [l.id as string, l]));
-
-    for (const item of itens) {
-      const origem = item.origem_tabela ?? "lancamentos";
-      const at        = (origem === "lancamentos" ? mapaProd : mapaEmp).get(item.lancamento_id);
-      const cotacao    = (at?.cotacao_usd as number | null) ?? 5.12;
-      const valorTotal = at?.moeda === "USD" ? ((at?.valor as number | null) ?? 0) * cotacao : ((at?.valor as number | null) ?? 0);
-      const jaPago     = (at?.valor_pago as number | null) ?? 0;
-      const novoTotal  = jaPago + item.valor_pago;
-      const statusBaixado = origem === "lancamentos" ? "baixado" : "pago";
-      const novoStatus = novoTotal >= valorTotal - 0.01 ? statusBaixado : "parcial";
-      const campoData = origem === "lancamentos" ? "data_baixa" : "data_pagamento";
-      const { error: be } = await supabase
-        .from(origem)
-        .update({ status: novoStatus, valor_pago: novoTotal, [campoData]: data_pagamento, conta_bancaria, lote_id: lote.id })
-        .eq("id", item.lancamento_id).eq("lote_id", lote.id);
-      if (be) throw be;
-    }
+    if (!data_pagamento || !conta_bancaria) throw new Error("Borderô criado em aberto. Informe data e conta para confirmar o pagamento.");
+    await confirmarPagamentoBordero(lote.id, data_pagamento, conta_bancaria, { principal_anterior: 0 });
+    const { data: confirmado, error } = await supabase.from("pagamento_lotes").select("*").eq("id", lote.id).single();
+    if (error) throw error;
+    return confirmado;
   }
+
   return lote;
 }
 
@@ -1327,7 +1302,7 @@ async function chamarBorderoAcao(body: {
   // Juros/multa/desconto/valor pago são do TÍTULO (o borderô inteiro) — um
   // valor só, nunca por NF/item. O servidor rateia proporcionalmente entre
   // os itens pelo saldo de cada um, acumulando pagamentos anteriores.
-  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string };
+  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string; requisicao_id?: string };
 }): Promise<void> {
   const res = await fetch("/api/financeiro/bordero-acao", {
     method: "POST",
@@ -1342,9 +1317,9 @@ export async function confirmarPagamentoBordero(
   lote_id: string,
   data_pagamento: string,
   conta_bancaria: string,
-  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string },
+  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string; requisicao_id?: string },
 ): Promise<void> {
-  await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria, titulo });
+  await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria, titulo: { ...titulo, requisicao_id: titulo?.requisicao_id ?? crypto.randomUUID() } });
 }
 
 /** Cancela um borderô pendente: remove vínculo dos lançamentos e exclui o lote. */
@@ -2536,7 +2511,8 @@ export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[
       data_vencimento: r.data_vencimento, data_baixa: r.data_pagamento ?? undefined,
       data_prorrogacao: r.data_prorrogacao ?? undefined,
       valor: Number(r.valor), valor_pago: r.valor_pago ?? undefined, status, auto: false,
-      empresa_id: r.empresa_id, pessoa_id: r.pessoa_id ?? undefined, conta_bancaria: r.conta_bancaria ?? undefined,
+      titulo_origem_id:r.titulo_origem_id,valor_titulo_origem:r.valor_titulo_origem,pagamento_parcial:r.pagamento_parcial,
+      lote_id: r.lote_id ?? undefined, origem_tabela: "empresa_lancamentos", empresa_id: r.empresa_id, pessoa_id: r.pessoa_id ?? undefined, conta_bancaria: r.conta_bancaria ?? undefined,
       operacao_gerencial_id: r.operacao_gerencial_id ?? undefined, ano_safra_id: r.ano_safra_id ?? undefined,
       ciclo_id: r.ciclo_id ?? undefined, agrupador: r.agrupador ?? undefined,
       valor_multa: r.valor_multa ?? undefined, valor_juros: r.valor_juros ?? undefined, valor_desconto: r.valor_desconto ?? undefined,

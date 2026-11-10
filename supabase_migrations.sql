@@ -20571,3 +20571,330 @@ UPDATE ciclos c SET produto_agricola_id = a.produto_id FROM alvo a WHERE c.id = 
 -- Ciclos que continuam sem produto (cadastrar o produto agrícola e ligar no ciclo)
 SELECT c.id, f.nome AS fazenda, c.descricao, c.cultura FROM ciclos c JOIN fazendas f ON f.id = c.fazenda_id
  WHERE c.produto_agricola_id IS NULL ORDER BY f.nome, c.descricao;
+
+-- =============================================================================
+-- Seção 428 — Borderô: baixa exata e estorno atômico com recuperação dos títulos
+-- Executar inteira. Não recalcula pagamentos históricos nem recompõe partes antigas.
+-- =============================================================================
+BEGIN;
+CREATE TABLE IF NOT EXISTS pagamento_lote_baixas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lote_id uuid NOT NULL REFERENCES pagamento_lotes(id) ON DELETE CASCADE,
+  fazenda_id uuid NOT NULL REFERENCES fazendas(id),
+  requisicao_id uuid NOT NULL UNIQUE,
+  dados jsonb NOT NULL,
+  lote_antes jsonb NOT NULL,
+  lote_depois jsonb NOT NULL,
+  itens_antes jsonb NOT NULL,
+  itens_depois jsonb NOT NULL,
+  extratos_antes jsonb NOT NULL,
+  saldo_lote_id uuid,
+  saldo_estado jsonb,
+  estornado_em timestamptz,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX IF NOT EXISTS idx_lote_baixas_ativas ON pagamento_lote_baixas(lote_id,created_at,id) WHERE estornado_em IS NULL;
+ALTER TABLE pagamento_lote_baixas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS lote_baixas_leitura ON pagamento_lote_baixas;
+CREATE POLICY lote_baixas_leitura ON pagamento_lote_baixas FOR SELECT TO authenticated
+  USING(fazenda_id IN (SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+GRANT SELECT ON pagamento_lote_baixas TO authenticated;
+
+-- Só os campos financeiros desta operação. Outros dados do cadastro não são sobrescritos no estorno.
+CREATE OR REPLACE FUNCTION public.bordero_estado_titulo(p jsonb) RETURNS jsonb
+LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+ SELECT jsonb_build_object('valor',p->'valor','moeda',p->'moeda','cotacao_usd',p->'cotacao_usd',
+   'lote_id',p->'lote_id','fazenda_id',p->'fazenda_id','tipo',p->'tipo','pagamento_parcial',p->'pagamento_parcial',
+   'titulo_origem_id',p->'titulo_origem_id','valor_titulo_origem',p->'valor_titulo_origem','contrato_financeiro_id',p->'contrato_financeiro_id','status',p->'status','valor_pago',p->'valor_pago',
+   'valor_juros',p->'valor_juros','valor_multa',p->'valor_multa','valor_desconto',p->'valor_desconto',
+   'data_baixa',p->'data_baixa','data_pagamento',p->'data_pagamento','conta_bancaria',p->'conta_bancaria');
+$$;
+
+CREATE OR REPLACE FUNCTION public.bordero_acao_atomica(
+ p_lote uuid,p_acao text,p_data date DEFAULT NULL,p_conta uuid DEFAULT NULL,p_titulo jsonb DEFAULT '{}'::jsonb
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE
+ b pagamento_lotes%ROWTYPE; i pagamento_lote_itens%ROWTYPE; r record;
+ primeira pagamento_lote_baixas%ROWTYPE; ultima pagamento_lote_baixas%ROWTYPE;
+ j jsonb; antes jsonb:='[]'; depois jsonb:='[]'; estado jsonb; patch jsonb; recebido jsonb;
+ v_tabela text; v_data_campo text; v_ids uuid[]:='{}'; v_requisicao uuid;
+ v_total numeric:=0; v_liquidado numeric; v_saldo numeric; v_valor numeric; v_pago numeric;
+ v_principal numeric; v_juros numeric; v_multa numeric; v_desconto numeric;
+ v_caixa numeric;
+ v_ord integer; v_pos integer:=0; v_n integer;
+ v_saldos numeric[]:='{}'; v_principais numeric[]:='{}'; v_j numeric[]:='{}'; v_m numeric[]:='{}'; v_d numeric[]:='{}';
+ v_pesos numeric[]; v_rateado numeric[]; v_centavos bigint; v_sobra bigint; v_soma numeric;
+ v_dividir boolean:=false; v_saldo_lote uuid; v_estado_saldo jsonb; v_partes jsonb:='[]'; v_itens_saldo jsonb; v_saldo_header jsonb;
+ v_extratos jsonb:='[]'; v_extrato jsonb;
+ v_lote_antes jsonb; v_lote_depois jsonb; v_novo_venc date; v_item jsonb; v_item_antes jsonb;
+BEGIN
+ IF p_acao NOT IN ('confirmar','estornar','cancelar') OR p_acao IS NULL THEN RAISE EXCEPTION 'Ação inválida.'; END IF;
+ SELECT * INTO b FROM pagamento_lotes WHERE id=p_lote FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Borderô não encontrado.'; END IF;
+ v_liquidado:=round(coalesce(b.valor_pago,CASE WHEN b.status='pago' THEN b.valor_total ELSE 0 END),2);
+ v_lote_antes:=to_jsonb(b);
+
+ IF p_acao='confirmar' THEN
+   v_requisicao:=nullif(p_titulo->>'requisicao_id','')::uuid;
+   IF v_requisicao IS NULL THEN RAISE EXCEPTION 'Identificação da baixa obrigatória. Atualize a tela.'; END IF;
+   recebido:=jsonb_build_object('data',p_data,'conta',p_conta,'titulo',p_titulo);
+   SELECT * INTO ultima FROM pagamento_lote_baixas WHERE requisicao_id=v_requisicao;
+   IF FOUND THEN
+     IF ultima.lote_id<>p_lote OR ultima.dados<>recebido OR ultima.estornado_em IS NOT NULL THEN
+       RAISE EXCEPTION 'Identificação de baixa já utilizada. Atualize a tela.';
+     END IF;
+     RETURN jsonb_build_object('ok',true,'repetido',true);
+   END IF;
+ END IF;
+ SELECT * INTO ultima FROM pagamento_lote_baixas WHERE lote_id=p_lote AND estornado_em IS NULL ORDER BY created_at DESC,id DESC LIMIT 1;
+ IF p_acao='cancelar' AND EXISTS(SELECT 1 FROM pagamento_lote_baixas WHERE saldo_lote_id=p_lote AND estornado_em IS NULL) THEN RAISE EXCEPTION 'Este saldo pertence a uma baixa parcial. Estorne a parte paga de origem antes de cancelar o agrupamento.'; END IF;
+ -- Famílias novas possuem fotografia completa; famílias antigas exigem conferência específica.
+ IF (coalesce(b.pagamento_parcial,false) OR b.lote_origem_id IS NOT NULL) AND ultima.id IS NULL
+   AND NOT (p_acao='confirmar' AND NOT coalesce(b.pagamento_parcial,false)
+     AND EXISTS(SELECT 1 FROM pagamento_lote_baixas WHERE saldo_lote_id=p_lote AND estornado_em IS NULL)) THEN
+   RAISE EXCEPTION 'Borderô antigo dividido em partes: é necessária conferência da família antes de pagar, estornar ou cancelar. Nenhum valor foi alterado.';
+ END IF;
+
+ FOR i IN SELECT * FROM pagamento_lote_itens WHERE lote_id=p_lote ORDER BY id FOR UPDATE LOOP
+   v_tabela:=coalesce(i.origem_tabela,'lancamentos');
+   IF v_tabela NOT IN ('lancamentos','empresa_lancamentos') THEN RAISE EXCEPTION 'Origem inválida.'; END IF;
+   EXECUTE format('SELECT to_jsonb(t) FROM %I t WHERE id=$1 FOR UPDATE',v_tabela) INTO j USING i.lancamento_id;
+   IF j IS NULL OR j->>'lote_id' IS DISTINCT FROM p_lote::text OR j->>'tipo' IS DISTINCT FROM b.tipo
+      OR j->>'status' IN ('cancelado','cartao') THEN RAISE EXCEPTION 'Título sem vínculo válido com o borderô.'; END IF;
+   IF coalesce((j->>'pagamento_parcial')::boolean,false) AND ultima.id IS NULL THEN
+     RAISE EXCEPTION 'Título antigo dividido: confira as partes antes de alterar o borderô. Nenhum valor foi alterado.';
+   END IF;
+   IF NOT EXISTS(SELECT 1 FROM fazendas f JOIN fazendas fb ON fb.id=b.fazenda_id
+      WHERE f.id=(j->>'fazenda_id')::uuid AND (f.id=fb.id OR (fb.conta_id IS NOT NULL AND f.conta_id=fb.conta_id))) THEN
+     RAISE EXCEPTION 'Título de outro cliente.';
+   END IF;
+   v_ids:=array_append(v_ids,i.lancamento_id);
+   IF j->>'moeda'='USD' AND coalesce((j->>'cotacao_usd')::numeric,0)<=0 THEN RAISE EXCEPTION 'Confira a cotação do título em dólar.'; END IF;
+   v_valor:=round((j->>'valor')::numeric*CASE WHEN j->>'moeda'='USD' THEN (j->>'cotacao_usd')::numeric ELSE 1 END,2);
+   v_pago:=round(coalesce((j->>'valor_pago')::numeric,0)-coalesce((j->>'valor_juros')::numeric,0)-coalesce((j->>'valor_multa')::numeric,0)+coalesce((j->>'valor_desconto')::numeric,0),2);
+   IF v_valor::text IN ('NaN','Infinity','-Infinity') OR v_valor<0 OR v_pago<0 OR v_pago>v_valor THEN RAISE EXCEPTION 'Valores inconsistentes no título. Confira antes de continuar.'; END IF;
+   v_saldos:=array_append(v_saldos,v_valor-v_pago);
+   v_total:=v_total+v_valor-v_pago;
+   antes:=antes||jsonb_build_array(jsonb_build_object('item',to_jsonb(i),'titulo',j));
+ END LOOP;
+ IF jsonb_array_length(antes)=0 THEN
+   IF p_acao='cancelar' AND v_liquidado=0 AND NOT EXISTS(SELECT 1 FROM lancamentos WHERE lote_id=p_lote)
+     AND NOT EXISTS(SELECT 1 FROM empresa_lancamentos WHERE lote_id=p_lote)
+     AND NOT EXISTS(SELECT 1 FROM pagamento_lote_baixas WHERE lote_id=p_lote AND estornado_em IS NULL) THEN
+     DELETE FROM pagamento_lotes WHERE id=p_lote;
+     RETURN jsonb_build_object('ok',true);
+   END IF;
+   RAISE EXCEPTION 'Borderô sem títulos.';
+ END IF;
+ IF (SELECT count(*) FROM (SELECT coalesce(x->'item'->>'origem_tabela','lancamentos'),x->'item'->>'lancamento_id' FROM jsonb_array_elements(antes) x GROUP BY 1,2) s)<>jsonb_array_length(antes) THEN
+   RAISE EXCEPTION 'Há títulos repetidos no borderô.';
+ END IF;
+ -- Não libera títulos ausentes da composição nem permite excluir um agrupamento incompleto.
+ IF EXISTS(SELECT 1 FROM lancamentos t WHERE t.lote_id=p_lote AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(antes) x WHERE coalesce(x->'item'->>'origem_tabela','lancamentos')='lancamentos' AND x->'item'->>'lancamento_id'=t.id::text))
+ OR EXISTS(SELECT 1 FROM empresa_lancamentos t WHERE t.lote_id=p_lote AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(antes) x WHERE x->'item'->>'origem_tabela'='empresa_lancamentos' AND x->'item'->>'lancamento_id'=t.id::text)) THEN
+   RAISE EXCEPTION 'Composição incompleta do borderô. Confira os vínculos.';
+ END IF;
+
+ SELECT * INTO ultima FROM pagamento_lote_baixas WHERE lote_id=p_lote AND estornado_em IS NULL ORDER BY created_at DESC,id DESC LIMIT 1;
+ IF p_acao='confirmar' THEN
+   IF ultima.id IS NULL AND v_liquidado>0 THEN RAISE EXCEPTION 'Borderô antigo com baixa parcial: confira os pagamentos anteriores antes de continuar.'; END IF;
+   IF ultima.id IS NOT NULL THEN
+     IF jsonb_array_length(ultima.itens_depois)<>jsonb_array_length(antes) THEN RAISE EXCEPTION 'Composição alterada após a baixa.'; END IF;
+     FOR r IN SELECT x FROM jsonb_array_elements(antes) x LOOP
+       SELECT x INTO estado FROM jsonb_array_elements(ultima.itens_depois) x WHERE x->'item'->>'id'=r.x->'item'->>'id';
+       IF estado IS NULL OR public.bordero_estado_titulo(estado->'titulo')<>public.bordero_estado_titulo(r.x->'titulo') OR estado->'item'<>r.x->'item' THEN RAISE EXCEPTION 'Título alterado após a baixa.'; END IF;
+     END LOOP;
+   END IF;
+   IF p_data IS NULL OR p_conta IS NULL THEN RAISE EXCEPTION 'Informe data e conta bancária.'; END IF;
+   IF NOT EXISTS(SELECT 1 FROM contas_bancarias c LEFT JOIN fazendas fc ON fc.id=c.fazenda_id JOIN fazendas fb ON fb.id=b.fazenda_id
+     WHERE c.id=p_conta AND c.ativa IS DISTINCT FROM false AND coalesce(c.moeda,'BRL')='BRL'
+       AND (c.fazenda_id=b.fazenda_id OR (fb.conta_id IS NOT NULL AND coalesce(c.conta_id,fc.conta_id)=fb.conta_id))) THEN
+     RAISE EXCEPTION 'Selecione uma conta bancária em reais do mesmo cliente.';
+   END IF;
+   IF p_titulo ? 'principal_anterior' AND (p_titulo->>'principal_anterior')::numeric IS DISTINCT FROM v_liquidado THEN RAISE EXCEPTION 'O borderô recebeu outro pagamento. Atualize a tela.'; END IF;
+   IF abs(v_total-(b.valor_total-v_liquidado))>0.01 THEN RAISE EXCEPTION 'O saldo dos títulos diverge do borderô.'; END IF;
+   v_principal:=round(coalesce((p_titulo->>'valor_pago')::numeric,v_total),2);
+   v_juros:=round(coalesce((p_titulo->>'valor_juros')::numeric,0),2);
+   v_multa:=round(coalesce((p_titulo->>'valor_multa')::numeric,0),2);
+   v_desconto:=round(coalesce((p_titulo->>'valor_desconto')::numeric,0),2);
+   IF v_principal::text IN ('NaN','Infinity','-Infinity') OR v_juros::text IN ('NaN','Infinity','-Infinity') OR v_multa::text IN ('NaN','Infinity','-Infinity') OR v_desconto::text IN ('NaN','Infinity','-Infinity')
+     OR v_principal<=0 OR v_principal>v_total OR least(v_juros,v_multa,v_desconto)<0 OR v_desconto>v_principal THEN RAISE EXCEPTION 'Valor de pagamento ou encargos inválidos.'; END IF;
+   v_saldo:=v_total-v_principal;
+   v_novo_venc:=CASE WHEN v_saldo>0 THEN nullif(p_titulo->>'novo_vencimento_saldo','')::date ELSE NULL END;
+   -- Distribuição proporcional em centavos; na quitação usa exatamente o saldo de CADA título.
+   -- Resíduos vão aos maiores restos, com desempate pela ordem estável dos itens.
+   FOR v_ord IN 1..4 LOOP
+     v_valor:=CASE v_ord WHEN 1 THEN v_principal WHEN 2 THEN v_juros WHEN 3 THEN v_multa ELSE v_desconto END;
+     v_pesos:=CASE WHEN v_ord=4 THEN v_principais ELSE v_saldos END;
+     SELECT sum(x) INTO v_soma FROM unnest(v_pesos) x;
+     v_centavos:=round(v_valor*100); v_rateado:='{}';
+     FOR v_n IN 1..array_length(v_pesos,1) LOOP
+       v_rateado:=array_append(v_rateado,floor(v_centavos*v_pesos[v_n]/v_soma));
+     END LOOP;
+     SELECT v_centavos-sum(x) INTO v_sobra FROM unnest(v_rateado) x;
+     FOR r IN SELECT n FROM generate_subscripts(v_pesos,1) n ORDER BY (v_centavos*v_pesos[n]/v_soma-v_rateado[n]) DESC,n LIMIT v_sobra LOOP
+       v_rateado[r.n]:=v_rateado[r.n]+1;
+     END LOOP;
+     FOR v_n IN 1..array_length(v_rateado,1) LOOP v_rateado[v_n]:=round(v_rateado[v_n]/100,2); END LOOP;
+     CASE v_ord WHEN 1 THEN v_principais:=v_rateado; WHEN 2 THEN v_j:=v_rateado; WHEN 3 THEN v_m:=v_rateado; ELSE v_d:=v_rateado; END CASE;
+   END LOOP;
+   v_dividir:=b.tipo='pagar' AND v_saldo>0 AND v_liquidado=0 AND NOT EXISTS(
+     SELECT 1 FROM jsonb_array_elements(antes) e WHERE coalesce(e->'titulo'->>'moeda','BRL')<>'BRL'
+       OR e->'titulo'->>'contrato_financeiro_id' IS NOT NULL OR coalesce((e->'titulo'->>'valor_pago')::numeric,0)>0);
+   IF v_dividir AND (v_juros>0 OR v_multa>0) THEN RAISE EXCEPTION 'Juros e multa entram na quitação do borderô. Neste parcial informe o principal e eventual desconto.'; END IF;
+   IF v_dividir THEN
+     v_saldo_lote:=gen_random_uuid();
+     INSERT INTO pagamento_lotes SELECT (jsonb_populate_record(NULL::pagamento_lotes,to_jsonb(b)||jsonb_build_object(
+       'id',v_saldo_lote,'valor_total',v_saldo,'valor_pago',NULL,'status','pendente','data_pagamento',NULL,'conta_bancaria',NULL,
+       'valor_juros',0,'valor_multa',0,'valor_desconto',0,'conciliado',false,'pagamento_parcial',false,
+       'lote_origem_id',coalesce(b.lote_origem_id,b.id),'valor_lote_origem',coalesce(b.valor_lote_origem,b.valor_total),
+       'data_vencimento',coalesce(v_novo_venc,b.data_vencimento),'created_at',clock_timestamp()))).*;
+   END IF;
+   FOR v_item_antes IN SELECT x FROM jsonb_array_elements(antes) x LOOP
+     v_pos:=v_pos+1; j:=v_item_antes->'titulo'; v_item:=v_item_antes->'item'; v_tabela:=coalesce(v_item->>'origem_tabela','lancamentos');
+     v_data_campo:=CASE WHEN v_tabela='lancamentos' THEN 'data_baixa' ELSE 'data_pagamento' END;
+     v_caixa:=v_principais[v_pos]+v_j[v_pos]+v_m[v_pos]-v_d[v_pos];
+     IF v_dividir AND v_principais[v_pos]=0 THEN
+       EXECUTE format('UPDATE %I SET lote_id=$1 WHERE id=$2',v_tabela) USING v_saldo_lote,(j->>'id')::uuid;
+     ELSIF v_saldos[v_pos]>0 THEN
+       patch:=jsonb_build_object('valor_pago',coalesce((j->>'valor_pago')::numeric,0)+v_caixa,
+         'valor_juros',coalesce((j->>'valor_juros')::numeric,0)+v_j[v_pos],'valor_multa',coalesce((j->>'valor_multa')::numeric,0)+v_m[v_pos],
+         'valor_desconto',coalesce((j->>'valor_desconto')::numeric,0)+v_d[v_pos],v_data_campo,p_data,'conta_bancaria',p_conta,
+         'conciliado',false,'lote_saldo_id',CASE WHEN v_dividir THEN v_saldo_lote ELSE NULL END,'vencimento_saldo',v_novo_venc,'status',CASE WHEN v_principais[v_pos]=v_saldos[v_pos] THEN CASE WHEN v_tabela='lancamentos' THEN 'baixado' ELSE 'pago' END ELSE 'parcial' END);
+       EXECUTE format('UPDATE %1$I SET (status,valor_pago,valor_juros,valor_multa,valor_desconto,%2$I,conta_bancaria,conciliado,lote_saldo_id,vencimento_saldo)=(SELECT status,valor_pago,valor_juros,valor_multa,valor_desconto,%2$I,conta_bancaria,conciliado,lote_saldo_id,vencimento_saldo FROM jsonb_populate_record(NULL::%1$I,$1)) WHERE id=$2',v_tabela,v_data_campo) USING patch,(j->>'id')::uuid;
+     END IF;
+     patch:=jsonb_build_object('valor_pago',CASE WHEN v_liquidado>0 THEN coalesce((v_item->>'valor_pago')::numeric,0) ELSE 0 END+v_caixa,
+       'valor_juros',CASE WHEN v_liquidado>0 THEN coalesce((v_item->>'valor_juros')::numeric,0) ELSE 0 END+v_j[v_pos],
+       'valor_multa',CASE WHEN v_liquidado>0 THEN coalesce((v_item->>'valor_multa')::numeric,0) ELSE 0 END+v_m[v_pos],
+       'valor_desconto',CASE WHEN v_liquidado>0 THEN coalesce((v_item->>'valor_desconto')::numeric,0) ELSE 0 END+v_d[v_pos]);
+     IF v_dividir AND v_principais[v_pos]=0 THEN
+       DELETE FROM pagamento_lote_itens WHERE id=(v_item->>'id')::uuid;
+     ELSE
+     UPDATE pagamento_lote_itens SET valor_pago=(patch->>'valor_pago')::numeric,valor_juros=(patch->>'valor_juros')::numeric,
+       valor_multa=(patch->>'valor_multa')::numeric,valor_desconto=(patch->>'valor_desconto')::numeric WHERE id=(v_item->>'id')::uuid;
+     END IF;
+     IF v_dividir AND v_principais[v_pos]=0 THEN CONTINUE; END IF;
+     EXECUTE format('SELECT to_jsonb(t) FROM %I t WHERE id=$1',v_tabela) INTO j USING (j->>'id')::uuid;
+     SELECT to_jsonb(t) INTO v_item FROM pagamento_lote_itens t WHERE id=(v_item->>'id')::uuid;
+     depois:=depois||jsonb_build_array(jsonb_build_object('titulo',j,'item',v_item));
+   END LOOP;
+   IF v_dividir THEN
+     FOR v_tabela IN SELECT unnest(ARRAY['lancamentos','empresa_lancamentos']) LOOP
+       FOR r IN EXECUTE format('SELECT to_jsonb(t) j FROM %I t WHERE lote_id=$1 ORDER BY id',v_tabela) USING v_saldo_lote LOOP
+         v_partes:=v_partes||jsonb_build_array(jsonb_build_object('origem',v_tabela,'titulo',r.j));
+         INSERT INTO pagamento_lote_itens(id,lote_id,lancamento_id,origem_tabela,valor_pago)
+           VALUES(gen_random_uuid(),v_saldo_lote,(r.j->>'id')::uuid,v_tabela,(r.j->>'valor')::numeric);
+       END LOOP;
+     END LOOP;
+     IF (SELECT sum((e->'titulo'->>'valor')::numeric) FROM jsonb_array_elements(v_partes) e) IS DISTINCT FROM v_saldo THEN RAISE EXCEPTION 'Saldo das partes diverge do borderô. Operação revertida.'; END IF;
+     SELECT to_jsonb(t) INTO v_saldo_header FROM pagamento_lotes t WHERE id=v_saldo_lote;
+     SELECT jsonb_agg(to_jsonb(t) ORDER BY id) INTO v_itens_saldo FROM pagamento_lote_itens t WHERE lote_id=v_saldo_lote;
+     v_estado_saldo:=jsonb_build_object('lote',v_saldo_header,'itens',v_itens_saldo,'titulos',v_partes);
+   END IF;
+   UPDATE pagamento_lotes SET valor_total=CASE WHEN v_dividir THEN v_principal ELSE valor_total END,
+     pagamento_parcial=CASE WHEN v_dividir THEN true ELSE pagamento_parcial END,
+     lote_origem_id=CASE WHEN v_dividir THEN coalesce(lote_origem_id,id) ELSE lote_origem_id END,
+     valor_lote_origem=CASE WHEN v_dividir THEN coalesce(valor_lote_origem,valor_total) ELSE valor_lote_origem END,
+     valor_pago=v_liquidado+v_principal,status=CASE WHEN v_saldo=0 OR v_dividir THEN 'pago' ELSE 'pendente' END,
+     valor_juros=coalesce(valor_juros,0)+v_juros,valor_multa=coalesce(valor_multa,0)+v_multa,valor_desconto=coalesce(valor_desconto,0)+v_desconto,
+     conciliado=false,data_pagamento=p_data,conta_bancaria=p_conta,data_vencimento=CASE WHEN v_dividir THEN data_vencimento ELSE coalesce(v_novo_venc,data_vencimento) END,
+     numero_titulo=CASE WHEN p_titulo ? 'numero_titulo' THEN nullif(p_titulo->>'numero_titulo','') ELSE numero_titulo END
+     WHERE id=p_lote RETURNING to_jsonb(pagamento_lotes) INTO v_lote_depois;
+   FOR r IN SELECT * FROM extrato_transacoes WHERE lancamento_id=ANY(v_ids) OR lancamento_ids && v_ids ORDER BY id FOR UPDATE LOOP
+     v_extratos:=v_extratos||jsonb_build_array(to_jsonb(r));
+   END LOOP;
+   INSERT INTO pagamento_lote_baixas(lote_id,fazenda_id,requisicao_id,dados,lote_antes,lote_depois,itens_antes,itens_depois,extratos_antes,saldo_lote_id,saldo_estado)
+     VALUES(p_lote,b.fazenda_id,v_requisicao,recebido,v_lote_antes,v_lote_depois,antes,depois,v_extratos,v_saldo_lote,v_estado_saldo);
+   RETURN jsonb_build_object('ok',true,'saldo',v_saldo);
+ END IF;
+
+ SELECT * INTO primeira FROM pagamento_lote_baixas WHERE lote_id=p_lote AND estornado_em IS NULL ORDER BY created_at,id LIMIT 1;
+ SELECT * INTO ultima FROM pagamento_lote_baixas WHERE lote_id=p_lote AND estornado_em IS NULL ORDER BY created_at DESC,id DESC LIMIT 1;
+ IF p_acao='cancelar' THEN
+   IF v_liquidado>0 OR primeira.id IS NOT NULL THEN RAISE EXCEPTION 'Estorne o pagamento antes de cancelar o borderô.'; END IF;
+   IF abs(v_total-b.valor_total)>0.01 THEN RAISE EXCEPTION 'Os títulos divergem do valor original. Confira antes de cancelar.'; END IF;
+   UPDATE lancamentos SET lote_id=NULL WHERE lote_id=p_lote;
+   UPDATE empresa_lancamentos SET lote_id=NULL WHERE lote_id=p_lote;
+   DELETE FROM pagamento_lotes WHERE id=p_lote;
+   RETURN jsonb_build_object('ok',true);
+ END IF;
+ IF v_liquidado<=0 THEN RAISE EXCEPTION 'O borderô não tem pagamento para estornar.'; END IF;
+ IF primeira.id IS NOT NULL THEN
+   IF jsonb_array_length(ultima.itens_depois)<>jsonb_array_length(antes) THEN RAISE EXCEPTION 'Composição alterada após a baixa. Confira antes de estornar.'; END IF;
+   FOR r IN SELECT x FROM jsonb_array_elements(antes) x LOOP
+     SELECT x INTO estado FROM jsonb_array_elements(ultima.itens_depois) x WHERE x->'item'->>'id'=r.x->'item'->>'id';
+     IF estado IS NULL OR public.bordero_estado_titulo(estado->'titulo')<>public.bordero_estado_titulo(r.x->'titulo') OR estado->'item'<>r.x->'item' THEN
+       RAISE EXCEPTION 'Título alterado após a baixa. Confira antes de estornar.';
+     END IF;
+   END LOOP;
+   IF (to_jsonb(b)-'conciliado')<>(ultima.lote_depois-'conciliado') THEN RAISE EXCEPTION 'Borderô alterado após a baixa. Confira antes de estornar.'; END IF;
+   IF primeira.saldo_lote_id IS NOT NULL THEN
+     SELECT to_jsonb(t) INTO v_saldo_header FROM pagamento_lotes t WHERE id=primeira.saldo_lote_id FOR UPDATE;
+     IF v_saldo_header IS DISTINCT FROM primeira.saldo_estado->'lote' OR EXISTS(SELECT 1 FROM pagamento_lote_baixas WHERE lote_id=primeira.saldo_lote_id AND estornado_em IS NULL) THEN
+       RAISE EXCEPTION 'O saldo do borderô foi alterado ou pago. Estorne primeiro a baixa do saldo antes de recompor a origem.';
+     END IF;
+     SELECT jsonb_agg(to_jsonb(t) ORDER BY id) INTO v_itens_saldo FROM pagamento_lote_itens t WHERE lote_id=primeira.saldo_lote_id;
+     IF v_itens_saldo IS DISTINCT FROM primeira.saldo_estado->'itens' THEN RAISE EXCEPTION 'Composição do saldo alterada. Confira antes de estornar.'; END IF;
+     IF (SELECT count(*) FROM (SELECT id FROM lancamentos WHERE lote_id=primeira.saldo_lote_id UNION ALL SELECT id FROM empresa_lancamentos WHERE lote_id=primeira.saldo_lote_id) t)<>jsonb_array_length(primeira.saldo_estado->'titulos') THEN
+       RAISE EXCEPTION 'Quantidade de títulos do saldo alterada. Confira antes de estornar.';
+     END IF;
+     FOR r IN SELECT e FROM jsonb_array_elements(primeira.saldo_estado->'titulos') e LOOP
+       EXECUTE format('SELECT to_jsonb(t) FROM %I t WHERE id=$1 FOR UPDATE',r.e->>'origem') INTO j USING (r.e->'titulo'->>'id')::uuid;
+       IF j IS NULL OR public.bordero_estado_titulo(j)<>public.bordero_estado_titulo(r.e->'titulo') THEN RAISE EXCEPTION 'Título do saldo alterado. Confira antes de estornar.'; END IF;
+     END LOOP;
+     -- Partes geradas são removidas apenas após validar que continuam intactas.
+     FOR r IN SELECT e FROM jsonb_array_elements(primeira.saldo_estado->'titulos') e LOOP
+       IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(primeira.itens_antes) e WHERE e->'titulo'->>'id'=r.e->'titulo'->>'id' AND coalesce(e->'item'->>'origem_tabela','lancamentos')=r.e->>'origem') THEN
+         EXECUTE format('DELETE FROM %I WHERE id=$1',r.e->>'origem') USING (r.e->'titulo'->>'id')::uuid;
+       END IF;
+     END LOOP;
+   END IF;
+   antes:=primeira.itens_antes;
+   v_extratos:=primeira.extratos_antes;
+ ELSE
+   -- Legado sem fotografias: só reverte o que o item registra. Pagamento anterior exige revisão.
+   depois:='[]';
+   FOR r IN SELECT x FROM jsonb_array_elements(antes) x LOOP
+     j:=r.x->'titulo'; v_item:=r.x->'item';
+     IF abs(coalesce((j->>'valor_pago')::numeric,0)-coalesce((v_item->>'valor_pago')::numeric,0))>0.01 THEN
+       RAISE EXCEPTION 'Borderô antigo com pagamento anterior ou valores divergentes. É necessária conferência antes do estorno.';
+     END IF;
+     j:=j||jsonb_build_object('conciliado',false,'valor_pago',NULL,'valor_juros',NULL,'valor_multa',NULL,'valor_desconto',NULL,
+       'data_baixa',NULL,'data_pagamento',NULL,'conta_bancaria',NULL,'status',CASE WHEN coalesce(v_item->>'origem_tabela','lancamentos')='lancamentos' THEN 'em_aberto' ELSE 'pendente' END);
+     v_valor:=round((j->>'valor')::numeric*CASE WHEN j->>'moeda'='USD' THEN (j->>'cotacao_usd')::numeric ELSE 1 END,2);
+     v_item:=v_item||jsonb_build_object('valor_pago',v_valor,'valor_juros',NULL,'valor_multa',NULL,'valor_desconto',NULL);
+     depois:=depois||jsonb_build_array(jsonb_build_object('titulo',j,'item',v_item));
+   END LOOP;
+   antes:=depois;
+   primeira.lote_antes:=to_jsonb(b)||jsonb_build_object('status','pendente','valor_pago',NULL,'valor_juros',0,'valor_multa',0,'valor_desconto',0,'data_pagamento',NULL,'conta_bancaria',NULL);
+ END IF;
+ FOR r IN SELECT x FROM jsonb_array_elements(antes) x LOOP
+   j:=r.x->'titulo'; v_item:=r.x->'item'; v_tabela:=coalesce(v_item->>'origem_tabela','lancamentos');
+   v_data_campo:=CASE WHEN v_tabela='lancamentos' THEN 'data_baixa' ELSE 'data_pagamento' END;
+   EXECUTE format('UPDATE %1$I SET (valor,lote_id,pagamento_parcial,titulo_origem_id,valor_titulo_origem,status,valor_pago,valor_juros,valor_multa,valor_desconto,%2$I,conta_bancaria,conciliado)=(SELECT valor,lote_id,pagamento_parcial,titulo_origem_id,valor_titulo_origem,status,valor_pago,valor_juros,valor_multa,valor_desconto,%2$I,conta_bancaria,conciliado FROM jsonb_populate_record(NULL::%1$I,$1)) WHERE id=$2',v_tabela,v_data_campo)
+     USING j,(j->>'id')::uuid;
+   INSERT INTO pagamento_lote_itens(id,lote_id,lancamento_id,origem_tabela,valor_pago,valor_juros,valor_multa,valor_desconto)
+     SELECT id,lote_id,lancamento_id,origem_tabela,valor_pago,valor_juros,valor_multa,valor_desconto FROM jsonb_populate_record(NULL::pagamento_lote_itens,v_item)
+     ON CONFLICT(id) DO UPDATE SET valor_pago=EXCLUDED.valor_pago,valor_juros=EXCLUDED.valor_juros,valor_multa=EXCLUDED.valor_multa,valor_desconto=EXCLUDED.valor_desconto;
+
+ END LOOP;
+ IF primeira.saldo_lote_id IS NOT NULL THEN DELETE FROM pagamento_lotes WHERE id=primeira.saldo_lote_id; END IF;
+ -- Desconciliação faz parte da mesma transação. Uma linha agrupada precisa voltar inteira à conferência.
+ UPDATE extrato_transacoes SET conciliado=false,lancamento_id=NULL,lancamento_ids=NULL,lancamento_desc=NULL,lancamento_valor=NULL,
+   origem_vinculo=NULL,confianca=NULL,regra_id=NULL,updated_at=now()
+   WHERE lancamento_id=ANY(v_ids) OR lancamento_ids && v_ids;
+ FOR v_extrato IN SELECT x FROM jsonb_array_elements(v_extratos) x LOOP
+   UPDATE extrato_transacoes SET (conciliado,lancamento_id,lancamento_ids,lancamento_desc,lancamento_valor,origem_vinculo,confianca,regra_id)=
+    (SELECT conciliado,lancamento_id,lancamento_ids,lancamento_desc,lancamento_valor,origem_vinculo,confianca,regra_id FROM jsonb_populate_record(NULL::extrato_transacoes,v_extrato)) WHERE id=(v_extrato->>'id')::uuid;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Extrato anterior ao borderô não encontrado. Confira antes de estornar.'; END IF;
+ END LOOP;
+ UPDATE pagamento_lotes SET (valor_total,pagamento_parcial,lote_origem_id,valor_lote_origem,status,valor_pago,valor_juros,valor_multa,valor_desconto,data_pagamento,conta_bancaria,data_vencimento,numero_titulo,conciliado)=
+   (SELECT valor_total,pagamento_parcial,lote_origem_id,valor_lote_origem,status,valor_pago,valor_juros,valor_multa,valor_desconto,data_pagamento,conta_bancaria,data_vencimento,numero_titulo,false FROM jsonb_populate_record(NULL::pagamento_lotes,primeira.lote_antes)) WHERE id=p_lote;
+ UPDATE pagamento_lote_baixas SET estornado_em=clock_timestamp() WHERE lote_id=p_lote AND estornado_em IS NULL;
+ RETURN jsonb_build_object('ok',true);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.bordero_acao_atomica(uuid,text,date,uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.bordero_acao_atomica(uuid,text,date,uuid,jsonb) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';

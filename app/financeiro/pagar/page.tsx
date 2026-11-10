@@ -75,7 +75,7 @@ import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancam
 import TopNav from "../../../components/TopNav";
 import { statusExibido } from "../../../lib/financeiro/titulos";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
-import { arredondarMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
+import { arredondarMoeda, ratearMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -349,9 +349,9 @@ export default function ContasAPagarPage() {
   const emReais = (l: { id: string; moeda: string | null }, v: number | null | undefined) => valorEmReais(v, l.moeda, cotDe(l));
   // valor_pago é sempre em reais (também nos títulos em dólar, como na tela anterior); o saldo é calculado em reais.
   // Título baixado não tem saldo: a baixa com desconto (antecipação) paga menos que o valor e quita do mesmo jeito
-  const saldoBRL = (l: { id: string; moeda: string | null; valor: number | null; valor_pago: number | null; status_normalizado?: string | null }) =>
+  const saldoBRL = (l: { id: string; moeda: string | null; valor: number | null; valor_pago: number | null; valor_juros?: number | null; valor_multa?: number | null; valor_desconto?: number | null; status_normalizado?: string | null }) =>
     l.status_normalizado === "baixado" ? 0
-      : Math.max(0, (ehUSD(l.moeda) ? (emReais(l, l.valor) ?? l.valor ?? 0) : (l.valor ?? 0)) - (l.valor_pago ?? 0));
+      : Math.max(0, (ehUSD(l.moeda) ? (emReais(l, l.valor) ?? l.valor ?? 0) : (l.valor ?? 0)) - ((l.valor_pago ?? 0) - (l.valor_juros ?? 0) - (l.valor_multa ?? 0) + (l.valor_desconto ?? 0)));
   // Filtros por coluna (linha sob o cabeçalho do grid)
   const [filtrosCol, setFiltrosCol] = useState<Record<string, string>>({});
   // Buscar por fornecedor/cliente: é o filtro do cabeçalho da coluna Fornecedor/Cliente (28/10/2026 — o campo Buscar
@@ -1682,14 +1682,20 @@ export default function ContasAPagarPage() {
   const [confirmJuros, setConfirmJuros] = useState("0,00");
   const [confirmMulta, setConfirmMulta] = useState("0,00");
   const [confirmDesconto, setConfirmDesconto] = useState("0,00");
-  // Pagamento parcial de borderô sem pagamento anterior divide o borderô (Seção 379); juros e multa ficam para a quitação
+  const [confirmRequisicao, setConfirmRequisicao] = useState("");
   const borderoDivide = !!modalConfirmarBordero && confirmValorPago > 0 && resumoBordero(modalConfirmarBordero).liquidado === 0
-    && arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo;
+    && arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo
+    && confirmItens.length > 0 && confirmItens.every(t => (t.moeda ?? "BRL") === "BRL" && !(Number(t.valor_pago ?? 0) > 0));
   const totalConfirm = Math.max(0, confirmValorPago + (borderoDivide ? 0 : numBR(confirmJuros) + numBR(confirmMulta)) - numBR(confirmDesconto));
+
+  const saldosConfirmacao = confirmItens.map(saldoLote);
+  const principalConfirmacao = confirmValorPago > 0 && confirmValorPago <= saldosConfirmacao.reduce((s,v)=>s+v,0) && saldosConfirmacao.some(v=>v>0)
+    ? ratearMoeda(confirmValorPago,saldosConfirmacao) : [];
 
   async function abrirConfirmarBordero(b: PagamentoLote) {
     setErroBordero("");
     setModalConfirmarBordero(b);
+    setConfirmRequisicao(crypto.randomUUID());
     setConfirmData(hojeISO());
     setConfirmConta("");
     setConfirmVencimentoSaldo("");
@@ -1715,7 +1721,7 @@ export default function ContasAPagarPage() {
     try {
       await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, {
         novo_vencimento_saldo: arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo ? confirmVencimentoSaldo || undefined : undefined,
-        principal_anterior: resumoBordero(modalConfirmarBordero).liquidado, valor_pago: confirmValorPago, valor_juros: borderoDivide ? 0 : numBR(confirmJuros), valor_multa: borderoDivide ? 0 : numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
+        requisicao_id: confirmRequisicao, principal_anterior: resumoBordero(modalConfirmarBordero).liquidado, valor_pago: confirmValorPago, valor_juros: borderoDivide ? 0 : numBR(confirmJuros), valor_multa: borderoDivide ? 0 : numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
       });
       setModalConfirmarBordero(null);
       await Promise.all([carregar(), carregarBorderos()]);
@@ -2007,7 +2013,7 @@ export default function ContasAPagarPage() {
         const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
         return (
           <>
-            
+
             <NativeRecordPanel key={l.origem_tabela+':'+l.id} label="Título em foco" routine="Contas a Pagar" onClose={()=>setPopover(null)}>
               <div className="native-record-details"><div>
               {/* Header */}
@@ -2140,7 +2146,7 @@ export default function ContasAPagarPage() {
         const qtd = (b.itens ?? []).length;
         return (
           <>
-            
+
             <NativeRecordPanel key={b.id} label="Borderô em foco" routine="Contas a Pagar" onClose={()=>setPopBordero(null)}>
               <div className="native-record-details"><div>
                 <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
@@ -2780,11 +2786,11 @@ export default function ContasAPagarPage() {
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Juros</label>
-                <input value={confirmJuros} disabled={borderoDivide} title={borderoDivide ? "Juros e multa entram no pagamento que quita o borderô" : undefined} onChange={e => setConfirmJuros(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <input value={confirmJuros} disabled={borderoDivide} title={borderoDivide ? "Juros são informados na quitação do saldo" : undefined} onChange={e => setConfirmJuros(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Multa</label>
-                <input value={confirmMulta} disabled={borderoDivide} title={borderoDivide ? "Juros e multa entram no pagamento que quita o borderô" : undefined} onChange={e => setConfirmMulta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <input value={confirmMulta} disabled={borderoDivide} title={borderoDivide ? "Multa é informada na quitação do saldo" : undefined} onChange={e => setConfirmMulta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Desconto</label>
@@ -2792,9 +2798,7 @@ export default function ContasAPagarPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12 }}>
-              <span style={{ color: "#888" }}>{resumoBordero(modalConfirmarBordero).liquidado > 0
-                ? "Valor a pagar menor que o saldo = pagamento parcial. O restante continua em aberto neste borderô."
-                : "Valor a pagar menor que o saldo = pagamento parcial: este borderô fica pago com o valor pago e o saldo vira um borderô novo em aberto, com as mesmas NFs."}</span>
+              <span style={{ color: "#888" }}>Na quitação, cada conta recebe seu saldo exato. No parcial, o pagamento é proporcional ao saldo de cada conta. A parte paga e o saldo ficam separados; o estorno recompõe os valores anteriores.</span>
               <strong style={{ color: "#E24B4A", whiteSpace: "nowrap", marginLeft: 12 }}>Total: {fmtBRL(totalConfirm)}</strong>
             </div>
 
@@ -2803,8 +2807,8 @@ export default function ContasAPagarPage() {
                 <label data-arato-label="true" style={lbl} htmlFor="bordero-vencimento-saldo">Novo vencimento do saldo (opcional)</label>
                 <InputData id="bordero-vencimento-saldo" type="date" value={confirmVencimentoSaldo} onChange={e => setConfirmVencimentoSaldo(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
                 <div style={{ fontSize: 11, color: "#7A5200", marginTop: 6 }}>
-                  {borderoDivide ? "Borderô novo com o saldo" : "Saldo após este pagamento"}: <strong>{fmtBRL(arredondarMoeda(resumoBordero(modalConfirmarBordero).saldo - confirmValorPago))}</strong>.
-                  {borderoDivide ? " Juros e multa ficam para o pagamento que quitar o saldo." : ""}
+                  Saldo após este pagamento: <strong>{fmtBRL(arredondarMoeda(resumoBordero(modalConfirmarBordero).saldo - confirmValorPago))}</strong>.
+
                   {" "}Se deixar a data em branco, o saldo mantém o vencimento atual
                   {modalConfirmarBordero.data_vencimento ? ` (${fmtData(modalConfirmarBordero.data_vencimento)})` : ""}.
                 </div>
@@ -2813,18 +2817,20 @@ export default function ContasAPagarPage() {
 
             {confirmItens.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>NFs deste título (referência — valor rateado proporcionalmente)</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 90px", gap: 6, alignItems: "center", fontSize: 11 }}>
+                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>Contas do borderô — saldo de cada título</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 65px 80px 90px 90px", gap: 6, alignItems: "center", fontSize: 11 }}>
                   <span style={{ color: "#888" }}>Título</span>
                   <span style={{ color: "#888" }}>Nº NF</span>
                   <span style={{ color: "#888" }}>Venc.</span>
-                  <span style={{ textAlign: "right", color: "#888" }}>Valor</span>
-                  {confirmItens.map(l => (
+                  <span style={{ textAlign: "right", color: "#888" }}>Saldo</span>
+                  <span style={{ textAlign: "right", color: "#888" }}>Principal nesta baixa</span>
+                  {confirmItens.map((l,idx) => (
                     <div key={l.id} style={{ display: "contents" }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? undefined}>{l.descricao}</span>
                       <span>{l.nfe_numero ?? "—"}</span>
                       <span>{fmtData(l.data_vencimento)}</span>
                       <span style={{ textAlign: "right", fontWeight: 600, color: "#555" }}>{fmtBRL(saldoLote(l))}</span>
+                      <span style={{textAlign:"right",fontWeight:700}}>{principalConfirmacao[idx] !== undefined ? fmtBRL(principalConfirmacao[idx]) : "—"}</span>
                     </div>
                   ))}
                 </div>

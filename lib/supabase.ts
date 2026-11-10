@@ -349,6 +349,9 @@ export type Lancamento = {
   centro_custo_id?: string;    // FK centros_custo.id — centro de custo (UUID)
   observacao?: string;
   moeda_pagamento?: "BRL" | "USD";
+  titulo_origem_id?: string | null;
+  valor_titulo_origem?: number | null;
+  pagamento_parcial?: boolean;
   lote_id?: string;           // FK pagamento_lotes.id — quando baixado em lote
   // Planejamento — Previsão vs Real
   natureza?: "real" | "previsao";   // "previsao" = rascunho de planejamento, pode ser confirmado

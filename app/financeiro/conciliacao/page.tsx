@@ -1266,7 +1266,7 @@ function ConciliacaoInner() {
     for (const lt of Array.from(lotesSel.values()).filter(x => x.status === "pendente")) {
       const r = await authFetch("/api/financeiro/bordero-acao", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acao: "confirmar", lote_id: lt.id, data_pagamento: linha.data, conta_bancaria: extrato.conta_id }),
+        body: JSON.stringify({ acao: "confirmar", lote_id: lt.id, data_pagamento: linha.data, conta_bancaria: extrato.conta_id, titulo: { requisicao_id: crypto.randomUUID(), principal_anterior: lt.valor_pago ?? 0 } }),
       }).then(x => x.json()).catch(() => null);
       if (!r?.ok) {
         alert("Não foi possível confirmar o pagamento do borderô: " + (r?.error ?? "erro desconhecido") + ". Nada foi conciliado.");
@@ -1731,7 +1731,7 @@ function ConciliacaoInner() {
       if (ac.lote && ac.lote.status === "pendente") {
         const r = await authFetch("/api/financeiro/bordero-acao", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ acao: "confirmar", lote_id: ac.lote.id, data_pagamento: ac.linha.data, conta_bancaria: extrato.conta_id }),
+          body: JSON.stringify({ acao: "confirmar", lote_id: ac.lote.id, data_pagamento: ac.linha.data, conta_bancaria: extrato.conta_id, titulo: { requisicao_id: crypto.randomUUID(), principal_anterior: ac.lote.valor_pago ?? 0 } }),
         }).then(x => x.json()).catch(() => null);
         if (!r?.ok) { puladas.push(`${rotulo(ac.linha)}: não foi possível confirmar o borderô`); aceitas = aceitas.filter(x => x !== ac); }
       }

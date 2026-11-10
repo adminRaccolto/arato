@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { agruparBorderosRelatorio, datasBorderosRelatorio, type LinhaBorderoRelatorio } from "../../../lib/financeiro/borderos-relatorio";
+import DetalhesBordero from "../../../components/relatorios/DetalhesBordero";
 import { COR_FLUXO, corLinhaFluxo, rotuloPrevisaoFluxo } from "../../../lib/financeiro/previsoes";
 import { aplicarPadraoRelatorio } from "../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
@@ -17,7 +19,7 @@ import { listarLancamentos, listarEmpresaLancamentosComoLancamento, listarEmpres
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
-import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
+import type { PagamentoLote, Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import { statusEfetivo, filtrarTitulos, dedupeTitulos, hojeLocal } from "../../../lib/financeiro/titulos";
 import PosicaoComercializacaoRelatorioTab from "../../../components/relatorios/PosicaoComercializacaoRelatorioTab";
@@ -138,6 +140,26 @@ function FinanceiroRelatoriosInner() {
     })();
     return () => { vivo = false; };
   }, [lancamentos, operacoesGer, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [borderosRelatorio, setBorderosRelatorio] = useState<PagamentoLote[]>([]);
+  const [carregandoBorderosRelatorio, setCarregandoBorderosRelatorio] = useState(true);
+  const [erroBorderosRelatorio, setErroBorderosRelatorio] = useState("");
+  useEffect(() => {
+    if (!fazendaId || aba !== "cpcr") return;
+    let vivo = true;
+    setBorderosRelatorio([]); setErroBorderosRelatorio(""); setCarregandoBorderosRelatorio(true);
+    (async () => {
+      const lotes: PagamentoLote[] = [];
+      for (let inicio = 0; ; inicio += 1000) {
+        const {data,error} = await supabase.from("pagamento_lotes").select("*")
+          .in("fazenda_id", fazendaIds?.length ? fazendaIds : [fazendaId]).order("id").range(inicio,inicio+999);
+        if(error) throw error;
+        lotes.push(...data as PagamentoLote[]);
+        if(data.length<1000) break;
+      }
+      if(vivo) setBorderosRelatorio(lotes);
+    })().catch(e => {if(vivo) setErroBorderosRelatorio(e instanceof Error ? e.message : "Não foi possível carregar os borderôs.");}).finally(()=>{if(vivo) setCarregandoBorderosRelatorio(false);});
+    return () => {vivo=false;};
+  },[fazendaId,fazendaIds,aba]);
   const [apoioBaixasIds,  setApoioBaixasIds]  = useState<Set<string>>(new Set());
   const [apoioLancsAbertos, setApoioLancsAbertos] = useState<{ id: string; tipo: string; descricao: string; valor: number; data_vencimento: string; categoria: string | null; pessoa_nome: string | null }[]>([]);
   const [incluirApoio,   setIncluirApoio]   = useState(true);
@@ -252,7 +274,8 @@ function FinanceiroRelatoriosInner() {
   const exportCpcrRef = useRef<{ exportar: (chaves?: string[], grupos?: string[]) => Promise<void>; qtd: number } | null>(null);
   // Emite o relatório assim que a janela de filtro é confirmada (os estados já foram aplicados no render anterior)
   useEffect(() => {
-    if (!cpcrEmitir) return;
+    if (!cpcrEmitir || carregandoBorderosRelatorio || carregando) return;
+    if (erroBorderosRelatorio) { alert("Não foi possível carregar os borderôs. Atualize antes de emitir o relatório."); setCpcrEmitir(null); return; }
     const formato = cpcrEmitir;
     setCpcrEmitir(null);
     (async () => {
@@ -266,7 +289,7 @@ function FinanceiroRelatoriosInner() {
         : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
       abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo, nomeArquivo: nomeRelatorio("CP CR", clienteRelatorio, inicioCPCR, fimCPCR) });
     })();
-  }, [cpcrEmitir, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cpcrEmitir, fazendaIds, carregandoBorderosRelatorio, carregando, erroBorderosRelatorio]); // eslint-disable-line react-hooks/exhaustive-deps
   const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
 
   // ── Grid configurável CP/CR ──────────────────────────────────
@@ -839,6 +862,8 @@ function FinanceiroRelatoriosInner() {
               abrirPreviewImpressao("Fluxo de Caixa — Diário", html, { ...opts, subtitulo: fazenda });
             } else if ((aba === "dfc" || aba === "posicao") && printOutrosRef.current[aba]) {
               abrirPreviewImpressao(aba === "dfc" ? `DFC — Demonstrativo ${dfcAno}` : "Posição por Conta", printOutrosRef.current[aba]!(), { ...opts, subtitulo: fazenda });
+            } else if (aba === "cpcr" && (carregandoBorderosRelatorio || carregando || erroBorderosRelatorio)) {
+              alert("Aguarde o carregamento dos borderôs; se houver erro, atualize antes de emitir o relatório.");
             } else if (aba === "cpcr" && printCpcrRef.current) {
               const r = await printCpcrRef.current();
               abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { ...opts, subtitulo: fazenda });
@@ -2057,7 +2082,9 @@ function FinanceiroRelatoriosInner() {
               })()}
 
               {/* ═══════ ABA: CP / CR ═══════ */}
-              {aba === "cpcr" && (() => {
+              {aba === "cpcr" && erroBorderosRelatorio && <p role="alert" style={{color:"#791F1F"}}>Não foi possível agrupar os borderôs: {erroBorderosRelatorio}. Atualize a tela antes de emitir o relatório.</p>}
+              {aba === "cpcr" && carregandoBorderosRelatorio && <p>Carregando borderôs…</p>}
+              {aba === "cpcr" && !carregandoBorderosRelatorio && !erroBorderosRelatorio && (() => {
                 // ── helpers locais ────────────────────────────────────
                 const prodMap  = Object.fromEntries(produtores.map(p => [p.id, p.nome]));
                 const pessoaMap = Object.fromEntries(pessoas.map(p => [p.id, p.nome]));
@@ -2077,11 +2104,12 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 // ── filtrar ───────────────────────────────────────────
-                const lancsCPCR = filtrarTitulos(
-                  lancamentos,
+                const titulosCPCR = filtrarTitulos(
+                  datasBorderosRelatorio(lancamentos, borderosRelatorio),
                   { inicio: inicioCPCR, fim: fimCPCR, periodoPor: periodoPorCPCR, tipo: tipoCPCR, status: statusCPCR, categorias: catCPCR, produtores: prodCPCR, fornecedor: fornCPCR },
                   l => ((l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? ""),
                 ).filter(l => (pessoasCPCR.size === 0 || pessoasCPCR.has(l.pessoa_id ?? "")) && (contasCPCR.size === 0 || contasCPCR.has(l.conta_bancaria ?? "")));
+                const lancsCPCR = agruparBorderosRelatorio(titulosCPCR,lancamentos,borderosRelatorio,cotacaoUSD);
 
                 const categorias = [...new Set(lancamentos.filter(l => l.moeda !== "barter").map(l => l.categoria).filter(Boolean))].sort() as string[];
                 const produtoresPresentes = produtores.filter(p => lancamentos.some(l => l.produtor_id === p.id));
@@ -2092,7 +2120,7 @@ function FinanceiroRelatoriosInner() {
                 const totalBaixado = lancsCPCR.filter(l => l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
 
                 // ── configuração de agrupamentos ──────────────────────
-                type GrupoConf = { key: GrupoKey; label: string; getKey: (l: Lancamento) => string; getLabel: (k: string) => string };
+                type GrupoConf = { key: GrupoKey; label: string; getKey: (l: LinhaBorderoRelatorio) => string; getLabel: (k: string) => string };
                 const GRUPOS_CONF: GrupoConf[] = [
                   { key: "produtor",  label: "Produtor",           getKey: l => l.produtor_id ?? "__",   getLabel: k => k === "__" ? "Sem Produtor" : (prodMap[k] ?? k)       },
                   { key: "og",        label: "Operação Gerencial",  getKey: l => l.operacao_gerencial_id ?? "__", getLabel: k => k === "__" ? "Sem OG" : (ogMap[k] ?? k)    },
@@ -2104,12 +2132,12 @@ function FinanceiroRelatoriosInner() {
                 const confAtivos = agrupAtivos.map(k => GRUPOS_CONF.find(c => c.key === k)!).filter(Boolean);
 
                 // ── árvore de grupos ──────────────────────────────────
-                type TreeNode = { grpKey: string; label: string; items: Lancamento[]; children: TreeNode[]; cr: number; cp: number };
-                function buildTree(items: Lancamento[], confs: GrupoConf[], path: string): TreeNode[] {
+                type TreeNode = { grpKey: string; label: string; items: LinhaBorderoRelatorio[]; children: TreeNode[]; cr: number; cp: number };
+                function buildTree(items: LinhaBorderoRelatorio[], confs: GrupoConf[], path: string): TreeNode[] {
                   if (confs.length === 0) return [];
                   const conf = confs[0];
                   const rest = confs.slice(1);
-                  const map = new Map<string, Lancamento[]>();
+                  const map = new Map<string, LinhaBorderoRelatorio[]>();
                   for (const l of items) {
                     const k = conf.getKey(l);
                     if (!map.has(k)) map.set(k, []);
@@ -2125,7 +2153,7 @@ function FinanceiroRelatoriosInner() {
                 const tree = confAtivos.length > 0 ? buildTree(lancsCPCR, confAtivos, "") : [];
 
                 // ── renderizar linhas ─────────────────────────────────
-                type RowItem = { type: "group"; depth: number; node: TreeNode; path: string } | { type: "lancamento"; l: Lancamento; depth: number };
+                type RowItem = { type: "group"; depth: number; node: TreeNode; path: string } | { type: "lancamento"; l: LinhaBorderoRelatorio; depth: number };
                 function flattenTree(nodes: TreeNode[], depth: number, parentPath: string): RowItem[] {
                   const rows: RowItem[] = [];
                   for (const node of nodes) {
@@ -2168,7 +2196,7 @@ function FinanceiroRelatoriosInner() {
                     const r = await fetch("/api/financeiro/enriquecer-titulos", {
                       method: "POST",
                       headers: { "Content-Type": "application/json", ...(sess.session?.access_token ? { Authorization: `Bearer ${sess.session.access_token}` } : {}) },
-                      body: JSON.stringify({ fazenda_id: fazendaId, titulos: lancsCPCR.map(l => ({ id: l.id, empresa: !!(l as unknown as { empresa_id?: string | null }).empresa_id })) }),
+                      body: JSON.stringify({ fazenda_id: fazendaId, titulos: lancsCPCR.filter(l=>!l.bordero).map(l => ({ id: l.id, empresa: !!(l as unknown as { empresa_id?: string | null }).empresa_id })) }),
                     });
                     const j = await r.json() as { ok: boolean; nf?: Record<string, string>; og?: Record<string, string>; error?: string };
                     if (j.ok) {
@@ -2178,7 +2206,7 @@ function FinanceiroRelatoriosInner() {
                     }
                   } catch { /* cai no plano B abaixo */ }
                   // 2) plano B: consulta direta pelo navegador
-                  const nfRows = await carregarNumerosNF(supabase, lancsCPCR.map(l => ({ id: l.id, origem_tabela: (l as unknown as { empresa_id?: string | null }).empresa_id ? "empresa_lancamentos" : "lancamentos", nfe_numero: l.nfe_numero ?? null })));
+                  const nfRows = await carregarNumerosNF(supabase, lancsCPCR.filter(l=>!l.bordero).map(l => ({ id: l.id, origem_tabela: (l as unknown as { empresa_id?: string | null }).empresa_id ? "empresa_lancamentos" : "lancamentos", nfe_numero: l.nfe_numero ?? null })));
                   for (const r of nfRows) if (r.nfe_numero) extras.nf.set(r.id, String(r.nfe_numero));
                   const faltam = [...new Set(lancsCPCR.map(l => l.operacao_gerencial_id).filter((x): x is string => !!x && !ogMap[x]))];
                   const porId = new Map<string, string>();
@@ -2198,13 +2226,13 @@ function FinanceiroRelatoriosInner() {
                 const usarColunas = (chaves?: string[]) => {
                   colsVisiveis = chaves && chaves.length ? chaves.map(k => COLUNAS_REL.find(c => c.key === k)!).filter(Boolean) : colsGrid;
                 };
-                const getCellVal = (col: { key: string }, l: Lancamento): string | number => {
+                const getCellVal = (col: { key: string }, l: LinhaBorderoRelatorio): string | number => {
                   const brl = paraBRLRel(l, cotacaoUSD);
                   const sinal = l.tipo === "pagar" ? -1 : 1;
                   switch (col.key) {
                     case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
-                    case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "";
-                    case "numero_nf":      return extras.nf.get(l.id) ?? l.nfe_numero ?? l.numero_documento ?? "";
+                    case "fornecedor":     return l.bordero ? `${l.descricao} — ${(l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? "Fornecedor não identificado"}` : (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "";
+                    case "numero_nf":      return l.bordero ? `Borderô ${l.numero_documento}` : extras.nf.get(l.id) ?? l.nfe_numero ?? l.numero_documento ?? "";
                     case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
                     case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
                     case "valor":          return sinal * brl;
@@ -2218,7 +2246,7 @@ function FinanceiroRelatoriosInner() {
                     case "observacao":     return l.observacao ?? "";
                     case "categoria":      return l.categoria ?? "";
                     // baixado não tem saldo (baixa com desconto por antecipação paga menos e quita do mesmo jeito)
-                    case "saldo":          return l.status === "baixado" ? 0 : sinal * Math.max(0, brl - (l.valor_pago ?? 0));
+                    case "saldo":          return l.status === "baixado" ? 0 : sinal * Math.max(0, brl - ((l.valor_pago ?? 0) - (l.valor_juros ?? 0) - (l.valor_multa ?? 0) + (l.valor_desconto ?? 0)));
                     case "dias":           return l.data_vencimento ? Math.round((new Date(`${l.data_vencimento}T12:00:00`).getTime() - new Date(`${hoje}T12:00:00`).getTime()) / 86400000) : "";
                     case "venc_orig":      return l.data_prorrogacao ? new Date(l.data_prorrogacao+"T12:00").toLocaleDateString("pt-BR") : "";
                     case "conta_bancaria": return l.conta_bancaria ? (contas.find(c => c.id === l.conta_bancaria)?.nome ?? "") : "";
@@ -2233,7 +2261,7 @@ function FinanceiroRelatoriosInner() {
                 const montarLinhas = (grupos: string[]): { itens: ItemRel[]; geral: TotaisRel } => {
                   const somar = (itens: Lancamento[]): TotaisRel => itens.reduce((a, l) => {
                     const brl = paraBRLRel(l, cotacaoUSD); const sg = l.tipo === "pagar" ? -1 : 1; const pago = l.valor_pago ?? 0;
-                    a.valor += sg * brl; a.pago += sg * pago; a.saldo += l.status === "baixado" ? 0 : sg * Math.max(0, brl - pago); a.n++; return a;
+                    a.valor += sg * brl; a.pago += sg * pago; a.saldo += l.status === "baixado" ? 0 : sg * Math.max(0, brl - (pago - (l.valor_juros ?? 0) - (l.valor_multa ?? 0) + (l.valor_desconto ?? 0))); a.n++; return a;
                   }, { valor: 0, pago: 0, saldo: 0, n: 0 });
                   const colDoGrupo: Record<string, string> = { produtor: "produtor", og: "op_gerencial", categoria: "categoria", tipo: "tipo", status: "status", fornecedor: "fornecedor", conta: "conta_bancaria" };
                   const rotuloDe = (key: string, l: Lancamento): string => key === "mes"
@@ -2245,7 +2273,7 @@ function FinanceiroRelatoriosInner() {
                   const rec = (itens: Lancamento[], nivel: number) => {
                     if (nivel >= grupos.length) { ordenar(itens).forEach(l => out.push({ t: "linha", l })); return; }
                     const key = grupos[nivel];
-                    const mapa = new Map<string, Lancamento[]>();
+                    const mapa = new Map<string, LinhaBorderoRelatorio[]>();
                     for (const l of itens) { const k = chaveOrd(key, l); const arr = mapa.get(k); if (arr) arr.push(l); else mapa.set(k, [l]); }
                     [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([, ls]) => {
                       const rot = rotuloDe(key, ls[0]); const tot = somar(ls);
@@ -2635,7 +2663,7 @@ function FinanceiroRelatoriosInner() {
                                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                       <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: l.tipo === "receber" ? "#E8E8E8" : "#FCEBEB", color: l.tipo === "receber" ? "#0D0D0D" : "#791F1F", fontWeight: 700, flexShrink: 0 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
                                       <span style={{ color: "var(--text-1)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }} title={l.descricao ?? ""}>{l.descricao || "—"}</span>
-                                    </div>
+                                    </div><DetalhesBordero linha={l} cotacao={cotacaoUSD} />
                                   </td>
                                   <td style={{ padding: "8px 12px", color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{l.produtor_id ? (prodMap[l.produtor_id] ?? "—") : "—"}</td>
                                   <td style={{ padding: "8px 12px", color: statusEfetivo(l)==="vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap", fontSize: 11 }}>{l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>
@@ -2665,7 +2693,7 @@ function FinanceiroRelatoriosInner() {
                         .filter(k => cpcrColVis[k] !== false)
                         .map(k => COLUNAS_CPCR_DEF.find(c => c.key === k)!).filter(Boolean);
 
-                      const renderCell = (col: typeof COLUNAS_CPCR_DEF[0], l: Lancamento, i: number) => {
+                      const renderCell = (col: typeof COLUNAS_CPCR_DEF[0], l: LinhaBorderoRelatorio, i: number) => {
                         const brl = paraBRLRel(l, cotacaoUSD);
                         const st  = corStatusCPCR[statusEfetivo(l)] ?? corStatusCPCR.em_aberto;
                         const sinal = l.tipo === "pagar" ? -1 : 1;
@@ -2680,10 +2708,10 @@ function FinanceiroRelatoriosInner() {
                             </td>;
                           case "fornecedor": {
                             const fNome = (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "—") ?? "—";
-                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={fNome}>{fNome}</td>;
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={fNome}>{l.bordero ? <><strong>{l.descricao}</strong><div>{l.pessoa_id ? fNome : "Fornecedor não identificado"}</div></> : fNome}<DetalhesBordero linha={l} cotacao={cotacaoUSD} /></td>;
                           }
                           case "numero_nf":
-                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.numero_documento ?? "—"}</td>;
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.bordero ? `Borderô ${l.numero_documento}` : l.numero_documento ?? "—"}</td>;
                           case "emissao":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "—"}</td>;
                           case "vencimento":
