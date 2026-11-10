@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-f",
+    data: "10/11/2026",
+    titulo: "Status Vencido, estorno de NFS-e e abastecimento sem horímetro",
+    modulos: ["Financeiro", "Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Título com vencimento de hoje em diante não aparece mais como Vencido (havia salários reprogramados marcados assim)." },
+      { tipo: "correcao", texto: "NFS-e processada: o botão ↺ Estornar aparece logo ao abrir a nota, sem precisar entrar em edição." },
+      { tipo: "melhoria", texto: "NF de posto: máquina/veículo, horímetro/hodômetro e motorista são todos opcionais e independentes." },
+    ],
+  },
+  {
     versao: "2026.11.10-e",
     data: "10/11/2026",
     titulo: "Documentos Fiscais reorganizado: Painel, Entradas e Saídas",

@@ -644,7 +644,13 @@ export default function ModalNfServico({
             {viewOnly && (
               <div data-arato-dialog-heading="true" style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>🔒 Modo visualização — clique em <strong>Editar</strong> para fazer alterações</span>
-                <button data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
+                <span style={{ display: "flex", gap: 8 }}>
+                  {/* Estornar direto daqui: antes só existia no passo 3 em modo edição, e quem abria a NF não achava */}
+                  {nfEdit?.status === "processada" && (
+                    <button data-arato-button="secondary" onClick={estornarNf} style={{ padding: "4px 12px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", color: "#7A4800", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>↺ Estornar</button>
+                  )}
+                  <button data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
+                </span>
               </div>
             )}
             {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{err}</div>}

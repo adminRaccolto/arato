@@ -1509,12 +1509,8 @@ export default function ModalNf({
         // Achado real 29/09/2026 (pedido do dono): veículo deixou de ser obrigatório em
         // combustível — nem toda compra é abastecimento de um veículo específico (pode ser
         // reposição de tanque/bomba, ver o botão "É reposição de tanque" acima). Continua
-        // disponível pra quem quer registrar no histórico de abastecimento; se informar o
-        // veículo, o horímetro continua pedido (é o que alimenta esse histórico).
-        if (modoDireto === "combustivel" && (it.maquina_id || it.veiculo_id) && !it.horimetro) {
-          setErr(`Item "${it.descricao_nf}": informe o hodômetro/horímetro do veículo — obrigatório pra registrar no histórico de abastecimento.`);
-          return;
-        }
+        // disponível pra quem quer registrar no histórico de abastecimento. Máquina/veículo, horímetro/hodômetro e
+        // motorista são independentes e todos opcionais (decisão do dono, 10/11/2026).
         if (modoDireto === "combustivel" && !cab.centro_custo_id) {
           setErr(`Item "${it.descricao_nf}": selecione o Centro de Custo do lançamento (campo no topo da NF).`);
           return;

@@ -20898,3 +20898,28 @@ REVOKE ALL ON FUNCTION public.bordero_acao_atomica(uuid,text,date,uuid,jsonb) FR
 GRANT EXECUTE ON FUNCTION public.bordero_acao_atomica(uuid,text,date,uuid,jsonb) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';
+
+-- =============================================================================
+-- Seção 430 — "Vencido" só com vencimento passado (10/11/2026)
+-- 147 títulos (salários reprogramados) estavam gravados como 'vencido' com vencimento futuro e apareciam
+-- como Vencido no CP. Regra no banco: título 'vencido' com vencimento hoje ou depois volta a 'em_aberto',
+-- venha de qualquer tela ou rotina. Corrige os existentes. Pode rodar mais de uma vez.
+-- =============================================================================
+BEGIN;
+CREATE OR REPLACE FUNCTION public.fn_status_vencido_coerente() RETURNS trigger
+LANGUAGE plpgsql SET search_path=public AS $$
+BEGIN
+  IF NEW.status = 'vencido' AND NEW.data_vencimento IS NOT NULL AND NEW.data_vencimento >= current_date THEN
+    NEW.status := 'em_aberto';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_status_vencido_coerente ON lancamentos;
+CREATE TRIGGER trg_status_vencido_coerente BEFORE INSERT OR UPDATE OF status, data_vencimento ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION public.fn_status_vencido_coerente();
+
+UPDATE lancamentos SET status = 'em_aberto' WHERE status = 'vencido' AND data_vencimento >= current_date;
+UPDATE rel_lancamentos SET status_normalizado = 'em_aberto' WHERE status_normalizado = 'vencido' AND data_vencimento >= current_date;
+COMMIT;
+NOTIFY pgrst, 'reload schema';
