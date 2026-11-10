@@ -113,6 +113,7 @@ export const NAV: NavItem[] = [
       { id: "docfis-terceiro",   label: "Notas de Fornecedores",             path: "/fiscal/documentos",             moduleId: "nf_entrada" },
       { id: "docfis-retornos",   label: "Retornos Recebidos",                path: "/fiscal/retornos",               moduleId: "fiscal_nfe" },
       { id: "docfis-dev-receb",  label: "Devoluções Recebidas",              path: "/fiscal?aba=devolucao",          moduleId: "fiscal_nfe" },
+      { id: "docfis-proprias",   label: "Notas Próprias",                    path: "/fiscal/notas-proprias",         moduleId: "fiscal_nfe" },
       { type: "divider", label: "Saídas" },
       { id: "docfis-venda-contrato", label: "Venda por Contrato",            path: "/comercial/faturamento?modo=contrato", moduleId: "contratos", bloco: "Venda de Produção Agrícola" },
       { id: "docfis-venda-avulsa",   label: "Venda Avulsa",                  path: "/comercial/faturamento?modo=avulsa",   moduleId: "contratos", bloco: "Venda de Produção Agrícola" },
