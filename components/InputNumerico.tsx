@@ -79,6 +79,8 @@ export default function InputNumerico({
 
   function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
     focused.current = false;
+    // A tela pode ter ajustado o valor (ex.: limite máximo): ao sair do campo, mostra o valor que ficou valendo
+    setDisplay(valorParaDisplay(value, decimais));
     onBlur?.(e);
   }
 

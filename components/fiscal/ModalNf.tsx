@@ -2078,8 +2078,9 @@ export default function ModalNf({
         return;
       }
     }
-    // CFOP 5556/6556 usa CST 20 (base reduzida): a redução é obrigatória em cada item desse CFOP
-    for (const i of itensParaDevolver) {
+    // CFOP 5556/6556 usa CST 20 (base reduzida): a redução é obrigatória em cada item desse CFOP quando o Arato
+    // emite a NF-e. Já emitida em outro sistema, só registra: o ICMS já foi calculado lá.
+    for (const i of devExterna ? [] : itensParaDevolver) {
       if (["5556", "6556"].includes(i.cfop) && !(parseFloat(i.pRedBC.replace(",", ".")) > 0)) {
         setDevErr(`"${i.descricao_produto}": o CFOP ${i.cfop} usa CST 20 — informe o percentual de redução da base de cálculo.`);
         return;
@@ -4672,7 +4673,7 @@ export default function ModalNf({
                           {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.l}</option>)}
                         </select>
                       </div>
-                      {["5556", "6556"].includes(it.cfop) && (
+                      {["5556", "6556"].includes(it.cfop) && !devExterna && (
                         <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "4px 12px 8px", fontSize: 11, color: "var(--text-2)", background: "#FBF3E0" }}>
                           <span><b>CST 20</b> (base reduzida) —</span>
                           <label>Redução da base %

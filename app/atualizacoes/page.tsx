@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-d",
+    data: "10/11/2026",
+    titulo: "Devolução de compra já emitida em outro sistema",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Ao só registrar uma devolução emitida em outro sistema, o CFOP 5556/6556 não pede mais a redução da base do ICMS (o imposto já foi calculado na nota emitida)." },
+      { tipo: "correcao", texto: "Campos numéricos com limite (ex.: quantidade a devolver acima da original) mostram o valor que ficou valendo ao sair do campo, em vez do número digitado." },
+    ],
+  },
+  {
     versao: "2026.11.10-c",
     data: "10/11/2026",
     titulo: "Telas com todas as fazendas do cliente",
