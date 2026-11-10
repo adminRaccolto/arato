@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useLayoutEffect,useRef,useState,useId,type ReactNode} from 'react';
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import {contextClient,contextSeason} from './context-display';
 import type {ModuleEntry} from './navigation-policy';
 function hasModal(){if(document.querySelector('dialog[open],[role=dialog],[aria-modal=true]'))return true;return Array.from(document.querySelectorAll<HTMLElement>('div[style]')).some(el=>{if(!el.style.position||el.style.position!=='fixed')return false;const r=el.getBoundingClientRect();return r.width>=innerWidth*.9&&r.height>=innerHeight*.9;});}
@@ -15,6 +16,7 @@ function moveFocus(container:HTMLElement,key:string,selector:string){
  const next=key==='Home'?0:key==='End'?nodes.length-1:(index+(['ArrowRight','ArrowDown'].includes(key)?1:-1)+nodes.length)%nodes.length;nodes[next]?.focus();
 }
 export default function OperationalChrome({children,modules,context,pathname,preview=false,contextPanel}:{children:ReactNode;modules:ModuleEntry[];context:{client:string;farm:string;producer:string;season:string;user:string};pathname:string;preview?:boolean;contextPanel?:ReactNode}){
+ const router=useRouter();
  const [selected,setSelected]=useState(''),[section,setSection]=useState(''),[closing,setClosing]=useState(false);
  const [dockCollapsed,setDockCollapsed]=useState(false),dockId=useId(),pendingDockModule=useRef<string|null>(null);
  const [geometry,setGeometry]=useState<FanGeometry>({width:1200,height:900,x:600,y:800,iconSize:46});
@@ -30,7 +32,9 @@ export default function OperationalChrome({children,modules,context,pathname,pre
  function finish(){if(closeTimer.current)clearTimeout(closeTimer.current);closeTimer.current=null;setSelected('');setSection('');setClosing(false);dialog.current?.close();trigger.current?.focus({preventScroll:true});}
  function close(){if(closing||!selected)return;setClosing(true);closeTimer.current=setTimeout(finish,matchMedia('(prefers-reduced-motion: reduce)').matches?0:200);}
  function closeBranch(){setSection('');groupTrigger.current?.focus();}
- function chooseGroup(name:string,button:HTMLButtonElement){groupTrigger.current=button;if(group===name)closeBranch();else setSection(name);}
+ // Grupo com uma rotina só abre a rotina direto (sem a camada intermediária) e mostra o nome dela
+ function unica(name:string){const fs=active?.functions.filter(f=>f.section===name)??[];return fs.length===1&&!fs[0].locked?fs[0]:null;}
+ function chooseGroup(name:string,button:HTMLButtonElement){const u=unica(name);if(u){finish();router.push(u.path);return;}groupTrigger.current=button;if(group===name)closeBranch();else setSection(name);}
  function measure(){const rect=trigger.current?.querySelector('.native-icon')?.getBoundingClientRect();if(!rect)return;const next={width:window.innerWidth,height:window.innerHeight,x:rect.left+rect.width/2,y:rect.top+rect.height/2,iconSize:rect.width};setGeometry(old=>Object.keys(next).every(k=>old[k as keyof FanGeometry]===next[k as keyof FanGeometry])?old:next);}
  function toggleDock(){if(hasModal())return;pendingDockModule.current=null;setDockCollapsed(value=>!value);}
  function open(id:string,button?:HTMLButtonElement){if(hasModal())return;if(dockCollapsed){pendingDockModule.current=id;setDockCollapsed(false);return;}trigger.current=button??Array.from(dock.current?.querySelectorAll<HTMLButtonElement>('button')??[]).find(b=>b.dataset.moduleId===id)??null;trigger.current?.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});setClosing(false);setSection('');measure();setSelected(id);}
@@ -53,7 +57,7 @@ export default function OperationalChrome({children,modules,context,pathname,pre
  <div className="native-fan-scroll" style={needsScroll?{bottom:geometry.height-geometry.y+geometry.iconSize/2+16}:undefined}>
  <div className="native-fan-caption" data-fan-emerge style={{left:clamp(centerX-120,12,geometry.width-252),top:geometry.y-64,width:240}}><b>{active.label}</b><button type="button" aria-label="Fechar funções" onClick={close}>×</button></div>
  <div className="native-groups native-fan-group-list" role="group" aria-label="Grupos de funções" onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();moveFocus(e.currentTarget,e.key,'.native-group-node');}else if(['ArrowDown','ArrowUp'].includes(e.key)){const button=(e.target as HTMLElement).closest<HTMLButtonElement>('.native-group-node');if(button){e.preventDefault();groupTrigger.current=button;setSection(button.dataset.group??'');branch.current?.querySelector<HTMLElement>('.native-function-node:not(:disabled)')?.focus();}}}}>
- {groups.map((name,i)=><button type="button" className="native-group-node" data-group={name} data-fan-emerge key={name} aria-pressed={name===group} aria-expanded={name===group} aria-controls={name===group?branchId:undefined} onClick={e=>chooseGroup(name,e.currentTarget)} style={{left:points[i].x-nodeWidth/2,top:points[i].y-nodeHeight/2,width:nodeWidth,height:nodeHeight,animationDelay:`${i*35}ms`}}>{name}</button>)}
+ {groups.map((name,i)=><button type="button" className="native-group-node" data-group={name} data-fan-emerge key={name} aria-pressed={name===group} aria-expanded={name===group} aria-controls={name===group?branchId:undefined} onClick={e=>chooseGroup(name,e.currentTarget)} style={{left:points[i].x-nodeWidth/2,top:points[i].y-nodeHeight/2,width:nodeWidth,height:nodeHeight,animationDelay:`${i*35}ms`}}>{unica(name)?.label??name}</button>)}
  </div>
  {group&&<section ref={branch} id={branchId} key={group} className="native-function-branch" aria-label={`Funções de ${group}`} style={{left:branchLeft,bottom:branchBottom,width:branchWidth,maxHeight:branchHeight}}>
  <div className="native-branch-heading"><button type="button" className="native-branch-title" aria-label={`Voltar aos grupos de ${active.label}`} onClick={closeBranch}>{group}</button><button type="button" aria-label={`Fechar funções de ${group}`} onClick={closeBranch}>×</button></div>

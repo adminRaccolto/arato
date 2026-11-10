@@ -604,13 +604,17 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
                         {gruposVisiveis.map(g => {
                           const sel = g.label === panelGroup;
                           const temAtivo = g.items.some(i => isAtivo(i.path));
+                          // Seção com uma tela só: a própria linha leva à tela (sem a camada intermediária) e mostra o nome dela
+                          const visiveisG = g.items.filter(i => (!i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId))) && (!i.planoModulo || podeAcessarPlano(i.planoModulo)) && !i.disabled);
+                          const unica = visiveisG.length === 1 ? visiveisG[0] : null;
                           return (
                             <div
                               key={g.label}
                               onMouseEnter={() => setPanelGroup(g.label)}
+                              onClick={unica ? () => { setDropdown(null); router.push(unica.path); } : undefined}
                               style={{
                                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                                padding: "9px 14px", cursor: "default",
+                                padding: "9px 14px", cursor: unica ? "pointer" : "default",
                                 background: sel ? "#112236" : "transparent",
                                 borderLeft: sel ? "3px solid #3B82F6" : "3px solid transparent",
                                 borderRight: sel ? "0.5px solid #112236" : "none",
@@ -618,9 +622,9 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
                               }}
                             >
                               <span style={{ fontSize: 13, fontWeight: sel || temAtivo ? 600 : 400, color: temAtivo ? "#60A5FA" : "#CBD5E1" }}>
-                                {g.label}
+                                {unica ? unica.label : g.label}
                               </span>
-                              <span style={{ fontSize: 9, color: sel ? "#3B82F6" : "var(--text-3)" }}>▶</span>
+                              {!unica && <span style={{ fontSize: 9, color: sel ? "#3B82F6" : "var(--text-3)" }}>▶</span>}
                             </div>
                           );
                         })}
