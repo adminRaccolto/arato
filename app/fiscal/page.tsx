@@ -1,4 +1,6 @@
 "use client";
+import { imprimirCce } from "../../lib/fiscal/imprimir-cce";
+import VerificarCertificado from "../../components/fiscal/VerificarCertificado";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -1059,7 +1061,7 @@ function FiscalInner() {
   // Carta de Correção (CC-e) — não existia até 23/09/2026
   const [modalCorrecao,    setModalCorrecao]    = useState<NotaFiscal | null>(null);
   const [textoCorrecao,    setTextoCorrecao]    = useState("");
-  const [historicoCorrecao, setHistoricoCorrecao] = useState<{ sequencia: number; texto_correcao: string; status: string; xmotivo?: string; created_at: string }[]>([]);
+  const [historicoCorrecao, setHistoricoCorrecao] = useState<{ sequencia: number; texto_correcao: string; status: string; xmotivo?: string; created_at: string; protocolo_evento?: string | null }[]>([]);
   const [enviandoCorrecao, setEnviandoCorrecao] = useState(false);
 
   const abrirModalCorrecao = async (n: NotaFiscal) => {
@@ -2430,6 +2432,7 @@ function FiscalInner() {
                                   </div>
                                 ))}
                               </div>
+                              <VerificarCertificado fazendaId={fazendaId} documento={cert.cpf_cnpj} versao={cert.storage_path} />
                               {dias !== null && (
                                 <div style={{ marginTop: 10 }}>
                                   <div style={{ height: 5, background: "var(--border-row)", borderRadius: 4, overflow: "hidden" }}>
@@ -3616,6 +3619,9 @@ function FiscalInner() {
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Cartas já emitidas pra esta NF-e</div>
                 {historicoCorrecao.map(c => (
                   <div key={c.sequencia} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: c.status === "aceita" ? "#EAF7EE" : "#FCEBEB", color: c.status === "aceita" ? "#166534" : "#791F1F", marginBottom: 4 }}>
+                    {c.status === "aceita" && modalCorrecao && (
+                      <button type="button" onClick={() => imprimirCce(modalCorrecao, c)} style={{ float: "right", marginLeft: 8, padding: "2px 8px", border: "0.5px solid #16A34A", borderRadius: 5, background: "#fff", color: "#166534", fontSize: 11, cursor: "pointer" }}>🖨 Imprimir</button>
+                    )}
                     <strong>Nº {c.sequencia}</strong> ({c.status === "aceita" ? "aceita" : "rejeitada"}) — {c.texto_correcao}
                     {c.status !== "aceita" && c.xmotivo && <div style={{ marginTop: 2 }}>{c.xmotivo}</div>}
                   </div>

@@ -13,6 +13,7 @@ const RELEASES = [
     modulos: ["Documentos Fiscais", "Transporte"],
     itens: [
       { tipo: "correcao", texto: "NF-e de devolução e qualquer NF-e emitida só com o CPF/CNPJ do destinatário: o endereço (rua, número, bairro, CEP e IE) passa a vir do cadastro de Pessoas, em vez de sair \"NAO INFORMADO\"." },
+      { tipo: "novidade", texto: "Impressão da Carta de Correção (DACCE): no Painel de Notas, abra a Carta de Correção da nota e clique 🖨 Imprimir na carta aceita." },
       { tipo: "correcao", texto: "Carta de correção e justificativa de cancelamento (NF-e, CT-e e MDF-e) aceitam texto em várias linhas: as quebras viram espaço antes de ir à SEFAZ (evita a rejeição 588)." },
     ],
   },
