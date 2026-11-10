@@ -2156,7 +2156,10 @@ export default function ModalNf({
       // quando faltava no cadastro. A SEFAZ rejeita (505) sem o IBGE. Resolve o
       // cadastro completo da Pessoa aqui, e — mesmo padrão já usado na NF de
       // Remessa — completa pelo CEP via ViaCEP se faltar endereço/IBGE no cadastro.
-      const fornecedorPessoa = pessoas.find(p => p.id === devNfOrig.pessoa_id);
+      // Cadastro lido na hora (a lista da tela pode estar em cache, de antes do cadastro ser corrigido)
+      const fornecedorPessoa = (devNfOrig.pessoa_id
+        ? (await supabase.from("pessoas").select("*").eq("id", devNfOrig.pessoa_id).maybeSingle()).data as Pessoa | null
+        : null) ?? pessoas.find(p => p.id === devNfOrig.pessoa_id);
       let destLogradouro     = fornecedorPessoa?.logradouro ?? "";
       let destBairro         = fornecedorPessoa?.bairro ?? "";
       let destMunicipioNome  = fornecedorPessoa?.municipio ?? "";
