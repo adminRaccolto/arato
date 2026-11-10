@@ -1,4 +1,5 @@
 "use client";
+import VerificarCertificado from "../../../components/fiscal/VerificarCertificado";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -535,7 +536,7 @@ function ParametrosSistemaContent() {
       const certKey = `certificado_a1_${emitter.id}`;
       setCfgs(prev => {
         const fiscal = { ...(prev[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: json.storage_path ?? "", cert_a1_senha: st.senha, cert_a1_vencimento: json.data_vencimento ?? "" };
-        const meta = { ...(prev[certKey] ?? {} as CfgModulo), storage_path: json.storage_path ?? "", data_vencimento: json.data_vencimento ?? "" };
+        const meta = { ...(prev[certKey] ?? {} as CfgModulo), storage_path: json.storage_path ?? "", arquivo_nome: st.file!.name, data_vencimento: json.data_vencimento ?? "" };
         return { ...prev, [emitter.moduloKey]: fiscal, [certKey]: meta };
       });
       setCertField(emitter.moduloKey, { loading: false, ok: true, file: null, senha: "" });
@@ -1488,10 +1489,11 @@ function ParametrosSistemaContent() {
                       {(() => {
                         const cs = getCertState(emitter.moduloKey);
                         // Nome amigável do arquivo atual (última parte do path)
-                        const certNomeAtual = certPath ? certPath.split("/").pop() ?? certPath : "";
+                        const certNomeAtual = String((certMeta as Record<string,unknown>)?.arquivo_nome ?? c.cert_a1_arquivo_nome ?? "") || (certPath ? certPath.split("/").pop() ?? certPath : "");
                         const certVenc = String((cfgs[emitter.moduloKey] as Record<string,unknown>)?.cert_a1_vencimento ?? (certMeta as Record<string,unknown>)?.data_vencimento ?? "");
                         return (
                           <div data-arato-panel="true" style={{ marginBottom: 14, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
+                            <VerificarCertificado fazendaId={fazendaId} documento={emitter.cpf_cnpj} versao={certPath} />
                             {/* Status atual */}
                             {hasCert && !certPathInvalid && !(cfgs[emitter.moduloKey] as Record<string, unknown>)?.cert_a1_senha ? (
                               <div style={{ marginBottom: 12, padding: "8px 12px", background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 6, fontSize: 12, color: "#92400E", fontWeight: 600 }}>
@@ -1501,8 +1503,8 @@ function ParametrosSistemaContent() {
                               <div data-arato-statistic="display" style={{ marginBottom: 12, padding: "8px 12px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 6, display: "flex", alignItems: "center", gap: 10 }}>
                                 <span style={{ fontSize: 18 }}>✓</span>
                                 <div>
-                                  <div style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>Certificado configurado</div>
-                                  <div style={{ fontSize: 11, color: "#166534" }}>{certNomeAtual}{certVenc ? ` · válido até ${certVenc}` : ""}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>Certificado cadastrado</div>
+                                  <div style={{ fontSize: 11, color: "#166534" }}>{certNomeAtual}{certVenc ? ` · vencimento cadastrado: ${certVenc}` : ""}</div>
                                 </div>
                               </div>
                             ) : (

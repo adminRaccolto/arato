@@ -3,7 +3,8 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { carregarPfx } from "@/lib/nfe";
-import { candidatosParaConsulta, selecionarCertificadoA1ParaConsulta } from "@/lib/nfe/certificado-a1";
+import { candidatosDoEmitente } from "@/lib/nfe/certificado-emitente";
+import { selecionarCertificadoA1ParaConsulta } from "@/lib/nfe/certificado-a1";
 import { consultarCadastroContribuinte } from "@/lib/nfe/consulta-cadastro";
 import { validateFazendaAccess } from "@/lib/api-auth";
 
@@ -41,29 +42,8 @@ async function consultar(req: NextRequest) {
   const ufFinal = (uf || "MT").toUpperCase();
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  // A consulta não depende de quem é o emitente: serve qualquer certificado válido do cliente.
-  const { data: faz, error: erroFazenda } = await admin.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
-  if (erroFazenda) throw new Error("Não foi possível buscar a conta da fazenda.");
-  let fazendasDaConta = [fazenda_id];
-  if (faz?.conta_id) {
-    const { data, error } = await admin.from("fazendas").select("id").eq("conta_id", faz.conta_id);
-    if (error) throw new Error("Não foi possível buscar as fazendas da conta.");
-    fazendasDaConta = (data ?? []).map(f => f.id as string);
-  }
-  const [{ data: modulosFiscais, error }, { data: envios, error: erroEnvios }] = await Promise.all([
-    admin.from("configuracoes_modulo").select("fazenda_id, modulo, config")
-      .in("fazenda_id", fazendasDaConta)
-      .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
-      .not("modulo", "like", "%__ie_%")
-      .order("updated_at", { ascending: false }),
-    admin.from("configuracoes_modulo").select("config").in("fazenda_id", fazendasDaConta).like("modulo", "certificado_a1_%"),
-  ]);
-  if (error || erroEnvios) throw new Error("Não foi possível buscar os certificados da conta.");
-  const candidatos = candidatosParaConsulta(
-    (modulosFiscais ?? []) as { fazenda_id: string; modulo: string; config: Record<string, string> | null }[],
-    (envios ?? []) as { config: Record<string, string> | null }[],
-    fazenda_id,
-  );
+  const {candidatos:pares}=await candidatosDoEmitente(admin,fazenda_id);
+  const candidatos=pares.map(c=>({fazendaId:fazenda_id,caminho:c.caminho,senha:c.senha}));
 
   if (candidatos.length === 0) {
     return NextResponse.json({

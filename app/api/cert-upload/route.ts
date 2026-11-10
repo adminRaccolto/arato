@@ -1,153 +1,27 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../lib/api-auth";
-import { validarCertificadoA1 } from "../../../lib/nfe/certificado-a1";
+import { enviarCertificadoA1 } from "../../../lib/nfe/enviar-certificado";
 
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
+export const runtime="nodejs";
 
-// POST /api/cert-upload
-// multipart/form-data: file, senha, fazenda_id, produtor_id, produtor_nome, cpf_cnpj
-export async function POST(req: Request) {
-  const form = await req.formData();
-  const file       = form.get("file")         as File   | null;
-  const senha      = form.get("senha")        as string | null;
-  const fazendaId  = form.get("fazenda_id")   as string | null;
-  const produtorId = form.get("produtor_id")  as string | null;
-  const prodNome   = form.get("produtor_nome") as string | null;
-  const cpfCnpj    = form.get("cpf_cnpj")     as string | null;
-
-  if (!file || !senha || !fazendaId) {
-    return NextResponse.json({ error: "file, senha e fazenda_id são obrigatórios" }, { status: 400 });
-  }
-
-  const access = await validateFazendaAccess(fazendaId);
-  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
-
-  const buffer = await file.arrayBuffer();
-  let dataVencimento: string;
+// Mantém o contrato das telas existentes. A ativação ocorre somente após validar e reler o arquivo novo.
+export async function POST(req:Request) {
   try {
-    dataVencimento = validarCertificadoA1(Buffer.from(buffer), senha).vencimento;
-  } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
-  }
-
-  const supabase = adminClient();
-  const path = `${fazendaId}/${produtorId ?? "geral"}/${file.name}`;
-
-  // Garante que o bucket existe (cria se necessário — privado)
-  const { error: bucketErr } = await supabase.storage.createBucket("certificados", { public: false });
-  // Ignora erro de bucket já existente (código "Duplicate")
-  if (bucketErr && !bucketErr.message.toLowerCase().includes("already") && !bucketErr.message.toLowerCase().includes("duplicate")) {
-    return NextResponse.json({ error: "Bucket: " + bucketErr.message }, { status: 500 });
-  }
-
-  const { error: storageErr } = await supabase.storage
-    .from("certificados")
-    .upload(path, Buffer.from(buffer), { upsert: true, contentType: "application/x-pkcs12" });
-
-  if (storageErr) {
-    return NextResponse.json({ error: "Storage: " + storageErr.message }, { status: 500 });
-  }
-
-  const config = {
-    arquivo_nome:    file.name,
-    storage_path:    path,
-    produtor_id:     produtorId  ?? null,
-    produtor_nome:   prodNome    ?? "",
-    cpf_cnpj:        cpfCnpj     ?? "",
-    data_vencimento: dataVencimento,
-  };
-
-  // 1. Chave de metadados por produtor — preserva info de certificados de outros produtores
-  const modulo = `certificado_a1_${produtorId ?? "geral"}`;
-
-  const { error: dbErr } = await supabase
-    .from("configuracoes_modulo")
-    .upsert(
-      { fazenda_id: fazendaId, modulo, config },
-      { onConflict: "fazenda_id,modulo" }
-    );
-
-  if (dbErr) {
-    return NextResponse.json({ error: "Banco: " + dbErr.message }, { status: 500 });
-  }
-
-  // 2. Atualiza também o módulo fiscal (fiscal_pf_XXX ou fiscal_emp_XXX) com cert_a1_path e cert_a1_senha
-  // Isso conecta o upload ao emitirNFe que lê de fiscal_pf/fiscal_emp
-  if (cpfCnpj) {
-    const digits = cpfCnpj.replace(/\D/g, "");
-    // Tenta PF primeiro, depois PJ (empresa)
-    const isPJ = digits.length === 14;
-    const fiscalModulo = isPJ ? `fiscal_emp_${digits}` : `fiscal_pf_${digits}`;
-
-    // A config fiscal é do CLIENTE: atualiza a(s) linha(s) que já existem em QUALQUER fazenda da conta
-    // (antes gravava só na fazenda ativa e deixava outra cópia da config sem a senha — o emissor
-    // pegava a cópia sem senha e dava "Certificado A1 não configurado").
-    const { data: fazAtual } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-    let idsConta: string[] = [fazendaId];
-    if (fazAtual?.conta_id) {
-      const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
-      if (fzs?.length) idsConta = fzs.map(f => f.id as string);
-    }
-    const { data: existentes } = await supabase
-      .from("configuracoes_modulo")
-      .select("fazenda_id, config")
-      .in("fazenda_id", idsConta)
-      .eq("modulo", fiscalModulo);
-
-    // Também alcança fazendas da conta que usam este CNPJ como emitente de CT-e (transportadora
-    // de terceiro prestando serviço pra mais de uma fazenda do cliente) mas nunca passaram pelo
-    // cadastro Fiscal com este documento — sem isso, a fazenda tinha o certificado "aparecendo
-    // configurado" (metadado genérico certificado_a1_*) mas sem senha, e a emissão de CT-e falhava
-    // com "Certificado A1 não configurado no módulo CT-e nem no Fiscal".
-    const { data: cteRows } = await supabase
-      .from("configuracoes_modulo")
-      .select("fazenda_id")
-      .in("fazenda_id", idsConta)
-      .eq("modulo", `cte_emp_${digits}`);
-
-    const cfgPorFazenda = new Map<string, Record<string, string>>();
-    (existentes ?? []).forEach(e => cfgPorFazenda.set(e.fazenda_id, (e.config as Record<string, string>) ?? {}));
-    // Achado real 28/09/2026: incluir SEMPRE a fazenda ativa criava uma cópia NOVA e incompleta
-    // (só cert_a1_path/senha, sem razão social/CNPJ/etc) sempre que o upload acontecia com uma
-    // fazenda ativa diferente da que já tinha o cadastro fiscal completo desse emitente — e essa
-    // cópia vazia podia ser a escolhida na hora de emitir, causando NF-e/CT-e/MDF-e com o nome do
-    // emitente em branco (rejeição de schema "xNome ... Pattern constraint failed"). Só inclui a
-    // fazenda ativa quando NÃO existe NENHUMA cópia ainda em lugar nenhum da conta (primeiro
-    // upload desse emitente) — nesse caso é razoável criar o registro ali.
-    const jaExisteConfigNaConta = cfgPorFazenda.size > 0 || (cteRows?.length ?? 0) > 0;
-    const idsAlvo = jaExisteConfigNaConta
-      ? new Set<string>([...cfgPorFazenda.keys(), ...(cteRows ?? []).map(r => r.fazenda_id)])
-      : new Set<string>([fazendaId]);
-
-    for (const fid of idsAlvo) {
-      const cfgAtual = cfgPorFazenda.get(fid) ?? {};
-      await supabase
-        .from("configuracoes_modulo")
-        .upsert(
-          {
-            fazenda_id: fid,
-            modulo: fiscalModulo,
-            config: { ...cfgAtual, cert_a1_path: path, cert_a1_senha: senha },
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "fazenda_id,modulo" }
-        );
-    }
-  }
-
-  return NextResponse.json({
-    ok: true,
-    produtor_id:     produtorId   ?? null,
-    arquivo_nome:    file.name,
-    storage_path:    path,
-    produtor_nome:   prodNome     ?? "",
-    cpf_cnpj:        cpfCnpj      ?? "",
-    data_vencimento: dataVencimento,
-  });
+    const form=await req.formData();
+    const file=form.get('file') as File|null;
+    const senha=form.get('senha') as string|null;
+    const fazendaId=form.get('fazenda_id') as string|null;
+    const produtorId=form.get('produtor_id') as string|null;
+    const produtorNome=form.get('produtor_nome') as string|null;
+    const doc=String(form.get('cpf_cnpj') ?? '').replace(/\D/g,'');
+    if(!file || !senha || !fazendaId || ![11,14].includes(doc.length)) return NextResponse.json({error:'Informe arquivo, senha e o titular com CPF/CNPJ cadastrado.'},{status:400});
+    const access=await validateFazendaAccess(fazendaId,req.headers.get('authorization') ?? undefined);
+    if(!access.ok) return NextResponse.json({error:access.error},{status:access.status});
+    if(!/\.(pfx|p12)$/i.test(file.name)) return NextResponse.json({error:'Envie o arquivo A1 completo, no formato .pfx ou .p12.'},{status:400});
+    if(file.size>10*1024*1024) return NextResponse.json({error:'O arquivo A1 excede o limite de 10 MB.'},{status:400});
+    const db=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const resultado=await enviarCertificadoA1(db,{buffer:Buffer.from(await file.arrayBuffer()),nomeArquivo:file.name,senha,fazendaId,doc,produtorId,produtorNome});
+    return NextResponse.json(resultado.body,{status:resultado.status});
+  } catch {return NextResponse.json({error:'Não foi possível concluir o envio do certificado. Atualize o cadastro e confira o certificado ativo.'},{status:500});}
 }

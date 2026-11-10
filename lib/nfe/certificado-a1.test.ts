@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import forge from "node-forge";
-import { ERRO_CERTIFICADO_A1, ERRO_CERTIFICADOS_CONSULTA, selecionarCertificadoA1ParaConsulta, validarCertificadoA1, candidatosParaConsulta } from "./certificado-a1";
+import { ERRO_CERTIFICADO_A1, ERRO_CERTIFICADOS_CONSULTA, selecionarCertificadoA1ParaConsulta, validarCertificadoA1, candidatosParaConsulta } from "./certificado-a1.ts";
 
 const senha = " senha de teste ";
 const chaves = forge.pki.rsa.generateKeyPair(1024);
 const certificado = forge.pki.createCertificate();
 certificado.publicKey = chaves.publicKey;
 certificado.serialNumber = "01";
-certificado.validity.notBefore = new Date("2026-01-01T00:00:00Z");
-certificado.validity.notAfter = new Date("2027-01-01T00:00:00Z");
+certificado.validity.notBefore = new Date("2020-01-01T00:00:00Z");
+certificado.validity.notAfter = new Date("2099-01-01T00:00:00Z");
 certificado.setSubject([{ name: "commonName", value: "Certificado de teste" }]);
 certificado.setIssuer(certificado.subject.attributes);
 certificado.sign(chaves.privateKey, forge.md.sha256.create());
@@ -17,8 +17,8 @@ const asn1 = forge.pkcs12.toPkcs12Asn1(chaves.privateKey, certificado, senha, { 
 const pfx = Buffer.from(forge.asn1.toDer(asn1).getBytes(), "binary");
 
 test("certificado e senha válidos retornam a chave e o vencimento; preserva espaços na senha", () => {
-  const resultado = validarCertificadoA1(pfx, senha);
-  assert.equal(resultado.vencimento, "2027-01-01");
+  const resultado = validarCertificadoA1(pfx, senha,{agora:new Date("2026-11-10")});
+  assert.equal(resultado.vencimento, "2099-01-01");
   assert.match(resultado.pem.cert, /BEGIN CERTIFICATE/);
   assert.match(resultado.pem.key, /BEGIN RSA PRIVATE KEY/);
 });
@@ -72,9 +72,9 @@ test("consulta usa qualquer certificado do cliente, mesmo em configuração sem 
   assert.deepEqual(c.map(x => x.caminho), ["a.pfx", "b.pfx"]);
 });
 
-test("consulta troca caminho antigo pelo do envio do certificado", () => {
+test("consulta não mistura senha antiga com arquivo de um novo envio", () => {
   const c = candidatosParaConsulta(
     [{ fazenda_id: "a", modulo: "fiscal_pf_22222222222", config: { cert_a1_path: "https://x/y", cert_a1_senha: "s" } }],
     [{ config: { cpf_cnpj: "222.222.222-22", storage_path: "ok.pfx" } }], "a");
-  assert.equal(c[0].caminho, "ok.pfx");
+  assert.equal(c.length, 0);
 });

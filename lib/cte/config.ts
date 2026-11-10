@@ -99,36 +99,6 @@ async function buscarPrimeiroCtePorEmitente(idsConta: string[]) {
   return (data ?? []).find(row => row.modulo.replace("cte_emp_", "").length > 0) ?? null;
 }
 
-async function resolverCertificadoPorMeta(
-  idsConta: string[],
-  fiscalConfig: Record<string, string>,
-  emitenteDigits: string,
-): Promise<Record<string, string>> {
-  const certPath = fiscalConfig.cert_a1_path ?? "";
-  const certPathValido = certPath && !certPath.startsWith("http") && /\.(pfx|p12)$/i.test(certPath);
-  if (certPathValido) return fiscalConfig;
-
-  const { data: certRows } = await sb()
-    .from("configuracoes_modulo")
-    .select("config")
-    .in("fazenda_id", idsConta)
-    .like("modulo", "certificado_a1_%");
-
-  const certMeta = (certRows ?? []).find(row => {
-    const cfg = row.config as Record<string, string>;
-    return somenteDigitos(cfg?.cpf_cnpj) === emitenteDigits && cfg?.storage_path;
-  });
-
-  const cfg = certMeta?.config as Record<string, string> | undefined;
-  if (!cfg?.storage_path) return fiscalConfig;
-
-  return {
-    ...fiscalConfig,
-    cert_a1_path: cfg.storage_path,
-    cert_a1_vencimento: cfg.data_vencimento ?? fiscalConfig.cert_a1_vencimento,
-  };
-}
-
 export async function resolverConfigCTe(
   fazendaId: string,
   emitenteCnpj?: string | null,
@@ -178,7 +148,7 @@ export async function resolverConfigCTe(
     ?? (await buscarConfigContaWide(idsConta, fazendaId, cteConfig.modulo_fiscal_ref ?? "fiscal"))?.config
     ?? {};
 
-  const fiscalConfig = await configComIdentidade(sb(), idsConta, fiscalModulo, await resolverCertificadoPorMeta(idsConta, fiscalConfigBase, emitenteDigits));
+  const fiscalConfig = await configComIdentidade(sb(), idsConta, fiscalModulo, fiscalConfigBase);
 
   return {
     cteConfig,

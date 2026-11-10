@@ -18,7 +18,8 @@ import { createClient } from "../supabase-servidor";
 import { buildMDFe } from "./builder";
 import { assinarMDFe } from "./signer";
 import { transmitirMDFe } from "./transmitter";
-import { pfxParaPem } from "../nfe/signer";
+import type { PemPair } from "../nfe/signer";
+import { carregarCertificadoEmitente } from "../nfe/certificado-emitente";
 import { resolverConfigMDFe } from "./config";
 import { validarProdutoMDFe } from "./produto";
 import type { MDFeInput, EmitenteMDFe, MunicipioDescarga, ReboqueMDFe } from "./builder";
@@ -33,11 +34,6 @@ function sb() {
   );
 }
 
-async function carregarPfx(storagePath: string): Promise<Buffer> {
-  const { data, error } = await sb().storage.from("certificados").download(storagePath);
-  if (error || !data) throw new Error(`Certificado não encontrado: ${storagePath}`);
-  return Buffer.from(await data.arrayBuffer());
-}
 
 // Número do MDF-e SEM queimar numeração em rejeição (achado 24/09/2026: o 3287 virou 3288 numa
 // tentativa rejeitada). Só LÊ o contador; ele avança (avancarNumero) apenas quando a SEFAZ
@@ -201,16 +197,9 @@ export async function emitirMDFe(
   }
   const confg = resolved.mdfeConfig;
   const fc = resolved.fiscalConfig;
-  const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
-  const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
-  if (!certPath || !certSenha) {
-    return { sucesso: false, cStat: "501", xMotivo: "Certificado A1 não configurado para este emitente (Parâmetros → MDF-e / Fiscal)." };
-  }
-
-  let pfxBuffer: Buffer;
-  try { pfxBuffer = await carregarPfx(certPath); }
-  catch (e) { return { sucesso: false, cStat: "502", xMotivo: String(e) }; }
-  const pem = pfxParaPem(pfxBuffer, certSenha);
+  let pem: PemPair;
+  try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
+  catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
 
   // 3. Veículo (placa + tara) e motorista(es)
   // Conjunto digitado sem cadastro (Seção 384): placas, UF, tara e capacidade lançadas no próprio MDF-e.

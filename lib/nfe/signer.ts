@@ -5,9 +5,7 @@
  */
 
 import forge from "node-forge";
-// xml-crypto v6 não tem tipos @types — importamos com require para evitar erro de resolução
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { SignedXml } = require("xml-crypto");
+import { SignedXml } from "xml-crypto";
 
 export interface PemPair {
   cert: string;       // PEM do certificado folha (usado no xmldsig)
@@ -26,22 +24,35 @@ export function pfxParaPem(pfxBuffer: Buffer, senha: string): PemPair {
     p12.getBags({ bagType: forge.pki.oids.certBag })[
       forge.pki.oids.certBag
     ] ?? [];
-  const keyBags =
-    p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
-      forge.pki.oids.pkcs8ShroudedKeyBag
-    ] ?? [];
-
-  if (!certBags.length || !keyBags.length)
-    throw new Error("Certificado inválido ou senha incorreta");
-
-  // Primeiro bag = certificado folha (emitente), demais = intermediárias da AC
-  const allCertPems = certBags.map(bag => forge.pki.certificateToPem(bag.cert!));
-  const cert      = allCertPems[0];                    // folha — usada no xmldsig
-  const certChain = allCertPems.join("\n");             // folha + intermediárias — mTLS
-  const key = forge.pki.privateKeyToPem(
-    keyBags[0].key as forge.pki.rsa.PrivateKey
-  );
-  return { cert, key, certChain };
+  const keyBags = [forge.pki.oids.pkcs8ShroudedKeyBag, forge.pki.oids.keyBag]
+    .flatMap(bagType => p12.getBags({bagType})[bagType] ?? []);
+  const certificados=certBags.map(b=>b.cert).filter((c): c is forge.pki.Certificate=>!!c);
+  // Seleciona o certificado pela chave pública correspondente, sem depender da ordem dos bags.
+  for(const bag of keyBags) {
+    const chave=bag.key as forge.pki.rsa.PrivateKey | undefined;
+    if(!chave?.n || !chave.e) continue;
+    const cert=certificados.filter(c=>{
+      const publica=c.publicKey as forge.pki.rsa.PublicKey;
+      return publica.n?.equals(chave.n) && publica.e?.equals(chave.e) && !(c.getExtension('basicConstraints') as {cA?:boolean}|undefined)?.cA;
+    }).sort((a,b)=>{
+      const agora=Date.now();
+      const valido=(c:forge.pki.Certificate)=>Number(c.validity.notBefore.getTime()<=agora && c.validity.notAfter.getTime()>agora);
+      return valido(b)-valido(a)||b.validity.notBefore.getTime()-a.validity.notBefore.getTime();
+    })[0];
+    if(!cert || (cert.getExtension('basicConstraints') as {cA?:boolean} | null)?.cA) continue;
+    const cadeia=[cert];
+    let atual=cert;
+    while(cadeia.length<=certificados.length) {
+      if(atual.isIssuer(atual) && atual.verify(atual)) break;
+      const possiveis=certificados.filter(c=>!cadeia.includes(c) && atual.isIssuer(c));
+      if(!possiveis.length) break;
+      const emissor=possiveis.find(c=>{try{return c.verify(atual);}catch{return false;}});
+      if(!emissor) throw new Error("Cadeia do certificado A1 inconsistente.");
+      cadeia.push(emissor);atual=emissor;
+    }
+    return {cert:forge.pki.certificateToPem(cert),key:forge.pki.privateKeyToPem(chave),certChain:cadeia.map(c=>forge.pki.certificateToPem(c)).join("\n")};
+  }
+  throw new Error("O arquivo A1 não contém certificado e chave privada correspondentes.");
 }
 
 // ─── Extrai apenas o corpo base64 do PEM (sem headers) ───────────────────────

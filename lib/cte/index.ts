@@ -14,7 +14,8 @@ import { buildCTe }     from "./builder";
 import { assinarCTe }   from "./signer";
 import { transmitirCTe } from "./transmitter";
 import { cancelarCTe as registrarCancelamentoCTe, enviarCartaCorrecaoCTe, type CorrecaoCTeItem } from "./evento";
-import { pfxParaPem }   from "../nfe/signer";
+import type { PemPair } from "../nfe/signer";
+import { carregarCertificadoEmitente } from "../nfe/certificado-emitente";
 import { resolverConfigCTe } from "./config";
 import { montarProcAutorizado } from "../fiscal/documento-autorizado";
 import { ibgeValido } from "../nfe/identidade-fiscal";
@@ -27,13 +28,6 @@ function sb() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-}
-
-// ─── Carrega PFX do Supabase Storage ─────────────────────────────────────────
-async function carregarPfx(storagePath: string): Promise<Buffer> {
-  const { data, error } = await sb().storage.from("certificados").download(storagePath);
-  if (error || !data) throw new Error(`Certificado não encontrado: ${storagePath}`);
-  return Buffer.from(await data.arrayBuffer());
 }
 
 // ─── Próximo número do CT-e ───────────────────────────────────────────────────
@@ -150,11 +144,7 @@ export async function cancelarCTeEmitido(
   }
   const confg = resolved.cteConfig;
   const fiscal = resolved.fiscalConfig;
-  const certPath = confg.cert_a1_path ?? fiscal.cert_a1_path;
-  const certSenha = confg.cert_a1_senha ?? fiscal.cert_a1_senha;
-  if (!certPath || !certSenha) {
-    return { sucesso: false, cStat: "CERTIFICADO", xMotivo: "Certificado A1 não configurado para este emitente." };
-  }
+
 
   // CT-es emitidos antes desta correção não tinham o protocolo persistido;
   // recuperamos do XML autorizado que o próprio sistema arquiva no Storage.
@@ -169,7 +159,7 @@ export async function cancelarCTeEmitido(
   }
 
   try {
-    const pem = pfxParaPem(await carregarPfx(certPath), certSenha);
+    const {pem}=await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fiscal.cpf_cnpj_emitente || '');
     const emitente = fiscal.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits;
     const resultado = await registrarCancelamentoCTe(pem, {
       chave,
@@ -242,9 +232,7 @@ export async function emitirCartaCorrecaoCTe(fazendaId: string, options: CartaCo
   if (!resolved || !resolved.cteConfigEncontrada) return { sucesso: false, cStat: "CONFIGURACAO", xMotivo: "Configuração CT-e do emitente não encontrada." };
   const confg = resolved.cteConfig;
   const fiscal = resolved.fiscalConfig;
-  const certPath = confg.cert_a1_path ?? fiscal.cert_a1_path;
-  const certSenha = confg.cert_a1_senha ?? fiscal.cert_a1_senha;
-  if (!certPath || !certSenha) return { sucesso: false, cStat: "CERTIFICADO", xMotivo: "Certificado A1 não configurado para este emitente." };
+
 
   // Próximo nº de sequência do evento (a SEFAZ rejeita repetido; máximo 20 por CT-e)
   const { data: ult, error: errSeq } = await sb().from("cte_cartas_correcao").select("n_seq").eq("cte_id", options.cte_id).order("n_seq", { ascending: false }).limit(1);
@@ -252,7 +240,7 @@ export async function emitirCartaCorrecaoCTe(fazendaId: string, options: CartaCo
   const nSeq = (ult?.[0]?.n_seq ?? 0) + 1;
 
   try {
-    const pem = pfxParaPem(await carregarPfx(certPath), certSenha);
+    const {pem}=await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fiscal.cpf_cnpj_emitente || '');
     const emitente = fiscal.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits;
     const r = await enviarCartaCorrecaoCTe(pem, {
       chave, cpfCnpjEmitente: emitente,
@@ -318,16 +306,11 @@ export async function emitirCTe(
 
   const confg = resolved.cteConfig;
   const fc = resolved.fiscalConfig;
-  const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
-  const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
-  if (!certPath || !certSenha)
-    return { sucesso: false, cStat: "501", xMotivo: "Certificado A1 não configurado no módulo CT-e nem no Fiscal" };
 
-  // 3. Certificado
-  let pfxBuffer: Buffer;
-  try { pfxBuffer = await carregarPfx(certPath); }
-  catch (e) { return { sucesso: false, cStat: "502", xMotivo: String(e) }; }
-  const pem = pfxParaPem(pfxBuffer, certSenha);
+
+  let pem: PemPair;
+  try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
+  catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
 
   // Antes de reservar o número: sem o código do município a SEFAZ devolve só "Falha no Schema" e o número se perde
   const ibgeEmitente = fc.municipio_ibge || confg.municipio_ibge || "";

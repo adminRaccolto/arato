@@ -167,7 +167,7 @@ export function soapPost(url: string, body: string, pem: PemPair, soapAction?: s
           "Content-Type": contentType,
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
-        cert: pem.cert,
+        cert: pem.certChain ?? pem.cert,
         key:  pem.key,
         rejectUnauthorized: !isSefazHost(u.hostname),
       },

@@ -9,7 +9,7 @@ import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import https from "https";
-import { pfxParaPem } from "../../../../lib/nfe/signer";
+import { carregarCertificadoEmitente } from "../../../../lib/nfe/certificado-emitente";
 import { resolverConfigCTe } from "../../../../lib/cte/config";
 import { ICP_BRASIL_CA_BUNDLE } from "../../../../lib/cte/transmitter";
 
@@ -54,11 +54,6 @@ function sb() {
   );
 }
 
-async function carregarPfx(storagePath: string): Promise<Buffer> {
-  const { data, error } = await sb().storage.from("certificados").download(storagePath);
-  if (error || !data) throw new Error(`Certificado não encontrado: ${storagePath}`);
-  return Buffer.from(await data.arrayBuffer());
-}
 
 export async function POST(req: NextRequest) {
   const t0 = Date.now();
@@ -96,24 +91,8 @@ export async function POST(req: NextRequest) {
     const fc    = resolved.fiscalConfig;
     cteModulo = resolved.cteModulo;
     fiscalModulo = resolved.fiscalModulo;
-    const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
-    const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
     ambiente = (confg.ambiente ?? "homologacao") as typeof ambiente;
-
-    if (!certPath || !certSenha) {
-      return NextResponse.json({
-        ok: false,
-        diagnostico: "certificado_nao_configurado",
-        detalhe: "Certificado A1 ou senha não encontrados para o emitente selecionado. Verifique Fiscal → Certificado Digital.",
-        elapsed_ms: Date.now() - t0,
-        certCarregado: false,
-        cteModulo,
-        fiscalModulo,
-      });
-    }
-
-    const pfx = await carregarPfx(certPath);
-    const pem = pfxParaPem(pfx, certSenha);
+    const {pem}=await carregarCertificadoEmitente(sb(),fazenda_id,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '');
     certPem = pem.certChain ?? pem.cert;
     keyPem  = pem.key;
 
@@ -184,8 +163,13 @@ export async function POST(req: NextRequest) {
       diagnostico = "timeout — SEFAZ não respondeu";
     else if (eLower.includes("unknown") && eLower.includes("issuer"))
       diagnostico = "tls_unknown_issuer — CA bundle incorreto";
-    else if (eLower.includes("expired"))
+    else if (eLower.includes("expired") || eLower.includes("vencido"))
       diagnostico = "certificado_expirado";
+    else if(eLower.includes("ainda não entrou em validade")) diagnostico="certificado_ainda_nao_valido";
+    else if(eLower.includes("não corresponde ao titular")) diagnostico="certificado_outro_titular";
+    else if(eLower.includes("baixar o arquivo")) diagnostico="certificado_arquivo_indisponivel";
+    else if(eLower.includes("abrir o certificado")) diagnostico="certificado_senha_ou_formato";
+    else if(eLower.includes("não encontrados para este titular")) diagnostico="certificado_nao_configurado";
 
     console.error("[status-sefaz] erro:", msg);
     return NextResponse.json({

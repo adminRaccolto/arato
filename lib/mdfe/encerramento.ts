@@ -7,8 +7,10 @@
  * (CNPJ/CPF) e a UF saem da própria chave de acesso; o certificado vem da config do emitente.
  * Antes de 23/09/2026 o "Encerrar" da tela era só um UPDATE local — nunca transmitia à SEFAZ.
  */
+import { carregarCertificadoEmitente } from "../nfe/certificado-emitente";
+import type { PemPair } from "../nfe/signer";
 import { createClient } from "../supabase-servidor";
-import { assinarXmlPorId, pfxParaPem } from "../nfe/signer";
+import { assinarXmlPorId } from "../nfe/signer";
 import { gerarDhEmi } from "../nfe/builder";
 import { resolverConfigMDFe } from "./config";
 import { transmitirEventoMDFe } from "./transmitter";
@@ -84,15 +86,9 @@ export async function encerrarMDFePorChave(fazendaId: string, input: Encerrament
   if (!resolved) return { sucesso: false, cStat: "500", xMotivo: "Configuração do emitente não encontrada — configure em Parâmetros → MDF-e." };
   const confg = resolved.mdfeConfig;
   const fc = resolved.fiscalConfig;
-  const certPath = confg.cert_a1_path ?? fc.cert_a1_path;
-  const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
-  if (!certPath || !certSenha) return { sucesso: false, cStat: "501", xMotivo: "Certificado A1 não configurado para o emitente dessa chave (Parâmetros → MDF-e / Fiscal)." };
-
-  const { data: blob, error } = await sb().storage.from("certificados").download(certPath);
-  if (error || !blob) return { sucesso: false, cStat: "502", xMotivo: `Certificado não encontrado: ${certPath}` };
-  let pem;
-  try { pem = pfxParaPem(Buffer.from(await blob.arrayBuffer()), certSenha); }
-  catch (e) { return { sucesso: false, cStat: "502b", xMotivo: `Certificado inválido ou senha incorreta: ${e}` }; }
+  let pem: PemPair;
+  try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
+  catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
 
   const ambiente = (confg.ambiente as "producao" | "homologacao") ?? "homologacao";
   const ufEmissor = fc.uf_emitente ?? confg.uf_emitente ?? "MT";

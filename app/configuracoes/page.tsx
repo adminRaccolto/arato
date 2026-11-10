@@ -1,4 +1,5 @@
 "use client";
+import VerificarCertificado from "../../components/fiscal/VerificarCertificado";
 import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -476,6 +477,7 @@ function ConfiguracoesInner() {
                         <OperationalButton data-arato-button="secondary" onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "transparent", color: "#111111", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                           Atualizar
                         </OperationalButton>
+                        <VerificarCertificado fazendaId={fazendaId} documento={cert.cpf_cnpj} versao={cert.storage_path} />
                       </div>
                     );
                   })}

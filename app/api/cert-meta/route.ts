@@ -1,3 +1,4 @@
+import { metadadosAtivos, metaDoDocumento } from "../../../lib/nfe/certificado-metadados";
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../lib/api-auth";
@@ -29,17 +30,25 @@ export async function GET(req: Request) {
     .from("configuracoes_modulo")
     .select("modulo, config")
     .in("fazenda_id", ids)
-    .like("modulo", "certificado_a1%");
+    .like("modulo", "certificado_a1%")
+    .order("updated_at",{ascending:false});
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  let ativos;
+  try {ativos=await metadadosAtivos(supabase,ids);} catch {return NextResponse.json({error:"Não foi possível conferir os certificados ativos."},{status:503});}
   // Retorna array de certificados, deduplicado por produtor (mesmo produtor pode ter
   // certificado salvo sob mais de uma fazenda da mesma conta)
   const byProdutor = new Map<string, { modulo: string } & Record<string, string | null>>();
   (data ?? []).forEach(row => {
     const cfg = row.config as Record<string, string | null>;
     const chave = cfg.produtor_id ?? row.modulo;
-    if (!byProdutor.has(chave)) byProdutor.set(chave, { modulo: row.modulo as string, ...cfg });
+    if (!byProdutor.has(chave)) {
+      const ativo=metaDoDocumento(ativos,cfg.cpf_cnpj ?? '');
+      byProdutor.set(chave,{modulo:row.modulo,produtor_id:cfg.produtor_id,produtor_nome:cfg.produtor_nome,cpf_cnpj:cfg.cpf_cnpj,
+        arquivo_nome:ativo?.arquivo_nome ?? cfg.arquivo_nome,storage_path:ativo?.storage_path ?? cfg.storage_path,
+        data_vencimento:ativo?.valido_ate.slice(0,10) ?? cfg.data_vencimento,versao_id:ativo?.id ?? null});
+    }
   });
 
   return NextResponse.json({ certs: Array.from(byProdutor.values()) });
@@ -64,6 +73,11 @@ export async function POST(req: Request) {
 
   const supabase = adminClient();
   const modulo = `certificado_a1_${body.produtor_id ?? "geral"}`;
+  let ativos;
+  try {ativos=await metadadosAtivos(supabase,[body.fazenda_id]);} catch {return NextResponse.json({error:"Não foi possível conferir o certificado ativo."},{status:503});}
+  const ativo=metaDoDocumento(ativos,body.cpf_cnpj);
+  if(ativo && body.storage_path!==ativo.storage_path) return NextResponse.json({error:"Atualize o certificado pelo envio do arquivo A1; os metadados não substituem a versão ativa."},{status:409});
+
 
   const { error } = await supabase
     .from("configuracoes_modulo")
@@ -72,12 +86,12 @@ export async function POST(req: Request) {
         fazenda_id: body.fazenda_id,
         modulo,
         config: {
-          arquivo_nome:    body.arquivo_nome,
+          arquivo_nome:    ativo?.arquivo_nome ?? body.arquivo_nome,
           storage_path:    body.storage_path,
           produtor_id:     body.produtor_id    ?? null,
           produtor_nome:   body.produtor_nome,
           cpf_cnpj:        body.cpf_cnpj,
-          data_vencimento: body.data_vencimento ?? null,
+          data_vencimento: ativo?.valido_ate.slice(0,10) ?? body.data_vencimento ?? null,
         },
       },
       { onConflict: "fazenda_id,modulo" }

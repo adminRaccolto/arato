@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import forge from "node-forge";
+import { carregarCertificadoEmitente } from "../../../../lib/nfe/certificado-emitente";
 import { resolverConfigCTe } from "../../../../lib/cte/config";
 import { exigirRaccoltoAdmin } from "../../../../lib/api-auth";
 
@@ -21,11 +22,6 @@ function sb() {
   );
 }
 
-async function carregarPfx(storagePath: string): Promise<Buffer> {
-  const { data, error } = await sb().storage.from("certificados").download(storagePath);
-  if (error || !data) throw new Error(`Certificado não encontrado: ${storagePath}`);
-  return Buffer.from(await data.arrayBuffer());
-}
 
 function getAiaUrl(cert: forge.pki.Certificate): string | null {
   try {
@@ -65,23 +61,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Configuração CT-e não encontrada" }, { status: 404 });
     }
 
-    const confg = resolved.cteConfig;
     const fc    = resolved.fiscalConfig;
-    const certPath  = confg.cert_a1_path  ?? fc.cert_a1_path;
-    const certSenha = confg.cert_a1_senha ?? fc.cert_a1_senha;
+    const certificado=await carregarCertificadoEmitente(sb(),fazenda_id,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '');
+    const pemCerts=certificado.pem.certChain?.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [certificado.pem.cert];
 
-    if (!certPath || !certSenha) {
-      return NextResponse.json({ ok: false, error: "Cert A1 ou senha não configurados" }, { status: 404 });
-    }
-
-    const pfxBuf = await carregarPfx(certPath);
-    const bytes  = pfxBuf.toString("binary");
-    const der    = forge.util.createBuffer(bytes, "raw");
-    const asn1   = forge.asn1.fromDer(der);
-    const p12    = forge.pkcs12.pkcs12FromAsn1(asn1, false, certSenha);
-
-    const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
-    const certs    = certBags.map(bag => bag.cert!);
+    const certs=pemCerts.map(pem=>forge.pki.certificateFromPem(pem));
     const chainInfo = certs.map((c, i) => ({ index: i, ...certInfo(c) }));
 
     // Busca intermediária via AIA do cert folha (index 0)
@@ -114,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      certPath,
+      certPath:certificado.caminho,
       certsNoPfx: certs.length,
       chainInfo,
       aiaFetched,

@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { pfxParaPem } from "../../../../lib/nfe/signer";
+import { carregarCertificadoEmitente } from "../../../../lib/nfe/certificado-emitente";
 import { resolverConfigCTe } from "../../../../lib/cte/config";
 import {
   consultarDFeInteresse,
@@ -26,11 +26,6 @@ function sb() {
   );
 }
 
-async function carregarPfx(storagePath: string): Promise<Buffer> {
-  const { data, error } = await sb().storage.from("certificados").download(storagePath);
-  if (error || !data) throw new Error(`Certificado não encontrado: ${storagePath}`);
-  return Buffer.from(await data.arrayBuffer());
-}
 
 async function lerUltNSU(fazendaId: string, chave: string): Promise<string> {
   const { data } = await sb()
@@ -63,13 +58,7 @@ export async function POST(req: NextRequest) {
     if (!cfg) return NextResponse.json({ erro: "Configuração CT-e não encontrada" }, { status: 422 });
 
     const { fiscalConfig, emitenteDigits, cteConfig } = cfg;
-    const certPath = fiscalConfig.cert_a1_path ?? "";
-    const certSenha = fiscalConfig.cert_a1_senha ?? "";
-
-    if (!certPath) return NextResponse.json({ erro: "Certificado A1 não configurado" }, { status: 422 });
-
-    const pfx = await carregarPfx(certPath);
-    const pem = pfxParaPem(pfx, certSenha);
+    const {pem}=await carregarCertificadoEmitente(sb(),fazenda_id,emitenteDigits || fiscalConfig.cpf_cnpj_emitente || '');
 
     const ambiente: AmbienteDist =
       (cteConfig.ambiente ?? fiscalConfig.ambiente ?? "homologacao") === "producao"

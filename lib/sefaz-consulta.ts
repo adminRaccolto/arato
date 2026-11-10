@@ -1,7 +1,8 @@
+import { candidatosDoEmitente, baixarA1Exato } from "./nfe/certificado-emitente";
+import { validarCertificadoA1 } from "./nfe/certificado-a1";
 // Consulta NF-e na SEFAZ por chave de acesso usando certificado A1 (mTLS)
 import https from "https";
 import { gunzipSync } from "node:zlib";
-import forge from "node-forge";
 import { createClient } from "@supabase/supabase-js";
 
 // ── Endpoints por cUF ──────────────────────────────────────────────────────
@@ -64,51 +65,23 @@ async function carregarCertificados(fazendaId: string): Promise<{ pfxBuffer: Buf
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  let fazendaIdsConta = [fazendaId];
-  const { data: fazAtual } = await sb.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  if (fazAtual?.conta_id) {
-    const { data: fzsConta } = await sb.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
-    if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
+  const {ids,candidatos}=await candidatosDoEmitente(sb,fazendaId);
+  const vistos=new Set<string>();
+  const resultado:{pfxBuffer:Buffer;senha:string}[]=[];
+  for(const c of candidatos) {
+    const chave=JSON.stringify([c.caminho,c.senha]);if(vistos.has(chave)) continue;vistos.add(chave);
+    try {
+      const buffer=await baixarA1Exato(sb,c.caminho,ids);
+      validarCertificadoA1(buffer,c.senha,{documento:c.documento});
+      resultado.push({pfxBuffer:buffer,senha:c.senha});
+    } catch { /* A consulta pode usar outro titular válido da mesma conta. */ }
   }
 
-  const { data: configs } = await sb.from("configuracoes_modulo")
-    .select("modulo, config")
-    .in("fazenda_id", fazendaIdsConta)
-    .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-
-  const pares = (configs ?? [])
-    .map(r => r.config as Record<string, string>)
-    .filter(c => c.cert_a1_path && c.cert_a1_senha)
-    .reduce((acc, c) => { // dedup por path — vários registros (um por fazenda da conta) apontam pro mesmo PFX
-      if (!acc.some(p => p.storage_path === c.cert_a1_path)) acc.push({ storage_path: c.cert_a1_path, senha: c.cert_a1_senha });
-      return acc;
-    }, [] as { storage_path: string; senha: string }[]);
-
-  const resultado: { pfxBuffer: Buffer; senha: string }[] = [];
-  for (const par of pares) {
-    const { data: blob, error } = await sb.storage.from("certificados").download(par.storage_path);
-    if (error || !blob) continue;
-    resultado.push({ pfxBuffer: Buffer.from(await blob.arrayBuffer()), senha: par.senha });
-  }
   return resultado;
 }
 
 // ── Extrair PEM do PFX via node-forge ─────────────────────────────────────
-function pfxParaPem(pfxBuffer: Buffer, senha: string): { cert: string; key: string } {
-  const bytes = pfxBuffer.toString("binary");
-  const der = forge.util.createBuffer(bytes, "raw");
-  const asn1 = forge.asn1.fromDer(der);
-  const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, senha);
-
-  const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
-  const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] ?? [];
-
-  if (!certBags.length || !keyBags.length) throw new Error("Certificado inválido ou senha incorreta");
-
-  const cert = forge.pki.certificateToPem(certBags[0].cert!);
-  const key = forge.pki.privateKeyToPem(keyBags[0].key as forge.pki.rsa.PrivateKey);
-  return { cert, key };
-}
+function pfxParaPem(buffer:Buffer,senha:string) {return validarCertificadoA1(buffer,senha).pem;}
 
 // ── Requisição HTTPS com mTLS ──────────────────────────────────────────────
 function soapRequest(url: string, body: string, cert: string, key: string): Promise<string> {
@@ -254,7 +227,7 @@ export async function consultarNfePorChave(
   const certs = await carregarCertificados(fazendaId);
   if (!certs.length) return { ok: false, erro: "Nenhum certificado A1 com senha cadastrada encontrado nesta conta. Configure em Parâmetros do Sistema → Fiscal." };
 
-  let pem: { cert: string; key: string } | null = null;
+  let pem: { cert: string; key: string; certChain?: string } | null = null;
   for (const cert of certs) {
     try {
       pem = pfxParaPem(cert.pfxBuffer, cert.senha);
@@ -267,7 +240,7 @@ export async function consultarNfePorChave(
   const soap = buildSoapEnvelope(chave, cuf, tpAmb);
   let responseXml: string;
   try {
-    responseXml = await soapRequest(endpoint, soap, pem.cert, pem.key);
+    responseXml = await soapRequest(endpoint, soap, pem.certChain ?? pem.cert, pem.key);
   } catch (e) {
     return { ok: false, erro: `Erro ao conectar à SEFAZ: ${(e as Error).message}` };
   }
@@ -350,10 +323,10 @@ export async function baixarXmlNfePorChaveDFe(
   const envelope = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDistDFeInteresse xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe"><nfeDadosMsg>${dados}</nfeDadosMsg></nfeDistDFeInteresse></soap12:Body></soap12:Envelope>`;
   let ultimo: { cStat?: string; xMotivo?: string } = {};
   for (const cert of certs) {
-    let pem: { cert: string; key: string };
+    let pem: { cert: string; key: string; certChain?: string };
     try { pem = pfxParaPem(cert.pfxBuffer, cert.senha); } catch { continue; }
     let resp: string;
-    try { resp = await soapRequest(url, envelope, pem.cert, pem.key); } catch (e) { return { ok: false, erro: `Erro ao conectar à Distribuição DF-e: ${(e as Error).message}` }; }
+    try { resp = await soapRequest(url, envelope, pem.certChain ?? pem.cert, pem.key); } catch (e) { return { ok: false, erro: `Erro ao conectar à Distribuição DF-e: ${(e as Error).message}` }; }
     const tg = (n: string) => resp.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)<\\/${n}>`))?.[1]?.trim() ?? "";
     ultimo = { cStat: tg("cStat"), xMotivo: tg("xMotivo") };
     const re = /<docZip\s[^>]*>([\s\S]+?)<\/docZip>/g;

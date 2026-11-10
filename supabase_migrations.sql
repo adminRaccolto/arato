@@ -20923,3 +20923,79 @@ UPDATE lancamentos SET status = 'em_aberto' WHERE status = 'vencido' AND data_ve
 UPDATE rel_lancamentos SET status_normalizado = 'em_aberto' WHERE status_normalizado = 'vencido' AND data_vencimento >= current_date;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 431 — Certificado A1 por titular: versões imutáveis e ativação transacional
+-- Não migra nem substitui certificados antigos automaticamente. Leitura legada preservada.
+-- A tabela de versões é restrita ao servidor; as APIs públicas retornam metadados.
+-- =============================================================================
+BEGIN;
+CREATE TABLE IF NOT EXISTS certificados_a1_versoes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ conta_id uuid NOT NULL REFERENCES contas(id),
+ fazenda_id uuid NOT NULL REFERENCES fazendas(id),
+ documento text NOT NULL CHECK(documento ~ '^([0-9]{11}|[0-9]{14})$'),
+ chave_titular text GENERATED ALWAYS AS (CASE WHEN length(documento)=14 THEN left(documento,8) ELSE documento END) STORED,
+ storage_path text NOT NULL UNIQUE,
+ senha text NOT NULL CHECK(length(senha)>0),
+ arquivo_nome text NOT NULL,
+ fingerprint text NOT NULL CHECK(fingerprint ~ '^[0-9a-f]{64}$'),
+ serial text NOT NULL,
+ valido_de timestamptz NOT NULL,
+ valido_ate timestamptz NOT NULL,
+ ativo boolean NOT NULL DEFAULT false,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ CHECK(valido_ate>valido_de)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certificado_a1_ativo ON certificados_a1_versoes(conta_id,chave_titular) WHERE ativo;
+ALTER TABLE certificados_a1_versoes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON certificados_a1_versoes FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON certificados_a1_versoes FROM service_role;
+GRANT SELECT ON certificados_a1_versoes TO service_role;
+DROP POLICY IF EXISTS certificados_a1_servidor ON certificados_a1_versoes;
+CREATE POLICY certificados_a1_servidor ON certificados_a1_versoes FOR SELECT TO service_role USING(true);
+
+CREATE OR REPLACE FUNCTION public.ativar_certificado_a1(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_conta uuid; v_doc text:=p->>'documento'; v_emit text:=p->>'emitente'; v_chave text;
+ v_fazenda uuid:=(p->>'fazenda_id')::uuid; v_path text:=p->>'storage_path'; v_id uuid;
+ v_patch jsonb; v_meta jsonb; v_modulo text; v_alvo uuid; v_ant certificados_a1_versoes%ROWTYPE;
+BEGIN
+ SELECT conta_id INTO v_conta FROM fazendas WHERE id=v_fazenda;
+ IF v_conta IS NULL THEN RAISE EXCEPTION 'Cliente do certificado não encontrado.'; END IF;
+ IF v_doc !~ '^([0-9]{11}|[0-9]{14})$' OR v_emit !~ '^([0-9]{11}|[0-9]{14})$' OR v_doc IS NULL OR v_emit IS NULL THEN RAISE EXCEPTION 'CPF/CNPJ do certificado ou emitente inválido.'; END IF;
+ v_chave:=CASE WHEN length(v_doc)=14 THEN left(v_doc,8) ELSE v_doc END;
+ IF length(v_doc)<>length(v_emit) OR v_chave<>(CASE WHEN length(v_emit)=14 THEN left(v_emit,8) ELSE v_emit END) THEN RAISE EXCEPTION 'Certificado de outro titular.'; END IF;
+ IF v_path NOT LIKE v_fazenda::text||'/versoes/%' OR nullif(p->>'senha','') IS NULL THEN RAISE EXCEPTION 'Arquivo e senha do certificado obrigatórios.'; END IF;
+ IF (p->>'valido_de')::timestamptz>now() OR (p->>'valido_ate')::timestamptz<=now() THEN RAISE EXCEPTION 'Certificado fora da validade.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(v_conta::text||':'||v_chave,0));
+ SELECT * INTO v_ant FROM certificados_a1_versoes WHERE conta_id=v_conta AND chave_titular=v_chave AND ativo FOR UPDATE;
+ IF FOUND AND (p->>'valido_de')::timestamptz<=v_ant.valido_de AND (p->>'valido_ate')::timestamptz<=v_ant.valido_ate
+  AND ((p->>'valido_de')::timestamptz<v_ant.valido_de OR (p->>'valido_ate')::timestamptz<v_ant.valido_ate) THEN RAISE EXCEPTION 'O certificado enviado é anterior ao certificado ativo. O atual foi preservado.'; END IF;
+ UPDATE certificados_a1_versoes SET ativo=false WHERE conta_id=v_conta AND chave_titular=v_chave AND ativo;
+ INSERT INTO certificados_a1_versoes(conta_id,fazenda_id,documento,storage_path,senha,arquivo_nome,fingerprint,serial,valido_de,valido_ate,ativo)
+ VALUES(v_conta,v_fazenda,v_doc,v_path,p->>'senha',p->>'arquivo_nome',p->>'fingerprint',p->>'serial',(p->>'valido_de')::timestamptz,(p->>'valido_ate')::timestamptz,true) RETURNING id INTO v_id;
+ v_patch:=jsonb_build_object('cert_a1_arquivo_nome',p->>'arquivo_nome','cert_a1_path',v_path,'cert_a1_senha',p->>'senha','cert_a1_vencimento',left(p->>'valido_ate',10),'cert_a1_versao',v_id,'cert_a1_fingerprint',p->>'fingerprint');
+ -- Atualiza só credenciais; mantém série, numeração, tributação e cadastros já existentes.
+ UPDATE configuracoes_modulo c SET config=coalesce(c.config,'{}'::jsonb)||v_patch,updated_at=now()
+ FROM fazendas f WHERE f.id=c.fazenda_id AND f.conta_id=v_conta AND c.modulo !~ '__ie_'
+  AND (c.modulo ~ '^(fiscal_(pf|emp)|cte_emp|mdfe_emp)_[0-9]+$' OR c.modulo IN ('fiscal','cte','mdfe'))
+  AND CASE WHEN length(v_doc)=14 THEN left(regexp_replace(coalesce(substring(c.modulo from '_([0-9]+)$'),c.config->>'cpf_cnpj_emitente',''),'[^0-9]','','g'),8)=v_chave
+    ELSE regexp_replace(coalesce(substring(c.modulo from '_([0-9]+)$'),c.config->>'cpf_cnpj_emitente',''),'[^0-9]','','g')=v_chave END;
+ v_modulo:=CASE WHEN length(v_emit)=14 THEN 'fiscal_emp_' ELSE 'fiscal_pf_' END||v_emit;
+ SELECT c.fazenda_id INTO v_alvo FROM configuracoes_modulo c JOIN fazendas f ON f.id=c.fazenda_id WHERE f.conta_id=v_conta AND c.modulo=v_modulo LIMIT 1;
+ IF NOT FOUND THEN INSERT INTO configuracoes_modulo(fazenda_id,modulo,config,updated_at) VALUES(v_fazenda,v_modulo,v_patch,now()); END IF;
+ v_meta:=jsonb_build_object('arquivo_nome',p->>'arquivo_nome','storage_path',v_path,'data_vencimento',left(p->>'valido_ate',10),'cert_a1_versao',v_id,'fingerprint',p->>'fingerprint');
+ UPDATE configuracoes_modulo c SET config=coalesce(c.config,'{}'::jsonb)||v_meta,updated_at=now() FROM fazendas f
+ WHERE f.id=c.fazenda_id AND f.conta_id=v_conta AND c.modulo LIKE 'certificado_a1_%'
+ AND CASE WHEN length(v_doc)=14 THEN left(regexp_replace(coalesce(c.config->>'cpf_cnpj',''),'[^0-9]','','g'),8)=v_chave ELSE regexp_replace(coalesce(c.config->>'cpf_cnpj',''),'[^0-9]','','g')=v_chave END;
+ INSERT INTO configuracoes_modulo(fazenda_id,modulo,config,updated_at)
+ VALUES(v_fazenda,'certificado_a1_'||coalesce(nullif(p->>'produtor_id',''),'geral'),v_meta||jsonb_build_object('produtor_id',nullif(p->>'produtor_id',''),'produtor_nome',coalesce(p->>'produtor_nome',''),'cpf_cnpj',v_emit),now())
+ ON CONFLICT(fazenda_id,modulo) DO UPDATE SET config=EXCLUDED.config,updated_at=EXCLUDED.updated_at;
+ RETURN jsonb_build_object('ok',true,'versao_id',v_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.ativar_certificado_a1(jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.ativar_certificado_a1(jsonb) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';

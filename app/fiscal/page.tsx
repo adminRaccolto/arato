@@ -1,5 +1,6 @@
 "use client";
 import { imprimirCce } from "../../lib/fiscal/imprimir-cce";
+import VerificarCertificado from "../../components/fiscal/VerificarCertificado";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -2431,6 +2432,7 @@ function FiscalInner() {
                                   </div>
                                 ))}
                               </div>
+                              <VerificarCertificado fazendaId={fazendaId} documento={cert.cpf_cnpj} versao={cert.storage_path} />
                               {dias !== null && (
                                 <div style={{ marginTop: 10 }}>
                                   <div style={{ height: 5, background: "var(--border-row)", borderRadius: 4, overflow: "hidden" }}>
