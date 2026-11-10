@@ -1,4 +1,5 @@
 "use client";
+import { MODOS_FATURAMENTO, lerModoFaturamento, modoDaNota } from "../../../lib/fiscal/modo-faturamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDoProdutor } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -195,6 +196,8 @@ const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(
 function FaturamentoInner() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
   const searchParams   = useSearchParams();
+  // Modo vindo do menu Documentos Fiscais → Saídas (contrato / avulsa) ou da tela Remessas (remessa de grãos)
+  const modo = lerModoFaturamento(searchParams.get("modo"));
 
   const [notas,        setNotas]        = useState<NotaFiscal[]>([]);
   const [contratos,    setContratos]    = useState<Contrato[]>([]);
@@ -421,6 +424,13 @@ function FaturamentoInner() {
     setRascunhoId(null); setRascunhoOrigem("");
     setPesoDireto(""); setPesoAproximado(true); setPrecoContrato(null);
     setModalAberto(true);
+  }
+
+  // Pelo menu, a emissão já abre no tipo escolhido: contrato → escolher o contrato; avulsa → formulário de venda
+  function abrirNova() {
+    abrirModal();
+    if (modo === "contrato") setPasso("contrato");
+    else if (modo === "avulsa") { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }
   }
 
   // ── Recebimento por carga: NF-e autorizada de contrato com essa opção abate o CR do contrato e vira CR da carga ──
@@ -1115,6 +1125,7 @@ function FaturamentoInner() {
   // ── Filtrar notas ─────────────────────────────────────────────────────────
   const notasFiltradas = notas
     .filter(n => n.tipo === "saida")
+    .filter(n => !modo || modoDaNota(n) === modo)
     .filter(n => {
       if (filtroAba === "processando") return n.status === "em_digitacao";
       if (filtroAba === "autorizadas") return n.status === "autorizada";
@@ -1597,9 +1608,10 @@ function FaturamentoInner() {
         {/* Header */}
         <OperationalHeading data-arato-page-heading="true" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
-            <h1 data-arato-h1="true" style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>Faturamento — NF-e de Saída</h1>
+            <h1 data-arato-h1="true" style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>{modo ? MODOS_FATURAMENTO[modo].titulo : "Faturamento — NF-e de Saída"}</h1>
+            {modo && <div style={{ fontSize:12, color:"var(--text-2)", marginTop:2 }}>{MODOS_FATURAMENTO[modo].subtitulo}</div>}
           </div>
-          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirModal}>+ Nova NF-e</OperationalButton>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNova}>{modo ? MODOS_FATURAMENTO[modo].botao : "+ Nova NF-e"}</OperationalButton>
         </OperationalHeading>
 
         {/* Filtros */}
@@ -1839,6 +1851,7 @@ function FaturamentoInner() {
               <div style={{ fontSize:17, fontWeight:700, color:"var(--text-1)", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
               <div style={{ fontSize:13, color:"#666", marginBottom:24 }}>Como deseja iniciar a emissão?</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
+                {modo !== "remessa" && <>
                 <OperationalButton data-arato-button="secondary"
                   onClick={() => setPasso("contrato")}
                   style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
@@ -1857,6 +1870,8 @@ function FaturamentoInner() {
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Avulsa — Venda</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Nota de venda sem vínculo de contrato. Você preenche todos os dados.</div>
                 </OperationalButton>
+                </>}
+                {(!modo || modo === "remessa") && <>
                 <OperationalButton data-arato-button="toggle"
                   onClick={() => { setTipoAvulsa("remessa"); preencherAvulsa("remessa", "6.905"); }}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
@@ -1875,6 +1890,7 @@ function FaturamentoInner() {
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Retorno de Armazém Geral</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Traz de volta mercadoria enviada por uma NF de Remessa (6.905/5.905) já autorizada.</div>
                 </OperationalButton>
+                </>}
               </div>
               <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:16 }}>
                 Devolução de mercadoria comprada ou vendida não é emitida aqui — veja Documentos Fiscais → Notas de Terceiro.

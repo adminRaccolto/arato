@@ -7,7 +7,7 @@ import { montarMapaMenu, rotasInvalidas } from "./mapa-menu.ts";
 
 test("mapa traz o caminho real da NFS-e e marca telas da equipe Raccolto", () => {
   const mapa = montarMapaMenu(NAV);
-  assert.match(mapa, /Documentos Fiscais → Notas de Entrada → Notas de Terceiro/);
+  assert.match(mapa, /Documentos Fiscais → Entradas → Notas de Fornecedores/);
   assert.match(mapa, /Automações \(só a equipe Raccolto vê\)/);
   assert.doesNotMatch(mapa, /Triangulação/); // tela desativada não entra
 });
@@ -20,7 +20,7 @@ test("reconhece os caminhos errados que a Olívia já indicou", () => {
 });
 
 test("aceita caminhos reais", () => {
-  for (const c of ["Documentos Fiscais → Notas de Entrada → Notas de Terceiro", "Financeiro → Contas a Pagar", "Comercial & Logística → Estoque → Transferência entre Fazendas",
+  for (const c of ["Documentos Fiscais → Entradas → Notas de Fornecedores", "Documentos Fiscais → Saídas → Venda por Contrato", "Financeiro → Contas a Pagar", "Comercial & Logística → Estoque → Transferência entre Fazendas",
     "Produção → Operações de Campo → Plantio", "Configurações → Sistema → Parâmetros Fiscais (NF-e)", "Fiscal → Obrigações → LCDPR", "Cadastros → Entidades → Pessoas e Entidades"]) {
     assert.deepEqual(rotasInvalidas(c, NAV), [], c);
   }

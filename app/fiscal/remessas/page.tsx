@@ -389,7 +389,7 @@ function RemessasConteudo() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas</h1>
-            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Mercadoria ou máquina que sai e depois volta: armazém geral, depósito, conserto, comodato. O retorno fica em Retornos.</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Mercadoria ou máquina que sai e depois volta: armazém geral, depósito, conserto, empréstimo, comodato. O retorno recebido fica em Entradas → Retornos Recebidos.</div>
           </div>
           {aba === "mercadorias" && <OperationalButton data-arato-button="primary" onClick={abrirNova} style={btnV}>+ Nova Remessa</OperationalButton>}
         </OperationalHeading>
@@ -398,6 +398,8 @@ function RemessasConteudo() {
           {([["mercadorias", "Mercadorias (armazém / depósito)"], ["maquinas", "Máquinas e equipamentos"]] as const).map(([k, t]) => (
             <button key={k} type="button" onClick={() => setAba(k)} style={{ background: "none", border: "none", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent", color: aba === k ? "#1A4870" : "var(--text-2)", fontWeight: aba === k ? 700 : 500, fontSize: 13, padding: "8px 14px", cursor: "pointer" }}>{t}</button>
           ))}
+          {/* Remessa de grãos (armazém geral, entrega futura, venda à ordem) e retorno de armazém geral saem pela tela de venda da produção */}
+          <Link href="/comercial/faturamento?modo=remessa" style={{ fontSize: 13, padding: "8px 14px", color: "var(--text-2)", fontWeight: 500, textDecoration: "none" }}>Grãos (armazém geral, entrega futura, venda à ordem) →</Link>
         </div>
 
         {aba === "maquinas" ? <RemessasMaquinas retornoId={params.get("retorno_maquina")} /> : <>

@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.10-e",
+    data: "10/11/2026",
+    titulo: "Documentos Fiscais reorganizado: Painel, Entradas e Saídas",
+    modulos: ["Documentos Fiscais", "Comercial", "Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Menu Documentos Fiscais reorganizado em Painel, Entradas, Saídas, Transporte e Relatórios. Cada operação tem uma entrada só no menu." },
+      { tipo: "melhoria", texto: "O Monitor NF-e Emitidas virou Painel de Notas e saiu do menu Fiscal: é onde se acompanha, cancela, corrige, complementa e reimprime a nota." },
+      { tipo: "melhoria", texto: "Venda da produção separada em Venda por Contrato e Venda Avulsa: cada uma lista só as suas notas e o botão já abre a emissão certa." },
+      { tipo: "melhoria", texto: "Remessa de grãos (armazém geral, entrega futura, venda à ordem) e retorno de armazém geral abrem pelo link de grãos da tela Remessas." },
+      { tipo: "melhoria", texto: "Notas de Terceiro passou a se chamar Notas de Fornecedores; Notas Capturadas (SIEG) foi para Documentos Fiscais → Entradas." },
+    ],
+  },
+  {
     versao: "2026.11.10-d",
     data: "10/11/2026",
     titulo: "Devolução de compra já emitida em outro sistema",
