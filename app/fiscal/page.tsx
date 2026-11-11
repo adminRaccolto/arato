@@ -9,6 +9,7 @@ import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
+import { modoDaNota } from "../../lib/fiscal/modo-faturamento";
 import { indexarConfigsEmitentes } from "../../lib/nfe/configs-emitentes";
 import TopNav from "../../components/TopNav";
 import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica, listarDepositos, buscarDepositoTerceiroPorCnpj } from "../../lib/db";
@@ -1323,8 +1324,13 @@ function FiscalInner() {
   };
 
   // Classificação das notas
-  const notasVenda      = notas.filter(n => n.tipo === "saida");
-  const notasDevolucao  = notas.filter(n => n.tipo === "entrada" && (n.cfop?.startsWith("1.2") || n.cfop?.startsWith("2.2")));
+  // Devolução: a recebida (entrada 1.2xx/2.2xx) e a emitida pela fazenda — devolução de compra (5.2xx, 5.410–5.413,
+  // 5.553, 5.556), de bem de terceiro (5.555) e retorno de comodato/demonstração/conserto. Antes as emitidas caíam em
+  // Notas de Venda (e somavam no faturamento). Transferência tem aba própria e também sai de Notas de Venda.
+  const ehTransferenciaNota = (n: { cfop?: string | null }) => ["5.152","6.152","5.906","6.906"].includes(String(n.cfop ?? ""));
+  const notasDevolucao  = notas.filter(n => (n.tipo === "entrada" && (n.cfop?.startsWith("1.2") || n.cfop?.startsWith("2.2")))
+    || (n.tipo === "saida" && modoDaNota(n) === "devolucao"));
+  const notasVenda      = notas.filter(n => n.tipo === "saida" && modoDaNota(n) !== "devolucao" && !ehTransferenciaNota(n));
   const notasCanceladas = notas.filter(n => n.status === "cancelada");
   const notasAutorizadas = notas.filter(n => n.status === "autorizada" && n.tipo === "saida");
 
@@ -1996,7 +2002,7 @@ function FiscalInner() {
 
   const notasContingencia = notas.filter(n => n.status === "contingencia");
 
-  const notasTransferencia = notas.filter(n => ["5.152","6.152","5.906","6.906"].includes(n.cfop));
+  const notasTransferencia = notas.filter(n => ehTransferenciaNota(n));
 
   const ABAS: { key: Aba; label: string; count?: number; alert?: boolean }[] = [
     { key: "venda",         label: "Notas de Venda",       count: notasVenda.length },
@@ -2167,9 +2173,10 @@ function FiscalInner() {
                 <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
-                      A <strong>Nota de Devolução</strong> é emitida quando o comprador devolve mercadoria anteriormente vendida.
-                      CFOPs utilizados: <strong>1.201</strong> (intraestadual) e <strong>2.201</strong> (interestadual).
-                      Deve referenciar a chave da NF-e original.
+                      Notas de <strong>devolução</strong>: as de compra que a fazenda emite ao devolver mercadoria ao fornecedor
+                      (<strong>5.2xx</strong>, <strong>5.410–5.413</strong>, <strong>5.553</strong>, <strong>5.556</strong> e 6.xxx), a de bem de terceiro (<strong>5.555</strong>),
+                      os retornos de comodato, demonstração e conserto, e a devolução de venda recebida do comprador (<strong>1.201</strong> / <strong>2.201</strong>).
+                      Toda devolução referencia a chave da NF-e original.
                     </div>
                   </div>
                   {notasDevolucao.length === 0 ? (
