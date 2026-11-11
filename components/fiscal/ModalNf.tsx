@@ -1746,8 +1746,25 @@ export default function ModalNf({
       if (tipo === "remessa") {
         const saldos = vefSaldos.flatMap(v => v.itens.map(i => ({ id: i.id, nf_entrada_id: v.nf_id, insumo_id: i.insumo_id, quantidade_saldo: i.saldo, created_at: i.created_at })));
         const { sobras } = alocarRemessa(saldos, itensDB.filter(i => i.insumo_id).map(i => ({ item_id: i.id, insumo_id: i.insumo_id!, quantidade: Number(i.quantidade) })), vefSel);
+        // Faturamento (5922/6922) do mesmo fornecedor ainda não processado: é ele que cria o saldo — diz qual processar antes
+        let dicaVef = "";
+        if (sobras.length) {
+          const cnpjEmit = String(nfEdit.emitente_cnpj ?? "").replace(/\D/g, "");
+          const { data: pend } = cnpjEmit ? await supabase.from("nf_entradas").select("id, numero, data_emissao, cfop")
+            .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("emitente_cnpj", cnpjEmit).eq("status", "pendente")
+            .or("cfop.like.%5922%,cfop.like.%6922%").order("data_emissao") : { data: [] };
+          const insSobra = new Set(sobras.map(x => x.insumo_id));
+          const candidatos: { numero: string; data: string; produtos: number }[] = [];
+          for (const n of (pend ?? []) as { id: string; numero: string; data_emissao: string }[]) {
+            const { data: its } = await supabase.from("nf_entrada_itens").select("insumo_id").eq("nf_entrada_id", n.id);
+            const produtos = (its ?? []).filter(x => x.insumo_id && insSobra.has(x.insumo_id as string)).length;
+            if (produtos) candidatos.push({ numero: n.numero, data: n.data_emissao, produtos });
+          }
+          candidatos.sort((x, y) => y.produtos - x.produtos || y.data.localeCompare(x.data));
+          if (candidatos.length) dicaVef = `\n\nEste fornecedor tem faturamento (CFOP 5922/6922) ainda NÃO processado com estes produtos: ${candidatos.slice(0, 3).map(c => `NF ${c.numero} de ${String(c.data).slice(0, 10).split("-").reverse().join("/")}`).join(", ")}. Processe o faturamento primeiro (tipo Faturamento para entrega futura) — é ele que cria o saldo — e depois esta remessa. Processando a remessa antes, o faturamento depois fica com saldo que nunca é baixado (como se ainda faltasse receber).`;
+        }
         if (sobras.length && !(await confirmarAcao({ titulo: "Remessa sem saldo de entrega futura", perigo: false, textoConfirmar: "Processar mesmo assim",
-          mensagem: `${sobras.map(x => { const it = itensDB.find(i => i.id === x.item_id); return `${it?.descricao_produto ?? it?.descricao_nf ?? "item"}: ${x.quantidade.toLocaleString("pt-BR")} sem saldo`; }).join("\n")}\n\n${vefSaldos.length ? "Os faturamentos escolhidos não cobrem toda a quantidade desta remessa." : "Não há faturamento (Entrega Futura/VEF) com saldo deste fornecedor."} O que passar do saldo entra no estoque sem baixar nenhum faturamento.` }))) { setSaving(false); return; }
+          mensagem: `${sobras.map(x => { const it = itensDB.find(i => i.id === x.item_id); return `${it?.descricao_produto ?? it?.descricao_nf ?? "item"}: ${x.quantidade.toLocaleString("pt-BR")} sem saldo`; }).join("\n")}\n\n${vefSaldos.length ? "Os faturamentos escolhidos não cobrem toda a quantidade desta remessa." : "Não há faturamento (Entrega Futura/VEF) com saldo deste fornecedor."} O que passar do saldo entra no estoque sem baixar nenhum faturamento.${dicaVef}` }))) { setSaving(false); return; }
       }
       // Pelo CFOP: remessa de entrega futura / comodato / conserto… não geram CP; 5949 genérico: o usuário decide
       const cobranca = cobrancaDaNf(cab.cfop || nfEdit.cfop, itensDB.map(i => (i as { cfop?: string | null }).cfop));
