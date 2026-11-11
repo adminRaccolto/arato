@@ -3,12 +3,14 @@
  * Devolve o XML completo de uma NF-e pela chave de acesso (44 dígitos).
  * Fluxo:
  *   1. Procura no Storage (nfs-sieg/{fazenda_id}/{chave}.xml) — sem certificado
- *   2. Consulta SEFAZ como fallback (requer A1 configurado)
+ *   2. Pergunta ao SIEG pela chave (mês da emissão + emitente/destinatário) — antes só olhava o que já estava guardado
+ *   3. Consulta SEFAZ como último recurso (requer A1 configurado; a SEFAZ não entrega o XML a terceiros)
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { consultarNfePorChave } from "../../../../lib/sefaz-consulta";
 import { exigirAcessoFazenda } from "../../../../lib/api-auth";
+import { buscarXmlNfePorChaveSieg, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 export async function POST(req: NextRequest) {
   const supabaseAdmin = createClient(
@@ -57,7 +59,28 @@ export async function POST(req: NextRequest) {
   }
   const xmlPath = `nfs-sieg/${fazendaId}/${chave}.xml`;
 
-  // ── 2. Fallback: consulta SEFAZ ────────────────────────────────────────────
+  // ── 2. SIEG pela chave ─────────────────────────────────────────────────────
+  let avisoSieg = "";
+  const siegCreds = credenciaisEnv();
+  if (credenciaisValidas(siegCreds)) {
+    try {
+      const [{ data: prods }, { data: emps }] = await Promise.all([
+        supabaseAdmin.from("produtores").select("cpf_cnpj").or(faz?.conta_id ? `conta_id.eq.${faz.conta_id},fazenda_id.in.(${fids.join(",")})` : `fazenda_id.in.(${fids.join(",")})`),
+        supabaseAdmin.from("empresas").select("cpf_cnpj").or(faz?.conta_id ? `conta_id.eq.${faz.conta_id},fazenda_id.in.(${fids.join(",")})` : `fazenda_id.in.(${fids.join(",")})`),
+      ]);
+      const docs = [...new Set([...(prods ?? []), ...(emps ?? [])].map(p => String(p.cpf_cnpj ?? "").replace(/\D/g, "")).filter(Boolean))];
+      const xmlSieg = await buscarXmlNfePorChaveSieg(siegCreds, chave, docs);
+      if (xmlSieg && ehNfe(xmlSieg)) {
+        await supabaseAdmin.storage.from("arquivos").upload(xmlPath, xmlSieg, { contentType: "application/xml", upsert: true }).catch(() => null);
+        return NextResponse.json({ ok: true, xmlCompleto: xmlSieg, fonte: "sieg" });
+      }
+      avisoSieg = " O SIEG não tem esta nota.";
+    } catch (e) {
+      avisoSieg = ` Não foi possível consultar o SIEG agora (${String(e).slice(0, 120)}).`;
+    }
+  }
+
+  // ── 3. Último recurso: consulta SEFAZ ──────────────────────────────────────
   const resultado = await consultarNfePorChave(chave, fazendaId, ambiente);
 
   if (!resultado.ok) {
@@ -70,7 +93,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: false,
       cStat: resultado.cStat,
-      erro: `A SEFAZ confirmou a nota (${resultado.cStat ?? ""} ${resultado.xMotivo ?? ""}`.trim() + `), mas não entrega o XML completo pela chave. A nota ainda não chegou ao Arato pelo SIEG. Importe o XML enviado pelo fornecedor (opção XML) ou sincronize o SIEG do período da emissão e abra a nota em Documentos Fiscais.`,
+      erro: `A SEFAZ confirmou a nota (${resultado.cStat ?? ""} ${resultado.xMotivo ?? ""}`.trim() + `), mas não entrega o XML completo pela chave.${avisoSieg} Importe o XML enviado pelo fornecedor (opção XML).`,
     });
   }
 

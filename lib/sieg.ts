@@ -343,6 +343,25 @@ export async function baixarXmlsSieg(
   return xmls;
 }
 
+// ─── XML de uma NF-e pela chave de acesso ────────────────────────────────────
+// Procura no SIEG pelo mês da emissão (da própria chave, com um dia de folga de cada lado) e pelo CNPJ do emitente;
+// sem resultado, tenta também pelo destinatário informado. Devolve o XML ou null se o SIEG não tiver a nota.
+export async function buscarXmlNfePorChaveSieg(creds: SiegCredentials, chave: string, cnpjsDest: string[] = []): Promise<string | null> {
+  if (!/^\d{44}$/.test(chave)) return null;
+  const ano = 2000 + parseInt(chave.slice(2, 4), 10), mes = parseInt(chave.slice(4, 6), 10);
+  const inicio = new Date(Date.UTC(ano, mes - 1, 1) - 86_400_000).toISOString();
+  const fim = new Date(Date.UTC(ano, mes, 1) + 86_400_000 - 1).toISOString();
+  const cnpjEmit = chave.slice(6, 20);
+  const achar = (xmls: string[]) => xmls.find(x => x.includes(chave)) ?? null;
+  const porEmit = achar(await baixarXmlsSiegChunked(creds, { TipoXml: 1, DataEmissaoInicio: inicio, DataEmissaoFim: fim, CnpjEmit: cnpjEmit }));
+  if (porEmit) return porEmit;
+  for (const dest of cnpjsDest.map(d => d.replace(/\D/g, "")).filter(d => d.length === 11 || d.length === 14)) {
+    const x = achar(await baixarXmlsSiegChunked(creds, { TipoXml: 1, DataEmissaoInicio: inicio, DataEmissaoFim: fim, CnpjDest: dest, CnpjEmit: cnpjEmit }));
+    if (x) return x;
+  }
+  return null;
+}
+
 // ─── Eventos de cancelamento ──────────────────────────────────────────────────
 // A sincronização nunca buscava eventos (BaixarEventos ficava sempre false) — uma NF cancelada
 // pelo fornecedor depois de importada nunca era percebida, o painel continuava mostrando ela como
