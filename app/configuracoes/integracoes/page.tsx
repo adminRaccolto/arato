@@ -44,10 +44,24 @@ interface SiegCfg {
   ultima_sync_ts?:   string;
   total_importado?:  string;
   api_key?:          string;    // chave por fazenda (sobrepõe env global)
+  _extras?:          Record<string, unknown>;   // o resto da configuração gravada (marcas, pendências): preservado ao salvar
 }
+
+// Grava a configuração sem perder o que a tela não edita (marca da sincronização, notas pendentes, chave): relê a
+// linha gravada na hora (uma sincronização pode ter acabado de atualizar) e só troca os campos da tela.
+async function gravarSiegCfg(fazendaId: string, cfg: SiegCfg) {
+  const { _extras, ultima_sync_data: _d, ultima_sync_ts: _t, total_importado: _n, ...resto } = cfg;
+  void _d; void _t; void _n;
+  const { data: atual } = await supabase.from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "sieg").maybeSingle();
+  const base = (atual?.config as Record<string, unknown> | undefined) ?? _extras ?? {};
+  await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: { ...base, ...resto } });
+}
+
+type FalhaSiegTela = { chave: string; tipo: string; numero: string; emitente: string; emissao: string; erro: string; tentativas: number; ultima: string };
 
 function normalizarSiegCfg(raw: Record<string, unknown>): SiegCfg {
   const base: SiegCfg = {
+    _extras:          raw,
     cnpjs_destino:    [],
     ultima_sync_data: raw.ultima_sync_data as string | undefined,
     ultima_sync_ts:   raw.ultima_sync_ts   as string | undefined,
@@ -165,7 +179,7 @@ function ModalSieg({
   async function salvar() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     setSaving(true);
-    await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: cfg });
+    await gravarSiegCfg(fazendaId, cfg);
     setSaving(false);
     onSaved(cfg);
     onClose();
@@ -175,7 +189,7 @@ function ModalSieg({
     if (cfg.cnpjs_destino.length === 0) { alert("Adicione ao menos um CPF ou CNPJ antes de sincronizar."); return; }
     setSyncing(true);
     setResult(null);
-    await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: cfg });
+    await gravarSiegCfg(fazendaId, cfg);
     try {
       const res = await fetch("/api/integracoes/sieg-sync", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -317,6 +331,9 @@ function ModalSieg({
               CPF / CNPJ monitorados <span style={{ color: "#E24B4A" }}>*</span>
             </div>
 
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8, lineHeight: 1.5 }}>
+              Além desta lista, o Arato consulta sozinho o CPF/CNPJ de <strong>todos os produtores e empresas</strong> cadastrados do cliente.
+            </div>
             {cfg.cnpjs_destino.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {cfg.cnpjs_destino.map(doc => (
@@ -334,6 +351,33 @@ function ModalSieg({
                 ))}
               </div>
             )}
+
+            {/* Notas que falharam ao gravar: tentadas de novo a cada sincronização até gravar */}
+            {(() => {
+              const falhas = (Array.isArray(cfg._extras?.falhas_sieg) ? cfg._extras!.falhas_sieg : []) as FalhaSiegTela[];
+              if (!falhas.length) return null;
+              const fd = (d: string) => d ? d.slice(0, 10).split("-").reverse().join("/") : "—";
+              return (
+                <div style={{ marginBottom: 14, border: "0.5px solid #EF9F27", borderRadius: 8, background: "#FBF3E0", padding: "10px 12px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5200", marginBottom: 4 }}>⚠ {falhas.length} nota(s) com erro ao gravar</div>
+                  <div style={{ fontSize: 11, color: "#7A5200", marginBottom: 8 }}>O Arato tenta de novo a cada sincronização e tira da lista quando a nota grava. Se o erro se repete, mande esta lista para o suporte.</div>
+                  <div style={{ maxHeight: 180, overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                      <thead><tr>{["Nota", "Emitente", "Emissão", "Erro", "Tentativas"].map(h => <th key={h} style={{ textAlign: "left", padding: "3px 6px", color: "#7A5200", borderBottom: "0.5px solid #EF9F27" }}>{h}</th>)}</tr></thead>
+                      <tbody>{falhas.map(f => (
+                        <tr key={f.chave} title={f.chave}>
+                          <td style={{ padding: "3px 6px", whiteSpace: "nowrap" }}>{f.tipo === "cte" ? "CT-e" : "NF"} {f.numero}</td>
+                          <td style={{ padding: "3px 6px" }}>{f.emitente || "—"}</td>
+                          <td style={{ padding: "3px 6px", whiteSpace: "nowrap" }}>{fd(f.emissao)}</td>
+                          <td style={{ padding: "3px 6px", color: "#B91C1C" }}>{f.erro}</td>
+                          <td style={{ padding: "3px 6px", textAlign: "right" }}>{f.tentativas}</td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Produtores cadastrados — sugestões rápidas */}
             {produtoresSugeridos.length > 0 && (

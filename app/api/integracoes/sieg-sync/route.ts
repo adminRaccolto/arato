@@ -11,8 +11,13 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, parseCTeXml, parseEventoCancelamentoCteXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSieg, baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, parseCTeXml, parseEventoCancelamentoCteXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
+import { atualizarFalhas, documentosMonitorados, falhasParaTentar, janelaDaEmissao, type FalhaRodada, type FalhaSieg } from "../../../../lib/fiscal/sieg-monitoramento";
+
+// Teto de trabalho por chamada: passou disso, para de buscar/processar (sem avançar a marca) e responde normalmente,
+// em vez de a Vercel matar a função aos 300 s sem gravar nada. A próxima rodada continua de onde parou.
+const ORCAMENTO_MS = 240_000;
 
 export const runtime = "nodejs";
 // "Forçar re-importação" reprocessa TODAS as notas do período (não só as novas) — com muitas
@@ -41,6 +46,8 @@ function sb() {
 }
 
 export async function POST(req: NextRequest) {
+  const inicioMs = Date.now();
+  const semTempo = () => Date.now() - inicioMs > ORCAMENTO_MS;
   try {
     const body = await req.json() as { fazenda_id: string; data_inicio?: string; data_fim?: string; force_reimport?: boolean; chaves_acesso?: string[] };
     const { fazenda_id, data_inicio: dataInicioParam, data_fim: dataFimParam, force_reimport: forceReimport, chaves_acesso: chavesAcesso } = body;
@@ -54,8 +61,10 @@ export async function POST(req: NextRequest) {
     // ── 0. Todas as fazendas da conta (para anti-duplicata cross-fazenda) ────
     // Busca conta_id da fazenda recebida, depois lista todas as fazendas dessa conta
     let fazendaIdsDaConta: string[] = [fazenda_id];
+    let contaIdDoc: string | null = null;
     try {
       const { data: fazRow } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+      contaIdDoc = (fazRow?.conta_id as string | null) ?? null;
       if (fazRow?.conta_id) {
         const { data: fazRows } = await db.from("fazendas").select("id").eq("conta_id", fazRow.conta_id);
         if (fazRows && fazRows.length > 0) fazendaIdsDaConta = fazRows.map(f => f.id);
@@ -77,15 +86,18 @@ export async function POST(req: NextRequest) {
     // NF importada vai para a fazenda do destinatário (produtor dono da fazenda ou empresa), senão a recebida
     const soDig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
     const fazendaDoDestino = new Map<string, string>();
+    const docsDoCliente: string[] = [];   // CPF/CNPJ de todos os produtores e empresas do cliente
     {
       const [{ data: prods }, { data: emps }, { data: fzsDono }] = await Promise.all([
-        db.from("produtores").select("id, cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
-        db.from("empresas").select("cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
+        // Produtores e empresas do cliente: pela conta ou por uma fazenda dele
+        db.from("produtores").select("id, cpf_cnpj, fazenda_id").or(contaIdDoc ? `conta_id.eq.${contaIdDoc},fazenda_id.in.(${fazendaIdsDaConta.join(",")})` : `fazenda_id.in.(${fazendaIdsDaConta.join(",")})`),
+        db.from("empresas").select("cpf_cnpj, fazenda_id").or(contaIdDoc ? `conta_id.eq.${contaIdDoc},fazenda_id.in.(${fazendaIdsDaConta.join(",")})` : `fazenda_id.in.(${fazendaIdsDaConta.join(",")})`),
         db.from("fazendas").select("id, produtor_id, created_at").in("id", fazendaIdsDaConta).order("created_at"),
       ]);
-      for (const e of emps ?? []) { const d = soDig(e.cpf_cnpj); if (d && e.fazenda_id && !fazendaDoDestino.has(d)) fazendaDoDestino.set(d, e.fazenda_id as string); }
+      for (const e of emps ?? []) { const d = soDig(e.cpf_cnpj); if (!d) continue; docsDoCliente.push(d); if (e.fazenda_id && !fazendaDoDestino.has(d)) fazendaDoDestino.set(d, e.fazenda_id as string); }
       for (const p of prods ?? []) {
         const d = soDig(p.cpf_cnpj); if (!d) continue;
+        docsDoCliente.push(d);
         const dono = (fzsDono ?? []).find(f => f.produtor_id === p.id)?.id as string | undefined;
         if (dono) fazendaDoDestino.set(d, dono);
         else if (p.fazenda_id && !fazendaDoDestino.has(d)) fazendaDoDestino.set(d, p.fazenda_id as string);
@@ -151,12 +163,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Além da lista configurada, todos os produtores e empresas do cliente (nota para um CPF/CNPJ fora da lista
+    // nunca chegava). A lista gravada na configuração continua sendo só a que o usuário montou.
+    const cnpjsConfigurados = [...cnpjs];
+    cnpjs = documentosMonitorados(cnpjs, docsDoCliente);
     if (cnpjs.length === 0) {
       return NextResponse.json(
         { erro: "Nenhum CPF/CNPJ configurado — acesse Configurações → Integrações → Sieg." },
         { status: 400 }
       );
     }
+    const falhasAnteriores = (Array.isArray((cfg as Record<string, unknown>).falhas_sieg) ? (cfg as Record<string, unknown>).falhas_sieg : []) as FalhaSieg[];
+    const falhasRodada: FalhaRodada[] = [];
+    const resolvidas = new Set<string>();
+    let cortado = false;
 
     // Data inicial: última sync ou 365 dias atrás (sempre datetime completo — API Sieg exige)
     // Pode ser sobrescrita pelo parâmetro data_inicio enviado no body da requisição
@@ -172,7 +192,9 @@ export async function POST(req: NextRequest) {
 
     // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
     const xmlsNFe: { xml: string; cnpj_destino: string }[] = [];
+    const falhaDownload: string[] = [];
     for (const cnpj of cnpjs) {
+      if (semTempo()) { cortado = true; break; }
       try {
         const docs = await baixarXmlsSiegChunked(siegCreds, {
           TipoXml: 1,
@@ -182,8 +204,23 @@ export async function POST(req: NextRequest) {
         });
         for (const xml of docs) xmlsNFe.push({ xml, cnpj_destino: cnpj });
       } catch (e) {
-        return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}` }, { status: 502 });
+        // Um CPF/CNPJ com falha (ex.: SIEG ocupado, 429) não derruba os outros: segue, avisa e não avança a marca
+        falhaDownload.push(`NF-e de ${cnpj} não consultadas: ${String(e).slice(0, 160)}`);
+        cortado = true;
       }
+    }
+
+    // ── 2b. Notas que falharam ao gravar em rodadas anteriores: baixa de novo pela data de emissão ──────────
+    const avisosRetry: string[] = [];
+    for (const f of falhasParaTentar(falhasAnteriores, "nfe")) {
+      if (semTempo()) { cortado = true; break; }
+      if (xmlsNFe.some(x => x.xml.includes(f.chave))) continue;
+      try {
+        const j = janelaDaEmissao(f.emissao);
+        const docs = await baixarXmlsSieg(siegCreds, { TipoXml: 1, DataEmissaoInicio: j.inicio, DataEmissaoFim: j.fim, CnpjDest: soDig(f.destino) });
+        const achado = docs.find(x => x.includes(f.chave));
+        if (achado) xmlsNFe.push({ xml: achado, cnpj_destino: soDig(f.destino) });
+      } catch (e) { avisosRetry.push(`Nota pendente ${f.numero} não consultada: ${String(e).slice(0, 120)}`); }
     }
 
     // ── 3. Processar cada XML ────────────────────────────────────────────────
@@ -191,10 +228,13 @@ export async function POST(req: NextRequest) {
     let duplicados_nfe = 0;
     const erros: string[] = [];
 
+    const falha = (nfe: { chave: string; numero?: string | null; nome_emitente?: string | null; data_emissao?: string | null; cnpj_destinatario?: string | null }, dest: string, erro: string) =>
+      falhasRodada.push({ chave: nfe.chave, tipo: "nfe", numero: String(nfe.numero ?? ""), emitente: String(nfe.nome_emitente ?? ""), destino: soDig(nfe.cnpj_destinatario || dest), emissao: String(nfe.data_emissao ?? ""), erro: erro.slice(0, 300) });
     for (const { xml, cnpj_destino } of xmlsNFe) {
+      if (semTempo()) { cortado = true; break; }
       const nfe = parseNFeXml(xml);
       if (!nfe) { erros.push("XML sem Id NFe válido"); continue; }
-      if (!nfe.numero || !nfe.data_emissao) { erros.push(`NF ${nfe.chave}: campos obrigatórios ausentes`); continue; }
+      if (!nfe.numero || !nfe.data_emissao) { erros.push(`NF ${nfe.chave}: campos obrigatórios ausentes`); falha(nfe, cnpj_destino, "Campos obrigatórios ausentes no XML (número ou data de emissão)"); continue; }
 
       // Filtro por chaves específicas (re-importação pontual)
       if (chavesAcesso && chavesAcesso.length > 0 && !chavesAcesso.includes(nfe.chave)) continue;
@@ -222,8 +262,10 @@ export async function POST(req: NextRequest) {
           .in("fazenda_id", fazendaIdsDaConta)
           .eq("chave_acesso", nfe.chave)
           .maybeSingle();
-        if (dupCron) { duplicados_nfe++; continue; }
+        if (dupCron) { duplicados_nfe++; resolvidas.add(nfe.chave); continue; }
       }
+      // Já processada e sem "forçar": nada a fazer — pula antes de regravar o XML no Storage (economiza tempo)
+      if (dup && dup.status !== "pendente" && !forceReimport) { duplicados_nfe++; resolvidas.add(nfe.chave); continue; }
 
       const fazNf = fazendaDoDestino.get(soDig(nfe.cnpj_destinatario || cnpj_destino)) ?? fazenda_id;
       const itensPayload = nfe.itens.map(item => ({
@@ -283,6 +325,7 @@ export async function POST(req: NextRequest) {
           await db.from("nf_entrada_itens").insert(itensPayload.map(it => ({ ...it, nf_entrada_id: dup.id })));
         }
         importados_nfe++;
+        resolvidas.add(nfe.chave);
         continue;
       }
 
@@ -314,6 +357,7 @@ export async function POST(req: NextRequest) {
 
       if (nfErr || !nfRow) {
         erros.push(`NF ${nfe.numero} (…${nfe.chave.slice(-8)}): ${nfErr?.message ?? "erro ao salvar"}`);
+        falha(nfe, cnpj_destino, nfErr?.message ?? "erro ao salvar");
         continue;
       }
 
@@ -322,8 +366,9 @@ export async function POST(req: NextRequest) {
         const { error: iErr } = await db.from("nf_entrada_itens").insert(
           itensPayload.map(it => ({ ...it, nf_entrada_id: nfRow.id }))
         );
-        if (iErr) erros.push(`Itens NF ${nfe.numero}: ${iErr.message}`);
-      }
+        if (iErr) { erros.push(`Itens NF ${nfe.numero}: ${iErr.message}`); falha(nfe, cnpj_destino, `Itens não gravados: ${iErr.message}`); }
+        else resolvidas.add(nfe.chave);
+      } else resolvidas.add(nfe.chave);
 
       importados_nfe++;
     }
@@ -335,6 +380,7 @@ export async function POST(req: NextRequest) {
     const avisos: string[] = [];
     const AVISO_CANCELADA = "⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar.";
     for (const cnpj of cnpjs) {
+      if (semTempo()) { cortado = true; break; }
       let eventos: string[] = [];
       try {
         eventos = await baixarEventosCancelamentoSieg(siegCreds, { TipoXml: 1, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjDest: cnpj });
@@ -367,6 +413,7 @@ export async function POST(req: NextRequest) {
     let contaIdCte: string | null = null;
     { const { data: fz } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle(); contaIdCte = (fz?.conta_id as string | null) ?? null; }
     cteLoop: for (const cnpj of cnpjs) {
+      if (semTempo()) { cortado = true; break; }
       let docs: string[] = [];
       try {
         docs = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 2, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjTom: cnpj });
@@ -401,11 +448,14 @@ export async function POST(req: NextRequest) {
         if (ja?.length) {
           if (ja[0].status === "pendente") await db.from("cte_entradas").update(dados).eq("id", ja[0].id);
           duplicados_cte++;
+          resolvidas.add(c.chave);
           continue;
         }
         const { error: eIns } = await db.from("cte_entradas").insert({ ...dados, conta_id: contaIdCte, fazenda_id, chave: c.chave, origem: "sieg", status: "pendente" });
-        if (eIns) erros.push(`CT-e ${c.numero} (…${c.chave.slice(-8)}): ${eIns.message}`);
-        else importados_cte++;
+        if (eIns) {
+          erros.push(`CT-e ${c.numero} (…${c.chave.slice(-8)}): ${eIns.message}`);
+          falhasRodada.push({ chave: c.chave, tipo: "cte", numero: String(c.numero), emitente: String(c.emitente.nome ?? ""), destino: cnpj, emissao: String(c.data_emissao ?? ""), erro: eIns.message.slice(0, 300) });
+        } else { importados_cte++; resolvidas.add(c.chave); }
       }
       // Cancelamento pelo emitente (110111): pendente vira Cancelado; processado recebe aviso para estornar
       try {
@@ -432,12 +482,18 @@ export async function POST(req: NextRequest) {
     // descartadas pela chave de acesso. Também NÃO avança quando (a) a sincronização foi de um período
     // escolhido à mão — não cobre o presente — ou (b) alguma NF falhou ao salvar: assim a próxima rodada
     // tenta de novo em vez de perder a nota.
+    // Nota que falhou ao gravar não segura mais a marca: vai para a lista de pendências (falhas_sieg) e é tentada de
+    // novo nas próximas rodadas pela data de emissão. A marca só não avança em período manual ou se o tempo acabou.
     const periodoManual = !!(dataInicioParam || dataFimParam);
-    const falhouAoSalvar = erros.some(e => !e.startsWith("XML sem Id"));
-    const avancaMarca = !periodoManual && !falhouAoSalvar;
+    const avancaMarca = !periodoManual && !cortado;
+    const falhasSieg = atualizarFalhas(falhasAnteriores, falhasRodada, resolvidas, new Date().toISOString());
+    avisos.push(...falhaDownload, ...avisosRetry);
+    if (cortado) avisos.push("Tempo esgotado nesta rodada: o restante continua na próxima sincronização.");
+    if (falhasSieg.length) avisos.push(`${falhasSieg.length} nota(s) com erro ao gravar — veja em Configurações → Integrações → Sieg. O sistema tenta de novo a cada sincronização.`);
     const marcaTs = new Date(new Date(uploadFim).getTime() - 86_400_000).toISOString();
     const novoCfg = {
-      cnpjs_destino:    cnpjs,
+      cnpjs_destino:    cnpjsConfigurados.length ? cnpjsConfigurados : cnpjs,
+      falhas_sieg:      falhasSieg,
       ...(avancaMarca ? { ultima_sync_data: marcaTs.slice(0, 10), ultima_sync_ts: marcaTs } : {}),
       total_importado:  String((parseInt(String(cfg.total_importado || "0")) + importados_nfe)),
       ultima_execucao_ts: new Date().toISOString(),

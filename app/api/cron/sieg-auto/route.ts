@@ -47,27 +47,37 @@ export async function GET(req: NextRequest) {
 
   const origem = req.nextUrl.origin;
   const resumo: { fazenda_id: string; nfe?: unknown; nfse?: unknown; erro?: string }[] = [];
-  let processadas = 0;
-  for (const item of fila) {
-    if (Date.now() - inicio > ORCAMENTO_MS) break;
-    const linha: (typeof resumo)[number] = { fazenda_id: item.fazenda_id };
-    try {
-      const r1 = await fetch(`${origem}/api/integracoes/sieg-sync`, {
-        method: "POST", headers: { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() }, body: JSON.stringify({ fazenda_id: item.fazenda_id }),
-      });
-      linha.nfe = await r1.json().catch(() => ({ erro: `HTTP ${r1.status}` }));
-      if (Date.now() - inicio <= ORCAMENTO_MS) {
-        const r2 = await fetch(`${origem}/api/integracoes/sieg-sync-nfse`, {
-          method: "POST", headers: { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() }, body: JSON.stringify({ fazenda_id: item.fazenda_id }),
-        });
-        linha.nfse = await r2.json().catch(() => ({ erro: `HTTP ${r2.status}` }));
+  // Cada cliente roda numa chamada própria (com o seu próprio limite de tempo), até CONCORRENCIA ao mesmo tempo —
+  // antes era um atrás do outro dividindo os mesmos 5 minutos, e só 2 ou 3 dos clientes terminavam por rodada.
+  // Mais antigos primeiro; cliente novo só começa enquanto houver folga (o que ficar de fora vai na próxima rodada).
+  const CONCORRENCIA = 3;
+  const INICIO_MAX_MS = 150_000;
+  const interno = { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() };
+  let proximo = 0, processadas = 0;
+  async function trabalhador() {
+    while (proximo < fila.length && Date.now() - inicio < INICIO_MAX_MS) {
+      const item = fila[proximo++];
+      const linha: (typeof resumo)[number] = { fazenda_id: item.fazenda_id };
+      try {
+        const r1 = await fetch(`${origem}/api/integracoes/sieg-sync`, { method: "POST", headers: interno, body: JSON.stringify({ fazenda_id: item.fazenda_id }) });
+        linha.nfe = await r1.json().catch(() => ({ erro: `HTTP ${r1.status}` }));
+        if (Date.now() - inicio <= ORCAMENTO_MS) {
+          const r2 = await fetch(`${origem}/api/integracoes/sieg-sync-nfse`, { method: "POST", headers: interno, body: JSON.stringify({ fazenda_id: item.fazenda_id }) });
+          linha.nfse = await r2.json().catch(() => ({ erro: `HTTP ${r2.status}` }));
+        }
+      } catch (e) {
+        linha.erro = e instanceof Error ? e.message : String(e);
       }
-    } catch (e) {
-      linha.erro = e instanceof Error ? e.message : String(e);
+      resumo.push(linha);
+      processadas++;
     }
-    resumo.push(linha);
-    processadas++;
   }
-  console.log(`[sieg-auto] ${processadas}/${fila.length} contas`, JSON.stringify(resumo).slice(0, 1500));
+  await Promise.all(Array.from({ length: CONCORRENCIA }, () => trabalhador()));
+  // Resumo curto por cliente (o completo passava do tamanho do log e vinha cortado)
+  const curto = resumo.map(l => {
+    const n = (l.nfe ?? {}) as Record<string, unknown>;
+    return `${l.fazenda_id.slice(0, 8)}: nfe ${n.erro ? `ERRO ${String(n.erro).slice(0, 80)}` : `${n.importados_nfe ?? 0} novas/${n.duplicados_nfe ?? 0} já tinha, marca ${n.marca_avancou ? "ok" : "parada"}${Array.isArray(n.avisos) && n.avisos.length ? `, avisos: ${(n.avisos as string[]).join(" | ").slice(0, 200)}` : ""}`}${l.erro ? ` ERRO ${l.erro.slice(0, 80)}` : ""}`;
+  });
+  console.log(`[sieg-auto] ${processadas}/${fila.length} contas\n${curto.join("\n")}`);
   return NextResponse.json({ ok: true, contas: fila.length, processadas, pendentes_proxima_rodada: fila.length - processadas, resumo });
 }

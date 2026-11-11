@@ -3,6 +3,7 @@
  * Busca NFS-e (TipoXml: 3) no Sieg DFe Monitor e importa como NF de Serviço.
  */
 
+import { documentosMonitorados } from "../../../../lib/fiscal/sieg-monitoramento";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { mesmaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
@@ -147,8 +148,10 @@ export async function POST(req: NextRequest) {
     // (achado real: sync falhava com "nenhum CPF/CNPJ configurado" mesmo com
     // CNPJ cadastrado, só que salvo noutra fazenda da mesma conta).
     let fazendaIdsDaConta: string[] = [fazenda_id];
+    let contaIdDoc: string | null = null;
     try {
       const { data: fazRow } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+      contaIdDoc = (fazRow?.conta_id as string | null) ?? null;
       if (fazRow?.conta_id) {
         const { data: fazRows } = await db.from("fazendas").select("id").eq("conta_id", fazRow.conta_id);
         if (fazRows && fazRows.length > 0) fazendaIdsDaConta = fazRows.map(f => f.id);
@@ -166,15 +169,18 @@ export async function POST(req: NextRequest) {
     // NFS-e importada vai para a fazenda do tomador (produtor dono da fazenda ou empresa), senão a recebida
     const soDig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
     const fazendaDoTomador = new Map<string, string>();
+    const docsDoCliente: string[] = [];   // CPF/CNPJ de todos os produtores e empresas do cliente
     {
+      const filtroCliente = contaIdDoc ? `conta_id.eq.${contaIdDoc},fazenda_id.in.(${fazendaIdsDaConta.join(",")})` : `fazenda_id.in.(${fazendaIdsDaConta.join(",")})`;
       const [{ data: prods }, { data: emps }, { data: fzsDono }] = await Promise.all([
-        db.from("produtores").select("id, cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
-        db.from("empresas").select("cpf_cnpj, fazenda_id").in("fazenda_id", fazendaIdsDaConta),
+        db.from("produtores").select("id, cpf_cnpj, fazenda_id").or(filtroCliente),
+        db.from("empresas").select("cpf_cnpj, fazenda_id").or(filtroCliente),
         db.from("fazendas").select("id, produtor_id, created_at").in("id", fazendaIdsDaConta).order("created_at"),
       ]);
-      for (const e of emps ?? []) { const d = soDig(e.cpf_cnpj); if (d && e.fazenda_id && !fazendaDoTomador.has(d)) fazendaDoTomador.set(d, e.fazenda_id as string); }
+      for (const e of emps ?? []) { const d = soDig(e.cpf_cnpj); if (!d) continue; docsDoCliente.push(d); if (e.fazenda_id && !fazendaDoTomador.has(d)) fazendaDoTomador.set(d, e.fazenda_id as string); }
       for (const p of prods ?? []) {
         const d = soDig(p.cpf_cnpj); if (!d) continue;
+        docsDoCliente.push(d);
         const dono = (fzsDono ?? []).find(f => f.produtor_id === p.id)?.id as string | undefined;
         if (dono) fazendaDoTomador.set(d, dono);
         else if (p.fazenda_id && !fazendaDoTomador.has(d)) fazendaDoTomador.set(d, p.fazenda_id as string);
@@ -219,6 +225,8 @@ export async function POST(req: NextRequest) {
         if (doc && !cnpjs.includes(doc)) cnpjs.push(doc);
       }
     }
+    // Além da lista configurada, todos os produtores e empresas do cliente
+    cnpjs = documentosMonitorados(cnpjs, docsDoCliente);
     if (cnpjs.length === 0) {
       return NextResponse.json({ erro: "Nenhum CPF/CNPJ configurado — acesse Configurações → Integrações → Sieg." }, { status: 400 });
     }
