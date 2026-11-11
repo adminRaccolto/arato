@@ -64,14 +64,26 @@ export default function DecimoTerceiro() {
       ]);
       if (eF) throw eF;
       setFazendas(new Map((fz ?? []).map(f => [f.id as string, f.nome as string])));
-      // Ativos no ano; quem saiu antes de 31/12 recebe o 13º proporcional na rescisão
-      const lista = ((fs ?? []) as Func[]).filter(f => f.ativo !== false && !f.data_demissao && avosDecimo(f.data_admissao, null, ano) > 0);
-      setFuncs(lista);
       const { data: rs, error: eR } = await supabase.from("decimo_terceiro").select("*").eq("ano", ano).in("fazenda_id", ids);
       if (eR && eR.code !== "42P01" && eR.code !== "PGRST205") throw eR;
       if (eR) setErro("Rode a Seção 386 do supabase_migrations.sql para gravar o controle do 13º.");
       const mapa = new Map(((rs ?? []) as Reg[]).map(r => [r.funcionario_id, r]));
       setRegs(mapa);
+      // Quem teve rescisão lançada no ano recebe o 13º proporcional nela
+      const ativos = ((fs ?? []) as Func[]).filter(f => f.ativo !== false);
+      const comRescisao = new Set<string>();
+      for (let i = 0; i < ativos.length; i += 200) {
+        const { data: resc } = await supabase.from("funcionario_rescisoes").select("funcionario_id").in("funcionario_id", ativos.slice(i, i + 200).map(f => f.id))
+          .eq("status", "lancada").gte("data_desligamento", `${ano}-01-01`).lte("data_desligamento", `${ano}-12-31`);
+        for (const r of resc ?? []) comRescisao.add(r.funcionario_id as string);
+      }
+      // Todo funcionário ativo entra, mesmo com cadastro incoerente (data de demissão preenchida sem rescisão, admissão no
+      // futuro): aparece com aviso para conferir, em vez de sumir da lista. Fica de fora só quem teve rescisão no ano e quem
+      // ainda não trabalhou no ano (admissão depois do ano escolhido, quando a data não está no futuro).
+      const hoje = new Date().toISOString().slice(0, 10);
+      const lista = ativos.filter(f => mapa.has(f.id) || (!comRescisao.has(f.id)
+        && (avosDecimo(f.data_admissao, null, ano) > 0 || (!!f.data_admissao && f.data_admissao > hoje))));
+      setFuncs(lista);
       const idsT = [...mapa.values()].flatMap(r => [r.parcela1_lancamento_id, r.parcela2_lancamento_id]).filter((x): x is string => !!x);
       const { data: ts } = idsT.length ? await supabase.from("lancamentos").select("id, status, valor_pago").in("id", idsT) : { data: [] };
       setTits(new Map((ts ?? []).map(t => [t.id as string, { status: t.status as string, valor_pago: t.valor_pago as number | null }])));
@@ -101,6 +113,15 @@ export default function DecimoTerceiro() {
     setBases(prev => ({ ...prev, ...Object.fromEntries(funcs.filter(f => situacao(regs.get(f.id)?.parcela1_lancamento_id) === "lancar").map(f => [f.id, fmtBase(baseCadastro(f, com))])) }));
   }
 
+  // Cadastro incoerente: o funcionário aparece, mas com aviso para corrigir o cadastro (avos podem ser ajustados na linha)
+  const avisosCadastro = (f: Func) => {
+    const a: string[] = [];
+    if (f.data_demissao) a.push(`Cadastro com demissão em ${fmtData(f.data_demissao)}, mas está ativo e sem rescisão lançada. Corrija o cadastro ou lance a rescisão.`);
+    if (!f.data_admissao) a.push("Sem data de admissão: avos contados do ano inteiro.");
+    else if (f.data_admissao.slice(0, 4) > String(ano)) a.push(`Admissão em ${fmtData(f.data_admissao)} (depois de ${ano}). Confira a data no cadastro e ajuste os avos.`);
+    else if (f.data_demissao && f.data_demissao <= f.data_admissao) a.push("Demissão igual ou antes da admissão no cadastro.");
+    return a;
+  };
   const situacao = (lancId: string | null | undefined) => {
     if (!lancId) return "lancar";
     const t = tits.get(lancId);
@@ -210,7 +231,8 @@ export default function DecimoTerceiro() {
                   return (
                     <tr key={l.f.id} style={{ background: sel.has(l.f.id) ? "#F4F6FA" : undefined }}>
                       <td style={{ ...td, textAlign: "center" }}><input type="checkbox" checked={sel.has(l.f.id)} onChange={() => setSel(p => { const n = new Set(p); if (n.has(l.f.id)) n.delete(l.f.id); else n.add(l.f.id); return n; })} /></td>
-                      <td style={{ ...td, textAlign: "left" }}><div style={{ fontWeight: 600, color: "var(--text-1)" }}>{l.f.nome}</div><div style={{ fontSize: 11, color: "var(--text-3)" }}>{[l.f.funcao, l.f.area_trabalho === "administrativo" ? "ADM" : "Fazenda", fazendas.get(l.f.fazenda_id)].filter(Boolean).join(" · ")}</div></td>
+                      <td style={{ ...td, textAlign: "left" }}><div style={{ fontWeight: 600, color: "var(--text-1)" }}>{l.f.nome}</div><div style={{ fontSize: 11, color: "var(--text-3)" }}>{[l.f.funcao, l.f.area_trabalho === "administrativo" ? "ADM" : "Fazenda", fazendas.get(l.f.fazenda_id)].filter(Boolean).join(" · ")}</div>
+                        {avisosCadastro(l.f).map(a => <div key={a} style={{ fontSize: 10, color: "#7A5200", background: "#FBF3E0", borderRadius: 5, padding: "1px 6px", marginTop: 3, whiteSpace: "normal" }}>⚠ {a}</div>)}</td>
                       <td style={{ ...td, textAlign: "left" }}>{fmtData(l.f.data_admissao)}</td>
                       <td style={td}><input value={avosEd[l.f.id] ?? ""} disabled={travado} onChange={e => setAvosEd(p => ({ ...p, [l.f.id]: e.target.value.replace(/\D/g, "").slice(0, 2) }))} style={{ ...inp, width: 44, textAlign: "right" }} title="Meses com 15 dias ou mais trabalhados no ano" />/12</td>
                       <td style={td}><input value={bases[l.f.id] ?? ""} disabled={travado} onChange={e => setBases(p => ({ ...p, [l.f.id]: e.target.value }))} style={{ ...inp, width: 100, textAlign: "right" }} /></td>
