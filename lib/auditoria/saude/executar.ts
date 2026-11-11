@@ -26,6 +26,15 @@ async function contar(sb: SupabaseClient, tab: string, filtro?: (q: any) => any)
   return count ?? 0;
 }
 
+// Projeta apenas os campos usados pelas regras. O filtro JSON no WHERE varria o histórico e excedia o prazo.
+export async function carregarExclusoes(sb: SupabaseClient) {
+  const campos = ["id","fazenda_id","status","tipo","origem_lancamento","origem","data_baixa","data_pagamento","valor","valor_pago","conta_bancaria","conta_bancaria_id","nf_entrada_id","contrato_financeiro_id","data_vencimento","num_parcela","descricao"];
+  const cols = "id,created_at,usuario_app,tabela," + campos.map(k => `a_${k}:dados_antes->${k}`).join(",");
+  const rows = await todas<Record<string, unknown>>(sb,"audit_log",cols,q => q.in("tabela",["lancamentos","empresa_lancamentos"]).eq("acao","DELETE"));
+  return rows.map(r => ({ id: String(r.id), created_at: String(r.created_at), usuario_app: r.usuario_app as string | null,
+    tabela: String(r.tabela), dados_antes: Object.fromEntries(campos.map(k => [k,r[`a_${k}`] ?? null])) }));
+}
+
 export async function carregarBase(sb: SupabaseClient): Promise<Base> {
   const [fazendas, nfs, itens, nfse, lanc, emp, dels, movs, espelhoPj, insumos, depositos] = await Promise.all([
     todas<{ id: string; conta_id: string | null; nome: string }>(sb, "fazendas", "id,conta_id,nome"),
@@ -34,17 +43,15 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
     todas<NfS>(sb, "nf_servicos", "id,fazenda_id,numero_nf,prestador_nome,prestador_id,valor_liquido,valor_servico,empresa_id,lancamento_id,processado_por,data_prestacao,status", q => q.eq("status", "processada")),
     todas<Omit<Tit, "tabela" | "origem"> & { origem_lancamento: string | null }>(sb, "lancamentos",
       "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,contrato_financeiro_id,data_vencimento,numero_documento,origem_lancamento,num_parcela,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto,titulo_origem_id"),
-    todas<Omit<Tit, "tabela" | "contrato_financeiro_id" | "num_parcela" | "cotacao_usd">>(sb, "empresa_lancamentos",
-      "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,data_vencimento,numero_documento,origem,moeda,valor_multa,valor_juros,valor_desconto"),
-    todas<{ id: string; created_at: string; usuario_app: string | null; tabela: string; dados_antes: Record<string, unknown> }>(sb, "audit_log", "id,created_at,usuario_app,tabela,dados_antes",
-      q => q.in("tabela", ["lancamentos", "empresa_lancamentos"]).eq("acao", "DELETE").in("dados_antes->>status", ["baixado", "parcial", "pago"])),
+    todas<Omit<Tit, "tabela" | "contrato_financeiro_id" | "num_parcela">>(sb, "empresa_lancamentos",
+      "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,data_vencimento,numero_documento,origem,moeda,cotacao_usd,titulo_origem_id,valor_multa,valor_juros,valor_desconto"),
+    carregarExclusoes(sb),
     todas<Mov & { id: string }>(sb, "movimentacoes_estoque", "id,fazenda_id,deposito_id,insumo_id,tipo,quantidade,usuario_nome,created_at"),
     todas<{ id: string; nfe_numero: string | null }>(sb, "rel_lancamentos", "id,nfe_numero", q => q.eq("origem_tabela", "empresa_lancamentos")),
     todas<{ id: string; nome: string }>(sb, "insumos", "id,nome"),
     todas<{ id: string; nome: string }>(sb, "depositos", "id,nome"),
   ]);
-  const delsNf = await todas<{ id: string; created_at: string; usuario_app: string | null; tabela: string; dados_antes: Record<string, unknown> }>(sb, "audit_log", "id,created_at,usuario_app,tabela,dados_antes",
-    q => q.in("tabela", ["lancamentos", "empresa_lancamentos"]).eq("acao", "DELETE").not("dados_antes->>nf_entrada_id", "is", null));
+  const delsNf = dels.filter(d => !!d.dados_antes.nf_entrada_id);
   const [nLanc, nRelLanc, nEmp, nRelEmp] = await Promise.all([
     contar(sb, "lancamentos"), contar(sb, "rel_lancamentos", q => q.eq("origem_tabela", "lancamentos")),
     contar(sb, "empresa_lancamentos"), contar(sb, "rel_lancamentos", q => q.eq("origem_tabela", "empresa_lancamentos")),
@@ -57,7 +64,7 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
   for (const i of itens) if (i.cfop) cfopsItens.set(i.nf_entrada_id, [...(cfopsItens.get(i.nf_entrada_id) ?? []), String(i.cfop).replace(/\D/g, "")]);
   const titulos: Tit[] = [
     ...lanc.map(l => ({ ...l, tabela: "lancamentos" as const, origem: l.origem_lancamento })),
-    ...emp.map(e => ({ ...e, tabela: "empresa_lancamentos" as const, contrato_financeiro_id: null, num_parcela: null, cotacao_usd: null, titulo_origem_id: null })),
+    ...emp.map(e => ({ ...e, tabela: "empresa_lancamentos" as const, contrato_financeiro_id: null, num_parcela: null, cotacao_usd: e.cotacao_usd ?? null, titulo_origem_id: e.titulo_origem_id ?? null })),
   ];
   const comoExcluido = (d: { id: string; created_at: string; usuario_app: string | null; tabela: string; dados_antes: Record<string, unknown> }): Excluido =>
     ({ audit_id: d.id, quando: d.created_at, quem: d.usuario_app, tabela: d.tabela as Excluido["tabela"], antes: d.dados_antes ?? {} });
@@ -124,11 +131,13 @@ export async function executarAuditoria(sb: SupabaseClient, origem: string) {
     for (const l of linhas) if (l.status !== "ignorado") porRegra[l.regra] = (porRegra[l.regra] ?? 0) + 1;
     const abertos = linhas.filter(l => l.status === "novo" || l.status === "em_analise").length;
     const resumo = { abertos, novos, resolvidos: sumiram.length, por_regra: porRegra, duracao_ms: Date.now() - inicio };
-    await sb.from("auditoria_execucoes").insert({ origem, ...resumo });
+    const { error: erroRegistro } = await sb.from("auditoria_execucoes").insert({ origem, ...resumo });
+    if (erroRegistro) throw new Error(`Registrar execução da auditoria: ${erroRegistro.message}`);
     return { ok: true as const, ...resumo };
   } catch (e) {
     const erro = e instanceof Error ? e.message : String(e);
-    await sb.from("auditoria_execucoes").insert({ origem, erro, duracao_ms: Date.now() - inicio });
+    const { error: erroRegistro } = await sb.from("auditoria_execucoes").insert({ origem, erro, duracao_ms: Date.now() - inicio });
+    if (erroRegistro) console.error("[auditoria] Falha ao registrar execução", erroRegistro.message);
     return { ok: false as const, erro };
   }
 }

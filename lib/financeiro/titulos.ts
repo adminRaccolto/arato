@@ -32,7 +32,7 @@ export { hojeLocal };
 
 /** Status que o usuário enxerga: baixado/parcial valem como estão; previsão não "vence"; o resto depende da data. */
 export function statusEfetivo(l: { status: string; natureza?: string | null; data_vencimento?: string | null }, hoje: string = hojeLocal()): string {
-  if (l.status === "baixado" || l.status === "parcial") return l.status;
+  if (["baixado", "pago", "parcial", "cancelado", "cartao", "liquidado"].includes(l.status)) return l.status;
   if (l.natureza === "previsao") return l.status;
   const venc = l.data_vencimento ?? "";
   if (venc && venc < hoje) return "vencido";

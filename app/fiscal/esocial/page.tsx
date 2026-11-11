@@ -200,10 +200,8 @@ export default function EsocialPage() {
     carregar();
   }
 
-  async function transmitir(e: EsocialEvento) {
-    const proto = `ES${Date.now().toString().slice(-8)}`;
-    await supabase.from("esocial_eventos").update({ status: "transmitido", protocolo: proto }).eq("id", e.id);
-    carregar();
+  async function transmitir(_e: EsocialEvento) {
+    alert("Os eventos desta tela são preparatórios. A transmissão oficial ainda não está integrada; nenhum evento foi enviado. Faça o envio pelo ambiente oficial do eSocial.");
   }
 
   // ── Gerar Folha → Contas a Pagar ──────────────────────────
@@ -413,13 +411,13 @@ export default function EsocialPage() {
                           {e.status === "pendente" && (
                             <OperationalButton data-arato-button="primary" onClick={() => transmitir(e)}
                               style={{ padding: "3px 10px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                              Transmitir
+                              Como transmitir
                             </OperationalButton>
                           )}
                           {e.status === "erro" && (
                             <OperationalButton data-arato-button="secondary" onClick={() => transmitir(e)}
                               style={{ padding: "3px 10px", background: "#EF9F27", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                              Reenviar
+                              Como transmitir
                             </OperationalButton>
                           )}
                         </td>

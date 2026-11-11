@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import { requisicaoAdiantamento, type RequisicaoAdiantamento } from "../../../lib/folha/adiantamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
@@ -280,38 +281,13 @@ export default function FolhaEmpresaPage() {
     if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
     setSaving(true);
     try {
-      const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id);
-      const ogSalario = await resolverOperacaoGerencialPorClassificacao(folha.fazenda_id, "2.01.01.10.001");
-      // Adiantamentos pendentes (da competência ou sem competência) entram no desconto mesmo se foram
-      // lançados depois de a folha ser salva; vale o maior entre o valor da folha e a soma dos pendentes.
-      const pendentes = adiantamentos.filter(a => a.status === "pendente" && (!a.competencia_ref || a.competencia_ref === folha.competencia));
-      const idsDescontar: string[] = [];
-      for (const it of (itens ?? []) as any[]) {
-        const doFunc = pendentes.filter(a => a.funcionario_id === it.funcionario_id);
-        const soma = Math.round(doFunc.reduce((t, a) => t + a.valor, 0) * 100) / 100;
-        if (it.funcionario_id && Math.abs(soma - (it.adiantamento ?? 0)) > 0.005) {
-          await supabase.from("folha_funcionarios").update({ adiantamento: soma }).eq("id", it.id);
-          it.adiantamento = soma;
-        }
-        if ((it.adiantamento ?? 0) > 0) idsDescontar.push(...doFunc.map(a => a.id as string));
-      }
-      for (const it of (itens ?? [])) {
-        const liq = Math.max(0, it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios);
-        const { data: lancamento } = await supabase.from("lancamentos").insert({
-          fazenda_id: folha.fazenda_id, empresa_id: empresaSel, tipo: "pagar",
-          descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
-          valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
-          operacao_gerencial_id: ogSalario ?? null,
-          data_vencimento: vencimentoSalario(folha.competencia), data_lancamento: hojeLocal(),
-          // Observação do título: o que foi descontado em Outros descontos e por quê
-          observacao: it.outros_descontos > 0
-            ? `Outros descontos R$ ${Number(it.outros_descontos).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${(it.desc_outros_descontos ?? "").trim() ? `: ${String(it.desc_outros_descontos).trim()}` : ""}`
-            : null,
-        }).select("id").single();
-        if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
-      }
-      if (idsDescontar.length) await supabase.from("adiantamentos_salario").update({ status: "descontado" }).in("id", idsDescontar);
-      await supabase.from("folha_pagamento").update({ status: "fechado" }).eq("id", folha.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetchFinanceiro("/api/folha/salvar", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({ operacao: "fechar_folha", id: folha.id, fazenda_id: folha.fazenda_id, empresa_id: folha.empresa_id, competencia: folha.competencia }),
+      });
+      const resultado = await res.json();
+      if (!res.ok || !resultado.ok) throw new Error(resultado.error ?? "Fechamento não confirmado.");
       setMsg("Folha fechada e CPs gerados."); carregar();
     } catch (e: any) { setMsg("Erro: " + e.message); }
     finally { setSaving(false); }
@@ -329,7 +305,7 @@ export default function FolhaEmpresaPage() {
         competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null, conta_bancaria: adiConta };
       adiRequisicao.current = requisicaoAdiantamento(adiRequisicao.current, dados);
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/folha/salvar", { method: "POST",
+      const res = await fetchFinanceiro("/api/folha/salvar", { method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
         body: JSON.stringify({ operacao: "salvar_adiantamento", ...dados, requisicao_id: adiRequisicao.current.id }) });
       const r = await res.json();

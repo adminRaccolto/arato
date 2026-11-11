@@ -31,68 +31,15 @@ export async function POST(req: NextRequest) {
     const negado = await exigirAcessoRegistro(req, "pedidos_compra", body.pedido_id);
     if (negado) return negado;
 
-    const sb = admin();
-
-    // ── Verifica se já existe lançamento para este pedido ─────────────────────
-    const { data: pedido } = await sb
-      .from("pedidos_compra")
-      .select("id, lancamento_id, status, operacao")
-      .eq("id", body.pedido_id)
-      .single();
-
-    if (!pedido) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
-    if (pedido.status !== "aprovado") return NextResponse.json({ error: "Pedido não está aprovado" }, { status: 400 });
-    if (pedido.lancamento_id) {
-      // Já tem lançamento — atualiza valores
-      await sb.from("lancamentos").update({
-        valor:       body.valor_total,
-        moeda:       body.moeda,
-        cotacao_usd: body.cotacao_usd ?? null,
-        descricao:   `Pedido de Compra nº ${body.nr_pedido ?? body.pedido_id.slice(0, 8)} — ${body.fornecedor_nome}`,
-        data_vencimento: body.data_vencimento || body.data_registro,
-        pessoa_id:   body.fornecedor_id ?? null,
-        operacao_gerencial_id: pedido.operacao ?? null,
-      }).eq("id", pedido.lancamento_id);
-      return NextResponse.json({ ok: true, lancamento_id: pedido.lancamento_id, atualizado: true });
+    if (!Number.isFinite(body.valor_total) || body.valor_total <= 0) {
+      return NextResponse.json({ ok: false, error: "Informe o valor positivo do pedido." }, { status: 422 });
     }
+    const { data, error } = await admin().rpc("compras_gerar_financeiro_atomico", { p_pedido: body.pedido_id, p_dados: body });
+    if (error) return NextResponse.json({ ok: false, error: error.code === "PGRST202"
+      ? "Execute a Seção 434 do supabase_migrations.sql para gerar o financeiro com segurança." : error.message }, { status: 400 });
+    if (!data?.ok) throw new Error("O financeiro do pedido não foi confirmado.");
+    return NextResponse.json(data);
 
-    // ── Cria novo lançamento CP ───────────────────────────────────────────────
-    const payload: Record<string, unknown> = {
-      fazenda_id:        body.fazenda_id,
-      tipo:              "pagar",
-      moeda:             body.moeda,
-      cotacao_usd:       body.cotacao_usd ?? null,
-      descricao:         `Pedido de Compra nº ${body.nr_pedido ?? body.pedido_id.slice(0, 8)} — ${body.fornecedor_nome}`,
-      categoria:         "Insumos",
-      data_lancamento:   body.data_registro,
-      data_vencimento:   body.data_vencimento || body.data_registro,
-      valor:             body.valor_total,
-      status:            "em_aberto",
-      auto:              true,
-      pessoa_id:         body.fornecedor_id ?? null,
-      origem_lancamento: "pedido_compra",
-      pedido_compra_id:  body.pedido_id,
-      operacao_gerencial_id: pedido.operacao ?? null,
-    };
-    if (body.ano_safra_id) payload.ano_safra_id = body.ano_safra_id;
-    if (body.ciclo_id)     payload.ciclo_id     = body.ciclo_id;
-    if (body.produtor_id)  payload.produtor_id  = body.produtor_id;
-
-    const { data: lanc, error } = await sb
-      .from("lancamentos")
-      .insert(payload)
-      .select("id")
-      .single();
-
-    if (error) {
-      console.error("[compras/gerar-cp] insert error:", error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    // Vincula lançamento ao pedido
-    await sb.from("pedidos_compra").update({ lancamento_id: lanc.id }).eq("id", body.pedido_id);
-
-    return NextResponse.json({ ok: true, lancamento_id: lanc.id, criado: true });
   } catch (e) {
     console.error("[compras/gerar-cp] erro:", (e as Error).message);
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

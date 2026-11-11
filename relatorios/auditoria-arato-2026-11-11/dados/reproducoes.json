@@ -1,0 +1,278 @@
+[
+  {
+    "id": "AUD-01",
+    "titulo": "Status terminal alterado por vencimento",
+    "evidencia": {
+      "entrada": "cancelado",
+      "saida": "vencido",
+      "esperado": "cancelado"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-02",
+    "titulo": "Efetivação mantém aparência e restrições de previsão",
+    "evidencia": {
+      "natureza": "real",
+      "origem": "previsao",
+      "classificadoComoPrevisao": true
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-03",
+    "titulo": "API informa sucesso após erro de banco",
+    "evidencia": {
+      "http": 200,
+      "ok": true,
+      "valorSolicitado": 200,
+      "valorPersistido": 100
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-04",
+    "titulo": "Destino financeiro não é validado contra o cliente do pedido",
+    "evidencia": {
+      "pedidoFazenda": "fazenda-A",
+      "financeiroFazenda": "fazenda-B",
+      "prova": "Caminho autorizado por pedido com destino arbitrário; nenhuma tentativa em produção."
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-05",
+    "titulo": "Gravação parcial seguida de duplicação",
+    "evidencia": {
+      "titulosCriados": 2,
+      "vinculoPedido": null,
+      "respostas": "duas confirmações de sucesso"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-06",
+    "titulo": "Sucesso com zero linhas afetadas",
+    "evidencia": {
+      "camposAnunciados": 1,
+      "linhasRealmenteAlteradas": 0
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-07",
+    "titulo": "Perda silenciosa de lançamento de estoque",
+    "evidencia": {
+      "funcaoConcluida": true,
+      "movimentosGravados": 0
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-08",
+    "titulo": "Contador de salários não confirma persistência",
+    "evidencia": {
+      "anunciados": 1,
+      "persistidos": 0
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-09",
+    "titulo": "Transmissão oficial não ocorre no comando da tela",
+    "evidencia": {
+      "statusLocal": "transmitido",
+      "protocoloGeradoLocalmente": true,
+      "chamadasExternas": 0
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-10",
+    "titulo": "Valor negativo alcança a gravação financeira",
+    "evidencia": {
+      "http": 200,
+      "valor_pago": -10,
+      "status": "parcial"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-11",
+    "titulo": "Estorno tem semânticas financeiras diferentes por origem",
+    "evidencia": {
+      "jurosAposReabrirProdutor": 10,
+      "jurosAposReabrirEmpresa": null
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-12",
+    "titulo": "Leitura seguida de escrita sem trava perde atualização concorrente",
+    "evidencia": {
+      "pagoInicial": 100,
+      "novosPagamentosConfirmados": [
+        100,
+        100
+      ],
+      "pagoFinal": 200,
+      "esperado": 300
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-13",
+    "titulo": "Consumo de previsão não é atômico nem protegido contra reenvio",
+    "evidencia": {
+      "consumosPersistidos": 2,
+      "statusPrevisao": "aberta",
+      "operacoesReportadasComoFalha": 2
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-14",
+    "titulo": "Dois consumos recebem autorização sobre o mesmo saldo",
+    "evidencia": {
+      "previsao": 100,
+      "consumos": 200,
+      "saldoFinal": 0
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-15",
+    "titulo": "Auditor e saldo oficial usam regras distintas",
+    "evidencia": {
+      "saldoAuditor": -50,
+      "saldoComAjuste": 50
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-16",
+    "titulo": "Previsão fica gravada sem representação no financeiro",
+    "evidencia": {
+      "previsoes": 1,
+      "titulos": 0,
+      "resposta": "falha"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-17",
+    "titulo": "Limpar campos no formulário não limpa o banco",
+    "evidencia": {
+      "enviadoCentroCusto": false,
+      "centroCustoAposSalvar": "cc-antigo"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-18",
+    "titulo": "Seleção persistida some visualmente após deduplicação",
+    "evidencia": {
+      "idGravado": "og-fazenda-B",
+      "idsDisponiveis": [
+        "og-fazenda-A"
+      ],
+      "rotuloEncontrado": false
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-19",
+    "titulo": "Resposta fora de ordem troca o conteúdo do grid",
+    "evidencia": {
+      "clienteAtual": "B",
+      "borderosFinais": "A"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-20",
+    "titulo": "Lista truncada quando excede limite do backend",
+    "evidencia": {
+      "existentes": 1001,
+      "retornados": 1000,
+      "condicao": "Backend configurado com teto de 1000 linhas; laboratório."
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-21",
+    "titulo": "Autorização da fazenda não confere o dono da bomba",
+    "evidencia": {
+      "fazendaAutorizada": "fazenda-A",
+      "fazendaGravada": "fazenda-B",
+      "producao": "Não executado."
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-22",
+    "titulo": "Litros da bomba e do estoque divergem após edição",
+    "evidencia": {
+      "consumoAbastecimento": 200,
+      "saidaEstoque": 100,
+      "nota": "Caminho HTTP real; gatilhos adicionais do ambiente não são simulados."
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-23",
+    "titulo": "Simulação de folha produz gravação",
+    "evidencia": {
+      "simular": true,
+      "vinculoAntes": null,
+      "vinculoDepois": "fgts"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-24",
+    "titulo": "Fechamento deixa salários em estados diferentes após falha",
+    "evidencia": {
+      "http": 500,
+      "naturezas": [
+        "real",
+        "previsao"
+      ],
+      "folha": "rascunho"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-25",
+    "titulo": "Webhook reconhece evento sem persistir",
+    "evidencia": {
+      "http": 200,
+      "pagamento": "pendente",
+      "conta": "inativo"
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-26",
+    "titulo": "Webhook não protege contra eventos fora de ordem",
+    "evidencia": {
+      "sequenciaDeEntrega": [
+        "pagamento recebido",
+        "atraso anterior"
+      ],
+      "contaFinal": "inadimplente",
+      "nota": "Laboratório demonstra dependência da ordem de entrega; ocorrência real não comprovada."
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  },
+  {
+    "id": "AUD-27",
+    "titulo": "Filtro aplicado não depende da visibilidade da coluna",
+    "evidencia": {
+      "coluna": "centro de custo",
+      "ocultarColunaNaoRemoveFiltro": true,
+      "efeito": "Registro continua fora do grid; a caixa de filtro deixa de ser exibida."
+    },
+    "ambiente": "laboratório isolado, funções extraídas do código real"
+  }
+]

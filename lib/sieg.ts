@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { fetchComTimeout } from "./http";
 import AdmZip from "adm-zip";
 
 /**
@@ -40,39 +42,44 @@ export function credenciaisValidas(c: SiegCredentials): boolean {
 
 // ─── JWT — cache em memória (warm lambda) ─────────────────────────────────────
 
-let _jwtToken  = "";
-let _jwtExpiry = 0;
-
+const jwtCache = new Map<string, { token: string; expira: number }>();
+const jwtPendentes = new Map<string, Promise<string>>();
+const chaveJwt = (c: SiegCredentials) => createHash("sha256").update(JSON.stringify([c.clienteId,c.secretKey,c.apiKey])).digest("hex");
 async function getJwt(creds: SiegCredentials): Promise<string> {
-  if (_jwtToken && Date.now() < _jwtExpiry) return _jwtToken;
+  const chave = chaveJwt(creds), salvo = jwtCache.get(chave);
+  if (salvo && salvo.expira > Date.now()) return salvo.token;
+  const pendente = jwtPendentes.get(chave);
+  if (pendente) return pendente;
+  const promessa = (async () => {
+    const res = await fetchComTimeout(`${SIEG_BASE}/create-jwt`, {
+      method: "POST", headers: { accept: "application/json", "Content-Length": "0", "X-Secret-Key": creds.secretKey, "X-Client-Id": creds.clienteId }, body: "",
+    });
+    if (!res.ok) throw new Error(`SIEG create-jwt HTTP ${res.status}: ${(await res.text()).slice(0,300)}`);
+    const data = await res.json();
+    const raw = typeof data === "string" ? data : data.token ?? data.Token;
+    if (typeof raw !== "string" || !raw.trim()) throw new Error("SIEG não retornou token de acesso válido.");
+    const token = raw.trim().replace(/^["']|["']$/g, "");
+    let expira = Date.now() + 23 * 60 * 60 * 1000;
+    try { const exp = JSON.parse(Buffer.from(token.split(".")[1],"base64url").toString("utf8")).exp;
+      if (typeof exp === "number") expira = Math.min(expira,exp*1000-60_000);
+    } catch { /* Formato opaco: prazo máximo do cache, invalidado também por 401. */ }
+    if (jwtCache.size >= 32) jwtCache.clear();
+    jwtCache.set(chave,{token,expira});
+    return token;
+  })();
+  jwtPendentes.set(chave,promessa);
+  try { return await promessa; } finally { jwtPendentes.delete(chave); }
+}
 
-  const res = await fetch(`${SIEG_BASE}/create-jwt`, {
-    method:  "POST",
-    headers: {
-      "accept":         "application/json",
-      "Content-Length": "0",   // SIEG exige Content-Length mesmo com body vazio (HTTP 411 sem ele)
-      "X-Secret-Key":   creds.secretKey,
-      "X-Client-Id":    creds.clienteId,
-    },
-    body: "",
-  });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`SIEG create-jwt HTTP ${res.status}: ${txt.slice(0, 300)}`);
-  }
-
-  const data = await res.json() as unknown;
-  // A resposta pode ser a string diretamente ou { token: "..." }
-  const raw  = typeof data === "string"
-    ? data
-    : (data as Record<string, string>).token
-      ?? (data as Record<string, string>).Token
-      ?? JSON.stringify(data);
-
-  _jwtToken  = raw.trim().replace(/^["']|["']$/g, ""); // remove aspas acidentais
-  _jwtExpiry = Date.now() + 23 * 60 * 60 * 1000;       // 23 h (JWT válido 24 h)
-  return _jwtToken;
+async function fetchSiegAutenticado(creds: SiegCredentials, url: string, init: RequestInit): Promise<Response> {
+  const headers = new Headers(init.headers);
+  for (const [k,v] of Object.entries(authHeaders(creds,await getJwt(creds)))) headers.set(k,v);
+  const res = await fetchComTimeout(url,{...init,headers});
+  if (res.status !== 401) return res;
+  await res.body?.cancel();
+  jwtCache.delete(chaveJwt(creds));
+  headers.set("Authorization",`Bearer ${await getJwt(creds)}`);
+  return fetchComTimeout(url,{...init,headers});
 }
 
 // ─── Headers padrão para as chamadas autenticadas ────────────────────────────
@@ -246,6 +253,7 @@ async function fetchComRetry(
   url: string,
   init: RequestInit,
   maxTentativas = 6,
+  creds?: SiegCredentials,
 ): Promise<Response> {
   // backoff: 2s, 4s, 7s, 10s, 10s, 10s — cap de 10s por tentativa (comentário
   // abaixo) significa que só aumentar o array não ajuda depois da 4ª; o que
@@ -253,7 +261,7 @@ async function fetchComRetry(
   const delays = [2000, 4000, 7000, 10000];
   let lastErr: Error | null = null;
   for (let t = 0; t < maxTentativas; t++) {
-    const res = await fetch(url, init);
+    const res = creds ? await fetchSiegAutenticado(creds,url,init) : await fetchComTimeout(url,init);
     if (res.status !== 429) return res;
     const retryAfter = Number(res.headers.get("Retry-After") ?? 0);
     // Cap de 10s para evitar estouro do timeout de 300s da Vercel
@@ -288,7 +296,7 @@ export async function baixarXmlsSieg(
       method:  "POST",
       headers: authHeaders(creds, jwt),
       body:    JSON.stringify(body),
-    });
+    }, 6, creds);
 
     if (!res.ok) {
       // 404 = nenhum documento localizado nesse período — encerra paginação normalmente
@@ -400,7 +408,7 @@ export async function manifestarPorChave(
   }
 ): Promise<{ ok: boolean; mensagem: string; httpStatus: number }> {
   const jwt = await getJwt(creds);
-  const res = await fetch(`${SIEG_BASE}/manifestar-por-chave`, {
+  const res = await fetchSiegAutenticado(creds, `${SIEG_BASE}/manifestar-por-chave`, {
     method:  "POST",
     headers: authHeaders(creds, jwt),
     body:    JSON.stringify(params),
@@ -421,12 +429,12 @@ export async function contarXmlsSieg(
   params: { CnpjDest?: string; CnpjEmit?: string; DataUploadInicio?: string; DataUploadFim?: string }
 ): Promise<number> {
   const jwt = await getJwt(creds);
-  const res = await fetch(`${SIEG_BASE}/contar-xmls`, {
+  const res = await fetchSiegAutenticado(creds, `${SIEG_BASE}/contar-xmls`, {
     method:  "POST",
     headers: authHeaders(creds, jwt),
     body:    JSON.stringify(params),
   });
-  if (!res.ok) return 0;
+  if (!res.ok) throw new Error(`SIEG contar-xmls HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json() as unknown;
   if (typeof data === "number") return data;
   const obj = data as Record<string, unknown>;

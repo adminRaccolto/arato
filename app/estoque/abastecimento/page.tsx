@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -252,10 +253,10 @@ export default function AbastecimentoPage() {
   async function salvarEdicao(ab: Abastecimento, qtdNova: number, vUnit: number, bomba: BombaCombustivel) {
     if (!fazendaId) return;
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
-    const res = await fetch("/api/campo/abastecimento-acao", {
+    const res = await fetchFinanceiro("/api/campo/abastecimento-acao", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        acao: "editar", fazenda_id: fazendaId, abastecimento_id: ab.id,
+        acao: "editar", fazenda_id: fazendaId, abastecimento_id: ab.id, quantidade_anterior: ab.quantidade_l,
         bomba_id: ab.bomba_id,
         destino_tipo: fDestTipo, maquina_id: fMaquina, funcionario_id: fFuncionario, destino_livre: fDestLivre,
         quantidade_l: qtdNova, valor_unitario: vUnit, data: fData, horimetro: horimetroVal,
@@ -270,7 +271,7 @@ export default function AbastecimentoPage() {
     if (!fazendaId) return;
     const fazBomba = bomba.fazenda_id || fazendaId;   // o abastecimento pertence à fazenda da bomba
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
-    const res = await fetch("/api/campo/abastecimento-acao", {
+    const res = await fetchFinanceiro("/api/campo/abastecimento-acao", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         acao: "criar", fazenda_id: fazBomba, bomba_id: fBomba,
@@ -301,30 +302,16 @@ export default function AbastecimentoPage() {
     linhas.push("", "Esta ação não pode ser desfeita.");
     if (!confirm(linhas.join("\n"))) return;
 
-    // 1. Pendências fiscais — por abastecimento_id (cascade) ou lancamento_id (legado)
-    await supabase.from("pendencias_fiscais").delete().eq("abastecimento_id", ab.id);
-    if (ab.lancamento_id) {
-      await supabase.from("pendencias_fiscais").delete().eq("lancamento_id", ab.lancamento_id);
-      // 2. Lançamento (CP)
-      await supabase.from("lancamentos").delete().eq("id", ab.lancamento_id);
-    }
+    try {
+      const res = await fetchFinanceiro("/api/campo/abastecimento-acao", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "excluir", fazenda_id: ab.fazenda_id, abastecimento_id: ab.id, quantidade_anterior: ab.quantidade_l }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.ok) throw new Error(result.erro ?? "Abastecimento não excluído.");
+      await carregar();
+    } catch (e) { alert(e instanceof Error ? e.message : String(e)); }
 
-    // 3. Restaurar estoque da bomba (apenas bombas internas com estoque)
-    if (ab.bomba_id) {
-      const bomba = bombas.find(b => b.id === ab.bomba_id);
-      if (bomba && bomba.consume_estoque !== false) {
-        await supabase.from("bombas_combustivel")
-          .update({ estoque_atual_l: bomba.estoque_atual_l + ab.quantidade_l })
-          .eq("id", ab.bomba_id);
-        setBombas(prev => prev.map(b =>
-          b.id === ab.bomba_id ? { ...b, estoque_atual_l: b.estoque_atual_l + ab.quantidade_l } : b
-        ));
-      }
-    }
-
-    // 4. Excluir abastecimento
-    await supabase.from("abastecimentos").delete().eq("id", ab.id);
-    setHistorico(prev => prev.filter(h => h.id !== ab.id));
   }
 
   function abrirModal() {

@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TopNav from "../../../components/TopNav";
@@ -116,7 +117,7 @@ export default function PrevisaoGastosPage() {
 
   const api = useCallback(async (body: Record<string, unknown>) => {
     const { data: { session } } = await supabase.auth.getSession();
-    const r = await fetch("/api/financeiro/previsoes", {
+    const r = await fetchFinanceiro("/api/financeiro/previsoes", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
       body: JSON.stringify({ fazenda_id: fazendaId, ...body }),
@@ -141,15 +142,13 @@ export default function PrevisaoGastosPage() {
     if (!fazendaId) return;
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
     listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa" }, fazendaId).then(lista => {
-      const vistas = new Set<string>();
-      setOgs(lista.filter(o => { const c = o.classificacao ?? ""; if (!c || c.startsWith("1.") || vistas.has(c)) return false; vistas.add(c); return true; }));
+      setOgs(lista.filter(o => !!o.classificacao && !o.classificacao.startsWith("1.")));
     }).catch(() => {});
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     listarAnosSafra(fazendaId).then(setSafras).catch(() => {});
     // Centro de custo tem uma cópia por fazenda: a lista mostra cada um uma vez só (mesmo código e nome)
     listarCentrosCustoGeralDaConta(fazendaId).then(cs => {
-      const vistos = new Set<string>();
-      setCentros(cs.filter(c => { const k = `${(c.codigo ?? "").trim()}|${(c.nome ?? "").trim().toUpperCase()}`; if (vistos.has(k)) return false; vistos.add(k); return true; }));
+      setCentros(cs);
     }).catch(() => {});
     api({ operacao: "config" }).then(j => { setTolPct(String(j.tolerancia?.pct ?? 0)); setTolValor(String(j.tolerancia?.valor ?? 0)); }).catch(() => {});
   }, [fazendaId, api]);
@@ -198,6 +197,13 @@ export default function PrevisaoGastosPage() {
     setErro(""); setModal(true);
   }
   function abrirEdicao(p: Previsao) {
+    // A referência histórica permanece selecionável, mesmo inativa ou ausente da lista normal.
+    if (!ogs.some(o => o.id === p.operacao_gerencial_id)) {
+      setOgs(lista => [...lista, { id: p.operacao_gerencial_id, classificacao: p.og_classificacao, descricao: `${p.og_nome} (histórica)` } as OperacaoGerencial]);
+    }
+    if (p.centro_custo_id && !centros.some(c => c.id === p.centro_custo_id)) {
+      setCentros(lista => [...lista, { id: p.centro_custo_id, nome: "Centro de custo histórico", codigo: "" } as CentroCusto]);
+    }
     setForm({
       ...FORM_VAZIO, id: p.id, fazenda_id: p.fazenda_id, lado: p.empresa_id ? "empresa" : "produtor",
       produtor_id: p.produtor_id ?? "", empresa_id: p.empresa_id ?? "", operacao_gerencial_id: p.operacao_gerencial_id,

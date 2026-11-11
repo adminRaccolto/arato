@@ -1,7 +1,6 @@
-import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { statusAsaasParaLocal } from "../../../../lib/asaas";
+import { statusAsaasParaLocal, buscarPagamento, ErroAsaas } from "../../../../lib/asaas";
 
 // Webhook do Asaas — recebe notificações de pagamento
 // Configura em: Asaas → Configurações → Notificações (URL: https://app.arato.agr.br/api/asaas/webhook)
@@ -30,85 +29,26 @@ export async function POST(req: Request) {
     const body = await req.json();
     const event = body.event as string;
     const payment = body.payment;
-
-    if (!event || !payment) {
-      return NextResponse.json({ ok: false, error: "payload inválido" }, { status: 400 });
+    if (!event || !payment?.id) return NextResponse.json({ ok: false, error: "Payload inválido." }, { status: 400 });
+    // O estado consultado evita que uma entrega atrasada sobrescreva o estado atual do provedor.
+    let atual;
+    try { atual = await buscarPagamento(payment.id); }
+    catch (e) {
+      if (event === "PAYMENT_DELETED" && e instanceof ErroAsaas && e.status === 404) atual = { ...payment, status: "REFUNDED" };
+      else throw e;
     }
-
-    const supabase = sb();
-    const asaasPaymentId: string = payment.id;
-    const externalRef: string | null = payment.externalReference ?? null;
-
-    // Busca pagamento local pelo ID Asaas
-    const { data: pagamento } = await supabase
-      .from("pagamentos")
-      .select("id, conta_id, assinatura_id")
-      .eq("asaas_payment_id", asaasPaymentId)
-      .maybeSingle();
-
-    const statusLocal = statusAsaasParaLocal(payment.status);
-
-    // Atualiza status do pagamento
-    if (pagamento) {
-      await supabase
-        .from("pagamentos")
-        .update({
-          status: statusLocal,
-          data_pagamento: statusLocal === "pago" ? hojeLocal() : null,
-        })
-        .eq("id", pagamento.id);
-    }
-
-    // Lida com eventos críticos
-    if (event === "PAYMENT_CONFIRMED" || event === "PAYMENT_RECEIVED") {
-      const contaId = pagamento?.conta_id ?? externalRef;
-      if (contaId) {
-        // Ativa a conta
-        await supabase
-          .from("contas")
-          .update({ status: "ativo" })
-          .eq("id", contaId);
-
-        // Ativa a assinatura
-        if (pagamento?.assinatura_id) {
-          await supabase
-            .from("assinaturas")
-            .update({ status: "ativa", updated_at: new Date().toISOString() })
-            .eq("id", pagamento.assinatura_id);
-        }
-      }
-    }
-
-    if (event === "PAYMENT_OVERDUE") {
-      const contaId = pagamento?.conta_id ?? externalRef;
-      if (contaId) {
-        // Marca como inadimplente (read-only no app)
-        await supabase
-          .from("contas")
-          .update({ status: "inadimplente" })
-          .eq("id", contaId);
-
-        if (pagamento?.assinatura_id) {
-          await supabase
-            .from("assinaturas")
-            .update({ status: "inadimplente", updated_at: new Date().toISOString() })
-            .eq("id", pagamento.assinatura_id);
-        }
-      }
-    }
-
-    if (event === "PAYMENT_DELETED" || event === "PAYMENT_REFUNDED") {
-      if (pagamento?.assinatura_id) {
-        await supabase
-          .from("assinaturas")
-          .update({ status: "cancelada", updated_at: new Date().toISOString() })
-          .eq("id", pagamento.assinatura_id);
-      }
-    }
-
-    return NextResponse.json({ ok: true, event });
+    const estado = atual as typeof atual & { paymentDate?: string; confirmedDate?: string; clientPaymentDate?: string };
+    const statusLocal = event === "PAYMENT_DELETED" ? "cancelado" : statusAsaasParaLocal(estado.status);
+    const data = estado.paymentDate ?? estado.confirmedDate ?? estado.clientPaymentDate;
+    const { data: resultado, error } = await sb().rpc("asaas_processar_evento", {
+      p_evento: { id: body.id ?? null, event, payment_id: payment.id, status_recebido: payment.status ?? null },
+      p_status: statusLocal, p_data: typeof data === "string" && /^\d{4}-\d{2}-\d{2}/.test(data) ? data.slice(0,10) : null,
+    });
+    if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 437 do supabase_migrations.sql para processar pagamentos." : error.message);
+    if (!resultado?.ok) throw new Error("Evento não confirmado.");
+    return NextResponse.json(resultado);
   } catch (err) {
-    console.error("[asaas-webhook]", err);
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+    console.error("[asaas-webhook]", err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ ok: false, error: "Evento não confirmado. O provedor deve repetir a entrega." }, { status: 503 });
   }
 }

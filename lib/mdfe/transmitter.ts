@@ -11,7 +11,7 @@
 import https from "https";
 import { gunzipSync, gzipSync } from "node:zlib";
 import type { PemPair } from "../nfe/signer";
-import { ICP_BRASIL_CA_BUNDLE } from "../cte/transmitter";
+import { CA_FISCAL } from "../fiscal/ca-icp-brasil";
 
 type Ambiente = "producao" | "homologacao";
 
@@ -60,7 +60,8 @@ function soapPost(url: string, body: string, pem: PemPair, soapAction: string): 
       },
       cert: pem.certChain ?? pem.cert,
       key: pem.key,
-      ca: ICP_BRASIL_CA_BUNDLE,
+      ca: CA_FISCAL,
+      signal: AbortSignal.timeout(45_000),
       rejectUnauthorized: true,
     }, (res) => {
       const status = res.statusCode ?? 0;

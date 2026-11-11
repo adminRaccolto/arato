@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { PagamentoLote } from "../supabase";
-import { filtrarBordero, filtrarTitulo, itensDoBordero, numeroNF, tituloVinculado, vinculosBorderos, type FiltrosCP, type TituloGrid } from "./cp-grid";
+import { filtrarBordero, filtrarTitulo, itensDoBordero, numeroNF, tituloVinculado, vinculosBorderos, type FiltrosCP, type TituloGrid } from "./cp-grid.ts";
 
 const titulo: TituloGrid = { id: "nf1", origem_tabela: "lancamentos", lote_id: null,
   status_normalizado: "em_aberto", data_vencimento: "2026-10-01", descricao: "Insumos",
@@ -28,6 +28,30 @@ test("Em Aberto exclui borderôs pagos; Baixado exclui pendentes; Todos restaura
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ status: new Set(["baixado"]) })), false);
   assert.equal(filtrarBordero(pago, [titulo], filtros()), true);
   assert.equal(filtrarBordero(pendente, [titulo], filtros()), true);
+});
+test("pagamento parcial PF/PJ aparece em Baixados e conserva a posição em aberto", () => {
+  for (const origem_tabela of ["lancamentos", "empresa_lancamentos"]) {
+    const parcial = { ...titulo, origem_tabela, status_normalizado: "parcial", valor_pago: 940.03 };
+    for (const status of ["baixado", "em_aberto", "parcial"]) {
+      assert.equal(filtrarTitulo(parcial, filtros({ status: new Set([status]) })), true);
+    }
+    assert.equal(filtrarTitulo(parcial, filtros()), true);
+    assert.equal(parcial.status_normalizado, "parcial");
+    assert.equal(parcial.valor_pago, 940.03);
+    assert.equal(filtrarTitulo({ ...parcial, valor_pago: 0 }, filtros({ status: new Set(["baixado"]) })), false);
+    assert.equal(filtrarTitulo({ ...parcial, valor_pago: null }, filtros({ status: new Set(["baixado"]) })), false);
+    assert.equal(filtrarTitulo({ ...parcial, status_normalizado: "cancelado" }, filtros({ status: new Set(["baixado"]) })), false);
+    assert.equal(filtrarTitulo(parcial, filtros({ status: new Set(["baixado"]), nf: "outra" })), false);
+  }
+});
+test("borderô parcialmente pago aparece em Baixados preservando os filtros", () => {
+  const parcial = { ...pendente, valor_total: 1150, valor_pago: 940.03 };
+  for (const status of ["baixado", "em_aberto", "parcial"]) {
+    assert.equal(filtrarBordero(parcial, [titulo], filtros({ status: new Set([status]) })), true);
+  }
+  assert.equal(filtrarBordero(parcial, [titulo], filtros({ status: new Set(["baixado"]), de: "2026-10-16" })), false);
+  assert.equal(filtrarBordero(parcial, [titulo], filtros({ status: new Set(["baixado"]), busca: "outro" })), false);
+  assert.equal(tituloVinculado(titulo, vinculosBorderos([parcial])), true);
 });
 test("período usa vencimento do borderô, inclusive quando já foi pago", () => {
   const f = filtros({ de: "2026-10-10", ate: "2026-10-20" });
@@ -58,6 +82,10 @@ test("busca só por fornecedor; NF tem filtro próprio; borderô é achado pelos
   const pj = { ...titulo, origem_tabela: "empresa_lancamentos", pessoa_nome: "A B COMERCIO DE PNEUS", empresa_nome: "MURIANA TRANSPORTES" };
   assert.equal(filtrarTitulo(pj, filtros({ busca: "a b comer" })), true);
   assert.equal(filtrarTitulo(pj, filtros({ busca: "muriana" })), false);
+  // cadastro repetido com outro nome: o emitente da NF na descrição também acha o título
+  const nfOutroNome = { ...pj, pessoa_nome: "ROSICLER S. B. VENSON", descricao: "NF 23791 — BATERIAS VENSON LTDA" };
+  assert.equal(filtrarTitulo(nfOutroNome, filtros({ busca: "baterias venson" })), true);
+  assert.equal(filtrarTitulo(nfOutroNome, filtros({ busca: "rosicler" })), true);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ nf: "123" })), true);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ nf: "999" })), false);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ origens: new Set(["empresa_lancamentos"]) })), false);
@@ -70,7 +98,10 @@ test("NF vem da nota fiscal vinculada, do lançamento ou do documento PJ; nunca 
   assert.equal(numeroNF({ numero_documento: "CONTRATO123" }, null, "lancamentos"), null);
   assert.equal(numeroNF({ nfe_numero: " " }, null, "lancamentos", "777"), "777");
 });
-  // cadastro repetido com outro nome: o emitente da NF na descrição também acha o título
-  const nfOutroNome = { ...pj, pessoa_nome: "ROSICLER S. B. VENSON", descricao: "NF 23791 — BATERIAS VENSON LTDA" };
-  assert.equal(filtrarTitulo(nfOutroNome, filtros({ busca: "baterias venson" })), true);
-  assert.equal(filtrarTitulo(nfOutroNome, filtros({ busca: "rosicler" })), true);
+
+test("borderô pago sem vencimento nem títulos aparece pela data do pagamento", () => {
+  const fantasma = { ...pago, id: "b9", data_vencimento: null, data_pagamento: "2026-09-01", itens: [] } as unknown as PagamentoLote;
+  const f: FiltrosCP = { origens: new Set(), status: new Set(["baixado"]), busca: "", nf: "", de: "", ate: "2026-12-31", hoje: "2026-11-04" };
+  assert.equal(filtrarBordero(fantasma, [], f), true);
+  assert.equal(filtrarBordero(fantasma, [], { ...f, ate: "2026-08-31" }), false);
+});

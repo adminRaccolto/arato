@@ -118,13 +118,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Vencimentos da recorrência inválidos." }, { status: 400 });
       }
       const datas = rec?.datas ?? (rec && Number(rec.qtd) > 1 ? datasRecorrencia(linha.data_vencimento, Math.min(120, Number(rec.qtd)), Number(rec.freq) || 1) : [linha.data_vencimento]);
-      const grupo = datas.length > 1 ? crypto.randomUUID() : null;
+      const requisicao = req.headers.get("x-arato-requisicao") || crypto.randomUUID();
+      const grupo = datas.length > 1 ? requisicao : null;
       const linhas: NovaPrevisao[] = datas.map(d => ({
         ...linha, conta_id, valor: Number(linha.valor), data_vencimento: d,
         origem: datas.length > 1 ? "recorrencia" : (linha.origem === "importacao" ? "importacao" : "manual"),
         recorrencia_grupo: grupo, folha_id: null,
       }));
-      const criadas = await criarPrevisoes(sb, linhas, user.id);
+      const criadas = await criarPrevisoes(sb, linhas, user.id, {}, requisicao);
       return NextResponse.json({ ok: true, criadas: criadas.length });
     }
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
       await daConta(body.previsao_id);
       const r = await consumirPrevisao(sb, {
         previsao_id: body.previsao_id, valor: Number(body.valor), lancamento_id: body.lancamento_id ?? null,
-        emp_lancamento_id: body.emp_lancamento_id ?? null, origem: body.origem ?? "cp_manual", userId: user.id,
+        emp_lancamento_id: body.emp_lancamento_id ?? null, origem: body.origem ?? "cp_manual", userId: user.id, campos_titulo: body.campos_titulo,
       });
       return NextResponse.json({ ok: true, ...r });
     }

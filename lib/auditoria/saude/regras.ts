@@ -198,7 +198,7 @@ export function regraEstoqueNegativo(b: Base): Achado[] {
   for (const m of b.movs) {
     const k = `${m.insumo_id}|${m.fazenda_id}|${m.deposito_id ?? ""}`;
     const cur = saldo.get(k) ?? { m, s: 0 };
-    cur.s += (m.tipo === "entrada" ? 1 : m.tipo === "saida" ? -1 : 0) * num(m.quantidade);
+    cur.s += (m.tipo === "saida" ? -1 : 1) * num(m.quantidade);
     saldo.set(k, cur);
   }
   const saidas = new Map<string, Mov[]>();

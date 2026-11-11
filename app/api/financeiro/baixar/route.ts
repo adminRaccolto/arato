@@ -9,9 +9,8 @@
 import { desvincularExtrato } from "../../../../lib/financeiro/desvincular-extrato";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "../../../../lib/financeiro/ptax";
-import { hojeLocal } from "../../../../lib/data-local";
+import { comandoTitulo } from "../../../../lib/financeiro/comando-server";
 import { NextRequest, NextResponse } from "next/server";
-import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { exigirAcessoRegistros, exigirAcessoRegistro } from "../../../../lib/api-auth";
 
@@ -65,17 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.acao === "reabrir") {
-      const { data: l } = await sb.from("lancamentos").select("data_vencimento").eq("id", id).single();
-      const hoje = hojeLocal();
-      const novoStatus = l?.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
-      const { error } = await sb.from("lancamentos")
-        .update({ status: novoStatus, data_baixa: null, valor_pago: null, lote_id: null })
-        .eq("id", id);
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-      // Título reaberto não pode continuar "conciliado" nem ligado a uma linha do extrato: antes a
-      // linha seguia verde no extrato com o título em aberto no CP (divergência extrato × CP).
-      await desvincularExtrato(sb, [id]);
-      return NextResponse.json({ ok: true, novo_status: novoStatus });
+      return NextResponse.json(await comandoTitulo(sb, req, "lancamentos", id, "reabrir", body));
     }
 
     // ── APLICAR ADIANTAMENTO DE FUNCIONÁRIO ───────────────────────────────────
@@ -161,90 +150,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ...data, aviso });
     }
 
-    // ── BAIXAR ──────────────────────────────────────────────────────────────
-    const { data: atual } = await sb.from("lancamentos")
-      .select("valor, cotacao_usd, moeda, valor_pago, contrato_financeiro_id, data_vencimento, valor_multa, valor_juros, valor_desconto")
-      .eq("id", id).single();
+    if (body.acao !== "baixar") return NextResponse.json({ ok: false, error: "Ação inválida." }, { status: 400 });
+    return NextResponse.json(await comandoTitulo(sb, req, "lancamentos", id, "baixar", body));
 
-    const cotacaoPagamento = atual?.moeda === "USD" && Number(body.cotacao_usd) > 0 ? Number(body.cotacao_usd) : null;
-    const cotacao    = cotacaoPagamento ?? (atual?.cotacao_usd as number | null) ?? 5.12;
-    const valorTotal = atual?.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual?.valor ?? 0);
-    const jaRPago    = (atual?.valor_pago as number | null) ?? 0;
-    const agora      = body.valor_pago_agora ?? 0;
-    const novoTotal  = jaRPago + agora;
-    const desconto   = body.desconto_valor ?? 0;
-    const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? "baixado" : "parcial";
-
-    // Ninguém paga/recebe mais do que o título vale (juros e multa só contam se informados na baixa)
-    const tetoTitulo = {
-      valor: atual?.valor, moeda: atual?.moeda, cotacao_usd: cotacaoPagamento ?? atual?.cotacao_usd,
-      valor_multa: body.multa_valor ?? (atual?.valor_multa as number | null),
-      valor_juros: body.juros_valor ?? (atual?.valor_juros as number | null),
-      valor_desconto: body.desconto_valor ?? (atual?.valor_desconto as number | null),
-    };
-    if (excedeLimiteBaixa(tetoTitulo, novoTotal)) {
-      return NextResponse.json({ ok: false, error: mensagemExcesso(tetoTitulo, novoTotal) }, { status: 422 });
-    }
-
-    const patch: Record<string, unknown> = {
-      status:         novoStatus,
-      valor_pago:     novoTotal,
-      data_baixa:     body.data_baixa,
-      conta_bancaria: body.conta_bancaria ?? null,
-    };
-    if (cotacaoPagamento)            patch.cotacao_usd            = cotacaoPagamento;
-    if (body.pessoa_id)              patch.pessoa_id              = body.pessoa_id;
-    if (body.operacao_gerencial_id)  patch.operacao_gerencial_id  = body.operacao_gerencial_id;
-    if (body.ano_safra_id)           patch.ano_safra_id           = body.ano_safra_id;
-    if (body.ciclo_id)               patch.ciclo_id               = body.ciclo_id;
-    if (body.observacao)             patch.observacao             = body.observacao;
-    if (body.forma_pagamento?.trim()) patch.forma_pagamento       = body.forma_pagamento.trim();
-    // Detalhamento de encargos — só informativo/relatório, não entra no
-    // cálculo de status (o valor_pago_agora já vem com tudo embutido,
-    // calculado na tela antes de chegar aqui).
-    // Informado (inclusive 0) substitui o que estava gravado — achado real 28/10/2026: um desconto de R$ 40 que
-    // ficou no título de uma tentativa anterior entrava no teto da baixa mesmo com 0 na tela, e barrava os juros.
-    if (body.multa_valor !== undefined)    patch.valor_multa    = body.multa_valor || null;
-    if (body.juros_valor !== undefined)    patch.valor_juros    = body.juros_valor || null;
-    if (body.desconto_valor !== undefined) patch.valor_desconto = body.desconto_valor || null;
-
-    // Pagamento parcial divide o título (Seção 375): esta parte fica baixada com o valor pago e o saldo vira um título
-    // novo, com o vencimento informado (vencimento_saldo, na mesma gravação). Título parcial antigo (já tinha valor
-    // pago) segue o jeito anterior: só reprograma o vencimento.
-    const divide = novoStatus === "parcial" && !jaRPago;
-    if (novoStatus === "parcial" && body.nova_data_vencimento && divide) patch.vencimento_saldo = body.nova_data_vencimento;
-    let { error } = await sb.from("lancamentos").update(patch).eq("id", id);
-    if (error && "vencimento_saldo" in patch && (error.code === "42703" || error.code === "PGRST204")) {
-      delete patch.vencimento_saldo;   // Seção 375 ainda não rodada
-      ({ error } = await sb.from("lancamentos").update(patch).eq("id", id));
-      if (!error) await sb.from("lancamentos").update({ data_vencimento: body.nova_data_vencimento }).eq("id", id);
-    }
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-
-    // Parcial antigo: reprograma vencimento com a nova data
-    if (novoStatus === "parcial" && body.nova_data_vencimento && !divide) {
-      await sb.from("lancamentos")
-        .update({ data_vencimento: body.nova_data_vencimento })
-        .eq("id", id);
-    }
-
-    // Sincroniza parcelas_pagamento via lancamento_id
-    const patchParcela = {
-      status:          novoStatus === "baixado" ? "pago" : "parcial",
-      data_pagamento:  body.data_baixa,
-    };
-    await sb.from("parcelas_pagamento").update(patchParcela).eq("lancamento_id", id);
-
-    // Fallback via contrato_financeiro_id + data_vencimento
-    if (atual?.contrato_financeiro_id && atual?.data_vencimento) {
-      await sb.from("parcelas_pagamento")
-        .update(patchParcela)
-        .eq("contrato_id", atual.contrato_financeiro_id)
-        .eq("data_vencimento", atual.data_vencimento)
-        .neq("status", "pago");
-    }
-
-    return NextResponse.json({ ok: true, novo_status: novoStatus, novo_total: novoTotal });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

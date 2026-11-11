@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
 import NativeRecordPanel from '../../../components/arato-layout/NativeRecordPanel';
@@ -394,28 +395,34 @@ export default function ContasAReceberPage() {
   const [borderosPagos, setBorderosPagos] = useState<PagamentoLote[]>([]);
   const [infoBordero, setInfoBordero] = useState<Map<string, { cliente: string | null; produtor: string | null; origem: string | null; operacao: string | null; conta: string | null }>>(new Map());
   const [popBordero, setPopBordero] = useState<{ b: PagamentoLote; x: number; y: number } | null>(null);
+  const cargaBorderosSeq = useRef(0);
   const carregarBorderos = useCallback(async () => {
+    const sequencia = ++cargaBorderosSeq.current;
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-    if (!fids.length) return;
+    if (!fids.length) { setBorderosPendentes([]); setBorderosPagos([]); setInfoBordero(new Map()); return; }
     try {
       const [pend, pagos] = await Promise.all([
         listarBorderosPendentes(fids, "receber"),
         listarBorderosPagos(fids, "receber"),
       ]);
+      if (sequencia !== cargaBorderosSeq.current) return;
       setBorderosPendentes(pend);
       setBorderosPagos(pagos);
       // Cliente, produtor e origem do borderô vêm dos títulos dele (o cabeçalho do borderô não guarda cliente)
       const ids = [...new Set([...pend, ...pagos].flatMap(b => (b.itens ?? []).map(i => i.lancamento_id)))];
       const titulos: { id: string; pessoa_nome: string | null; produtor_nome: string | null; empresa_nome: string | null; origem_tabela: string; operacao_gerencial_nome: string | null }[] = [];
       for (let i = 0; i < ids.length; i += 200) {
-        const { data } = await supabase.from("rel_lancamentos").select("id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 200));
+        const { data, error: leituraErro } = await supabase.from("rel_lancamentos").select("id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 200));
+        if (leituraErro) throw leituraErro;
         titulos.push(...((data ?? []) as typeof titulos));
       }
       const porId = new Map(titulos.map(t => [t.id, t]));
       const idsContas = [...new Set([...pend, ...pagos].map(b => b.conta_bancaria).filter(Boolean))] as string[];
-      const { data: contasB } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [] };
+      const { data: contasB, error: contasErro } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [], error: null };
+      if (contasErro) throw contasErro;
       const nomeConta = new Map((contasB ?? []).map(c => [c.id as string, c.nome as string]));
       const unicoOuVarios = (vals: (string | null)[]) => { const u = [...new Set(vals.filter(Boolean))] as string[]; return u.length <= 1 ? (u[0] ?? null) : `Vários (${u.length})`; };
+      if (sequencia !== cargaBorderosSeq.current) return;
       setInfoBordero(new Map([...pend, ...pagos].map(b => {
         const ts = (b.itens ?? []).map(i => porId.get(i.lancamento_id)).filter((t): t is typeof titulos[number] => !!t);
         return [b.id, {
@@ -426,10 +433,14 @@ export default function ContasAReceberPage() {
           conta: b.conta_bancaria ? nomeConta.get(b.conta_bancaria) ?? null : null,
         }];
       })));
-    } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
+    } catch (e: unknown) { if (sequencia === cargaBorderosSeq.current) setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, fazendaIds?.join(",")]);
-  useEffect(() => { carregarBorderos(); }, [carregarBorderos]);
+  useEffect(() => {
+    setBorderosPendentes([]); setBorderosPagos([]); setInfoBordero(new Map());
+    carregarBorderos();
+    return () => { cargaBorderosSeq.current++; };
+  }, [carregarBorderos]);
 
   // Título que pertence a um borderô (pendente ou pago) não aparece solto no grid: o borderô é a unidade, como no CP.
   const todosBorderos = [...borderosPendentes, ...borderosPagos];
@@ -601,7 +612,7 @@ export default function ContasAReceberPage() {
           nova_data_vencimento: bNovaData || undefined,
         });
       } else {
-        const res = await fetch("/api/empresa-lancamentos/baixar", {
+        const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             acao: "baixar", lancamento_id: modalBaixa.id,
@@ -652,7 +663,7 @@ export default function ContasAReceberPage() {
           observacao: novaObs,
         });
       } else {
-        const res = await fetch("/api/empresa-lancamentos/baixar", {
+        const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             acao: "reprogramar", lancamento_id: modalReprog.id,
@@ -678,7 +689,7 @@ export default function ContasAReceberPage() {
       if (l.origem_tabela === "lancamentos") {
         await reabrirLancamento(l.id);
       } else {
-        const res = await fetch("/api/empresa-lancamentos/baixar", {
+        const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ acao: "reabrir", lancamento_id: l.id }),
         });
@@ -970,7 +981,7 @@ export default function ContasAReceberPage() {
             natureza: novoForm.natureza,
             forma_pagamento: novoForm.forma_pagamento || undefined,
             entidade_contabil: novoForm.entidade_contabil || undefined,
-          });
+          }, true);
           if (salvarComoRegra) await criarRegraClassificacaoNovo();
         } else {
           await atualizarEmpresaLancamento(editandoId, {
@@ -990,7 +1001,7 @@ export default function ContasAReceberPage() {
             conta_bancaria: novoForm.conta_pagamento || undefined,
             numero_documento: novoForm.numero_documento || undefined,
             observacao: novoForm.observacao.trim() || undefined,
-          });
+          }, true);
         }
         setModalNovo(false);
         setEditandoId(null);
@@ -1163,7 +1174,7 @@ export default function ContasAReceberPage() {
         multa_valor: numBR(e.multa), juros_valor: numBR(e.juros), desconto_valor: numBR(e.desconto),
       });
     } else {
-      const res = await fetch("/api/empresa-lancamentos/baixar", {
+      const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "baixar", lancamento_id: l.id,
@@ -1453,6 +1464,15 @@ export default function ContasAReceberPage() {
             );
           })}
         </div>
+        {Object.entries(filtrosCol).some(([k, v]) => v.trim() && visCols[k] === false) && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }} aria-label="Filtros de colunas ocultas">
+            {Object.entries(filtrosCol).filter(([k, v]) => v.trim() && visCols[k] === false).map(([k, v]) => (
+              <button key={k} type="button" onClick={() => setFiltrosCol(p => ({ ...p, [k]: "" }))} style={inp}>
+                {columnDefinitions.find(c => c.key === k)?.label ?? k}: {v} ×
+              </button>
+            ))}
+          </div>
+        )}
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div>
             <label data-arato-label="true" style={lblMini}>Origem</label>

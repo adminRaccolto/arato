@@ -1,5 +1,7 @@
 "use client";
+import { fetchFinanceiro } from "../lib/financeiro/requisicao";
 import InputData from "../components/InputData";
+import { confirmarAcao } from "../components/ConfirmarAcao";
 import { useState } from "react";
 import type { EmpresaLancamento } from "../lib/supabase";
 
@@ -19,12 +21,13 @@ export default function ReprogramarEmpresaModal({ lanc, onClose, onDone }: {
   const fmtD = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     setErro("");
     if (!novaData) { setErro("Informe a nova data de vencimento."); return; }
     const v = novoValor ? parseFloat(novoValor.replace(/\./g, "").replace(",", ".")) : undefined;
     setSaving(true);
     try {
-      const r = await fetch("/api/empresa-lancamentos/baixar", {
+      const r = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ acao: "reprogramar", lancamento_id: lanc.id, nova_data: novaData, novo_valor: v, observacao: obs.trim() || undefined }),
       });

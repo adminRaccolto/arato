@@ -1,0 +1,125 @@
+{
+  "data_utc": "2026-11-11T21:15:53.481619+00:00",
+  "ambiente": "workspace local; sem execução de migrações, emissão fiscal, pagamento ou reparação de dados reais",
+  "commit_base_observado": "6ef9874d8210824e404e2ced9f23b73795d543a6",
+  "commit_realizado": false,
+  "publicacao_realizada": false,
+  "secoes_sql_pendentes_de_aplicacao": [],
+  "verificacoes": [
+    {
+      "comando": "npm test",
+      "resultado": "aprovado",
+      "testes": 768,
+      "falhas": 0,
+      "observacao": "Inclui 29 cenários SQL e o teste pai; schema isolado com PGlite."
+    },
+    {
+      "comando": "npx tsc --noEmit --incremental false",
+      "resultado": "aprovado"
+    },
+    {
+      "comando": "npm run build",
+      "resultado": "aprovado",
+      "observacao": "Compilação de produção, verificação de tipos, geração de páginas; aviso DEP0205 não impede a compilação."
+    },
+    {
+      "comando": "node scripts/verify-operational-layout.mjs",
+      "resultado": "aprovado",
+      "saida": "Integração de layout conferida: original como padrão, seletor e navegação operacional presentes."
+    },
+    {
+      "comando": "git diff --check",
+      "resultado": "aprovado"
+    }
+  ],
+  "tls_sem_envio_fiscal": [
+    {
+      "servidor": "nfe.sefaz.mt.gov.br",
+      "cadeia_validada": true,
+      "protocolo": "TLSv1.2",
+      "certificado_cliente_utilizado": false
+    },
+    {
+      "servidor": "nfe.svrs.rs.gov.br",
+      "cadeia_validada": true,
+      "protocolo": "TLSv1.2",
+      "certificado_cliente_utilizado": false
+    },
+    {
+      "servidor": "mdfe.svrs.rs.gov.br",
+      "cadeia_validada": true,
+      "protocolo": "TLSv1.2",
+      "certificado_cliente_utilizado": false
+    }
+  ],
+  "hashes_workspace": {
+    "app/admin/dados/page.tsx": "775b2a78e31cf474be6cad65999832595c5f68efa9c5149a3bbe1244ee46efa3",
+    "app/admin/saude-dados/page.tsx": "f8f51fc4dd35dc5cafaf318b14ffd8622d15d564a140bf3391d7fca0e09d5bec",
+    "app/api/asaas/webhook/route.ts": "ea3d616fd82e7d6e126b43200f95521d1e4517b38994d5d8d33e7942523711fd",
+    "app/api/campo/abastecimento-acao/route.ts": "8385ceb5ed5ab90899a09801718fc8e3d31c035e67ec9245177e6a21b8a7232c",
+    "app/api/compras/gerar-cp/route.ts": "54adf970a1b979096ae0571cdb6b2f6caf09874471f02cffd7799b0948006412",
+    "app/api/compras/nf-update/route.ts": "0f3c34f38e95e7e72305f303a2b123f2f8abed8761260f8c7d92e690022042d3",
+    "app/api/empresa-lancamentos/baixar/route.ts": "9005fc760f1d7fd8d8ae374ad1466fa328289161d8ec443dcd0190972c6007b7",
+    "app/api/financeiro/baixar/route.ts": "92102c287bf8ca974e2c1a27e62262561ece281a07df6c246fd8c4ec3925a334",
+    "app/api/financeiro/previsoes/route.ts": "133c16204f026ba7b9d17e213b20289aeb21e3c9eb54813872a45704e2c3d3d6",
+    "app/api/folha/salvar/route.ts": "3b52dea9b230e3c20ee324bad370e1dad409d49a15eb072373fecb2974491d45",
+    "app/empresas/folha/page.tsx": "f2f38d5a38e283360beca041165d55bfc350b66b0909fc2608efaf50efa705e9",
+    "app/empresas/pagar/page.tsx": "0892b27cc5d792b3b9c66e108c5812129d54467b6b5079cafe3f1d9615355016",
+    "app/empresas/receber/page.tsx": "b2a38c974311ac076430edb7b9219e0d93e723b6183e301a8d329eba611e4435",
+    "app/estoque/abastecimento/page.tsx": "2365793175c2bf0260bee6bc5f39207d1160a53a234c482c427e4288e393ff08",
+    "app/estoque/page.tsx": "2f5542cef055e13ccb6ab77fc8bf048da2e3f24d8a1d78e6526b978882af1d9e",
+    "app/financeiro/folha/page.tsx": "bf9919d92f6724d797194c670dcd3bb70ce7c564e42cd56eef57a537678daefa",
+    "app/financeiro/pagar/page.tsx": "ffce9d81ef112c83dc26f47e48e914e9f3c01c94f4f9d0b848fcdc30d748fd39",
+    "app/financeiro/previsoes/page.tsx": "f498853c1d982610ac984f67246c263f28081cbf7a5ff157c36ee8722891c00b",
+    "app/financeiro/receber/page.tsx": "5d0540fae6f0cfafee813cbff797baf37b212ff2b9de363e6f98ad2cb39dcb2f",
+    "app/financeiro/relatorios/page.tsx": "0590461faa2a794c44c831ed91b3c22b78814ad6ced5d88f07227b3777a40209",
+    "app/fiscal/documentos/page.tsx": "8aa64cf644c67ca03a986e5182932debfc17a63b07613893d7021a3ccc109b5a",
+    "app/fiscal/esocial/page.tsx": "27692b2ddcaca6ca7eafe758b8a57fbbdd850cbb2f65a0cae80ae08d3d097d69",
+    "app/theme-compat.css": "c7c7c72a2863beb6763c3c292156520f7a74c33aa65bee59ebd0c8774cd7a77b",
+    "components/BaixaEmpresaModal.tsx": "9e440b6ecb5ce532a99567175a46f5511449aa0b6bd18bfb4387ecccbc5d5911",
+    "components/ReprogramarEmpresaModal.tsx": "bc6c55da8e92aa964f85da0c711c3f5e070c575233f222edb69f10e02b5b8133",
+    "components/SiegManifestacao.tsx": "db3123d0cc603a13f6626d64c1f229d35a5348df7b3301540d5cf57bbeef00e6",
+    "lib/api-referencias.ts": "64a221384e0130f576493cdc0c6e0d3a85e2805db65d7932150f3584337521fe",
+    "lib/asaas.ts": "62df6fd433287242688cd8c8a88538540817649d5a460957915c5eba0e78010e",
+    "lib/auditoria/correcoes-regressao.test.mjs": "a88b167cb5e674fdcc94e1a16303cc52216eb562fed18d13dce53ac2bc14b0e1",
+    "lib/auditoria/saude/executar.ts": "b1420a5791f1e74b65792c9c536b4fed71f093904e402f58495a62b1ddf30bfd",
+    "lib/auditoria/saude/regras.ts": "0577fc700af7aebab81b6b25b8602b1ee84c7404ae1772522a80d8a901aeac77",
+    "lib/cte/transmitter.ts": "9c7205c173f5b29fbfe81578f01629777a77633c1d650fabd817b092827b6032",
+    "lib/db-util.ts": "a5e1ac4526313734c6d845fe39b8a1c84e8adb3225c348e271cd5541400a217c",
+    "lib/db.ts": "6e6d868aa838b3995d0a7cf6f9bdb012a65cb35d5ea11ab4b9ca23a24ff3fdf2",
+    "lib/financeiro/comando-server.ts": "9e681a11b61ca489d247682d0f8df9c8c1077298ae77c69b8a712833e58e77b2",
+    "lib/financeiro/cp-grid.test.ts": "3c2f3fc1fe7e0e6d577dce992178e0330d91fc0c4ee777dc76d71919836136c0",
+    "lib/financeiro/cp-grid.ts": "39075ee11188caa33e8cf4fed1a6ab750e378d23942eb32a0786149d39daf34c",
+    "lib/financeiro/integridade-sql.test.mjs": "ffdf39d55373d6912e865a1b8f9086589944e2fa7f58c9124bc3b6459c24bc1a",
+    "lib/financeiro/previsoes-server.ts": "a29adf39227ef1b9834dad851c45fd666e2ba2e647a7abcd6022d33a0e73a516",
+    "lib/financeiro/requisicao.ts": "b9ca5392d97c49ff126c6f0e1671705a7137bade1cb724adf8ae33c93817103c",
+    "lib/financeiro/titulos.test.ts": "2de5790df23c1240dad6c7beff9e84eb90fd6483b0fca7cbed0a8c1627fe4838",
+    "lib/financeiro/titulos.ts": "ff2e894c73e9c9247a3602b0f9645da67f3328bc2dedf3e99d299ee7e7627089",
+    "lib/folha/adiantamento-telas.test.ts": "cef54de4c60fe56add2397e3024861ee0758e383860235c5c5bce92e6cd2b704",
+    "lib/mdfe/transmitter.ts": "577150fd96e8203b363230123bedb96e7189d195d93c6d03eac49ab2bf754ac8",
+    "lib/nfe/transmitter.ts": "884fd18a555515fa3ecf71406b93670582168a4824777617108568c06c1cf68e",
+    "lib/original-interface.test.tsx": "e24fc8767ef765328e3e068bf35ddfeec60d141c8d493a177c889e72020d7e4f",
+    "lib/sieg.ts": "6db37240e72850103c5f51829b62735d2cef1e74341943d5ce1f30da676a771b",
+    "package.json": "5a5df66e9afad014d380a7d4d0b504ecbd6f6f1d37e4637a75b7f1d8b9dd3c5d",
+    "scripts/test-loader.mjs": "6ede14cc8953a917033f6448b9a93bf39342851cd65226f8d4310e9e5a560495",
+    "scripts/teste-funcoes.mjs": "e477ac8c80887e95b3d08f14426b0946aff913e367b53df3f1c6ac4a1bd3a122",
+    "supabase_migrations.sql": "d14f56df660d76512214f2412528787f9852f35d8c14e759a15f359fb1ebb86c"
+  },
+  "observacao_hashes": "Fotografia do workspace compartilhado; alguns arquivos já continham alterações de outras rotinas. A lista não atribui todas as alterações à auditoria.",
+  "aplicacao_schema": {
+    "secoes": [
+      434,
+      435,
+      436,
+      437,
+      438,
+      439
+    ],
+    "execucao_informada_pelo_usuario": true,
+    "conferencia_somente_leitura": true,
+    "data_conferencia_utc": "2026-11-11T21:22:41.144Z",
+    "catalogo_e_colunas_confirmados": true,
+    "evidencia": "schema-correcoes-aplicado.json",
+    "limite": "Catálogo PostgREST e disponibilidade das colunas; não executa funções financeiras, não testa gravações nem confirma o corpo SQL ou os índices."
+  }
+}

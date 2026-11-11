@@ -25,6 +25,7 @@ function tela(caminho: string, api: (body: any) => Promise<any>) {
     supabase:{auth:{getSession:async()=>({data:{session:{access_token:"token-falso"}}})}},
     fetch:async(_url: string,req: any)=>({ok:true,json:()=>api(JSON.parse(req.body))}),
   };
+  deps.fetchFinanceiro=deps.fetch;
   const executar=new Function(...Object.keys(deps),`${code};return salvarAdiantamento;`)(...Object.values(deps)) as ()=>Promise<void>;
   return {executar,estado,deps};
 }

@@ -1,3 +1,4 @@
+import { fetchComTimeout } from "./http";
 // Cliente Asaas — plataforma de pagamentos brasileira
 // Docs: https://docs.asaas.com
 // Env: ASAAS_API_KEY, ASAAS_ENV (sandbox | production)
@@ -14,15 +15,19 @@ function headers() {
   };
 }
 
+export class ErroAsaas extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; this.name = "ErroAsaas"; }
+}
 async function req<T>(method: string, path: string, body?: object): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchComTimeout(`${BASE_URL}${path}`, {
     method,
     headers: headers(),
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Asaas ${method} ${path} → ${res.status}: ${err}`);
+    throw new ErroAsaas(res.status, `Asaas ${method} ${path} → ${res.status}: ${err}`);
   }
   return res.json() as Promise<T>;
 }

@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import { assinaturaAusencia, confirmacaoAusencia, type DecisaoDivergencia } from "../../../lib/folha/divergencias";
 import { useOperationalPresentation } from "../../../components/arato-layout/presentation-mode";
 import folhaStyles from "./FolhaPagamento.module.css";
@@ -344,7 +345,7 @@ export default function FolhaPagamentoPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const tkn = session?.access_token ?? "";
 
-      const apiPost = (body: object) => fetch("/api/folha/salvar", {
+      const apiPost = (body: object) => fetchFinanceiro("/api/folha/salvar", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${tkn}` },
         body: JSON.stringify(body),
@@ -487,7 +488,7 @@ export default function FolhaPagamentoPage() {
       // Carregar itens existentes via API route (service_role — bypass RLS)
       const { data: { session } } = await supabase.auth.getSession();
       const tkn = session?.access_token ?? "";
-      const res = await fetch("/api/folha/salvar", {
+      const res = await fetchFinanceiro("/api/folha/salvar", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${tkn}` },
         body: JSON.stringify({ operacao: "listar_funcionarios_folha", folha_id: folha.id }),
@@ -654,7 +655,7 @@ export default function FolhaPagamentoPage() {
   async function apiFolha(body: Record<string, unknown>) {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? "";
-    const res = await fetch("/api/folha/salvar", {
+    const res = await fetchFinanceiro("/api/folha/salvar", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),

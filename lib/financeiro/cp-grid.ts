@@ -1,11 +1,12 @@
 import type { PagamentoLote } from "../supabase";
-import { resumoBordero } from "./saldo-bordero";
+import { resumoBordero } from "./saldo-bordero.ts";
 
 export type TituloGrid = {
   id: string; origem_tabela: string; lote_id: string | null;
   status_normalizado: string | null; data_vencimento: string | null;
   descricao: string | null; pessoa_nome: string | null; empresa_nome: string | null;
   nfe_numero: string | null;
+  valor_pago?: number | null;
 };
 export type FiltrosCP = {
   origens: Set<string>; status: Set<string>;
@@ -25,10 +26,12 @@ export function tituloVinculado(t: TituloGrid, vinculos: Set<string>) {
 function texto(v: unknown) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 }
-function corresponde(status: string, vencimento: string | null, nomes: unknown[], nfs: unknown[], f: FiltrosCP) {
+function corresponde(status: string, vencimento: string | null, nomes: unknown[], nfs: unknown[], f: FiltrosCP, valorPago = 0) {
   const vencido = (status === "em_aberto" || status === "vencido" || status === "parcial") && !!vencimento && vencimento < f.hoje;
+  // Um parcial tem duas posições: pagamento já baixado e saldo ainda em aberto.
+  const baixaParcial = status === "parcial" && valorPago > 0 && f.status.has("baixado");
   if (f.status.size && !f.status.has(status) && !(f.status.has("vencido") && vencido)
-      && !(f.status.has("em_aberto") && (status === "vencido" || status === "parcial"))) return false;
+      && !baixaParcial && !(f.status.has("em_aberto") && (status === "vencido" || status === "parcial"))) return false;
   if (f.de && (!vencimento || vencimento < f.de)) return false;
   if (f.ate && (!vencimento || vencimento > f.ate)) return false;
   if (f.nf?.trim() && !nfs.some(v => texto(v).includes(texto(f.nf!.trim())))) return false;
@@ -56,7 +59,7 @@ export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   if (t.status_normalizado === "cartao") return false;
   return (!f.origens.size || f.origens.has(t.origem_tabela)) && corresponde(
     t.status_normalizado ?? "", t.data_vencimento,
-    nomesDoTitulo(t), [t.nfe_numero], f);
+    nomesDoTitulo(t), [t.nfe_numero], f, t.valor_pago ?? 0);
 }
 export function itensDoBordero<T extends TituloGrid>(b: PagamentoLote, titulos: T[]) {
   const vinculos = vinculosBorderos([b]);
@@ -70,8 +73,9 @@ export function vencimentoBordero(b: PagamentoLote, titulos: TituloGrid[]) {
 export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: FiltrosCP) {
   if (f.origens.size && !(b.itens ?? []).some(i => f.origens.has(i.origem_tabela ?? "lancamentos"))) return false;
   const itens = itensDoBordero(b, titulos);
-  return corresponde(resumoBordero(b).status, vencimentoBordero(b, titulos),
-    itens.flatMap(nomesDoTitulo), itens.map(t => t.nfe_numero), f);
+  const resumo = resumoBordero(b);
+  return corresponde(resumo.status, vencimentoBordero(b, titulos),
+    itens.flatMap(nomesDoTitulo), itens.map(t => t.nfe_numero), f, resumo.liquidado);
 }
 
 // O número sequencial do lançamento e documentos de contratos não são números de NF.

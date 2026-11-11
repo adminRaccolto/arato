@@ -421,7 +421,7 @@ function FinanceiroRelatoriosInner() {
       // CP/CR de empresa antigos e nenhum dos lançados depois.
       Promise.all([
         Promise.all(fidsParaCarregar.map(fid => listarLancamentos(fid))).then(results => results.flat()),
-        listarEmpresaLancamentosComoLancamento(fidsParaCarregar).catch(() => [] as Lancamento[]),
+        listarEmpresaLancamentosComoLancamento(fidsParaCarregar),
       ]).then(([prod, empr]) => [...prod, ...empr]),
       listarOperacoesGerenciais(fazendaId),
       temApoio
@@ -437,7 +437,10 @@ function FinanceiroRelatoriosInner() {
       const ids = ((apoioRes as { data: { lancamento_id: string }[] | null }).data ?? []).map(b => b.lancamento_id);
       setApoioBaixasIds(new Set(ids));
       setApoioLancsAbertos((apoioLancsRes as { data: { id: string; tipo: string; descricao: string; valor: number; data_vencimento: string; categoria: string | null; pessoa_nome: string | null }[] | null }).data ?? []);
-    }).catch(() => {})
+    }).catch((e: unknown) => {
+      setLancamentos([]);
+      alert(`O relatório não foi carregado por completo: ${e instanceof Error ? e.message : String(e)}. Atualize a consulta.`);
+    })
       .finally(() => setCarregando(false));
     listarEmpresasDaConta(fazendaIds?.length ? fazendaIds : [fazendaId]).then(setEmpresas).catch(() => setEmpresas([]));
     Promise.all((fazendaIds?.length ? fazendaIds : [fazendaId]).map(f => listarContas(f).catch(() => [] as ContaBancaria[]))).then(r => setContas(r.flat())).catch(() => setContas([]));

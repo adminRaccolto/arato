@@ -137,6 +137,7 @@ export default function SaudeDadosPage() {
 
   const contasComAchado = useMemo(() => [...new Set(achados.map(a => a.conta_id).filter((c): c is string => !!c))].sort((a, b) => (contas[a] ?? "").localeCompare(contas[b] ?? "")), [achados, contas]);
   const ultima = execucoes[0];
+  const ultimoSucesso = execucoes.find(e => !e.erro);
   const btn: React.CSSProperties = { padding: "6px 12px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#1a1a1a" };
   const inp: React.CSSProperties = { padding: "6px 10px", borderRadius: 8, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff" };
 
@@ -155,6 +156,10 @@ export default function SaudeDadosPage() {
       </header>
 
       <main style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+        {ultima?.erro && <div role="alert" style={{ padding: 12, background: "#FFF4E5", color: "#7A4300", borderRadius: 8 }}>
+          A última conferência não foi concluída. Os achados não representam uma nova validação completa.
+          {ultimoSucesso ? ` Última execução concluída: ${fmtDt(ultimoSucesso.em)}.` : " Não há execução concluída no histórico carregado."}
+        </div>}
         {erro && <div style={{ padding: 10, background: "#FCEBEB", color: "#791F1F", borderRadius: 8 }}>{erro}</div>}
         {msg && <div style={{ padding: 10, background: "#E8F5E9", color: "#166534", borderRadius: 8 }}>{msg}</div>}
 

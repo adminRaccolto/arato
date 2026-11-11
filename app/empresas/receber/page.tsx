@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -155,7 +156,7 @@ export default function EmpresaReceberPage() {
   function abrirEditar(l: EmpresaLancamento) { setForm({ ...l }); setEditId(l.id); setMsg(""); setModalOpen(true); }
   async function reabrir(l: EmpresaLancamento) {
     if (!confirm("Reabrir este lançamento? Os dados de baixa (valor, data, encargos) serão apagados.")) return;
-    const r = await fetch("/api/empresa-lancamentos/baixar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "reabrir", lancamento_id: l.id }) });
+    const r = await fetchFinanceiro("/api/empresa-lancamentos/baixar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "reabrir", lancamento_id: l.id }) });
     const j = await r.json();
     if (!j.ok) { alert("Erro: " + j.error); return; }
     carregar();

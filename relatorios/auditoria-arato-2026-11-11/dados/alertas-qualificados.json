@@ -1,0 +1,41 @@
+{
+  "readonly": true,
+  "gerado_em": "2026-11-11T20:10:14.242Z",
+  "requests": 4,
+  "borderos": {
+    "itens": 59,
+    "lotes": 11,
+    "motivos": {
+      "titulo_em_outro_lote": 37,
+      "titulo_ausente": 16,
+      "titulo_sem_lote": 6
+    },
+    "statusCabecalhos": {
+      "pendente": 34,
+      "pago": 25
+    },
+    "statusTitulos": {
+      "baixado": 40,
+      "ausente": 16,
+      "vencido": 1,
+      "em_aberto": 2
+    }
+  },
+  "previsoesSaldoDivergente": {
+    "quantidade": 8,
+    "origens": {
+      "recorrencia": 6,
+      "folha": 2
+    },
+    "observacao": "Edição manual do título pode ser uma exceção autorizada; conferir a decisão antes de corrigir."
+  },
+  "alertasBaixa": {
+    "quantidade": 34,
+    "diferencasAteUmReal": 6,
+    "diferencasAcimaUmReal": 28,
+    "moedas": {
+      "BRL": 34
+    },
+    "nota": "Diferença aritmética bruta da regra; confirmar encargos, câmbio e histórico."
+  }
+}

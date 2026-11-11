@@ -679,7 +679,7 @@ export default function Estoque() {
       return;
     }
     await criarMovimentacaoManual(
-      fazAtiva!, fMov.insumo_id, fMov.tipo, fMov.motivo,
+      depositos.find(d => d.id === fMov.deposito_id)?.fazenda_id || fazAtiva!, fMov.insumo_id, fMov.tipo, fMov.motivo,
       qtd, fMov.deposito_id || undefined, fMov.data, fMov.observacao || undefined,
       fMov.tipo === "ajuste" ? qtdNova : undefined,
       nomeUsuario ?? undefined,
@@ -2518,6 +2518,9 @@ export default function Estoque() {
       {/* Modal Movimentação Manual */}
       {modalMov && (() => {
         const ins = insumos.find(x => x.id === fMov.insumo_id);
+        const fazMov = depositos.find(d => d.id === fMov.deposito_id)?.fazenda_id || fazAtiva;
+        const saldoLocal = movsRel.filter(m => m.insumo_id === fMov.insumo_id && m.fazenda_id === fazMov
+          && (m.deposito_id || "") === fMov.deposito_id).reduce((total, m) => total + (m.tipo === "saida" ? -1 : 1) * Number(m.quantidade), 0);
         const isAjuste = fMov.tipo === "ajuste";
         const obsObrig = isAjuste && !fMov.observacao.trim();
         const canSave = !salvando && !!fMov.insumo_id && !!fMov.data && !obsObrig && (fMov.tipo !== "transferencia" || (!!fMov.deposito_id && !!fMov.deposito_destino_id));
@@ -2651,21 +2654,21 @@ export default function Estoque() {
             )}
             {ins && !isAjuste && fMov.tipo !== "transferencia" && (
               <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", padding: "8px 12px", borderRadius: 7 }}>
-                Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
+                Saldo no local selecionado: <strong>{fmtNum(saldoLocal)} {ins.unidade}</strong>
                 {" → "}
                 <strong style={{ color: fMov.tipo === "entrada" ? "#111111" : "#E24B4A" }}>
-                  {fmtNum(ins.estoque + (fMov.tipo === "entrada" ? 1 : -1) * (parseFloat(fMov.quantidade)||0))} {ins.unidade}
+                  {fmtNum(saldoLocal + (fMov.tipo === "entrada" ? 1 : -1) * (parseFloat(fMov.quantidade)||0))} {ins.unidade}
                 </strong>
               </div>
             )}
             {ins && isAjuste && (
               <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "#FBF3E0", border: "0.5px solid #E8C97A", padding: "10px 14px", borderRadius: 7 }}>
-                Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
+                Saldo no local selecionado: <strong>{fmtNum(saldoLocal)} {ins.unidade}</strong>
                 {" → "}
                 <strong style={{ color: "#C9921B" }}>{fmtNum(parseFloat(fMov.quantidade_nova)||0)} {ins.unidade}</strong>
                 {" · delta: "}
-                <strong style={{ color: (parseFloat(fMov.quantidade_nova)||0) >= ins.estoque ? "#111111" : "#E24B4A" }}>
-                  {((parseFloat(fMov.quantidade_nova)||0) >= ins.estoque ? "+" : "")}{((parseFloat(fMov.quantidade_nova)||0) - ins.estoque).toFixed(3)} {ins.unidade}
+                <strong style={{ color: (parseFloat(fMov.quantidade_nova)||0) >= saldoLocal ? "#111111" : "#E24B4A" }}>
+                  {((parseFloat(fMov.quantidade_nova)||0) >= saldoLocal ? "+" : "")}{((parseFloat(fMov.quantidade_nova)||0) - saldoLocal).toFixed(3)} {ins.unidade}
                 </strong>
               </div>
             )}

@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../lib/financeiro/requisicao";
 import { hojeLocal } from "../lib/data-local";
 import SelectField from "./SelectField";
 import InputData from "../components/InputData";
@@ -53,7 +54,7 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
     if (parcial && !novaData) { setErro("Baixa parcial: informe a nova data de vencimento do saldo."); return; }
     setSaving(true);
     try {
-      const r = await fetch("/api/empresa-lancamentos/baixar", {
+      const r = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "baixar", lancamento_id: lanc.id, valor_pago_agora: valorPago, data_baixa: data,

@@ -1,0 +1,43 @@
+{
+  "gerado_em": "2026-11-11T20:09:33.664Z",
+  "head": "de9b59d711be278444e2a445449358d8ca008e82",
+  "applicationFiles": 643,
+  "routes": 181,
+  "pages": 148,
+  "testsDiscovered": 118,
+  "testsConfigured": 104,
+  "testsOutsideCommand": [
+    "lib/layout-preferences.test.ts",
+    "lib/appearance.test.ts",
+    "lib/nfe/builder-cst.test.ts",
+    "lib/nfe/destinatario-transferencia.test.ts",
+    "lib/original-interface.test.tsx",
+    "lib/grid-pagination.test.ts",
+    "lib/antt/validacao.test.ts",
+    "lib/antt/contexto.test.ts",
+    "lib/antt/gerador.test.ts",
+    "lib/antt/ciot.test.ts",
+    "lib/mdfe/builder.test.ts",
+    "lib/financeiro/vincular-bordero.test.ts",
+    "lib/fiscal/sieg-sincronizacao.test.ts",
+    "app/financeiro/folha/proposta/modelo.test.ts"
+  ],
+  "queries": 3911,
+  "writes": 1535,
+  "ignoredWriteResults": 604,
+  "unboundedReadCandidates": 1069,
+  "routesWithoutAuthSignal": [
+    "app/api/financeiro/ptax/route.ts",
+    "app/api/version/route.ts",
+    "app/api/public/precos-planos/route.ts",
+    "app/api/precos/route.ts"
+  ],
+  "signals": {
+    "fetchWithoutAbort": 120,
+    "modulePermission": 35,
+    "swallowedEmpty": 19,
+    "calendarViaUtc": 54,
+    "disabledTls": 1
+  },
+  "note": "Os sinais são candidatos estáticos: precisam de revisão/reprodução; a ausência de sinal não prova ausência de proteção."
+}

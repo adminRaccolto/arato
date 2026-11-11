@@ -1,0 +1,61 @@
+{
+  "gerado_em": "2026-11-11T20:15:55.633Z",
+  "head_inicio": "6351a0654ff2821def5d8b5aed60748e1eefbed6",
+  "head_final": "22270434fb6c170909f2d8ce02698c03385c6704",
+  "node": "v26.7.0",
+  "testes": {
+    "suite": {
+      "tests": 639,
+      "pass": 639,
+      "fail": 0,
+      "log": "/tmp/arato-audit-suite-final.log",
+      "termino": "2026-11-11T20:10:56.893Z"
+    },
+    "extra": {
+      "tests": 83,
+      "pass": 80,
+      "fail": 3,
+      "log": "/tmp/arato-audit-extra-tests-final.log",
+      "termino": "2026-11-11T20:10:53.426Z"
+    },
+    "laboratorio": {
+      "tests": 29,
+      "pass": 29,
+      "fail": 0,
+      "log": "/tmp/arato-audit-repro-final.log",
+      "termino": "2026-11-11T20:07:59.803Z"
+    },
+    "componentes": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "log": "/tmp/arato-audit-componentes.log",
+      "termino": "2026-11-11T20:07:59.709Z"
+    }
+  },
+  "compilacao": {
+    "ok": true,
+    "log": "/tmp/arato-audit-build-final.log",
+    "termino": "2026-11-11T20:11:56.332Z"
+  },
+  "notas": [
+    "Workspace compartilhado recebeu commits e alterações externas durante a análise.",
+    "27 cenários de defeitos reproduzidos não são 27 causas independentes.",
+    "Testes de componentes são renderização, sem percurso completo no navegador.",
+    "Produção consultada apenas em leitura; integrações não transmitidas.",
+    "As três falhas extras são testes antigos invocando diretamente componentes que agora usam hooks."
+  ],
+  "lint": {
+    "arquivos": 766,
+    "erros": 511,
+    "avisos": 563,
+    "nota": "Coleta de lint anterior a mudanças simultâneas; não equivale a falhas funcionais."
+  },
+  "conferencia_entrega": {
+    "tests": 32,
+    "pass": 32,
+    "fail": 0,
+    "log": "/tmp/arato-audit-verificacao-entrega.log",
+    "nota": "27 reproduções + 2 testes SQL + 3 renderizações, executados em conjunto com o carregador documentado."
+  }
+}

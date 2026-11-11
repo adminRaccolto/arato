@@ -1,0 +1,64 @@
+{
+  "gerado_em": "2026-11-11T19:55:12.056Z",
+  "readonly": true,
+  "requests": 67,
+  "duracao_ms": 13628,
+  "contagem": {
+    "lanc": 20091,
+    "relLanc": 20091,
+    "emp": 683,
+    "relEmp": 683
+  },
+  "historicoExclusoesVerificado": false,
+  "motivoHistorico": "Consulta original do auditor abortou por statement timeout; regras históricas não avaliadas nesta execução.",
+  "volumes": {
+    "nfs": 6437,
+    "nfse": 540,
+    "titulos": 20774,
+    "movs": 2676,
+    "espelhoPj": 683
+  },
+  "regras": {
+    "nf_sem_titulo": {
+      "nome": "NF processada sem título",
+      "quantidade": 20,
+      "valor_bruto": 235483.35
+    },
+    "guia_como_nfse": {
+      "nome": "Guia lançada como NFS-e",
+      "quantidade": 8,
+      "valor_bruto": 10283.12
+    },
+    "nfse_sem_titulo": {
+      "nome": "NFS-e processada sem título",
+      "quantidade": 1,
+      "valor_bruto": 7241
+    },
+    "estoque_negativo": {
+      "nome": "Estoque negativo na fazenda/depósito",
+      "quantidade": 179,
+      "valor_bruto": 0
+    },
+    "nf_chave_repetida": {
+      "nome": "NF com a mesma chave mais de uma vez",
+      "quantidade": 2,
+      "valor_bruto": 172016.79
+    },
+    "baixa_acima_valor": {
+      "nome": "Pago acima do valor do título",
+      "quantidade": 34,
+      "valor_bruto": 1151024
+    },
+    "titulo_em_nf_pendente": {
+      "nome": "Título ligado a NF pendente",
+      "quantidade": 1,
+      "valor_bruto": 80540
+    },
+    "status_inconsistente": {
+      "nome": "Pago mas com status em aberto",
+      "quantidade": 1,
+      "valor_bruto": 515816.67
+    }
+  },
+  "nota": "Achados das regras existentes exigem conferência: não representam automaticamente perdas, débitos ou fraude; podem conter sobreposição e falsos positivos."
+}

@@ -19406,7 +19406,7 @@ NOTIFY pgrst, 'reload schema';
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 BEGIN;
 INSERT INTO operacoes_fiscais (
-  fazenda_id, nome, descricao, grupo, cfop_interno, cfop_externo,
+  fazenda_id, nome, descricao, cfop_interno, cfop_externo,
   icms_cst_interno, icms_cst_externo, icms_aliq, icms_base_reduzida_pct,
   pis_cst, pis_aliq, cofins_cst, cofins_aliq,
   ibs_cbs_imune, ibs_cbs_reducao_pct, inf_cpl_template, ativa
@@ -19415,7 +19415,7 @@ SELECT
   f.id,
   'Devolução de Bem do Ativo Imobilizado de Terceiro',
   'Devolução de bem do ativo imobilizado de terceiro, recebido para uso no estabelecimento. CFOP 5555 (interno) / 6555 (interestadual). Referencie a NF-e de origem; não é devolução de compra de material de uso ou consumo.',
-  'Devoluções', '5555', '6555',
+  '5555', '6555',
   '041', '041', 0, 100,
   '08', 0, '08', 0,
   false, 100,
@@ -21244,3 +21244,749 @@ END $$;
 REVOKE ALL ON FUNCTION fn_limpar_dados(uuid, uuid[], boolean, text[], jsonb, boolean) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION fn_limpar_dados(uuid, uuid[], boolean, text[], jsonb, boolean) TO service_role;
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 434 — Comandos financeiros com transação, idempotência e referências do mesmo cliente
+-- Aplicar inteira antes de publicar. Não recalcula nem altera pagamentos históricos.
+BEGIN;
+CREATE TABLE IF NOT EXISTS financeiro_operacoes (
+ requisicao_id uuid PRIMARY KEY, tabela text NOT NULL, registro_id uuid NOT NULL, acao text NOT NULL,
+ dados jsonb NOT NULL, antes jsonb NOT NULL, depois jsonb NOT NULL, retorno jsonb NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE financeiro_operacoes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON financeiro_operacoes FROM PUBLIC,anon,authenticated;
+GRANT SELECT,INSERT ON financeiro_operacoes TO service_role;
+
+CREATE OR REPLACE FUNCTION public.financeiro_validar_referencias(p_fazenda uuid,p_dados jsonb) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_conta uuid; v_ref jsonb; v_id uuid; v_tabela text; v_reg jsonb; v_outro uuid;
+BEGIN
+ SELECT conta_id INTO v_conta FROM fazendas WHERE id=p_fazenda;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Fazenda da operação não encontrada.'; END IF;
+ FOR v_ref IN SELECT value FROM jsonb_array_elements('[
+  ["pessoa_id","pessoas"],["fornecedor_id","pessoas"],["operacao_gerencial_id","operacoes_gerenciais"],
+  ["centro_custo_id","centros_custo"],["ano_safra_id","anos_safra"],["ciclo_id","ciclos"],
+  ["produtor_id","produtores"],["empresa_id","empresas"],["conta_bancaria","contas_bancarias"],
+  ["maquina_id","maquinas"],["veiculo_id","veiculos"],["funcionario_id","funcionarios"]]'::jsonb) LOOP
+  v_id:=nullif(p_dados->>(v_ref->>0),'')::uuid;
+  IF v_id IS NULL THEN CONTINUE; END IF;
+  v_tabela:=v_ref->>1;
+  EXECUTE format('SELECT to_jsonb(t) FROM %I t WHERE id=$1',v_tabela) INTO v_reg USING v_id;
+  IF v_reg IS NULL THEN RAISE EXCEPTION 'Referência da operação não encontrada (%).',v_ref->>0; END IF;
+  IF v_reg->>'fazenda_id'=p_fazenda::text OR (v_conta IS NOT NULL AND v_reg->>'conta_id'=v_conta::text) THEN CONTINUE; END IF;
+  IF v_tabela='operacoes_gerenciais' AND v_reg->>'fazenda_id' IS NULL AND v_reg->>'conta_id' IS NULL THEN CONTINUE; END IF;
+  SELECT conta_id INTO v_outro FROM fazendas WHERE id=nullif(v_reg->>'fazenda_id','')::uuid;
+  IF v_conta IS NULL OR v_outro IS DISTINCT FROM v_conta THEN RAISE EXCEPTION 'Referência da operação pertence a outro cliente (%).',v_ref->>0; END IF;
+ END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.financeiro_comando_titulo(p_tabela text,p_id uuid,p_acao text,p_dados jsonb,p_requisicao uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_antes jsonb; v_depois jsonb; v_patch jsonb; v_cols text; v_ret jsonb; v_op financeiro_operacoes%ROWTYPE;
+ v_fazenda uuid; v_cot numeric; v_base numeric; v_pago numeric; v_agora numeric; v_juros numeric; v_multa numeric;
+ v_desc numeric; v_principal numeric; v_status text; v_data date; v_chave text; v_val numeric;
+BEGIN
+ IF p_tabela NOT IN ('lancamentos','empresa_lancamentos') OR p_acao NOT IN ('baixar','reabrir','reprogramar')
+   OR p_requisicao IS NULL OR p_id IS NULL OR jsonb_typeof(p_dados)<>'object' THEN RAISE EXCEPTION 'Comando financeiro inválido.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+ SELECT * INTO v_op FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+  IF v_op.tabela<>p_tabela OR v_op.registro_id<>p_id OR v_op.acao<>p_acao OR v_op.dados<>p_dados THEN RAISE EXCEPTION 'Identificação de operação já utilizada com outros dados.'; END IF;
+  RETURN v_op.retorno||jsonb_build_object('repetido',true);
+ END IF;
+ EXECUTE format('SELECT to_jsonb(t) FROM %I t WHERE id=$1 FOR UPDATE',p_tabela) INTO v_antes USING p_id;
+ IF v_antes IS NULL THEN RAISE EXCEPTION 'Título não encontrado.'; END IF;
+ v_fazenda:=(v_antes->>'fazenda_id')::uuid;
+ PERFORM public.financeiro_validar_referencias(v_fazenda,p_dados);
+ IF v_antes->>'lote_id' IS NOT NULL OR EXISTS(SELECT 1 FROM pagamento_lote_itens i JOIN pagamento_lotes l ON l.id=i.lote_id
+   WHERE i.lancamento_id=p_id AND coalesce(i.origem_tabela,'lancamentos')=p_tabela AND l.status IN ('pendente','pago')) THEN
+  RAISE EXCEPTION 'Título pertence a borderô. Use a baixa ou o estorno do borderô.';
+ END IF;
+ IF v_antes->>'status' IN ('cancelado','cartao') OR v_antes->>'fatura_cartao_id' IS NOT NULL THEN RAISE EXCEPTION 'Título indisponível para esta operação.'; END IF;
+ IF p_acao<>'reabrir' AND v_antes->>'status' IN ('baixado','pago') THEN RAISE EXCEPTION 'Título já está pago. Atualize a lista.'; END IF;
+ IF p_tabela='lancamentos' AND EXISTS(SELECT 1 FROM adiantamentos_fornecedor a WHERE a.status<>'cancelado'
+   AND (a.lancamento_id=p_id OR a.lancamento_id=nullif(v_antes->>'titulo_origem_id','')::uuid)) THEN
+  RAISE EXCEPTION 'Pague ou regularize este adiantamento em Financeiro → Adiantamentos.';
+ END IF;
+ IF p_acao='reabrir' THEN
+  IF v_antes->>'status' NOT IN ('baixado','pago','parcial') THEN RAISE EXCEPTION 'O título não tem baixa para estornar.'; END IF;
+  -- Desfaz o vínculo agrupado inteiro: as outras partes voltam à conferência, sem FK PF/PJ inválida.
+  UPDATE extrato_transacoes SET conciliado=false,lancamento_id=NULL,lancamento_ids=NULL,lancamento_desc=NULL,
+   lancamento_valor=NULL,origem_vinculo=NULL,confianca=NULL,regra_id=NULL,updated_at=now()
+   WHERE lancamento_id=p_id OR p_id=ANY(coalesce(lancamento_ids,'{}'::uuid[]));
+  v_status:=CASE WHEN p_tabela='empresa_lancamentos' THEN 'pendente'
+    WHEN nullif(v_antes->>'data_vencimento','')::date < (now() AT TIME ZONE 'America/Cuiaba')::date THEN 'vencido' ELSE 'em_aberto' END;
+  v_patch:=jsonb_build_object('status',v_status,'valor_pago',NULL,'valor_multa',NULL,'valor_juros',NULL,'valor_desconto',NULL,
+   'conta_bancaria',NULL,'conciliado',false,CASE WHEN p_tabela='lancamentos' THEN 'data_baixa' ELSE 'data_pagamento' END,NULL);
+ ELSIF p_acao='reprogramar' THEN
+  IF coalesce((v_antes->>'valor_pago')::numeric,0)>0 OR coalesce((v_antes->>'conciliado')::boolean,false) THEN RAISE EXCEPTION 'Reprograme somente o saldo em aberto, sem baixa ou conciliação.'; END IF;
+  v_data:=nullif(p_dados->>'nova_data','')::date;
+  IF v_data IS NULL THEN RAISE EXCEPTION 'Informe a nova data de vencimento.'; END IF;
+  v_patch:=jsonb_build_object('data_vencimento',v_data,'data_prorrogacao',coalesce(v_antes->>'data_prorrogacao',v_antes->>'data_vencimento'),
+   'observacao',concat_ws(' | ',nullif(v_antes->>'observacao',''),'[Reprogramado para '||to_char(v_data,'DD/MM/YYYY')||']'||coalesce(' '||nullif(p_dados->>'observacao',''),'')));
+  IF p_dados ? 'novo_valor' AND p_dados->>'novo_valor' IS NOT NULL THEN
+   v_val:=(p_dados->>'novo_valor')::numeric;
+   IF v_val<=0 OR v_val::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Valor inválido.'; END IF;
+   v_patch:=v_patch||jsonb_build_object('valor',round(v_val,2));
+  END IF;
+ ELSE
+  IF coalesce(v_antes->>'natureza','real')='previsao' THEN RAISE EXCEPTION 'Efetive a previsão na rotina de origem antes de baixar.'; END IF;
+  IF coalesce(v_antes->>'moeda','BRL') NOT IN ('BRL','USD','barter') THEN RAISE EXCEPTION 'Moeda do título inválida.'; END IF;
+  v_data:=nullif(p_dados->>'data_baixa','')::date;
+  IF v_data IS NULL THEN RAISE EXCEPTION 'Informe a data da baixa.'; END IF;
+  v_cot:=CASE WHEN v_antes->>'moeda'='USD' THEN coalesce(nullif(p_dados->>'cotacao_usd','')::numeric,(v_antes->>'cotacao_usd')::numeric) ELSE 1 END;
+  IF v_cot IS NULL OR v_cot<=0 OR v_cot::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Informe a cotação do pagamento em dólar.'; END IF;
+  v_base:=round((v_antes->>'valor')::numeric*v_cot,2);
+  v_agora:=round(coalesce((p_dados->>'valor_pago_agora')::numeric,0),2);
+  v_juros:=coalesce((p_dados->>'juros_valor')::numeric,(v_antes->>'valor_juros')::numeric,0);
+  v_multa:=coalesce((p_dados->>'multa_valor')::numeric,(v_antes->>'valor_multa')::numeric,0);
+  v_desc:=coalesce((p_dados->>'desconto_valor')::numeric,(v_antes->>'valor_desconto')::numeric,0);
+  IF coalesce((v_antes->>'valor_pago')::numeric,0)>0 THEN
+   -- Parcial legado ainda acumulado: conserva os encargos/descontos dos pagamentos anteriores.
+   v_juros:=coalesce((v_antes->>'valor_juros')::numeric,0)+coalesce((p_dados->>'juros_valor')::numeric,0);
+   v_multa:=coalesce((v_antes->>'valor_multa')::numeric,0)+coalesce((p_dados->>'multa_valor')::numeric,0);
+   v_desc:=coalesce((v_antes->>'valor_desconto')::numeric,0)+coalesce((p_dados->>'desconto_valor')::numeric,0);
+  END IF;
+  FOREACH v_val IN ARRAY ARRAY[v_base,v_agora,v_juros,v_multa,v_desc] LOOP
+   IF v_val::text IN ('NaN','Infinity','-Infinity') OR v_val<0 THEN RAISE EXCEPTION 'Informe valores finitos e não negativos.'; END IF;
+  END LOOP;
+  IF v_agora=0 AND v_desc=0 THEN RAISE EXCEPTION 'Informe o valor pago.'; END IF;
+  IF v_agora>0 AND v_antes->>'moeda' IS DISTINCT FROM 'barter' AND nullif(p_dados->>'conta_bancaria','') IS NULL THEN RAISE EXCEPTION 'Selecione a conta bancária da baixa.'; END IF;
+  IF v_agora>0 AND v_antes->>'moeda' IS DISTINCT FROM 'barter' AND NOT EXISTS(SELECT 1 FROM contas_bancarias WHERE id=(p_dados->>'conta_bancaria')::uuid AND ativa IS DISTINCT FROM false AND coalesce(moeda,'BRL')='BRL') THEN RAISE EXCEPTION 'Selecione uma conta bancária ativa em reais.'; END IF;
+  v_pago:=round(coalesce((v_antes->>'valor_pago')::numeric,0)+v_agora,2);
+  v_principal:=round(v_pago-v_juros-v_multa+v_desc,2);
+  IF v_agora=0 AND v_principal<v_base-0.01 THEN RAISE EXCEPTION 'Desconto sem pagamento deve quitar o saldo integral.'; END IF;
+  IF v_antes->>'moeda'='USD' AND coalesce((v_antes->>'valor_pago')::numeric,0)>0 AND v_cot IS DISTINCT FROM (v_antes->>'cotacao_usd')::numeric THEN RAISE EXCEPTION 'Baixa parcial antiga em dólar: separe o saldo preservando a cotação histórica antes de informar outra cotação.'; END IF;
+  IF v_principal<=0 OR v_principal>v_base+0.011 OR v_desc>v_base THEN RAISE EXCEPTION 'Valor incompatível com o saldo, juros, multa ou desconto do título.'; END IF;
+  v_status:=CASE WHEN v_principal>=v_base-0.01 THEN CASE WHEN p_tabela='lancamentos' THEN 'baixado' ELSE 'pago' END ELSE 'parcial' END;
+  v_patch:=jsonb_build_object('status',v_status,'valor_pago',v_pago,'valor_juros',nullif(v_juros,0),'valor_multa',nullif(v_multa,0),
+   'valor_desconto',nullif(v_desc,0),'conta_bancaria',nullif(p_dados->>'conta_bancaria',''),'conciliado',false,
+   CASE WHEN p_tabela='lancamentos' THEN 'data_baixa' ELSE 'data_pagamento' END,v_data);
+  IF v_antes->>'moeda'='USD' THEN v_patch:=v_patch||jsonb_build_object('cotacao_usd',v_cot); END IF;
+  FOREACH v_chave IN ARRAY ARRAY['pessoa_id','operacao_gerencial_id','ano_safra_id','ciclo_id','observacao','forma_pagamento'] LOOP
+   IF nullif(trim(p_dados->>v_chave),'') IS NOT NULL THEN v_patch:=v_patch||jsonb_build_object(v_chave,p_dados->v_chave); END IF;
+  END LOOP;
+  IF v_status='parcial' AND nullif(p_dados->>'nova_data_vencimento','') IS NOT NULL THEN
+   IF coalesce((v_antes->>'valor_pago')::numeric,0)=0 THEN v_patch:=v_patch||jsonb_build_object('vencimento_saldo',(p_dados->>'nova_data_vencimento')::date);
+   ELSE v_patch:=v_patch||jsonb_build_object('data_vencimento',(p_dados->>'nova_data_vencimento')::date); END IF;
+  END IF;
+ END IF;
+ SELECT string_agg(quote_ident(key),',') INTO v_cols FROM jsonb_object_keys(v_patch) AS x(key);
+ EXECUTE format('UPDATE %1$I SET (%2$s)=(SELECT %2$s FROM jsonb_populate_record(NULL::%1$I,$1)) WHERE id=$2 RETURNING to_jsonb(%1$I)',p_tabela,v_cols)
+   INTO v_depois USING v_patch,p_id;
+ IF v_depois IS NULL THEN RAISE EXCEPTION 'Título não foi atualizado.'; END IF;
+ IF p_tabela='lancamentos' THEN
+  UPDATE parcelas_pagamento SET status=CASE WHEN p_acao<>'reabrir' AND v_status='baixado' THEN 'pago' WHEN data_vencimento<(now() AT TIME ZONE 'America/Cuiaba')::date THEN 'vencido' ELSE 'em_aberto' END,
+   data_pagamento=CASE WHEN p_acao='reabrir' THEN NULL ELSE v_data END
+   WHERE lancamento_id=p_id;
+  IF v_antes->>'contrato_financeiro_id' IS NOT NULL AND v_antes->>'data_vencimento' IS NOT NULL THEN
+   UPDATE parcelas_pagamento SET status=CASE WHEN p_acao<>'reabrir' AND v_status='baixado' THEN 'pago' WHEN data_vencimento<(now() AT TIME ZONE 'America/Cuiaba')::date THEN 'vencido' ELSE 'em_aberto' END,
+    data_pagamento=CASE WHEN p_acao='reabrir' THEN NULL ELSE v_data END
+    WHERE contrato_id=(v_antes->>'contrato_financeiro_id')::uuid AND data_vencimento=(v_antes->>'data_vencimento')::date
+     AND (lancamento_id IS NULL OR lancamento_id=p_id) AND (p_acao='reabrir' OR status<>'pago');
+  END IF;
+ END IF;
+ v_ret:=jsonb_build_object('ok',true,'novo_status',v_depois->>'status','novo_total',coalesce((v_depois->>'valor_pago')::numeric,0),
+  'novo_valor',(v_depois->>'valor')::numeric,'requisicao_id',p_requisicao);
+ INSERT INTO financeiro_operacoes VALUES(p_requisicao,p_tabela,p_id,p_acao,p_dados,v_antes,v_depois,v_ret,clock_timestamp());
+ RETURN v_ret;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.financeiro_validar_referencias(uuid,jsonb),public.financeiro_comando_titulo(text,uuid,text,jsonb,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.financeiro_validar_referencias(uuid,jsonb),public.financeiro_comando_titulo(text,uuid,text,jsonb,uuid) TO service_role;
+CREATE OR REPLACE FUNCTION fn_dividir_titulo_parcial() RETURNS trigger AS $$
+DECLARE
+  j_new jsonb := to_jsonb(NEW);
+  j_old jsonb := to_jsonb(OLD);
+  v_pago_status text := CASE WHEN TG_TABLE_NAME = 'lancamentos' THEN 'baixado' ELSE 'pago' END;
+  v_aberto_status text := CASE WHEN TG_TABLE_NAME = 'lancamentos' THEN 'em_aberto' ELSE 'pendente' END;
+  v_valor numeric := COALESCE((j_new->>'valor')::numeric, 0);
+  v_pago numeric := COALESCE((j_new->>'valor_pago')::numeric, 0);
+  v_desc numeric := GREATEST(COALESCE((j_new->>'valor_desconto')::numeric, 0), 0);
+  v_saldo numeric;
+  v_venc date;
+  v_cols text;
+BEGIN
+  IF j_new->>'status' IS DISTINCT FROM 'parcial' OR j_new->>'tipo' IS DISTINCT FROM 'pagar'
+     OR COALESCE(j_new->>'moeda', 'BRL') <> 'BRL' OR j_new->>'lote_id' IS NOT NULL
+     OR j_new->>'contrato_financeiro_id' IS NOT NULL
+     OR COALESCE((j_old->>'valor_pago')::numeric, 0) > 0.005   -- parcial antigo: segue até o script dividir
+     OR v_pago <= 0.005 THEN
+    RETURN NEW;
+  END IF;
+  v_saldo := round(v_valor - v_pago + COALESCE((j_new->>'valor_juros')::numeric,0) + COALESCE((j_new->>'valor_multa')::numeric,0) - v_desc, 2);
+  IF v_saldo <= 0.005 THEN RETURN NEW; END IF;
+  v_venc := COALESCE((j_new->>'vencimento_saldo')::date, (j_new->>'data_vencimento')::date);
+
+  -- Título novo com o saldo (copia tudo, menos o que é do pagamento)
+  SELECT string_agg(quote_ident(column_name), ',' ORDER BY ordinal_position) INTO v_cols
+    FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = TG_TABLE_NAME
+     AND column_name NOT IN ('id', 'created_at') AND is_identity = 'NO' AND is_generated = 'NEVER';
+  EXECUTE format('INSERT INTO %I (%s) SELECT %s FROM jsonb_populate_record(NULL::%I, $1)', TG_TABLE_NAME, v_cols, v_cols, TG_TABLE_NAME)
+    USING j_new || jsonb_build_object(
+      'valor', v_saldo, 'valor_pago', NULL, 'status', v_aberto_status, 'conciliado', false,
+      'valor_multa', NULL, 'valor_juros', NULL, 'valor_desconto', NULL,
+      'data_baixa', NULL, 'data_pagamento', NULL, 'conta_bancaria', NULL, 'conta_bancaria_id', NULL,
+      'previsao_gasto_id', NULL, 'fatura_cartao_id', NULL, 'lote_id', NULL,
+      'data_vencimento', v_venc,
+      'data_prorrogacao', CASE WHEN v_venc IS DISTINCT FROM (j_new->>'data_vencimento')::date
+                               THEN COALESCE(j_new->>'data_prorrogacao', j_new->>'data_vencimento') ELSE j_new->>'data_prorrogacao' END,
+      'titulo_origem_id', COALESCE(j_new->>'titulo_origem_id', j_new->>'id'),
+      'valor_titulo_origem', COALESCE((j_new->>'valor_titulo_origem')::numeric, (j_old->>'valor')::numeric),
+      'pagamento_parcial', false, 'vencimento_saldo', NULL);
+
+  -- Este título vira a parte paga
+  NEW.valor := round(v_valor - v_saldo, 2);
+  NEW.status := v_pago_status;
+  NEW.pagamento_parcial := true;
+  NEW.titulo_origem_id := COALESCE(NEW.titulo_origem_id, NEW.id);
+  NEW.valor_titulo_origem := COALESCE(NEW.valor_titulo_origem, OLD.valor);
+  NEW.vencimento_saldo := NULL;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+
+CREATE OR REPLACE FUNCTION public.compras_gerar_financeiro_atomico(p_pedido uuid,p_dados jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE p pedidos_compra%ROWTYPE; l lancamentos%ROWTYPE; v_valor numeric; v_id uuid; v_n integer;
+BEGIN
+ SELECT * INTO p FROM pedidos_compra WHERE id=p_pedido FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Pedido não encontrado.'; END IF;
+ IF p.status<>'aprovado' THEN RAISE EXCEPTION 'Pedido não está aprovado.'; END IF;
+ IF nullif(p_dados->>'fazenda_id','')::uuid IS DISTINCT FROM p.fazenda_id THEN RAISE EXCEPTION 'A fazenda informada não corresponde ao pedido.'; END IF;
+ IF nullif(p_dados->>'fornecedor_id','')::uuid IS DISTINCT FROM p.fornecedor_id THEN RAISE EXCEPTION 'O fornecedor informado não corresponde ao pedido.'; END IF;
+ PERFORM financeiro_validar_referencias(p.fazenda_id,p_dados||jsonb_build_object('operacao_gerencial_id',p.operacao));
+ IF coalesce(p_dados->>'moeda','') NOT IN ('BRL','USD') THEN RAISE EXCEPTION 'Moeda do pedido inválida.'; END IF;
+ IF p_dados->>'moeda'='USD' AND (coalesce((p_dados->>'cotacao_usd')::numeric,0)<=0 OR (p_dados->>'cotacao_usd') IN ('NaN','Infinity','-Infinity')) THEN RAISE EXCEPTION 'Informe a cotação do pedido em dólar.'; END IF;
+ v_valor:=round(coalesce(nullif(p.total_financeiro,0),(p_dados->>'valor_total')::numeric),2);
+ IF v_valor IS NULL OR v_valor<=0 OR v_valor::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Valor do pedido inválido.'; END IF;
+ v_id:=p.lancamento_id;
+ IF v_id IS NULL THEN
+  SELECT count(*),(array_agg(id ORDER BY id))[1] INTO v_n,v_id FROM lancamentos
+   WHERE pedido_compra_id=p.id AND origem_lancamento='pedido_compra' AND nf_entrada_id IS NULL AND status<>'cancelado';
+  IF v_n>1 THEN RAISE EXCEPTION 'Pedido com mais de um financeiro histórico. Confira os títulos antes de gerar novamente.'; END IF;
+ END IF;
+ IF v_id IS NOT NULL THEN
+  SELECT * INTO l FROM lancamentos WHERE id=v_id FOR UPDATE;
+  IF NOT FOUND OR l.fazenda_id IS DISTINCT FROM p.fazenda_id OR l.tipo<>'pagar' THEN RAISE EXCEPTION 'Vínculo financeiro do pedido inconsistente.'; END IF;
+  IF l.status IN ('baixado','pago','parcial') OR coalesce(l.valor_pago,0)>0 OR l.lote_id IS NOT NULL OR l.nf_entrada_id IS NOT NULL THEN
+   RETURN jsonb_build_object('ok',true,'lancamento_id',l.id,'mantido',true);
+  END IF;
+  UPDATE lancamentos SET valor=v_valor,moeda=p_dados->>'moeda',cotacao_usd=nullif(p_dados->>'cotacao_usd','')::numeric,
+   descricao='Pedido de Compra nº '||coalesce(p.nr_pedido,left(p.id::text,8))||' — '||coalesce(p_dados->>'fornecedor_nome',''),
+   data_vencimento=coalesce(nullif(p_dados->>'data_vencimento',''),p_dados->>'data_registro')::date,
+   pessoa_id=p.fornecedor_id,operacao_gerencial_id=p.operacao::uuid WHERE id=v_id;
+ ELSE
+  INSERT INTO lancamentos(fazenda_id,tipo,moeda,cotacao_usd,descricao,categoria,data_lancamento,data_vencimento,valor,status,
+   auto,pessoa_id,origem_lancamento,pedido_compra_id,operacao_gerencial_id,ano_safra_id,ciclo_id,produtor_id)
+  VALUES(p.fazenda_id,'pagar',p_dados->>'moeda',nullif(p_dados->>'cotacao_usd','')::numeric,
+   'Pedido de Compra nº '||coalesce(p.nr_pedido,left(p.id::text,8))||' — '||coalesce(p_dados->>'fornecedor_nome',''),'Insumos',
+   (p_dados->>'data_registro')::date,coalesce(nullif(p_dados->>'data_vencimento',''),p_dados->>'data_registro')::date,v_valor,'em_aberto',
+   true,p.fornecedor_id,'pedido_compra',p.id,p.operacao::uuid,nullif(p_dados->>'ano_safra_id','')::uuid,
+   nullif(p_dados->>'ciclo_id','')::uuid,nullif(p_dados->>'produtor_id','')::uuid) RETURNING id INTO v_id;
+ END IF;
+ UPDATE pedidos_compra SET lancamento_id=v_id WHERE id=p.id;
+ RETURN jsonb_build_object('ok',true,'lancamento_id',v_id,'atualizado',p.lancamento_id IS NOT NULL,'criado',p.lancamento_id IS NULL);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.compras_gerar_financeiro_atomico(uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.compras_gerar_financeiro_atomico(uuid,jsonb) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 435 — Previsões: criação, consumo, edição e decisão atômicos
+-- Requer a Seção 434. Não reclassifica registros históricos automaticamente.
+BEGIN;
+CREATE OR REPLACE FUNCTION public.previsao_sincronizar_titulo_atomico(p_id uuid) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE p previsoes_gasto%ROWTYPE; l lancamentos%ROWTYPE; v_og text; v_ano uuid; v_id uuid;
+BEGIN
+ SELECT * INTO STRICT p FROM previsoes_gasto WHERE id=p_id FOR UPDATE;
+ IF p.lancamento_previsao_id IS NOT NULL THEN SELECT * INTO l FROM lancamentos WHERE id=p.lancamento_previsao_id FOR UPDATE; END IF;
+ IF p.saldo<=0.005 THEN
+  IF l.id IS NOT NULL AND l.natureza='previsao' THEN
+   IF l.status IN ('baixado','pago','parcial') OR coalesce(l.valor_pago,0)>0 OR l.lote_id IS NOT NULL THEN RAISE EXCEPTION 'Previsão com pagamento ou borderô: regularize antes de retirar o título.'; END IF;
+   DELETE FROM lancamentos WHERE id=l.id;
+  END IF;
+  UPDATE previsoes_gasto SET lancamento_previsao_id=NULL,updated_at=now() WHERE id=p.id;
+  RETURN NULL;
+ END IF;
+ SELECT descricao INTO v_og FROM operacoes_gerenciais WHERE id=p.operacao_gerencial_id;
+ v_ano:=coalesce(p.ano_safra_id,fn_ano_safra_da_data(p.fazenda_id,p.data_vencimento));
+ IF l.id IS NOT NULL THEN
+  IF l.natureza<>'previsao' OR l.status IN ('baixado','pago','parcial') OR coalesce(l.valor_pago,0)>0 OR l.lote_id IS NOT NULL THEN RAISE EXCEPTION 'O título da previsão já foi efetivado ou possui pagamento.'; END IF;
+  UPDATE lancamentos SET valor=round(p.saldo,2),data_vencimento=p.data_vencimento,pessoa_id=p.pessoa_id,
+   produtor_id=p.produtor_id,empresa_id=p.empresa_id,ano_safra_id=v_ano,ciclo_id=p.ciclo_id,centro_custo_id=p.centro_custo_id,
+   operacao_gerencial_id=p.operacao_gerencial_id,descricao=coalesce(nullif(p.descricao,''),v_og,'Previsão de gasto'),
+   categoria=coalesce(v_og,'Previsão'),observacao=p.observacao WHERE id=l.id;
+  RETURN l.id;
+ END IF;
+ INSERT INTO lancamentos(fazenda_id,produtor_id,empresa_id,pessoa_id,ano_safra_id,ciclo_id,centro_custo_id,operacao_gerencial_id,
+  natureza,tipo,status,moeda,auto,descricao,categoria,valor,data_vencimento,data_lancamento,origem_lancamento,previsao_gasto_id,observacao)
+ VALUES(p.fazenda_id,p.produtor_id,p.empresa_id,p.pessoa_id,v_ano,p.ciclo_id,p.centro_custo_id,p.operacao_gerencial_id,
+  'previsao','pagar','em_aberto','BRL',true,coalesce(nullif(p.descricao,''),v_og,'Previsão de gasto'),coalesce(v_og,'Previsão'),
+  round(p.saldo,2),p.data_vencimento,(now() AT TIME ZONE 'America/Cuiaba')::date,'previsao',p.id,p.observacao) RETURNING id INTO v_id;
+ UPDATE previsoes_gasto SET lancamento_previsao_id=v_id,updated_at=now() WHERE id=p.id;
+ RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.previsoes_comando_atomico(p_id uuid,p_acao text,p_dados jsonb,p_usuario uuid DEFAULT NULL,p_requisicao uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE p previsoes_gasto%ROWTYPE; c previsoes_gasto_consumos%ROWTYPE; l lancamentos%ROWTYPE;
+ v_linha jsonb; v_antes jsonb; v_patch jsonb; v_cols text; v_conta uuid; v_og text; v_id uuid; v_ret jsonb; v_out jsonb:='[]';
+ v_valor numeric; v_diff numeric; v_limite numeric; v_sobra numeric; v_status text; v_decisao text; v_tol boolean;
+ v_lanc uuid; v_emp uuid; v_nf uuid; v_proprio boolean; v_alvo jsonb; v_req financeiro_operacoes%ROWTYPE;
+BEGIN
+ IF p_acao NOT IN ('criar','consumir','editar','cancelar','decidir','vencida','sincronizar') THEN RAISE EXCEPTION 'Ação de previsão inválida.'; END IF;
+ IF p_acao='criar' THEN
+  IF p_requisicao IS NULL OR jsonb_typeof(p_dados->'linhas')<>'array' OR jsonb_array_length(p_dados->'linhas') NOT BETWEEN 1 AND 120 THEN RAISE EXCEPTION 'Informe as previsões e a identificação da operação.'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+  SELECT * INTO v_req FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+  IF FOUND THEN
+   IF v_req.acao<>'criar_previsoes' OR v_req.dados<>p_dados THEN RAISE EXCEPTION 'Identificação de criação já utilizada com outros dados.'; END IF;
+   RETURN v_req.retorno;
+  END IF;
+  FOR v_linha IN SELECT value FROM jsonb_array_elements(p_dados->'linhas') LOOP
+   SELECT conta_id INTO v_conta FROM fazendas WHERE id=(v_linha->>'fazenda_id')::uuid;
+   IF v_conta IS NULL OR v_conta IS DISTINCT FROM (v_linha->>'conta_id')::uuid THEN RAISE EXCEPTION 'Cliente da previsão inválido.'; END IF;
+   PERFORM financeiro_validar_referencias((v_linha->>'fazenda_id')::uuid,v_linha);
+   SELECT classificacao INTO v_og FROM operacoes_gerenciais WHERE id=(v_linha->>'operacao_gerencial_id')::uuid;
+   IF nullif(v_og,'') IS NULL THEN RAISE EXCEPTION 'Operação Gerencial não encontrada.'; END IF;
+   v_valor:=round((v_linha->>'valor')::numeric,2);
+   IF v_valor IS NULL OR v_valor<=0 OR v_valor::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Valor da previsão inválido.'; END IF;
+   INSERT INTO previsoes_gasto(conta_id,fazenda_id,produtor_id,empresa_id,operacao_gerencial_id,og_classificacao,pessoa_id,ano_safra_id,ciclo_id,
+    centro_custo_id,descricao,valor,saldo,data_vencimento,status,origem,recorrencia_grupo,folha_id,observacao,created_by)
+   VALUES(v_conta,(v_linha->>'fazenda_id')::uuid,nullif(v_linha->>'produtor_id','')::uuid,nullif(v_linha->>'empresa_id','')::uuid,
+    (v_linha->>'operacao_gerencial_id')::uuid,v_og,nullif(v_linha->>'pessoa_id','')::uuid,nullif(v_linha->>'ano_safra_id','')::uuid,
+    nullif(v_linha->>'ciclo_id','')::uuid,nullif(v_linha->>'centro_custo_id','')::uuid,v_linha->>'descricao',v_valor,v_valor,
+    (v_linha->>'data_vencimento')::date,'aberta',coalesce(v_linha->>'origem','manual'),nullif(v_linha->>'recorrencia_grupo','')::uuid,
+    nullif(v_linha->>'folha_id','')::uuid,v_linha->>'observacao',p_usuario) RETURNING id INTO v_id;
+   PERFORM previsao_sincronizar_titulo_atomico(v_id);
+   SELECT to_jsonb(t) INTO v_alvo FROM previsoes_gasto t WHERE id=v_id;
+   v_out:=v_out||jsonb_build_array(v_alvo);
+  END LOOP;
+  v_ret:=jsonb_build_object('ok',true,'linhas',v_out);
+  INSERT INTO financeiro_operacoes VALUES(p_requisicao,'previsoes_gasto',p_requisicao,'criar_previsoes',p_dados,'{}',v_out,v_ret,clock_timestamp());
+  RETURN v_ret;
+ END IF;
+ SELECT * INTO p FROM previsoes_gasto WHERE id=p_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Previsão não encontrada.'; END IF;
+ v_antes:=to_jsonb(p);
+ IF p_acao='consumir' THEN
+  v_valor:=round((p_dados->>'valor')::numeric,2);
+  v_lanc:=nullif(p_dados->>'lancamento_id','')::uuid;v_emp:=nullif(p_dados->>'emp_lancamento_id','')::uuid;v_nf:=nullif(p_dados->>'nf_entrada_id','')::uuid;
+  IF v_valor IS NULL OR v_valor<=0 OR v_valor::text IN ('NaN','Infinity','-Infinity') OR coalesce(v_lanc,v_emp,v_nf) IS NULL THEN RAISE EXCEPTION 'Informe valor positivo e documento de origem do consumo.'; END IF;
+  SELECT * INTO c FROM previsoes_gasto_consumos WHERE previsao_id=p.id
+   AND lancamento_id IS NOT DISTINCT FROM v_lanc AND emp_lancamento_id IS NOT DISTINCT FROM v_emp AND nf_entrada_id IS NOT DISTINCT FROM v_nf
+   ORDER BY created_at,id LIMIT 1;
+  IF FOUND THEN
+   IF c.valor<>v_valor OR c.origem IS DISTINCT FROM p_dados->>'origem' THEN RAISE EXCEPTION 'Este documento já consumiu a previsão com outros dados.'; END IF;
+   RETURN jsonb_build_object('ok',true,'repetido',true,'status',p.status,'diferenca',coalesce(p.diferenca,0));
+  END IF;
+  IF p.status<>'aberta' THEN RAISE EXCEPTION 'Esta previsão já foi consumida ou encerrada.'; END IF;
+  -- Todos os documentos citados devem pertencer ao mesmo cliente da previsão.
+  FOR v_linha IN SELECT value FROM jsonb_array_elements(jsonb_build_array(jsonb_build_array('lancamentos',v_lanc),jsonb_build_array('empresa_lancamentos',v_emp),jsonb_build_array('nf_entradas',v_nf))) LOOP
+   IF v_linha->>1 IS NULL THEN CONTINUE; END IF;
+   EXECUTE format('SELECT to_jsonb(t) FROM %I t WHERE id=$1 FOR UPDATE',v_linha->>0) INTO v_alvo USING (v_linha->>1)::uuid;
+   IF v_alvo IS NULL OR NOT EXISTS(SELECT 1 FROM fazendas f WHERE f.id=(v_alvo->>'fazenda_id')::uuid AND f.conta_id=p.conta_id) THEN RAISE EXCEPTION 'Documento de consumo não pertence ao cliente da previsão.'; END IF;
+  END LOOP;
+  v_proprio:=v_lanc IS NOT NULL AND v_lanc=p.lancamento_previsao_id;
+  IF v_proprio THEN
+   SELECT * INTO l FROM lancamentos WHERE id=v_lanc FOR UPDATE;
+   IF jsonb_typeof(p_dados->'campos_titulo')='object' THEN
+    IF l.origem_lancamento='folha' OR l.status IN ('baixado','pago','parcial') OR l.lote_id IS NOT NULL THEN RAISE EXCEPTION 'Efetive este título na rotina de origem.'; END IF;
+    SELECT jsonb_object_agg(key,value) INTO v_patch FROM jsonb_each(p_dados->'campos_titulo') WHERE key IN (
+     'moeda','pessoa_id','descricao','categoria','data_vencimento','valor','cotacao_usd','sacas','cultura_barter','preco_saca_barter',
+     'tipo_documento_lcdpr','conta_bancaria','numero_documento','serie','centro_custo_id','observacao','ano_safra_id','ciclo_id','produtor_id',
+     'operacao_gerencial_id','forma_pagamento','entidade_contabil','juros_pct','multa_pct','desconto_pontualidade_pct',
+     'funcionario_id','tipo_mao_obra','unidade_mao_obra','quantidade_mao_obra','maquina_id','veiculo_id');
+    PERFORM financeiro_validar_referencias(l.fazenda_id,coalesce(v_patch,'{}'));
+    v_patch:=coalesce(v_patch,'{}')||jsonb_build_object('natureza','real');
+    SELECT string_agg(quote_ident(key),',') INTO v_cols FROM jsonb_object_keys(v_patch) x(key);
+    EXECUTE format('UPDATE lancamentos SET (%1$s)=(SELECT %1$s FROM jsonb_populate_record(NULL::lancamentos,$1)) WHERE id=$2',v_cols) USING v_patch,l.id;
+   ELSE UPDATE lancamentos SET natureza='real' WHERE id=l.id; END IF;
+   SELECT * INTO l FROM lancamentos WHERE id=v_lanc;
+   IF l.valor IS NULL OR l.valor<=0 OR l.valor::text IN ('NaN','Infinity','-Infinity')
+      OR (l.moeda='USD' AND (l.cotacao_usd IS NULL OR l.cotacao_usd<=0 OR l.cotacao_usd::text IN ('NaN','Infinity','-Infinity')))
+      OR abs(round(l.valor*CASE WHEN l.moeda='USD' THEN l.cotacao_usd ELSE 1 END,2)-v_valor)>0.01 THEN
+    RAISE EXCEPTION 'O valor efetivado do título diverge do consumo da previsão.';
+   END IF;
+   UPDATE previsoes_gasto SET lancamento_previsao_id=NULL WHERE id=p.id;
+  END IF;
+  SELECT greatest(coalesce(tolerancia_valor,0),round(coalesce(tolerancia_pct,0)/100*p.valor,2)) INTO v_limite FROM previsoes_config WHERE conta_id=p.conta_id;
+  v_diff:=round(p.saldo-v_valor,2);v_tol:=coalesce(v_limite,0)>0 AND abs(v_diff)<=v_limite+0.005;
+  v_status:=CASE WHEN abs(v_diff)<0.005 OR v_tol THEN 'cumprida' ELSE 'pendente_decisao' END;
+  v_sobra:=CASE WHEN v_status='pendente_decisao' THEN greatest(v_diff,0) ELSE 0 END;
+  INSERT INTO previsoes_gasto_consumos(previsao_id,valor,origem,created_by,lancamento_id,emp_lancamento_id,nf_entrada_id)
+   VALUES(p.id,v_valor,p_dados->>'origem',p_usuario,v_lanc,v_emp,v_nf);
+  UPDATE previsoes_gasto SET saldo=v_sobra,status=v_status,diferenca=nullif(v_diff,0),decisao=CASE WHEN v_tol THEN 'tolerancia' END,updated_at=now() WHERE id=p.id;
+  PERFORM previsao_sincronizar_titulo_atomico(p.id);
+  RETURN jsonb_build_object('ok',true,'status',v_status,'diferenca',v_diff);
+ ELSIF p_acao='editar' THEN
+  IF p.status<>'aberta' OR EXISTS(SELECT 1 FROM previsoes_gasto_consumos WHERE previsao_id=p.id) THEN RAISE EXCEPTION 'Previsão já consumida não pode ser editada.'; END IF;
+  SELECT coalesce(jsonb_object_agg(key,value),'{}') INTO v_patch FROM jsonb_each(p_dados) WHERE key IN ('descricao','data_vencimento','pessoa_id','ciclo_id','centro_custo_id','ano_safra_id','observacao','produtor_id','empresa_id','operacao_gerencial_id','valor');
+  PERFORM financeiro_validar_referencias(p.fazenda_id,v_patch);
+  IF v_patch ? 'valor' THEN
+   v_valor:=(v_patch->>'valor')::numeric;
+   IF v_valor IS NULL OR v_valor<=0 OR v_valor::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Valor inválido.'; END IF;
+   v_patch:=v_patch||jsonb_build_object('saldo',round(v_valor,2),'valor',round(v_valor,2));
+  END IF;
+  IF v_patch ? 'operacao_gerencial_id' THEN SELECT classificacao INTO v_og FROM operacoes_gerenciais WHERE id=(v_patch->>'operacao_gerencial_id')::uuid;v_patch:=v_patch||jsonb_build_object('og_classificacao',v_og);END IF;
+  v_patch:=v_patch||jsonb_build_object('updated_at',now());
+  SELECT string_agg(quote_ident(key),',') INTO v_cols FROM jsonb_object_keys(v_patch) x(key);
+  EXECUTE format('UPDATE previsoes_gasto SET (%1$s)=(SELECT %1$s FROM jsonb_populate_record(NULL::previsoes_gasto,$1)) WHERE id=$2',v_cols) USING v_patch,p.id;
+ ELSIF p_acao='cancelar' THEN
+  IF p.status<>'aberta' OR EXISTS(SELECT 1 FROM previsoes_gasto_consumos WHERE previsao_id=p.id) THEN RAISE EXCEPTION 'Previsão já consumida não pode ser cancelada.'; END IF;
+  UPDATE previsoes_gasto SET status='cancelada',saldo=0,updated_at=now() WHERE id=p.id;
+ ELSIF p_acao='decidir' THEN
+  IF p.status<>'pendente_decisao' OR coalesce(p_dados->>'decisao','') NOT IN ('saldo','efetivada') THEN RAISE EXCEPTION 'Decisão da previsão inválida.'; END IF;
+  v_decisao:=p_dados->>'decisao';
+  IF v_decisao='saldo' AND coalesce(p.diferenca,0)<=0 THEN RAISE EXCEPTION 'Não há saldo positivo a manter.'; END IF;
+  UPDATE previsoes_gasto SET saldo=CASE WHEN v_decisao='saldo' THEN p.diferenca ELSE 0 END,
+   status=CASE WHEN v_decisao='saldo' THEN 'aberta' ELSE 'efetivada' END,decisao=v_decisao,decidido_em=now(),decidido_por=p_usuario,updated_at=now() WHERE id=p.id;
+ ELSIF p_acao='vencida' THEN
+  IF p.status<>'aberta' THEN RAISE EXCEPTION 'Só uma previsão em aberto pode ser tratada.'; END IF;
+  IF p_dados->>'tipo'='nova_data' THEN
+   UPDATE previsoes_gasto SET data_vencimento=(p_dados->>'data')::date,decisao='nova_data',decidido_em=now(),decidido_por=p_usuario,updated_at=now() WHERE id=p.id;
+  ELSIF p_dados->>'tipo'='efetivar' THEN
+   UPDATE previsoes_gasto SET diferenca=p.saldo,saldo=0,status='efetivada',decisao='vencida_efetivada',decidido_em=now(),decidido_por=p_usuario,updated_at=now() WHERE id=p.id;
+  ELSE RAISE EXCEPTION 'Ação da previsão vencida inválida.';END IF;
+ END IF;
+ v_id:=previsao_sincronizar_titulo_atomico(p.id);
+ RETURN jsonb_build_object('ok',true,'lancamento_id',v_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.previsao_sincronizar_titulo_atomico(uuid),public.previsoes_comando_atomico(uuid,text,jsonb,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.previsao_sincronizar_titulo_atomico(uuid),public.previsoes_comando_atomico(uuid,text,jsonb,uuid,uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 436 — Abastecimento, bomba e movimentação na mesma transação
+-- Requer 434. Não vincula movimentações antigas ambíguas nem altera saldos históricos.
+BEGIN;
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS abastecimento_id uuid REFERENCES abastecimentos(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mov_abastecimento ON movimentacoes_estoque(abastecimento_id) WHERE abastecimento_id IS NOT NULL;
+CREATE OR REPLACE FUNCTION public.abastecimento_comando_atomico(p_fazenda uuid,p_dados jsonb,p_requisicao uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE a abastecimentos%ROWTYPE; b bombas_combustivel%ROWTYPE; v_op financeiro_operacoes%ROWTYPE;
+ v_acao text:=p_dados->>'acao';v_bomba uuid;v_insumo uuid;v_mov uuid;v_n integer;v_qtd numeric;v_unit numeric;v_delta numeric;
+ v_antes jsonb:='{}';v_depois jsonb;v_payload jsonb;v_cols text;v_ret jsonb;v_cp jsonb;v_interno boolean;
+BEGIN
+ IF v_acao NOT IN ('criar','editar','excluir') OR p_requisicao IS NULL THEN RAISE EXCEPTION 'Ação de abastecimento inválida.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+ SELECT * INTO v_op FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+  IF v_op.tabela<>'abastecimentos' OR v_op.acao<>v_acao OR v_op.dados<>(p_dados||jsonb_build_object('fazenda_id',p_fazenda)) THEN RAISE EXCEPTION 'Identificação de abastecimento já usada com outros dados.'; END IF;
+  RETURN v_op.retorno||jsonb_build_object('repetido',true);
+ END IF;
+ IF v_acao<>'criar' THEN
+  SELECT * INTO a FROM abastecimentos WHERE id=(p_dados->>'abastecimento_id')::uuid FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Abastecimento não encontrado.'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM fazendas f JOIN fazendas origem ON origem.id=p_fazenda WHERE f.id=a.fazenda_id
+    AND (f.id=origem.id OR (f.conta_id IS NOT NULL AND f.conta_id=origem.conta_id))) THEN RAISE EXCEPTION 'Abastecimento pertence a outro cliente.'; END IF;
+  v_antes:=to_jsonb(a);v_bomba:=a.bomba_id;
+  IF p_dados->>'bomba_id' IS NOT NULL AND (p_dados->>'bomba_id')::uuid<>v_bomba THEN RAISE EXCEPTION 'A bomba deste abastecimento não pode ser trocada pela edição.'; END IF;
+  IF p_dados ? 'quantidade_anterior' AND (p_dados->>'quantidade_anterior')::numeric IS DISTINCT FROM a.quantidade_l THEN RAISE EXCEPTION 'Este abastecimento foi alterado. Recarregue a lista antes de editar.'; END IF;
+ ELSE v_bomba:=(p_dados->>'bomba_id')::uuid; END IF;
+ SELECT * INTO b FROM bombas_combustivel WHERE id=v_bomba FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Bomba não encontrada. Abastecimento originado em NF deve ser ajustado pela nota.'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM fazendas f JOIN fazendas origem ON origem.id=p_fazenda WHERE f.id=b.fazenda_id
+    AND (f.id=origem.id OR (f.conta_id IS NOT NULL AND f.conta_id=origem.conta_id))) THEN RAISE EXCEPTION 'Bomba pertence a outro cliente.'; END IF;
+ PERFORM financeiro_validar_referencias(b.fazenda_id,p_dados);
+ v_interno:=coalesce(b.consume_estoque,true);
+ IF v_interno THEN
+  v_insumo:=b.insumo_id;
+  IF v_insumo IS NULL THEN RAISE EXCEPTION 'Vincule o combustível da bomba em Cadastros → Combustíveis e Bombas antes de lançar.'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM insumos i JOIN fazendas f ON f.id=i.fazenda_id JOIN fazendas fb ON fb.id=b.fazenda_id
+    WHERE i.id=v_insumo AND (f.id=fb.id OR (f.conta_id IS NOT NULL AND f.conta_id=fb.conta_id))) THEN RAISE EXCEPTION 'Combustível da bomba não pertence ao cliente.'; END IF;
+  IF v_acao<>'criar' THEN
+   SELECT id INTO v_mov FROM movimentacoes_estoque WHERE abastecimento_id=a.id FOR UPDATE;
+   IF v_mov IS NOT NULL AND NOT EXISTS(SELECT 1 FROM movimentacoes_estoque WHERE id=v_mov AND insumo_id=v_insumo AND fazenda_id=b.fazenda_id
+    AND tipo='saida' AND motivo='abastecimento' AND quantidade=a.quantidade_l AND data=a.data) THEN
+    RAISE EXCEPTION 'O vínculo de estoque do abastecimento foi alterado. Confira antes de editar ou excluir.';
+   END IF;
+   IF v_mov IS NULL THEN
+    -- Legado: só adota uma saída quando tanto o movimento quanto o abastecimento candidato são únicos.
+    SELECT count(*),(array_agg(id ORDER BY id))[1] INTO v_n,v_mov FROM movimentacoes_estoque
+     WHERE abastecimento_id IS NULL AND fazenda_id=b.fazenda_id AND insumo_id=v_insumo AND tipo='saida' AND motivo='abastecimento'
+       AND data=a.data AND quantidade=a.quantidade_l AND valor_unitario=a.valor_unitario;
+    IF v_n<>1 OR (SELECT count(*) FROM abastecimentos x WHERE x.bomba_id=b.id AND x.data=a.data AND x.quantidade_l=a.quantidade_l AND x.valor_unitario=a.valor_unitario)<>1 THEN
+     RAISE EXCEPTION 'Abastecimento antigo sem movimentação única identificada. Confira o vínculo de estoque antes de editar ou excluir.';
+    END IF;
+    UPDATE movimentacoes_estoque SET abastecimento_id=a.id WHERE id=v_mov AND abastecimento_id IS NULL;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Movimentação já vinculada. Recarregue a lista.'; END IF;
+   END IF;
+  END IF;
+ END IF;
+ IF a.lancamento_id IS NOT NULL THEN
+  SELECT to_jsonb(t) INTO v_cp FROM lancamentos t WHERE id=a.lancamento_id FOR UPDATE;
+  IF v_cp->>'status' IN ('baixado','pago','parcial') OR coalesce((v_cp->>'valor_pago')::numeric,0)>0 OR v_cp->>'lote_id' IS NOT NULL
+    OR v_cp->>'nf_entrada_id' IS NOT NULL OR v_cp->>'origem_lancamento' IN ('nf_entrada','nf_servico') THEN RAISE EXCEPTION 'Abastecimento com financeiro pago ou documento fiscal: regularize a origem antes de alterar.'; END IF;
+ END IF;
+ IF v_acao='excluir' THEN
+  DELETE FROM pendencias_fiscais WHERE abastecimento_id=a.id OR (a.lancamento_id IS NOT NULL AND lancamento_id=a.lancamento_id);
+  IF v_interno THEN
+   DELETE FROM movimentacoes_estoque WHERE id=v_mov;
+   UPDATE bombas_combustivel SET estoque_atual_l=coalesce(estoque_atual_l,0)+a.quantidade_l WHERE id=b.id;
+  END IF;
+  DELETE FROM abastecimentos WHERE id=a.id;
+  IF a.lancamento_id IS NOT NULL THEN DELETE FROM lancamentos WHERE id=a.lancamento_id; END IF;
+  v_depois:='{}';
+ ELSE
+  v_qtd:=round((p_dados->>'quantidade_l')::numeric,2);v_unit:=(p_dados->>'valor_unitario')::numeric;
+  IF v_qtd IS NULL OR v_qtd<=0 OR v_unit IS NULL OR v_unit<0 OR v_qtd::text IN ('NaN','Infinity','-Infinity') OR v_unit::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Informe quantidade positiva e valor unitário válido.'; END IF;
+  IF p_dados->>'destino_tipo'='maquina' AND nullif(p_dados->>'maquina_id','') IS NULL THEN RAISE EXCEPTION 'Selecione a máquina.'; END IF;
+  IF p_dados->>'destino_tipo'='funcionario' AND nullif(p_dados->>'funcionario_id','') IS NULL THEN RAISE EXCEPTION 'Selecione o funcionário.'; END IF;
+  v_delta:=v_qtd-coalesce(a.quantidade_l,0);
+  IF v_interno AND v_delta>coalesce(b.estoque_atual_l,0) THEN RAISE EXCEPTION 'Estoque insuficiente na bomba.'; END IF;
+  v_payload:=jsonb_build_object('maquina_id',CASE WHEN p_dados->>'destino_tipo'='maquina' THEN nullif(p_dados->>'maquina_id','') END,
+   'funcionario_id',CASE WHEN p_dados->>'destino_tipo'='funcionario' THEN nullif(p_dados->>'funcionario_id','') END,
+   'destino_livre',CASE WHEN p_dados->>'destino_tipo'='livre' THEN p_dados->>'destino_livre' END,
+   'quantidade_l',v_qtd,'valor_unitario',v_unit,'valor_total',round(v_qtd*v_unit,2),'data',(p_dados->>'data')::date,
+   'horimetro',nullif(p_dados->>'horimetro','')::numeric,'ano_safra_id',nullif(p_dados->>'ano_safra_id',''),
+   'ciclo_id',nullif(p_dados->>'ciclo_id',''),'observacao',nullif(p_dados->>'observacao',''));
+  IF v_acao='criar' THEN
+   INSERT INTO abastecimentos(fazenda_id,bomba_id,maquina_id,funcionario_id,destino_livre,quantidade_l,valor_unitario,valor_total,data,horimetro,ano_safra_id,ciclo_id,observacao)
+    SELECT b.fazenda_id,b.id,t.maquina_id,t.funcionario_id,t.destino_livre,t.quantidade_l,t.valor_unitario,t.valor_total,t.data,t.horimetro,t.ano_safra_id,t.ciclo_id,t.observacao
+    FROM jsonb_populate_record(NULL::abastecimentos,v_payload) t RETURNING * INTO a;
+  ELSE
+   SELECT string_agg(quote_ident(key),',') INTO v_cols FROM jsonb_object_keys(v_payload) x(key);
+   EXECUTE format('UPDATE abastecimentos SET (%1$s)=(SELECT %1$s FROM jsonb_populate_record(NULL::abastecimentos,$1)) WHERE id=$2 RETURNING *',v_cols) INTO a USING v_payload,a.id;
+  END IF;
+  IF v_interno THEN
+   UPDATE bombas_combustivel SET estoque_atual_l=coalesce(estoque_atual_l,0)-v_delta WHERE id=b.id;
+   IF v_mov IS NULL THEN
+    INSERT INTO movimentacoes_estoque(fazenda_id,insumo_id,tipo,motivo,quantidade,valor_unitario,data,auto,observacao,abastecimento_id)
+    VALUES(b.fazenda_id,v_insumo,'saida','abastecimento',v_qtd,v_unit,a.data,false,
+     'Abastecimento — '||coalesce(p_dados->>'destino_nome',a.destino_livre,'máquina/funcionário'),a.id);
+   ELSE
+    UPDATE movimentacoes_estoque SET quantidade=v_qtd,valor_unitario=v_unit,data=a.data WHERE id=v_mov;
+   END IF;
+  END IF;
+  IF a.lancamento_id IS NOT NULL THEN UPDATE lancamentos SET valor=a.valor_total,data_lancamento=a.data WHERE id=a.lancamento_id; END IF;
+  v_depois:=to_jsonb(a);
+ END IF;
+ v_ret:=jsonb_build_object('ok',true,'id',a.id);
+ INSERT INTO financeiro_operacoes VALUES(p_requisicao,'abastecimentos',a.id,v_acao,p_dados||jsonb_build_object('fazenda_id',p_fazenda),v_antes,v_depois,v_ret,clock_timestamp());
+ RETURN v_ret;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.abastecimento_comando_atomico(uuid,jsonb,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.abastecimento_comando_atomico(uuid,jsonb,uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 437 — Webhook Asaas: confirmação após commit, eventos idempotentes e sem regressão por atraso
+BEGIN;
+CREATE TABLE IF NOT EXISTS asaas_eventos_processados (
+ id text PRIMARY KEY,dados jsonb NOT NULL,retorno jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE asaas_eventos_processados ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON asaas_eventos_processados FROM PUBLIC,anon,authenticated;
+GRANT SELECT,INSERT ON asaas_eventos_processados TO service_role;
+CREATE OR REPLACE FUNCTION public.asaas_processar_evento(p_evento jsonb,p_status text,p_data date DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE p pagamentos%ROWTYPE;v_id text;v_antes asaas_eventos_processados%ROWTYPE;v_ret jsonb;v_event text:=p_evento->>'event';
+BEGIN
+ IF nullif(p_evento->>'payment_id','') IS NULL OR nullif(v_event,'') IS NULL OR p_status NOT IN ('pago','pendente','vencido','cancelado') THEN RAISE EXCEPTION 'Evento de pagamento inválido.'; END IF;
+ v_id:=coalesce(nullif(p_evento->>'id',''),md5(p_evento::text));
+ PERFORM pg_advisory_xact_lock(hashtextextended('asaas:'||v_id,0));
+ SELECT * INTO v_antes FROM asaas_eventos_processados WHERE id=v_id;
+ IF FOUND THEN
+  IF v_antes.dados<>p_evento THEN RAISE EXCEPTION 'Evento já recebido com outros dados.'; END IF;
+  RETURN v_antes.retorno||jsonb_build_object('repetido',true);
+ END IF;
+ SELECT * INTO p FROM pagamentos WHERE asaas_payment_id=p_evento->>'payment_id' FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Pagamento ainda não registrado no Arato. Repetir o evento após o cadastro.'; END IF;
+ IF v_event='PAYMENT_OVERDUE' AND p.status='pago' THEN
+  v_ret:=jsonb_build_object('ok',true,'ignorado',true,'motivo','Evento de atraso posterior à confirmação local do pagamento.');
+ ELSE
+  UPDATE pagamentos SET status=p_status,data_pagamento=CASE WHEN p_status='pago' THEN coalesce(p_data,(now() AT TIME ZONE 'America/Cuiaba')::date) END WHERE id=p.id;
+  IF p_status='pago' THEN
+   UPDATE contas SET status='ativo' WHERE id=p.conta_id;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Conta do pagamento não encontrada.'; END IF;
+   IF p.assinatura_id IS NOT NULL THEN UPDATE assinaturas SET status='ativa',updated_at=now() WHERE id=p.assinatura_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Assinatura do pagamento não encontrada.'; END IF;
+   END IF;
+  ELSIF p_status='vencido' THEN
+   UPDATE contas SET status='inadimplente' WHERE id=p.conta_id;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Conta do pagamento não encontrada.'; END IF;
+   IF p.assinatura_id IS NOT NULL THEN UPDATE assinaturas SET status='inadimplente',updated_at=now() WHERE id=p.assinatura_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Assinatura do pagamento não encontrada.'; END IF;
+   END IF;
+  ELSIF p_status='cancelado' AND p.assinatura_id IS NOT NULL THEN
+   UPDATE assinaturas SET status='cancelada',updated_at=now() WHERE id=p.assinatura_id;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Assinatura do pagamento não encontrada.'; END IF;
+  END IF;
+  v_ret:=jsonb_build_object('ok',true,'event',v_event,'status',p_status);
+ END IF;
+ INSERT INTO asaas_eventos_processados VALUES(v_id,p_evento,v_ret,clock_timestamp());
+ RETURN v_ret;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.asaas_processar_evento(jsonb,text,date) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.asaas_processar_evento(jsonb,text,date) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 438 — Fechamento da folha por empregador em uma única transação
+-- Usa os valores já calculados na folha; não altera bases ou tabelas de impostos.
+BEGIN;
+CREATE OR REPLACE FUNCTION public.folha_liquido_financeiro(p jsonb) RETURNS numeric
+LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+ SELECT greatest(0,round(coalesce((p->>'salario_bruto')::numeric,0)-coalesce((p->>'inss_trabalhador')::numeric,0)
+  -coalesce((p->>'irrf')::numeric,0)-coalesce((p->>'adiantamento')::numeric,0)-coalesce((p->>'outros_descontos')::numeric,0)
+  +coalesce((p->>'vale_transporte')::numeric,0)+coalesce((p->>'vale_refeicao')::numeric,0)+coalesce((p->>'outros_beneficios')::numeric,0)
+  +coalesce((p->>'complemento_salarial')::numeric,0),2));
+$$;
+CREATE OR REPLACE FUNCTION public.folha_fechar_atomica(p_id uuid,p_requisicao uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE f folha_pagamento%ROWTYPE; it folha_funcionarios%ROWTYPE; cad funcionarios%ROWTYPE;l lancamentos%ROWTYPE;
+ v_op financeiro_operacoes%ROWTYPE; v_antes jsonb; v_apos jsonb;v_ret jsonb;v_adi numeric;v_antes_liq numeric;v_liq numeric;v_val numeric;
+ v_venc date;v_enc_venc date;v_ano uuid;v_og uuid;v_rotulo text;v_obs text;v_tipo text;v_cp uuid;v_fgts uuid;v_inss uuid;v_prod uuid;
+BEGIN
+ IF p_id IS NULL OR p_requisicao IS NULL THEN RAISE EXCEPTION 'Folha e identificação da operação obrigatórias.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+ SELECT * INTO v_op FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+  IF v_op.tabela<>'folha_pagamento' OR v_op.registro_id<>p_id OR v_op.acao<>'fechar' THEN RAISE EXCEPTION 'Identificação de fechamento já utilizada.';END IF;
+  RETURN v_op.retorno||jsonb_build_object('repetido',true);
+ END IF;
+ -- A criação de adiantamento também trava funcionário antes da folha.
+ PERFORM c.id FROM funcionarios c WHERE c.id IN(SELECT funcionario_id FROM folha_funcionarios WHERE folha_id=p_id) ORDER BY c.id FOR UPDATE;
+ SELECT * INTO f FROM folha_pagamento WHERE id=p_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Folha não encontrada.'; END IF;
+ IF f.status IN ('fechado','pago') THEN RETURN jsonb_build_object('ok',true,'repetido',true); END IF;
+ IF f.status<>'rascunho' THEN RAISE EXCEPTION 'Folha indisponível para fechamento.'; END IF;
+ IF f.previsoes_sync_em>clock_timestamp()-interval '2 minutes' THEN RAISE EXCEPTION 'A folha está sendo atualizada. Aguarde e tente novamente.'; END IF;
+ PERFORM financeiro_validar_referencias(f.fazenda_id,jsonb_build_object('empresa_id',f.empresa_id,'produtor_id',f.produtor_id));
+ v_antes:=to_jsonb(f);
+ v_venc:=coalesce(f.data_vencimento,(date_trunc('month',(f.competencia||'-01')::date)+interval '1 month 4 days')::date);
+ v_enc_venc:=(date_trunc('month',(f.competencia||'-01')::date)+interval '1 month 19 days')::date;
+ v_ano:=fn_ano_safra_da_data(f.fazenda_id,v_venc);
+ v_rotulo:=(ARRAY['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'])[right(f.competencia,2)::int]||'/'||left(f.competencia,4);
+ v_og:=folha_og_por_classificacao(f.fazenda_id,'2.01.01.10.001');
+ FOR it IN SELECT * FROM folha_funcionarios WHERE folha_id=f.id ORDER BY id FOR UPDATE LOOP
+  l:=NULL;cad:=NULL;v_antes_liq:=folha_liquido_financeiro(to_jsonb(it));
+  IF it.funcionario_id IS NOT NULL THEN
+   SELECT * INTO cad FROM funcionarios WHERE id=it.funcionario_id;
+   PERFORM financeiro_validar_referencias(f.fazenda_id,jsonb_build_object('funcionario_id',it.funcionario_id,'produtor_id',it.produtor_id));
+   PERFORM id FROM adiantamentos_salario WHERE funcionario_id=it.funcionario_id AND status='pendente'
+    AND(competencia_ref=f.competencia OR competencia_ref IS NULL) ORDER BY id FOR UPDATE;
+   SELECT round(coalesce(sum(greatest(0,valor-coalesce(descontado_gratificacao_cp,0))),0),2) INTO v_adi FROM adiantamentos_salario
+    WHERE funcionario_id=it.funcionario_id AND status='pendente' AND(competencia_ref=f.competencia OR competencia_ref IS NULL);
+   UPDATE folha_funcionarios SET adiantamento=v_adi WHERE id=it.id RETURNING * INTO it;
+  END IF;
+  v_liq:=folha_liquido_financeiro(to_jsonb(it));
+  v_obs:=CASE WHEN coalesce(it.outros_descontos,0)>0 THEN 'Outros descontos R$ '||replace(to_char(it.outros_descontos,'FM999999999990.00'),'.',',')||coalesce(': '||nullif(trim(it.desc_outros_descontos),''),'') END;
+  IF it.cp_lancamento_id IS NOT NULL THEN SELECT * INTO l FROM lancamentos WHERE id=it.cp_lancamento_id FOR UPDATE; END IF;
+  IF l.id IS NOT NULL THEN
+   IF l.fazenda_id<>f.fazenda_id OR l.tipo<>'pagar' OR coalesce(l.moeda,'BRL')<>'BRL' OR (l.funcionario_id IS NOT NULL AND l.funcionario_id IS DISTINCT FROM it.funcionario_id) THEN RAISE EXCEPTION 'Título salarial incompatível com a folha.'; END IF;
+   IF l.natureza='previsao' THEN
+    IF l.status IN ('baixado','pago','parcial') OR coalesce(l.valor_pago,0)>0 THEN UPDATE lancamentos SET natureza='real' WHERE id=l.id RETURNING * INTO l;
+    ELSE
+     v_val:=CASE WHEN abs(l.valor-v_antes_liq)>0.005 THEN l.valor ELSE v_liq END;
+     UPDATE lancamentos SET natureza='real',valor=v_val,status=CASE WHEN v_val>0 THEN 'em_aberto' ELSE 'cancelado' END,observacao=v_obs WHERE id=l.id RETURNING * INTO l;
+    END IF;
+   END IF;
+  ELSIF v_liq>0.005 THEN
+   INSERT INTO lancamentos(fazenda_id,empresa_id,produtor_id,funcionario_id,ano_safra_id,natureza,tipo,descricao,valor,moeda,status,
+    observacao,categoria,origem_lancamento,operacao_gerencial_id,data_vencimento,data_lancamento,auto)
+   VALUES(f.fazenda_id,coalesce(f.empresa_id,cad.empresa_id),coalesce(it.produtor_id,cad.produtor_id),it.funcionario_id,v_ano,'real','pagar',
+    'Salário '||v_rotulo||' — '||it.nome_funcionario,v_liq,'BRL','em_aberto',v_obs,'Pessoal / Salários','folha',v_og,v_venc,(now() AT TIME ZONE 'America/Cuiaba')::date,true) RETURNING * INTO l;
+   UPDATE folha_funcionarios SET cp_lancamento_id=l.id WHERE id=it.id;
+  END IF;
+  IF l.id IS NOT NULL AND l.previsao_gasto_id IS NOT NULL AND l.valor>0 THEN
+   IF EXISTS(SELECT 1 FROM previsoes_gasto WHERE id=l.previsao_gasto_id AND status='aberta') THEN
+    PERFORM previsoes_comando_atomico(l.previsao_gasto_id,'consumir',jsonb_build_object('valor',l.valor,'origem','folha','lancamento_id',l.id));
+   END IF;
+  END IF;
+ END LOOP;
+ SELECT produtor_id INTO v_prod FROM folha_funcionarios WHERE folha_id=f.id AND produtor_id IS NOT NULL ORDER BY id LIMIT 1;
+ v_fgts:=f.cp_fgts_id;v_inss:=f.cp_inss_patronal_id;
+ FOREACH v_tipo IN ARRAY ARRAY['FGTS','INSS Patronal'] LOOP
+  IF v_tipo='INSS Patronal' AND f.empresa_id IS NULL THEN CONTINUE; END IF;
+  v_cp:=CASE WHEN v_tipo='FGTS' THEN f.cp_fgts_id ELSE f.cp_inss_patronal_id END;l:=NULL;
+  SELECT round(coalesce(sum(CASE WHEN v_tipo='FGTS' THEN fgts ELSE inss_patronal END),0),2) INTO v_val FROM folha_funcionarios WHERE folha_id=f.id;
+  IF v_cp IS NOT NULL THEN SELECT * INTO l FROM lancamentos WHERE id=v_cp FOR UPDATE; END IF;
+  IF l.id IS NOT NULL THEN
+   IF l.fazenda_id<>f.fazenda_id OR l.tipo<>'pagar' THEN RAISE EXCEPTION 'Encargo vinculado incompatível com a folha.'; END IF;
+   IF l.natureza='previsao' THEN UPDATE lancamentos SET natureza='real',status=CASE WHEN status IN ('baixado','pago','parcial') THEN status WHEN valor>0 THEN 'em_aberto' ELSE 'cancelado' END WHERE id=l.id RETURNING * INTO l; END IF;
+  ELSIF v_val>0.005 THEN
+   v_og:=folha_og_por_classificacao(f.fazenda_id,CASE WHEN v_tipo='FGTS' THEN '2.01.01.10.013' ELSE '2.01.01.10.014' END);
+   INSERT INTO lancamentos(fazenda_id,empresa_id,produtor_id,natureza,tipo,descricao,valor,moeda,status,categoria,origem_lancamento,operacao_gerencial_id,data_vencimento,data_lancamento,auto)
+   VALUES(f.fazenda_id,f.empresa_id,CASE WHEN v_tipo='FGTS' THEN v_prod END,'real','pagar',v_tipo||' '||v_rotulo,v_val,'BRL','em_aberto',
+    'Pessoal / Encargos','folha',v_og,v_enc_venc,(now() AT TIME ZONE 'America/Cuiaba')::date,true) RETURNING * INTO l;
+  END IF;
+  IF l.id IS NOT NULL AND l.previsao_gasto_id IS NOT NULL AND l.valor>0 AND EXISTS(SELECT 1 FROM previsoes_gasto WHERE id=l.previsao_gasto_id AND status='aberta') THEN
+   PERFORM previsoes_comando_atomico(l.previsao_gasto_id,'consumir',jsonb_build_object('valor',l.valor,'origem','folha','lancamento_id',l.id));
+  END IF;
+  IF v_tipo='FGTS' THEN v_fgts:=l.id;ELSE v_inss:=l.id;END IF;
+ END LOOP;
+ UPDATE adiantamentos_salario SET status='descontado' WHERE status='pendente' AND(competencia_ref=f.competencia OR competencia_ref IS NULL)
+  AND valor-coalesce(descontado_gratificacao_cp,0)>0 AND funcionario_id IN(SELECT funcionario_id FROM folha_funcionarios WHERE folha_id=f.id);
+ UPDATE folha_pagamento SET status='fechado',cp_fgts_id=v_fgts,cp_inss_patronal_id=v_inss,
+  valor_liquido=(SELECT coalesce(sum(folha_liquido_financeiro(to_jsonb(t))),0) FROM folha_funcionarios t WHERE folha_id=f.id)
+  WHERE id=f.id RETURNING to_jsonb(folha_pagamento) INTO v_apos;
+ v_ret:=jsonb_build_object('ok',true,'id',f.id,'status','fechado');
+ INSERT INTO financeiro_operacoes VALUES(p_requisicao,'folha_pagamento',f.id,'fechar','{}',v_antes,v_apos,v_ret,clock_timestamp());
+ RETURN v_ret;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.folha_liquido_financeiro(jsonb),public.folha_fechar_atomica(uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.folha_liquido_financeiro(jsonb),public.folha_fechar_atomica(uuid,uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 439 — Movimento manual de estoque: saldo do depósito e confirmação transacional
+-- Requer 434 e o estoque derivado das movimentações (365). Não recompõe históricos.
+BEGIN;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.movimentacoes_estoque'::regclass AND tgname='trg_mov_estoque_recalcula' AND tgenabled<>'D') THEN
+  RAISE EXCEPTION 'Aplique a Seção 365 antes da 439: o saldo deve ser derivado das movimentações.';
+ END IF;
+END $$;
+CREATE OR REPLACE FUNCTION public.estoque_movimento_manual(p_fazenda uuid,p_dados jsonb,p_requisicao uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_ins jsonb;v_op financeiro_operacoes%ROWTYPE;v_tipo text:=p_dados->>'tipo';v_qtd numeric;v_saldo numeric;v_id uuid;v_dep uuid:=nullif(p_dados->>'deposito_id','')::uuid;v_ret jsonb;
+BEGIN
+ IF p_requisicao IS NULL OR v_tipo NOT IN ('entrada','saida','ajuste') OR nullif(p_dados->>'data','') IS NULL THEN RAISE EXCEPTION 'Informe tipo, data e identificação do movimento.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+ SELECT * INTO v_op FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+  IF v_op.tabela<>'movimentacoes_estoque' OR v_op.dados<>(p_dados||jsonb_build_object('fazenda_id',p_fazenda)) THEN RAISE EXCEPTION 'Identificação de movimento já utilizada com outros dados.';END IF;
+  RETURN v_op.retorno||jsonb_build_object('repetido',true);
+ END IF;
+ SELECT to_jsonb(i) INTO v_ins FROM insumos i WHERE id=(p_dados->>'insumo_id')::uuid FOR UPDATE;
+ IF v_ins IS NULL OR NOT EXISTS(SELECT 1 FROM fazendas f JOIN fazendas fi ON fi.id=(v_ins->>'fazenda_id')::uuid WHERE f.id=p_fazenda
+  AND(fi.id=f.id OR (f.conta_id IS NOT NULL AND f.conta_id=coalesce(nullif(v_ins->>'conta_id','')::uuid,fi.conta_id)))) THEN RAISE EXCEPTION 'Item não encontrado no cliente da operação.'; END IF;
+ IF v_dep IS NOT NULL AND NOT EXISTS(SELECT 1 FROM depositos WHERE id=v_dep AND fazenda_id=p_fazenda) THEN RAISE EXCEPTION 'O depósito não pertence à fazenda do movimento.'; END IF;
+ IF v_tipo='ajuste' THEN
+  IF length(trim(coalesce(p_dados->>'observacao','')))<3 THEN RAISE EXCEPTION 'Informe a justificativa do ajuste.'; END IF;
+  v_qtd:=(p_dados->>'quantidade_nova')::numeric;
+  IF v_qtd IS NULL OR v_qtd<0 OR v_qtd::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Informe o saldo físico válido.'; END IF;
+  -- Sem depósito, ajusta somente o saldo sem depósito desta fazenda; não o consolidado de outros locais.
+  SELECT coalesce(sum(CASE WHEN tipo='saida' THEN -quantidade ELSE quantidade END),0) INTO v_saldo
+   FROM movimentacoes_estoque WHERE insumo_id=(v_ins->>'id')::uuid AND fazenda_id=p_fazenda AND deposito_id IS NOT DISTINCT FROM v_dep;
+  v_qtd:=round(v_qtd-v_saldo,3);
+ ELSE
+  v_qtd:=round((p_dados->>'quantidade')::numeric,3);
+  IF v_qtd IS NULL OR v_qtd<=0 OR v_qtd::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Informe a quantidade positiva.'; END IF;
+ END IF;
+ INSERT INTO movimentacoes_estoque(fazenda_id,insumo_id,tipo,motivo,quantidade,data,deposito_id,observacao,auto,variedade,lote_semente)
+ VALUES(p_fazenda,(v_ins->>'id')::uuid,v_tipo,p_dados->>'motivo',v_qtd,(p_dados->>'data')::date,v_dep,p_dados->>'observacao',false,
+  nullif(p_dados->>'variedade',''),nullif(p_dados->>'lote_semente','')) RETURNING id INTO v_id;
+ v_ret:=jsonb_build_object('ok',true,'id',v_id,'quantidade',v_qtd);
+ INSERT INTO financeiro_operacoes VALUES(p_requisicao,'movimentacoes_estoque',v_id,'manual',p_dados||jsonb_build_object('fazenda_id',p_fazenda),'{}',jsonb_build_object('id',v_id),v_ret,clock_timestamp());
+ RETURN v_ret;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.estoque_movimento_manual(uuid,jsonb,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.estoque_movimento_manual(uuid,jsonb,uuid) TO service_role;
+-- A consulta do auditor usa esta ordem e estes filtros, sem varrer JSON no WHERE.
+CREATE INDEX IF NOT EXISTS idx_audit_exclusoes_financeiras ON audit_log(id) WHERE acao='DELETE' AND tabela IN ('lancamentos','empresa_lancamentos');
+COMMIT;
+NOTIFY pgrst,'reload schema';

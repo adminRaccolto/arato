@@ -1,3 +1,4 @@
+import { fetchFinanceiro } from "./financeiro/requisicao";
 import { carregarPagamentosAdiantamentos, geraMovimentoBancario } from "./financeiro/adiantamentos-fornecedor";
 /**
  * Arato — camada de acesso a dados
@@ -845,30 +846,13 @@ export async function criarMovimentacaoManual(
   variedade?: string,
   lote_semente?: string,
 ): Promise<void> {
-  const { data: ins, error: insErr } = await supabase.from("insumos").select("id, nome, estoque").eq("id", insumo_id).single();
-  if (!ins || insErr) throw new Error("Insumo não encontrado");
-
-  let delta: number;
-  if (tipo === "ajuste" && quantidade_nova !== undefined) {
-    delta = quantidade_nova - ins.estoque;
-  } else {
-    delta = tipo === "saida" ? -quantidade : quantidade;
-  }
-
-  await supabase.from("insumos").update({ estoque: ins.estoque + delta }).eq("id", insumo_id);
-
-  // Para ajustes: armazenamos o delta assinado em quantidade (pode ser negativo)
-  // Para entrada/saída: armazenamos positivo (direção indicada pelo tipo)
-  await supabase.from("movimentacoes_estoque").insert({
-    fazenda_id, insumo_id,
-    tipo,
-    motivo,
-    quantidade: tipo === "ajuste" ? delta : Math.abs(delta),
-    data, deposito_id: deposito_id ?? null,
-    observacao, auto: false, usuario_nome: usuario_nome ?? null,
-    variedade: variedade || null,
-    lote_semente: lote_semente || null,
+  const response = await fetchFinanceiro("/api/estoque/movimento", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fazenda_id, insumo_id, tipo, motivo, quantidade, deposito_id: deposito_id ?? null,
+      data, observacao, quantidade_nova, variedade, lote_semente }),
   });
+  const result = await response.json();
+  if (!response.ok || !result.ok) throw new Error(result.error || "Movimentação não confirmada.");
 }
 
 /**
@@ -1095,9 +1079,11 @@ export async function excluirLancamento(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function atualizarLancamento(id: string, campos: Partial<Omit<Lancamento, "id" | "created_at">>): Promise<void> {
-  const { error } = await supabase.from("lancamentos").update(campos).eq("id", id);
+export async function atualizarLancamento(id: string, campos: Partial<Omit<Lancamento, "id" | "created_at">>, limparAusentes = false): Promise<void> {
+  const payload = limparAusentes ? Object.fromEntries(Object.entries(campos).map(([k, v]) => [k, v === undefined ? null : v])) : campos;
+  const { data, error } = await supabase.from("lancamentos").update(payload).eq("id", id).select("id");
   if (error) throw error;
+  if (data?.length !== 1) throw new Error("O título não foi atualizado. Recarregue a lista e tente novamente.");
 }
 
 // Cria múltiplas parcelas do mesmo lançamento com agrupador único
@@ -1169,7 +1155,7 @@ export async function baixarLancamento(
   }
 ): Promise<void> {
   // Usa API route com service_role_key — imune a JWT expirado e RLS silenciosa
-  const res = await fetch("/api/financeiro/baixar", {
+  const res = await fetchFinanceiro("/api/financeiro/baixar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1199,7 +1185,7 @@ export async function baixarLancamento(
  * Reabre um lançamento baixado, voltando ao status em_aberto ou vencido.
  */
 export async function reabrirLancamento(id: string): Promise<void> {
-  const res = await fetch("/api/financeiro/baixar", {
+  const res = await fetchFinanceiro("/api/financeiro/baixar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ acao: "reabrir", lancamento_id: id }),
@@ -1228,7 +1214,7 @@ export async function reabrirLancamentos(ids: string[]): Promise<void> {
     idsEmAberto.length ? supabase.from("lancamentos").update({ ...base, status: "em_aberto" }).in("id", idsEmAberto) : null,
   ]);
   // Títulos reabertos saem das linhas de extrato conciliadas (senão extrato verde × CP em aberto)
-  await fetch("/api/financeiro/baixar", {
+  await fetchFinanceiro("/api/financeiro/baixar", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ acao: "desvincular_extrato", ids }),
   }).catch(() => null);
@@ -1344,40 +1330,52 @@ export async function estornarBordero(lote_id: string): Promise<void> {
  */
 export async function listarBorderosPagos(fazenda_ids: string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
   if (!fazenda_ids.length) return [];
-  const { data, error } = await supabase
-    .from("pagamento_lotes")
-    .select("*, itens:pagamento_lote_itens(*)")
-    .in("fazenda_id", fazenda_ids)
-    .eq("tipo", tipo)
-    .eq("status", "pago")
-    .order("data_pagamento", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const rows = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase
+      .from("pagamento_lotes")
+      .select("*, itens:pagamento_lote_itens(*)")
+      .in("fazenda_id", fazenda_ids)
+      .eq("tipo", tipo)
+      .eq("status", "pago")
+      .order("data_pagamento", { ascending: false }).order("id").range(de, de + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
 }
 
 export async function listarPagamentoLotes(fazenda_id: string | string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
-  const { data, error } = await supabase
-    .from("pagamento_lotes")
-    .select("*, itens:pagamento_lote_itens(*)")
-    .in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id])
-    .eq("tipo", tipo)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const rows = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase
+      .from("pagamento_lotes")
+      .select("*, itens:pagamento_lote_itens(*)")
+      .in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id])
+      .eq("tipo", tipo)
+      .order("created_at", { ascending: false }).order("id").range(de, de + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
 }
 
 /** Lista borderôs pendentes de um conjunto de fazendas (ver nota de listarBorderosPagos sobre o embed removido). */
 export async function listarBorderosPendentes(fazenda_ids: string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
   if (!fazenda_ids.length) return [];
-  const { data, error } = await supabase
-    .from("pagamento_lotes")
-    .select("*, itens:pagamento_lote_itens(*)")
-    .in("fazenda_id", fazenda_ids)
-    .eq("tipo", tipo)
-    .eq("status", "pendente")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const rows = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase
+      .from("pagamento_lotes")
+      .select("*, itens:pagamento_lote_itens(*)")
+      .in("fazenda_id", fazenda_ids)
+      .eq("tipo", tipo)
+      .eq("status", "pendente")
+      .order("created_at", { ascending: false }).order("id").range(de, de + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
 }
 
 // ————————————————————————————————————————
@@ -1385,9 +1383,13 @@ export async function listarBorderosPendentes(fazenda_ids: string[], tipo: "paga
 // ————————————————————————————————————————
 
 export async function listarContratos(fazenda_id: string | string[]): Promise<Contrato[]> {
-  const { data, error } = await supabase.from("contratos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data_contrato", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const rows = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase.from("contratos").select("*").in("fazenda_id", Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id]).order("data_contrato", { ascending: false }).order("id").range(de, de + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
 }
 
 export async function criarContrato(c: Omit<Contrato, "id" | "created_at">): Promise<Contrato> {
@@ -2273,7 +2275,8 @@ export async function sincronizarPeriodosFerias(funcionario_id: string, fazenda_
 
 // — Folha mensal —
 export async function processarFolhaMensal(fazenda_id: string, mes_referencia: string): Promise<{ gerados: number }> {
-  const { data: funcs } = await supabase.from("funcionarios").select("*").eq("fazenda_id", fazenda_id).eq("ativo", true);
+  const { data: funcs, error: funcionariosErro } = await supabase.from("funcionarios").select("*").eq("fazenda_id", fazenda_id).eq("ativo", true);
+  if (funcionariosErro) throw funcionariosErro;
   if (!funcs || funcs.length === 0) return { gerados: 0 };
 
   // Busca IDs das operações gerenciais por classificação (FAZ = 2.01.01.10, ADM = 2.02.01.03)
@@ -2307,11 +2310,12 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
 
     for (const l of lancamentos) {
       if (l.valor <= 0) continue;
-      const { data: existing } = await supabase.from("lancamentos").select("id")
+      const { data: existing, error: existenteErro } = await supabase.from("lancamentos").select("id")
         .eq("fazenda_id", fazenda_id).eq("descricao", l.descricao)
         .eq("data_lancamento", dataComp).eq("tipo", "pagar").maybeSingle();
+      if (existenteErro) throw existenteErro;
       if (existing) continue;
-      await supabase.from("lancamentos").insert({
+      const { error: salarioErro } = await supabase.from("lancamentos").insert({
         fazenda_id,
         tipo: "pagar",
         moeda: "BRL",
@@ -2327,6 +2331,7 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
         funcionario_id: f.id,
         origem_lancamento: "manual",
       });
+      if (salarioErro) throw new Error(`Salário de ${f.nome}: ${salarioErro.message}`);
       gerados++;
     }
   }
@@ -2530,9 +2535,11 @@ export async function criarEmpresaLancamento(
   return data;
 }
 
-export async function atualizarEmpresaLancamento(id: string, patch: Partial<EmpresaLancamento>): Promise<void> {
-  const { error } = await supabase.from("empresa_lancamentos").update(patch).eq("id", id);
+export async function atualizarEmpresaLancamento(id: string, patch: Partial<EmpresaLancamento>, limparAusentes = false): Promise<void> {
+  const payload = limparAusentes ? Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, v === undefined ? null : v])) : patch;
+  const { data, error } = await supabase.from("empresa_lancamentos").update(payload).eq("id", id).select("id");
   if (error) throw error;
+  if (data?.length !== 1) throw new Error("O título da empresa não foi atualizado. Recarregue a lista.");
 }
 
 export async function excluirEmpresaLancamento(id: string): Promise<void> {
@@ -7099,7 +7106,7 @@ export async function aplicarAdiantamentoEmCP(
   descricao?: string,
   cotacao_usd?: number,
 ): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number; novoValorCp: number; novoSaldoCp: number; aviso?: string }> {
-  const res = await fetch("/api/financeiro/baixar", {
+  const res = await fetchFinanceiro("/api/financeiro/baixar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -7145,7 +7152,7 @@ export async function listarAdiantamentosFuncionarioDisponiveis(fazenda_ids: str
 export async function aplicarAdiantamentoFuncionarioEmCP(
   adiantamento_salario_id: string, lancamento_cp_id: string, valor_aplicado: number, data_aplicacao: string, descricao?: string,
 ): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number }> {
-  const res = await fetch("/api/financeiro/baixar", {
+  const res = await fetchFinanceiro("/api/financeiro/baixar", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ acao: "aplicar_adiantamento_funcionario", adiantamento_salario_id, lancamento_id: lancamento_cp_id, valor_aplicado, data_aplicacao, descricao }),
   });

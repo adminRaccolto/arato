@@ -1,0 +1,47 @@
+{
+  "readonly": true,
+  "gerado_em": "2026-11-11T20:05:47.370Z",
+  "requests": 52,
+  "duracao_ms": 12852,
+  "erros": [],
+  "espelho": {
+    "fontes": 20777,
+    "espelho": 20777,
+    "registrosComDiferenca": 0,
+    "porCampo": {}
+  },
+  "efetivadasComOrigemPrevisao": 5,
+  "previsoes": {
+    "quantidade": 2681,
+    "abertasComSaldo": 2550,
+    "abertasSemTitulo": 0,
+    "saldoDivergente": 8,
+    "consumos": 131,
+    "gruposConsumosMesmoDestino": 0
+  },
+  "borderos": {
+    "quantidade": 450,
+    "itens": 1418,
+    "itensSemVinculoReciproco": 59,
+    "titulosSemItem": 0
+  },
+  "estoque": {
+    "gruposMovimentos": 862,
+    "negativosComAjustes": 179,
+    "alertasAuditorSemAjustes": 179,
+    "linhasViewRetornadas": 862,
+    "nota": "A view não foi paginada por não possuir id; agregado completo foi calculado sobre movimentos paginados. Não usar limite da view como total."
+  },
+  "auditorUltimasExecucoes": {
+    "quantidade": 10,
+    "falhas": 5,
+    "ultimaData": "2026-11-11T09:30:45.299386+00:00",
+    "erros": [
+      "audit_log: canceling statement due to statement timeout"
+    ]
+  },
+  "alertasBaixa": {
+    "quantidade": 34,
+    "nota": "A regra original ainda precisa confrontar parcelas e câmbio; não é uma soma de perdas."
+  }
+}

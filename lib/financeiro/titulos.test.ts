@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { dedupeTitulos, filtrarTitulos, hojeLocal, statusEfetivo, statusExibido, type TituloBase } from "./titulos.ts";
 
+test("estados terminais não são reclassificados pelo vencimento", () => {
+  for (const status of ["cancelado", "pago", "baixado", "parcial", "cartao", "liquidado"]) {
+    assert.equal(statusEfetivo({ status, data_vencimento: "2020-01-01" }, "2026-11-11"), status);
+  }
+});
+
 const HOJE = "2026-10-14";
 const t = (o: Partial<TituloBase> & { id: string }): TituloBase => ({ tipo: "pagar", status: "em_aberto", data_vencimento: "2026-10-01", ...o });
 

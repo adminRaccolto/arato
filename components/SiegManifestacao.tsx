@@ -1,4 +1,6 @@
 "use client";
+import { hojeLocal } from "../lib/data-local";
+import { confirmarAcao } from "../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../lib/supabase";
@@ -145,6 +147,7 @@ export default function SiegManifestacao() {
   }
 
   async function executarManifestacao(nf: NfRow, tipo: number, justificativa?: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Executar manifestacao)", perigo: false }))) return;
     setBusy(p => ({ ...p, [nf.id]: true }));
     setErros(p => { const n = { ...p }; delete n[nf.id]; return n; });
     try {
@@ -154,7 +157,7 @@ export default function SiegManifestacao() {
       });
       const data = await res.json() as Record<string, unknown>;
       if (data.erro) setErros(p => ({ ...p, [nf.id]: String(data.erro) }));
-      else setNfs(prev => prev.map(n => n.id === nf.id ? { ...n, status: String(data.status ?? ""), manifestacao_tipo: tipo, manifestacao_data: new Date().toISOString().slice(0, 10) } : n));
+      else setNfs(prev => prev.map(n => n.id === nf.id ? { ...n, status: String(data.status ?? ""), manifestacao_tipo: tipo, manifestacao_data: hojeLocal() } : n));
     } catch (e) { setErros(p => ({ ...p, [nf.id]: String(e) })); }
     finally { setBusy(p => ({ ...p, [nf.id]: false })); }
   }

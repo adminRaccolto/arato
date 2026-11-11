@@ -4,6 +4,7 @@
  */
 
 import https from "https";
+import { CA_FISCAL } from "../fiscal/ca-icp-brasil";
 import type { PemPair } from "./signer";
 
 interface UFEndpoints {
@@ -136,15 +137,7 @@ function endpoints(uf: string, ambiente: "producao" | "homologacao"): UFEndpoint
 
 // ─── SOAP request com mTLS ────────────────────────────────────────────────────
 //
-// Os webservices da SEFAZ usam certificados ICP-Brasil que não estão no bundle
-// Mozilla/Node.js. A segurança fiscal é garantida pelo XMLDSIG (assinatura do
-// certificado A1 no próprio XML). Para domínios *.gov.br, rejectUnauthorized=false
-// é o padrão adotado por ACBr e demais bibliotecas fiscais brasileiras.
-// Para qualquer outro host rejectUnauthorized permanece true.
-function isSefazHost(hostname: string): boolean {
-  return /\.gov\.br$/.test(hostname);
-}
-
+// Verifica a cadeia do servidor com raízes públicas e ICP-Brasil em todos os autorizadores.
 // soapAction opcional: alguns webservices Axis2 (ex: CadConsultaCadastro4 de
 // MT) exigem a Action do SOAP 1.2 explícita — sem ela, respondem "The endpoint
 // reference (EPR) for the Operation not found ... WSA Action = null". Em SOAP
@@ -169,7 +162,9 @@ export function soapPost(url: string, body: string, pem: PemPair, soapAction?: s
         },
         cert: pem.certChain ?? pem.cert,
         key:  pem.key,
-        rejectUnauthorized: !isSefazHost(u.hostname),
+        ca: CA_FISCAL,
+        rejectUnauthorized: true,
+        signal: AbortSignal.timeout(45_000),
       },
       (res) => {
         let data = "";

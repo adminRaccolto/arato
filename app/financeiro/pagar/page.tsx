@@ -1,4 +1,5 @@
 "use client";
+import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
 import { exibirNoCP, exibirBorderoNoCP } from "../../../lib/financeiro/visibilidade-cp";
 import { carregarVinculosCP } from "../../../lib/financeiro/carregamento-cp";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
@@ -129,7 +130,7 @@ type RelLancamento = {
 
 // Título de previsão: não é dívida real ainda — não se paga, não entra em lote nem em borderô; vira real ao efetivar
 // (Previsão de Gastos) ou ao fechar a folha.
-const ehPrevisao = (l: Pick<RelLancamento, "natureza" | "origem_lancamento">) => l.natureza === "previsao" || l.origem_lancamento === "previsao";
+const ehPrevisao = (l: Pick<RelLancamento, "natureza" | "origem_lancamento">) => l.natureza === "previsao" || (l.natureza == null && l.origem_lancamento === "previsao");
 
 const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
   { v: "em_aberto", label: "Aberto", bg: "#E8E8E8", color: "#0D0D0D" },
@@ -426,28 +427,34 @@ export default function ContasAPagarPage() {
   const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
   const [borderosPagos, setBorderosPagos] = useState<PagamentoLote[]>([]);
   const [infoBordero, setInfoBordero] = useState<Map<string, { fornecedor: string | null; produtor: string | null; origem: string | null; operacao: string | null; conta: string | null }>>(new Map());
+  const cargaBorderosSeq = useRef(0);
   const carregarBorderos = useCallback(async () => {
+    const sequencia = ++cargaBorderosSeq.current;
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-    if (!fids.length) return;
+    if (!fids.length) { setBorderosPendentes([]); setBorderosPagos([]); setInfoBordero(new Map()); return; }
     try {
       const [pend, pagos] = await Promise.all([
         listarBorderosPendentes(fids, "pagar"),
         listarBorderosPagos(fids, "pagar"),
       ]);
+      if (sequencia !== cargaBorderosSeq.current) return;
       setBorderosPendentes(pend);
       setBorderosPagos(pagos);
       // Fornecedor, produtor e origem do borderô vêm dos títulos dele (o cabeçalho do borderô não guarda fornecedor)
       const ids = [...new Set([...pend, ...pagos].flatMap(b => (b.itens ?? []).map(i => i.lancamento_id)))];
       const titulos: { id: string; pessoa_id: string | null; pessoa_nome: string | null; produtor_nome: string | null; empresa_nome: string | null; origem_tabela: string; operacao_gerencial_nome: string | null }[] = [];
       for (let i = 0; i < ids.length; i += 200) {
-        const { data } = await supabase.from("rel_lancamentos").select("id, pessoa_id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 200));
+        const { data, error: leituraErro } = await supabase.from("rel_lancamentos").select("id, pessoa_id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 200));
+        if (leituraErro) throw leituraErro;
         titulos.push(...((data ?? []) as typeof titulos));
       }
       const porId = new Map(titulos.map(t => [t.id, t]));
       const idsContas = [...new Set([...pend, ...pagos].map(b => b.conta_bancaria).filter(Boolean))] as string[];
-      const { data: contasB } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [] };
+      const { data: contasB, error: contasErro } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [], error: null };
+      if (contasErro) throw contasErro;
       const nomeConta = new Map((contasB ?? []).map(c => [c.id as string, c.nome as string]));
       const unicoOuVarios = (vals: (string | null)[]) => { const u = [...new Set(vals.filter(Boolean))] as string[]; return u.length <= 1 ? (u[0] ?? null) : `Vários (${u.length})`; };
+      if (sequencia !== cargaBorderosSeq.current) return;
       setInfoBordero(new Map([...pend, ...pagos].map(b => {
         const ts = (b.itens ?? []).map(i => porId.get(i.lancamento_id)).filter((t): t is typeof titulos[number] => !!t);
         return [b.id, {
@@ -458,10 +465,14 @@ export default function ContasAPagarPage() {
           conta: b.conta_bancaria ? nomeConta.get(b.conta_bancaria) ?? null : null,
         }];
       })));
-    } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
+    } catch (e: unknown) { if (sequencia === cargaBorderosSeq.current) setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, fazendaIds?.join(",")]);
-  useEffect(() => { carregarBorderos(); }, [carregarBorderos]);
+  useEffect(() => {
+    setBorderosPendentes([]); setBorderosPagos([]); setInfoBordero(new Map());
+    carregarBorderos();
+    return () => { cargaBorderosSeq.current++; };
+  }, [carregarBorderos]);
 
   const todosBorderos = [...borderosPendentes, ...borderosPagos].filter(b => exibirBorderoNoCP(b, resultado ?? []));
   const vinculos = vinculosBorderos(todosBorderos);
@@ -741,7 +752,7 @@ export default function ContasAPagarPage() {
           forma_pagamento: bForma && bForma !== bFormaOrig ? bForma : undefined,
         });
       } else {
-        const res = await fetch("/api/empresa-lancamentos/baixar", {
+        const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             acao: "baixar", lancamento_id: modalBaixa.id,
@@ -794,7 +805,7 @@ export default function ContasAPagarPage() {
           observacao: novaObs,
         });
       } else {
-        const res = await fetch("/api/empresa-lancamentos/baixar", {
+        const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             acao: "reprogramar", lancamento_id: modalReprog.id,
@@ -821,7 +832,7 @@ export default function ContasAPagarPage() {
       if (l.origem_tabela === "lancamentos") {
         await reabrirLancamento(l.id);
       } else {
-        const res = await fetch("/api/empresa-lancamentos/baixar", {
+        const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ acao: "reabrir", lancamento_id: l.id }),
         });
@@ -1058,7 +1069,7 @@ export default function ContasAPagarPage() {
   const [prevSel, setPrevSel] = useState("");
   async function apiPrevisoes(body: Record<string, unknown>) {
     const { data: { session } } = await supabase.auth.getSession();
-    const r = await fetch("/api/financeiro/previsoes", {
+    const r = await fetchFinanceiro("/api/financeiro/previsoes", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
       body: JSON.stringify({ fazenda_id: fazendaId, ...body }),
@@ -1269,14 +1280,14 @@ export default function ContasAPagarPage() {
             natureza: novoForm.natureza,
             forma_pagamento: novoForm.forma_pagamento || undefined,
             entidade_contabil: novoForm.entidade_contabil || undefined,
-            ...({ juros_pct: numBR(novoForm.juros_pct) || null, multa_pct: numBR(novoForm.multa_pct) || null, desconto_pontualidade_pct: numBR(novoForm.desconto_pct) || null } as unknown as Record<string, never>),
+            ...({ juros_pct: numBR(novoForm.juros_pct) || undefined, multa_pct: numBR(novoForm.multa_pct) || undefined, desconto_pontualidade_pct: numBR(novoForm.desconto_pct) || undefined } as unknown as Record<string, never>),
             ...({
-              funcionario_id: novoForm.funcionario_id || null,
-              tipo_mao_obra: novoForm.funcionario_id ? (novoForm.tipo_mao_obra || null) : null,
-              unidade_mao_obra: novoForm.funcionario_id ? (novoForm.unidade_mao_obra || null) : null,
-              quantidade_mao_obra: novoForm.funcionario_id && novoForm.quantidade_mao_obra ? numBR(novoForm.quantidade_mao_obra) : null,
-              maquina_id: novoForm.veiculo_sel.startsWith("m:") ? novoForm.veiculo_sel.slice(2) : null,
-              veiculo_id: novoForm.veiculo_sel.startsWith("v:") ? novoForm.veiculo_sel.slice(2) : null,
+              funcionario_id: novoForm.funcionario_id || undefined,
+              tipo_mao_obra: novoForm.funcionario_id ? (novoForm.tipo_mao_obra || undefined) : undefined,
+              unidade_mao_obra: novoForm.funcionario_id ? (novoForm.unidade_mao_obra || undefined) : undefined,
+              quantidade_mao_obra: novoForm.funcionario_id && novoForm.quantidade_mao_obra ? numBR(novoForm.quantidade_mao_obra) : undefined,
+              maquina_id: novoForm.veiculo_sel.startsWith("m:") ? novoForm.veiculo_sel.slice(2) : undefined,
+              veiculo_id: novoForm.veiculo_sel.startsWith("v:") ? novoForm.veiculo_sel.slice(2) : undefined,
             } as unknown as Record<string, never>),
           };
           // Título já lançado com vencimento único e negociado em parcelas: a 1ª parcela É o título original
@@ -1291,7 +1302,7 @@ export default function ContasAPagarPage() {
             if ((orig.total_parcelas ?? 1) > 1) throw new Error("Este título já faz parte de um parcelamento.");
             const agrupador = crypto.randomUUID();
             const n = parcelasNovo.length;
-            await atualizarLancamento(editandoId, { ...camposEdit, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, num_parcela: 1, total_parcelas: n, agrupador });
+            await atualizarLancamento(editandoId, { ...camposEdit, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, num_parcela: 1, total_parcelas: n, agrupador }, true);
             // numero é coluna gerada pelo banco (identity): copiar o valor do original impedia a gravação das demais parcelas
             const { id: _i, created_at: _c, numero: _n, ...molde } = orig as Record<string, unknown>;
             const linhas = parcelasNovo.slice(1).map((pc, k) => ({
@@ -1306,15 +1317,15 @@ export default function ContasAPagarPage() {
             const { data: antes } = await supabase.from("lancamentos").select("natureza, previsao_gasto_id, origem_lancamento").eq("id", editandoId).maybeSingle();
             if (antes?.natureza === "previsao" && antes.origem_lancamento === "folha" && novoForm.natureza === "real")
               throw new Error("Salário em previsão é efetivado pelo Fechar Folha (Financeiro → Folha de Pagamento), não por aqui.");
-            await atualizarLancamento(editandoId, camposEdit);
             if (antes?.previsao_gasto_id && antes.natureza === "previsao" && novoForm.natureza === "real") {
-              try {
-                const r = await apiPrevisoes({ operacao: "consumir", previsao_id: antes.previsao_gasto_id, valor: valorFinal, lancamento_id: editandoId, origem: "efetivar_cp" });
-                if (r.status === "pendente_decisao") alert("Previsão efetivada com valor diferente do previsto: a diferença foi para a Decisão do Gestor (Previsão de Gastos).");
-              } catch (e) {
-                alert(`Título efetivado, mas a Previsão de Gastos não foi atualizada: ${e instanceof Error ? e.message : String(e)}`);
-              }
+              const valorReal = novoForm.moeda === "USD" ? valorFinal * novoForm.cotacao_usd : valorFinal;
+              const r = await apiPrevisoes({ operacao: "consumir", previsao_id: antes.previsao_gasto_id, valor: valorReal, lancamento_id: editandoId,
+                origem: "efetivar_cp", campos_titulo: Object.fromEntries(Object.entries(camposEdit).map(([k,v]) => [k, v === undefined ? null : v])) });
+              if (r.status === "pendente_decisao") alert("Previsão efetivada com valor diferente do previsto: a diferença foi para a Decisão do Gestor (Previsão de Gastos).");
+            } else {
+              await atualizarLancamento(editandoId, camposEdit, true);
             }
+
           }
           if (salvarComoRegra) await criarRegraClassificacaoNovo();
         } else {
@@ -1344,13 +1355,13 @@ export default function ContasAPagarPage() {
             if ((orig.parcelas_total ?? 1) > 1) throw new Error("Este título já faz parte de um parcelamento.");
             const agrupador = crypto.randomUUID();
             const n = parcelasNovo.length;
-            await atualizarEmpresaLancamento(editandoId, { ...camposEmp, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, parcela_num: 1, parcelas_total: n, agrupador });
+            await atualizarEmpresaLancamento(editandoId, { ...camposEmp, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, parcela_num: 1, parcelas_total: n, agrupador }, true);
             const { id: _i, created_at: _c, numero: _n, ...molde } = orig as Record<string, unknown>;
             for (let k = 1; k < n; k++) {
               await criarEmpresaLancamento({ ...molde, ...camposEmp, valor: parcelasNovo[k].valor, data_vencimento: parcelasNovo[k].data, parcela_num: k + 1, parcelas_total: n, agrupador, status: "pendente", conciliado: false, lote_id: null, data_pagamento: null, valor_pago: null } as never);
             }
           } else {
-            await atualizarEmpresaLancamento(editandoId, camposEmp);
+            await atualizarEmpresaLancamento(editandoId, camposEmp, true);
           }
         }
         setModalNovo(false);
@@ -1562,7 +1573,7 @@ export default function ContasAPagarPage() {
         multa_valor: numBR(e.multa), juros_valor: numBR(e.juros), desconto_valor: numBR(e.desconto),
       });
     } else {
-      const res = await fetch("/api/empresa-lancamentos/baixar", {
+      const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "baixar", lancamento_id: l.id,
@@ -1941,6 +1952,15 @@ export default function ContasAPagarPage() {
             );
           })}
         </div>
+        {Object.entries(filtrosCol).some(([k, v]) => v.trim() && visCols[k] === false) && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }} aria-label="Filtros de colunas ocultas">
+            {Object.entries(filtrosCol).filter(([k, v]) => v.trim() && visCols[k] === false).map(([k, v]) => (
+              <button key={k} type="button" onClick={() => setFiltrosCol(p => ({ ...p, [k]: "" }))} style={inp}>
+                {columnDefinitions.find(c => c.key === k)?.label ?? k}: {v} ×
+              </button>
+            ))}
+          </div>
+        )}
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div>
             <label data-arato-label="true" style={lblMini}>Origem</label>

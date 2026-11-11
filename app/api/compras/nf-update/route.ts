@@ -1,3 +1,4 @@
+import { validarReferenciasCliente } from "../../../../lib/api-referencias";
 import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
@@ -56,14 +57,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, updated: 0 });
     }
 
-    const { error } = await admin()
+    const sb = admin();
+    const { data: nota, error: leituraErro } = await sb.from("nf_entradas").select("fazenda_id").eq("id", body.id).maybeSingle();
+    if (leituraErro) throw leituraErro;
+    if (!nota || nota.fazenda_id !== body.fazenda_id) return NextResponse.json({ ok: false, error: "A NF não foi atualizada. Confira a fazenda e recarregue a nota." }, { status: 409 });
+    await validarReferenciasCliente(sb, nota.fazenda_id, [
+      { tabela: "produtores", id: body.produtor_id }, { tabela: "operacoes_gerenciais", id: body.operacao_gerencial_id, global: true },
+      { tabela: "centros_custo", id: body.centro_custo_id }, { tabela: "anos_safra", id: body.ano_safra_id },
+      { tabela: "ciclos", id: body.ciclo_id }, { tabela: "pedidos_compra", id: body.pedido_compra_id }, { tabela: "cartoes_credito", id: body.cartao_id },
+    ]);
+    const { data, error } = await sb
       .from("nf_entradas")
       .update(update)
       .eq("id", body.id)
-      .eq("fazenda_id", body.fazenda_id);
+      .eq("fazenda_id", body.fazenda_id).select("id");
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, updated: Object.keys(update).length });
+    if (data?.length !== 1) return NextResponse.json({ ok: false, error: "A NF não foi atualizada. Confira a fazenda e recarregue a nota." }, { status: 409 });
+    return NextResponse.json({ ok: true, updated: data.length });
   } catch (e) {
     console.error("[api/compras/nf-update]", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });

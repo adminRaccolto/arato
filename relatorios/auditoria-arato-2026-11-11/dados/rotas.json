@@ -1,0 +1,2397 @@
+[
+  {
+    "file": "app/api/configuracoes/taxas/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 121,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/configuracoes/classificacao-padroes/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 64,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 113,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/abastecimento-acao/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 167,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 7,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/notificar-pendente/route.ts",
+    "methods": [
+      "OPTIONS",
+      "POST"
+    ],
+    "lines": 118,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/atualizar-taxas/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 94,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/transferencia/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 55,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/relatorio-semanal/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 281,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/aprovar-lancamento/route.ts",
+    "methods": [
+      "OPTIONS",
+      "POST"
+    ],
+    "lines": 462,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 14,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/completar-pessoas/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 30,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/grupos-usuarios/route.ts",
+    "methods": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE"
+    ],
+    "lines": 167,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/transferencias-pendentes/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 37,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/sieg-auto/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 84,
+    "importedAuth": 2,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/apoio-bulk/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 127,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/upload-logo/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 45,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/culturas-seed/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 38,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/perfil/fazenda-ativa/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 36,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/transferencias-lista/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 40,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/pendencias/reprocessar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 186,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 11,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/seed-cfops/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 45,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/recalibrar-storage/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 69,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/asaas/cobrar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 119,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/sieg/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 138,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/antt/ciot/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 180,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 4,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/asaas/webhook/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 115,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 6,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/consumir-estoque/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 116,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cadastros/consultar-cnpj/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 41,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/empresa-lancamentos/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 45,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/cobranca/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 234,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 8,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/usuarios-cliente/route.ts",
+    "methods": [
+      "PUT",
+      "DELETE"
+    ],
+    "lines": 108,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/compras/nf-rascunho-itens/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 101,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/operador-conta/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 185,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/empresa-lancamentos/baixar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 125,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 4,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/produtores/criar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 80,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/sieg-sync/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 460,
+    "importedAuth": 5,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 10,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/compras/excluir-nf-servico/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 46,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/cancelar-cte/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 38,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/insumos/route.ts",
+    "methods": [
+      "POST",
+      "PATCH",
+      "DELETE"
+    ],
+    "lines": 151,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 5,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/produtores/listar/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 80,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/compras/excluir-nf/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 179,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 12,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/mdfe/salvar-ciot/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 35,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/campo/transferencia-acao/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 833,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 17,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/compras/estornar-nf-servico/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 43,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/encerrar-mdfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 44,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/compras/gerar-cp/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 101,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/romaneios/route.ts",
+    "methods": [
+      "DELETE"
+    ],
+    "lines": 58,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/marcar-vencidos/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 26,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/compras/nf-update/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 72,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/insumos/importar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 168,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": "120"
+  },
+  {
+    "file": "app/api/compras/estornar-nf/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 242,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 15,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/emitir-nfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 128,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/danfe-lote/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 54,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/admin/saude-dados/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 103,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/folha/decimo-terceiro/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 111,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 6,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/cte-entrada/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 244,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 9,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/folha/salvar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 1565,
+    "importedAuth": 2,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 69,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/curva-mercado/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 104,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/remessas/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 243,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 10,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/danfe/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 186,
+    "importedAuth": 3,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/lancamentos/route.ts",
+    "methods": [
+      "POST",
+      "PATCH"
+    ],
+    "lines": 96,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/cancelar-mdfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 36,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 163,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/buscar-auth-user/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 57,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/reclassificar-nf/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 73,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/status-sefaz/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 183,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/listar-clientes-admin/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 132,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/carta-correcao-cte/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 46,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/fiscal/consultar-nfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 250,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 5,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/emitir-mdfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 29,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/alertas-vencimento/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 303,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/emitir-cte/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 136,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/numeracao-nfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 48,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/notas-proprias/consultar-chave/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 79,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/ptax/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 12,
+    "importedAuth": 0,
+    "authSignals": false,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/consultar-cadastro/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 79,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/nfs-canceladas/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 202,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/admin/liberar-onboarding/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 111,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/eventos/route.ts",
+    "methods": [
+      "POST",
+      "GET"
+    ],
+    "lines": 169,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 9,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/zeramento-estoque/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 63,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/financeiro/bordero-acao/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 31,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/planos/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 14,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/atualizar-role-usuario/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 59,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/criar-usuario/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 276,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/criar-conta-admin/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 84,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/raccotlo-clientes/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 78,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/cancelar-cliente/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 174,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": true,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/admin/limpeza/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 61,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": true,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/financeiro/seguros/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 328,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 17,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/seed-templates/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 46,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/persistir-extrato/route.ts",
+    "methods": [
+      "POST",
+      "DELETE"
+    ],
+    "lines": 337,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 21,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cron/auditoria-consistencia/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 42,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/admin/sincronizar-padroes/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 84,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/cartao/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 88,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/backups-storage/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 105,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/consorcios/route.ts",
+    "methods": [
+      "GET",
+      "PATCH",
+      "POST",
+      "PUT",
+      "DELETE"
+    ],
+    "lines": 413,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 16,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/listar-contas/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 50,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/novo-cliente/route.ts",
+    "methods": [
+      "OPTIONS",
+      "POST",
+      "GET"
+    ],
+    "lines": 96,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/campo/listar-operadores/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 56,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/cp-produtor/salvar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 51,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/criar-usuario-raccotlo/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 148,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/suporte/conversa/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 31,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/consorcios/lance/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 115,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 8,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/conta-modulos/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 75,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/cp-produtor/processar-auto/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 266,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/admin/campo/operador/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 134,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/completar-pessoas/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 54,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "120"
+  },
+  {
+    "file": "app/api/admin/atualizar-hub-acesso/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 57,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/adiantamentos/baixar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 19,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/whatsapp/reconectar/route.ts",
+    "methods": [
+      "POST",
+      "GET"
+    ],
+    "lines": 60,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/cp-produtor/sugerir/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 113,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/conciliacao-reparar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 172,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 6,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/baixar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 252,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 11,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/conciliacao-regras/route.ts",
+    "methods": [
+      "GET",
+      "POST",
+      "PATCH",
+      "DELETE"
+    ],
+    "lines": 131,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 4,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/atualizar-conta/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 58,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/criar-cliente-interno/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 48,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/mutuos/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 148,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 9,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/whatsapp/simular-evento/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 57,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/sync-extrato-transacoes/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 145,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/enriquecer-titulos/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 90,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/financeiro/conciliacao-regras/aplicar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 146,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 7,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/suporte/mensagem/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 48,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/admin/equipe-raccotlo/route.ts",
+    "methods": [
+      "GET",
+      "DELETE"
+    ],
+    "lines": 90,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/importar-apoio/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 360,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/financeiro/previsoes/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 240,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/talhao-arrendamentos/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 68,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/whatsapp/status/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 75,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cert-validar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 18,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/contratos/liberacao-fornecedor/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 140,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 12,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/financeiro/contratos/refinanciamento/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 179,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 15,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/lancamentos-cp/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 39,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/parse-xlsx/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 105,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "30"
+  },
+  {
+    "file": "app/api/fazenda/arrendamentos/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 35,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/contratos/confirmar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 178,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 4,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/ai/extrair-contrato-venda/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 43,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "120"
+  },
+  {
+    "file": "app/api/whatsapp/test-webhook/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 114,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/transporte/cte-salvar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 59,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 4,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cert-meta/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 103,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/transporte/excluir-rascunho/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 32,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/bpo/usuarios/route.ts",
+    "methods": [
+      "GET",
+      "POST",
+      "PATCH"
+    ],
+    "lines": 178,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/contratos/vincular-romaneio-nf/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 54,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/ai/extrair-apolice/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 31,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/whatsapp/fix-webhook/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 63,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fazenda/salvar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 94,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/conta/bootstrap/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 98,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/saas/route.ts",
+    "methods": [
+      "GET",
+      "OPTIONS",
+      "POST"
+    ],
+    "lines": 199,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/ai/extrair-cedula/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 33,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/lancamentos/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 39,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cte/distribuicao/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 165,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/whatsapp/webhook/route.ts",
+    "methods": [
+      "POST",
+      "GET"
+    ],
+    "lines": 547,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/bi/auditoria/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 21,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "120"
+  },
+  {
+    "file": "app/api/cadastro/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 247,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 7,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/contratos/aditivos/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 165,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 5,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fazenda/criar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 54,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/ai/extrair-consorcio/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 32,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/contratos/faturar-carga/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 32,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/bi/excluir-duplicatas/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 83,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/agente/implantar/route.ts",
+    "methods": [
+      "POST",
+      "GET"
+    ],
+    "lines": 798,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 11,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fazenda/listar-clientes/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 135,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/version/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 15,
+    "importedAuth": 0,
+    "authSignals": false,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/ai/extrair-pedido-compra/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 32,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/contratos/compra-terra/parcelas/route.ts",
+    "methods": [
+      "POST",
+      "DELETE"
+    ],
+    "lines": 246,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 7,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fazenda/da-conta/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 98,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/suporte/chat/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 151,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/storage/upload/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 134,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fazenda/raccolto-acesso/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 72,
+    "importedAuth": 0,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/public/precos-planos/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 15,
+    "importedAuth": 0,
+    "authSignals": false,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/precos/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 265,
+    "importedAuth": 0,
+    "authSignals": false,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cert-upload/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 28,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/storage/listar/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 81,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/storage/uso/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 56,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/storage/excluir/route.ts",
+    "methods": [
+      "DELETE"
+    ],
+    "lines": 59,
+    "importedAuth": 2,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/talhao-documentacao/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 77,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 4,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/preferencias-grid/route.ts",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "lines": 44,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/nfe/xml-por-chave/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 93,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/integracoes/sieg-sync-nfse/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 504,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 5,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/integracoes/sieg-dedup/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 102,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": "120"
+  },
+  {
+    "file": "app/api/integracoes/sieg-cert/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 105,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/integracoes/nfse-dedup/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 49,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": "120"
+  },
+  {
+    "file": "app/api/integracoes/sieg-sync/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 528,
+    "importedAuth": 4,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 12,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/integracoes/sieg-manifestar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 109,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/integracoes/sieg-test/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 123,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  }
+]

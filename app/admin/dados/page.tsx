@@ -60,14 +60,6 @@ export default function DadosAdminPage() {
 
   // ─── Estado: Manutenção ───────────────────────────────────────────────
 
-  if (!raccotloGestor) {
-    return (
-      <div data-arato-statistic="display" style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-        <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Acesso restrito a Gestores</div>
-      </div>
-    );
-  }
 
   // ─── Carregar contas via API route (service_role_key — bypassa RLS) ──
   const carregarContas = useCallback(async () => {
@@ -96,7 +88,7 @@ export default function DadosAdminPage() {
     }
   }, []);
 
-  useEffect(() => { carregarContas(); }, [carregarContas]);
+  useEffect(() => { if (raccotloGestor) carregarContas(); }, [carregarContas, raccotloGestor]);
 
   // ─── Carregar contagens (por sub-item) ───────────────────────────────
   async function carregarContagens() {
@@ -196,6 +188,15 @@ export default function DadosAdminPage() {
   }
 
   const card: React.CSSProperties = { background: "white", borderRadius: 10, border: "0.5px solid var(--border)" };
+
+  if (!raccotloGestor) {
+    return (
+      <div data-arato-statistic="display" style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+        <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Acesso restrito a Gestores</div>
+      </div>
+    );
+  }
 
   return (
     <div>

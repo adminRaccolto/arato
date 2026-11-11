@@ -1,0 +1,68 @@
+{
+  "data_utc": "2026-11-11T21:22:41.144Z",
+  "somente_leitura": true,
+  "metodos_utilizados": [
+    "GET"
+  ],
+  "funcoes": [
+    {
+      "nome": "financeiro_validar_referencias",
+      "disponivel": true
+    },
+    {
+      "nome": "financeiro_comando_titulo",
+      "disponivel": true
+    },
+    {
+      "nome": "compras_gerar_financeiro_atomico",
+      "disponivel": true
+    },
+    {
+      "nome": "previsao_sincronizar_titulo_atomico",
+      "disponivel": true
+    },
+    {
+      "nome": "previsoes_comando_atomico",
+      "disponivel": true
+    },
+    {
+      "nome": "abastecimento_comando_atomico",
+      "disponivel": true
+    },
+    {
+      "nome": "asaas_processar_evento",
+      "disponivel": true
+    },
+    {
+      "nome": "folha_liquido_financeiro",
+      "disponivel": true
+    },
+    {
+      "nome": "folha_fechar_atomica",
+      "disponivel": true
+    },
+    {
+      "nome": "estoque_movimento_manual",
+      "disponivel": true
+    }
+  ],
+  "estruturas": [
+    {
+      "tabela": "financeiro_operacoes",
+      "colunas_disponiveis": true,
+      "http": 200
+    },
+    {
+      "tabela": "asaas_eventos_processados",
+      "colunas_disponiveis": true,
+      "http": 200
+    },
+    {
+      "tabela": "movimentacoes_estoque",
+      "colunas_disponiveis": true,
+      "http": 200
+    }
+  ],
+  "limite": "Catálogo PostgREST e disponibilidade das colunas; não executa funções financeiras, não testa gravações nem confirma o corpo SQL ou os índices.",
+  "aprovado": true
+}

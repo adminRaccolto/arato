@@ -1,124 +1,17 @@
-/**
- * POST /api/empresa-lancamentos/baixar
- * Baixa (total/parcial, com juros/multa/desconto e prorrogação do saldo) ou reabre
- * um lançamento de empresa_lancamentos — mesma regra do /api/financeiro/baixar do produtor.
- */
 import { NextRequest, NextResponse } from "next/server";
-import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { getSessionUser, validateFazendaAccess } from "../../../../lib/api-auth";
-
-const admin = () =>
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
+import { comandoTitulo } from "../../../../lib/financeiro/comando-server";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-
-    const body = await req.json() as {
-      acao: "baixar" | "reabrir" | "reprogramar";
-      nova_data?: string;
-      novo_valor?: number;
-      lancamento_id: string;
-      valor_pago_agora?: number;
-      cotacao_usd?: number;   // título em dólar: cotação do dia do pagamento
-      data_baixa?: string;
-      conta_bancaria?: string;
-      observacao?: string;
-      multa_valor?: number;
-      juros_valor?: number;
-      desconto_valor?: number;
-      nova_data_vencimento?: string;
-      forma_pagamento?: string;   // troca da forma de pagamento na baixa (ex.: NF dizia boleto, pagou por PIX)
-    };
-
-    const sb = admin();
-    const { data: atual } = await sb.from("empresa_lancamentos")
-      .select("fazenda_id, status, observacao, data_prorrogacao, valor, moeda, cotacao_usd, valor_pago, data_vencimento, valor_desconto, valor_multa, valor_juros")
-      .eq("id", body.lancamento_id).maybeSingle();
-    if (!atual) return NextResponse.json({ ok: false, error: "Lançamento não encontrado" }, { status: 404 });
-
-    const access = await validateFazendaAccess(atual.fazenda_id as string);
-    if (!access.ok) return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
-
-    if (body.acao === "reprogramar") {
-      if (!body.nova_data) return NextResponse.json({ ok: false, error: "Informe a nova data de vencimento." }, { status: 400 });
-      const [y, m, d] = body.nova_data.split("-");
-      const marca = `[Reprogramado para ${d}/${m}/${y}]${body.observacao ? " " + body.observacao : ""}`;
-      const patch: Record<string, unknown> = {
-        data_vencimento: body.nova_data,
-        data_prorrogacao: (atual.data_prorrogacao as string | null) ?? atual.data_vencimento,
-        observacao: atual.observacao ? `${atual.observacao} | ${marca}` : marca,
-      };
-      if (body.novo_valor && body.novo_valor > 0) patch.valor = body.novo_valor;
-      const { error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id);
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-      return NextResponse.json({ ok: true });
-    }
-
-    if (body.acao === "reabrir") {
-      const { error } = await sb.from("empresa_lancamentos").update({
-        status: "pendente", data_pagamento: null, valor_pago: null,
-        valor_multa: null, valor_juros: null, valor_desconto: null, data_prorrogacao: null,
-      }).eq("id", body.lancamento_id);
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-      return NextResponse.json({ ok: true, novo_status: "pendente" });
-    }
-
-    const cotacaoPagamento = atual.moeda === "USD" && Number(body.cotacao_usd) > 0 ? Number(body.cotacao_usd) : null;
-    const cotacao    = cotacaoPagamento ?? (atual.cotacao_usd as number | null) ?? 5.12;
-    const valorTotal = atual.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual.valor ?? 0);
-    const agora      = body.valor_pago_agora ?? 0;
-    if (agora <= 0 && !(body.desconto_valor ?? 0)) {
-      return NextResponse.json({ ok: false, error: "Informe o valor pago." }, { status: 400 });
-    }
-    const novoTotal  = ((atual.valor_pago as number | null) ?? 0) + agora;
-    const descAcum   = ((atual.valor_desconto as number | null) ?? 0) + (body.desconto_valor ?? 0);
-    const novoStatus = novoTotal + descAcum >= valorTotal - 0.01 ? "pago" : "parcial";
-    const tetoEmp = {
-      valor: atual.valor, moeda: atual.moeda, cotacao_usd: cotacaoPagamento ?? atual.cotacao_usd,
-      valor_multa: body.multa_valor ?? (atual.valor_multa as number | null),
-      valor_juros: body.juros_valor ?? (atual.valor_juros as number | null),
-      valor_desconto: descAcum,
-    };
-    if (excedeLimiteBaixa(tetoEmp, novoTotal)) {
-      return NextResponse.json({ ok: false, error: mensagemExcesso(tetoEmp, novoTotal) }, { status: 422 });
-    }
-
-    const patch: Record<string, unknown> = {
-      status: novoStatus,
-      valor_pago: novoTotal,
-      data_pagamento: body.data_baixa,
-      conta_bancaria: body.conta_bancaria || null,
-    };
-    if (cotacaoPagamento)     patch.cotacao_usd = cotacaoPagamento;
-    if (body.observacao)      patch.observacao = body.observacao;
-    if (body.forma_pagamento?.trim()) patch.forma_pagamento = body.forma_pagamento.trim();
-    if (body.multa_valor)     patch.valor_multa = body.multa_valor;
-    if (body.juros_valor)     patch.valor_juros = body.juros_valor;
-    if (body.desconto_valor)  patch.valor_desconto = descAcum;
-    // Pagamento parcial divide o título (Seção 375): esta parte fica paga e o saldo vira um título novo, com o
-    // vencimento informado. Título parcial antigo (já tinha valor pago) segue o jeito anterior: reprograma o vencimento.
-    const divide = novoStatus === "parcial" && !((atual.valor_pago as number | null) ?? 0);
-    if (novoStatus === "parcial" && body.nova_data_vencimento) {
-      if (divide) patch.vencimento_saldo = body.nova_data_vencimento;
-      else { patch.data_vencimento = body.nova_data_vencimento; patch.data_prorrogacao = body.nova_data_vencimento; }
-    }
-    let { error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id);
-    if (error && "vencimento_saldo" in patch && (error.code === "42703" || error.code === "PGRST204")) {
-      // Seção 375 ainda não rodada: sem divisão, reprograma o vencimento como antes
-      delete patch.vencimento_saldo;
-      patch.data_vencimento = body.nova_data_vencimento; patch.data_prorrogacao = body.nova_data_vencimento;
-      ({ error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id));
-    }
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, novo_status: novoStatus, novo_total: novoTotal });
+    const body = await req.json() as Record<string, unknown> & { acao: string; lancamento_id: string };
+    const negado = await exigirAcessoRegistro(req, "empresa_lancamentos", body.lancamento_id);
+    if (negado) return negado;
+    if (!["baixar", "reabrir", "reprogramar"].includes(body.acao)) return NextResponse.json({ ok: false, error: "Ação inválida." }, { status: 400 });
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    return NextResponse.json(await comandoTitulo(sb, req, "empresa_lancamentos", body.lancamento_id, body.acao, body));
   } catch (e) {
-    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }
 }
