@@ -30,7 +30,7 @@ import {
   listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra, alocarEntregaPorLinha, linhasSemConversao,
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta,
-  listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
+  listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato, atualizarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor, listarAdiantamentosDoPedido,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
   listarGruposInsumoDaConta, listarPrincipiosAtivos, insumoAtivo, reavaliarStatusPedidoCompra } from "../../lib/db";
@@ -1059,6 +1059,18 @@ export default function ComprasPage() {
     finally { setCarregandoItensExp(false); }
   };
 
+  // Contrato de entrega do barter: um por pedido. Se o pedido já tem contrato ativo, atualiza (sem mexer no que já foi
+  // entregue, no número e na data do contrato); senão cria.
+  async function salvarContratoBarter(pedidoId: string, dados: Parameters<typeof criarContrato>[0]) {
+    const { data: existentes } = await supabase.from("contratos").select("id, numero").eq("pedido_compra_id", pedidoId).neq("status", "cancelado").order("created_at").limit(1);
+    const atual = existentes?.[0];
+    if (!atual) return criarContrato(dados);
+    const { entregue_sc: _e, numero: _n, data_contrato: _d, status: _s, fazenda_id: _f, ...campos } = dados as Record<string, unknown>;
+    void _e; void _n; void _d; void _s; void _f;
+    await atualizarContrato(atual.id as string, campos as Parameters<typeof atualizarContrato>[1]);
+    return { ...dados, id: atual.id as string, numero: atual.numero as string };
+  }
+
   function extrairProdutoBarter(cultura?: string): string {
     const c = (cultura ?? "").toLowerCase();
     if (c.includes("algod")) return "Algodão";
@@ -1163,12 +1175,17 @@ export default function ComprasPage() {
       const pedidoExistente = pedidoExistenteFull;
       const isBarter = f.meio_pagamento === "barter";
 
-      // Se havia lançamento em R$/USD e agora é barter → excluir o lançamento incorreto
+      // Se havia lançamento em R$/USD e agora é barter → excluir o lançamento incorreto.
+      // O título que já é do barter fica (antes ele era apagado e recriado a cada salvamento, e cada vez nascia um
+      // contrato de barter novo, sem apagar o anterior: contratos duplicados).
       if (isBarter && pedidoExistente?.lancamento_id) {
         try {
-          await excluirLancamento(pedidoExistente.lancamento_id);
-          await atualizarPedidoCompra(pedidoId, { lancamento_id: undefined });
-          pedidoExistente.lancamento_id = undefined;
+          const { data: lancAnt } = await supabase.from("lancamentos").select("moeda").eq("id", pedidoExistente.lancamento_id).maybeSingle();
+          if (!lancAnt || lancAnt.moeda !== "barter") {
+            if (lancAnt) await excluirLancamento(pedidoExistente.lancamento_id);
+            await atualizarPedidoCompra(pedidoId, { lancamento_id: undefined });
+            pedidoExistente.lancamento_id = undefined;
+          }
         } catch { /* ignora */ }
       }
 
@@ -1214,7 +1231,7 @@ export default function ComprasPage() {
               const produtoBarter  = extrairProdutoBarter(cicloSelecionado?.cultura);
               const numContratoBrt = `BRT-${new Date().getFullYear()}-${pedidoId.slice(-6).toUpperCase()}`;
               const barterSafraDesc = anosSafra.find(a => a.id === (f.barter_ano_safra_id || f.ano_safra_id))?.descricao ?? "";
-              const contBarter = await criarContrato({
+              const contBarter = await salvarContratoBarter(pedidoId, {
                 fazenda_id:        fidPedido,
                 numero:            numContratoBrt,
                 tipo:              "barter",
@@ -1270,6 +1287,36 @@ export default function ComprasPage() {
           const msg = (lancErr as { message?: string })?.message ?? String(lancErr);
           setErro(`Pedido salvo, mas erro ao gerar lançamento: ${msg}.`);
         }
+      }
+
+      // Barter já lançado: atualiza o título (se ainda em aberto) e o contrato de entrega do pedido, sem recriar
+      if (!deveGerarLancamento && pedidoExistente?.lancamento_id && isBarter && f.status === "aprovado") {
+        try {
+          const cicloSel = ciclos.find(c => c.id === f.barter_ciclo_id);
+          const sacas = parseFloat(f.barter_volume_sc) || 0;
+          const precoB = sacas > 0 && totalItens > 0 ? Math.round((totalItens / sacas) * 100) / 100 : (cicloSel?.preco_esperado_sc || 0);
+          const fNomeB = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
+          const vencB = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
+          const { data: lancB } = await supabase.from("lancamentos").select("status").eq("id", pedidoExistente.lancamento_id).maybeSingle();
+          if (lancB && ["em_aberto", "vencido", "vencendo"].includes(String(lancB.status))) {
+            await atualizarLancamento(pedidoExistente.lancamento_id, {
+              descricao: `Barter — PC nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fNomeB}`, valor: totalItens, sacas, preco_saca_barter: precoB,
+              cultura_barter: extrairProdutoBarter(cicloSel?.cultura), data_vencimento: vencB, pessoa_id: f.fornecedor_id || undefined,
+              ciclo_id: f.barter_ciclo_id || f.ciclo_id || undefined, ano_safra_id: f.barter_ano_safra_id || f.ano_safra_id || undefined,
+            });
+          }
+          if (sacas > 0) {
+            await salvarContratoBarter(pedidoId, {
+              fazenda_id: fidPedido, numero: `BRT-${new Date().getFullYear()}-${pedidoId.slice(-6).toUpperCase()}`, tipo: "barter", modalidade: "barter", moeda: "BRL",
+              produto: extrairProdutoBarter(cicloSel?.cultura), preco: precoB, quantidade_sc: sacas, entregue_sc: 0, comprador: fNomeB,
+              safra: anosSafra.find(a => a.id === (f.barter_ano_safra_id || f.ano_safra_id))?.descricao ?? "",
+              pessoa_id: f.fornecedor_id || undefined, produtor_id: f.produtor_id || undefined,
+              ano_safra_id: f.barter_ano_safra_id || undefined, ciclo_id: f.barter_ciclo_id || undefined,
+              data_contrato: f.data_registro, data_entrega: vencB, status: "aberto", confirmado: true, is_barter: true, pedido_compra_id: pedidoId,
+              observacao: `Gerado automaticamente — PC nº ${f.nr_pedido || pedidoId.slice(0,8)} — Insumos: R$ ${totalItens.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+            });
+          }
+        } catch { /* não bloqueia o save */ }
       }
 
       // Sincroniza dados do lançamento existente via API route (imune a JWT)

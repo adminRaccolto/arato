@@ -1325,8 +1325,17 @@ export default function BI() {
           const COMM_COR = (nome: string) => commColor(nome).cor;
           const COMM_BG  = (nome: string) => commColor(nome).bg;
 
-          // Contratos sem ciclo_id: alocados por produto + ano_safra_id (evita dupla contagem)
-          const orphanAllocated = new Set<string>();
+          // Contratos sem ciclo_id: alocados a um ciclo do mesmo ano-safra (evita dupla contagem). Primeiro pelo produto
+          // exato; se nenhum ciclo tiver o mesmo produto (contrato "Soja" × ciclo "Soja Convencional"), pela cultura base.
+          const baseComm = (n: string) => { const t = n.toLowerCase(); return t.includes("soja") ? "soja" : t.includes("milho") ? "milho" : t.includes("algod") ? "algodao" : t.trim(); };
+          const commDoCiclo = (c: typeof ciclosFiltrados[number]) => c.produto_agricola_nome?.trim() || culturaToCommodity(c.cultura, cultMap);
+          const orfaosPorCiclo = new Map<string, Contrato[]>();
+          for (const x of contratos) {
+            if (x.ciclo_id || x.is_arrendamento || x.status === "cancelado") continue;
+            const mesmaSafra = ciclosFiltrados.filter(c => c.ano_safra_id === x.ano_safra_id);
+            const alvo = mesmaSafra.find(c => commDoCiclo(c) === x.produto) ?? mesmaSafra.find(c => baseComm(commDoCiclo(c)) === baseComm(x.produto ?? ""));
+            if (alvo) orfaosPorCiclo.set(alvo.id, [...(orfaosPorCiclo.get(alvo.id) ?? []), x]);
+          }
 
           // Per-ciclo metrics para Posição Comercial
           const todasRows = ciclosFiltrados.map(c => {
@@ -1347,13 +1356,8 @@ export default function BI() {
             const fatPrev = volPrev * preco;
             // Contratos diretamente vinculados ao ciclo
             const directCtrs = contratos.filter(x => x.ciclo_id === c.id && !x.is_arrendamento && x.status !== "cancelado");
-            // Contratos órfãos (sem ciclo_id) que têm mesmo produto e ano_safra_id
-            const orphanCtrs = contratos.filter(x => {
-              if (x.ciclo_id || x.is_arrendamento || x.status === "cancelado") return false;
-              if (orphanAllocated.has(x.id)) return false;
-              return x.produto === comm && x.ano_safra_id === c.ano_safra_id;
-            });
-            orphanCtrs.forEach(x => orphanAllocated.add(x.id));
+            // Contratos órfãos (sem ciclo_id) alocados a este ciclo
+            const orphanCtrs = orfaosPorCiclo.get(c.id) ?? [];
             const ctrs    = [...directCtrs, ...orphanCtrs];
             const venda   = ctrs.reduce((s, x) => s + (x.quantidade_sc || 0), 0);
             const entregue= ctrs.reduce((s, x) => s + (x.entregue_sc  || 0), 0);
