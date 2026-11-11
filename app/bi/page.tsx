@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation";
 import type { PrecosData } from "../api/precos/route";
 import { listarAnosSafra, listarAlertasController, reconhecerAlerta, resolverAlerta, listarContratosFinanceirosDaConta } from "../../lib/db";
 import { rodarChecksController } from "../../lib/controller-checks";
+import { buscarPaginado } from "../../lib/buscar-paginado";
+import { datasDescasadas, movimentosUsd, porContraparteUsd, porMesUsd, type ItemContratoUsd } from "../../lib/bi/cambio";
 import type { ControllerAlerta } from "../../lib/supabase";
 import { HedgePainel } from "../comercial/hedge/panel";
 import { CapacidadePagamentoPainel } from "./capacidade/panel";
@@ -27,7 +29,7 @@ interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface ArrPag     { id: string; arrendamento_id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface ArrBase    { id: string; fazenda_id: string; produto_agricola_id?: string | null; produto_agricola_id_milho?: string | null; produto_agricola_nome?: string | null; produto_agricola_nome_milho?: string | null }
 interface CctGrain   { id: string; fazenda_id: string; moeda_parcela: string; quantidade_sacas: number; status: string; ciclo_id?: string | null; ano_safra_id?: string | null }
-interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
+interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean; natureza?: string | null; valor_pago?: number | null; contrato_id?: string | null; pessoas?: { nome?: string | null } | null }
 interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; data_entrega?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string; produtor_id?: string | null; produtor?: { nome: string } | null }
 interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
@@ -318,6 +320,7 @@ export default function BI() {
   const [cctGrains,   setCctGrains]   = useState<CctGrain[]>([]);
   const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
   const [contratos,     setContratos]     = useState<Contrato[]>([]);
+  const [itensUsd,      setItensUsd]      = useState<ItemContratoUsd[]>([]);
   const [cessaoDebitos, setCessaoDebitos] = useState<CessaoDebito[]>([]);
   const [precos,      setPrecos]      = useState<PrecosData | null>(null);
   const [culturasBi,  setCulturasBi]  = useState<CulturaBI[]>([]);
@@ -421,8 +424,9 @@ export default function BI() {
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids).eq("status_campo", "aprovado"),
       supabase.from("arrendamento_pagamentos").select("id,arrendamento_id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
       supabase.from("arrendamentos").select("id,fazenda_id,produto_agricola_id,produto_agricola_id_milho").in("fazenda_id", fids),
-      supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").in("fazenda_id", fids),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome,produtor_id,produtor:produtores(nome)").in("fazenda_id", fids),
+      // Todos os lançamentos, de 1.000 em 1.000 (o banco devolve no máximo 1.000 por consulta: antes o BI via só parte deles)
+      buscarPaginado((a, b) => supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,natureza,valor,valor_pago,contrato_id,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto,pessoas(nome)").in("fazenda_id", fids).order("id").range(a, b)).then(data => ({ data: data as unknown as Lancamento[] })),
+      buscarPaginado((a, b) => supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome,produtor_id,produtor:produtores(nome)").in("fazenda_id", fids).order("id").range(a, b)).then(data => ({ data: data as unknown as Contrato[] })),
       supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").in("fazenda_id", fids),
       fetch("/api/precos").then(r => r.json()),
       supabase.from("fazendas").select("id,nome").in("id", fids),
@@ -462,6 +466,12 @@ export default function BI() {
     })));
     if (lanR.status === "fulfilled") setLancamentos((lanR.value.data ?? []) as Lancamento[]);
     if (conR.status === "fulfilled") setContratos((conR.value.data ?? []) as unknown as Contrato[]);
+    // Itens dos contratos em dólar (valor em US$ do item — base do saldo a entregar no Câmbio/USD)
+    const idsUsd = conR.status === "fulfilled" ? ((conR.value.data ?? []) as Contrato[]).filter(c => c.moeda === "USD").map(c => c.id) : [];
+    if (idsUsd.length) {
+      const { data: its } = await supabase.from("contrato_itens").select("contrato_id,moeda,valor_total").in("contrato_id", idsUsd);
+      if (seq === cargaSeq.current) setItensUsd((its ?? []) as ItemContratoUsd[]);
+    } else setItensUsd([]);
     if (cesR.status === "fulfilled") setCessaoDebitos((cesR.value.data ?? []) as CessaoDebito[]);
     if (precR.status === "fulfilled") setPrecos(precR.value as PrecosData);
     if (fazsR.status === "fulfilled") setFazendas((fazsR.value.data ?? []) as FazendaBI[]);
@@ -585,12 +595,14 @@ export default function BI() {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
       const cs = await listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds);
       const ids = cs.map(c => c.id);
-      const { data: ps } = ids.length > 0
-        ? await supabase
+      const ps: CFParcela[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const lote = ids.slice(i, i + 100);
+        ps.push(...await buscarPaginado<CFParcela>((a, b) => supabase
             .from("parcelas_pagamento")
             .select("id,contrato_id,num_parcela,data_vencimento,amortizacao,juros,despesas_acessorios,valor_parcela,saldo_devedor,status")
-            .in("contrato_id", ids)
-        : { data: [] as CFParcela[] };
+            .in("contrato_id", lote).order("id").range(a, b)));
+      }
       setCfContratos(cs as unknown as CFContrato[]);
       // Contrato refinanciado: o que ainda não foi pago virou dívida da cédula nova — fica só o histórico pago
       const refinanciados = new Set(cs.filter(c => c.status === "refinanciado").map(c => c.id));
@@ -1020,19 +1032,8 @@ export default function BI() {
 
   // ── Abas ──────────────────────────────────────────────────────
   const alertasCount = lancamentosFiltrados.filter(l => l.tipo === "pagar" && l.status !== "baixado" && l.data_vencimento < hj).length;
-  const usdDescasados = (() => {
-    // Datas com descasamento USD (mais CP do que CR em USD)
-    const cpUsd = lancamentosFiltrados.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado");
-    const crUsd = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
-    const datas = new Set([...cpUsd.map(l => l.data_vencimento), ...crUsd.map(l => l.data_vencimento)]);
-    let cnt = 0;
-    for (const dt of datas) {
-      const cp = cpUsd.filter(l => l.data_vencimento === dt).reduce((s, l) => s + l.valor, 0);
-      const cr = crUsd.filter(l => l.data_vencimento === dt).reduce((s, l) => s + l.valor, 0);
-      if (cp > cr) cnt++;
-    }
-    return cnt;
-  })();
+  // Datas em que sai mais dólar do que entra (mesma regra da aba Câmbio / USD, todos os anos)
+  const usdDescasados = datasDescasadas(movimentosUsd({ titulos: lancamentos, contratos, itens: itensUsd, cfContratos, cfParcelas, hoje: hojeLocal() })).length;
 
   const cessoesPendentes = contratos.filter(c => c.dado_em_cessao && c.status !== "cancelado").length;
 
@@ -3748,76 +3749,27 @@ export default function BI() {
             return dt.startsWith(String(anoFiltro));
           };
 
-          // Lançamentos USD — usa lista bruta (não filtrada por safra)
-          const cpUsdLan = lancamentos.filter(l =>
-            l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado" && dentroDoAno(l.data_vencimento)
-          );
-          const crUsdLan = lancamentos.filter(l =>
-            l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado" && dentroDoAno(l.data_vencimento)
-          );
-          // CF: parcelas em aberto de contratos USD
-          const cfUsdContratos = cfContratos.filter(c => c.moeda === "USD" && c.status !== "cancelado");
-          const cfUsdIds = new Set(cfUsdContratos.map(c => c.id));
-          const cfUsdParcelas = cfParcelas.filter(p =>
-            cfUsdIds.has(p.contrato_id) && p.status !== "pago" && dentroDoAno(p.data_vencimento)
-          );
-          // CR de contratos de grãos USD — filtro por ano civil do vencimento
-          const crUsdCon = contratos.filter(c =>
-            c.moeda === "USD" &&
-            c.status !== "cancelado" &&
-            !c.is_arrendamento &&
-            c.preco &&
-            c.quantidade_sc &&
-            dentroDoAno(c.data_pagamento || c.data_entrega)
-          );
-
-          // Agrupa por data
-          const porData: Map<string, { cpUsd: number; crUsd: number; items: { tipo: "cp"|"cr"; desc: string; valor: number }[] }> = new Map();
-          const addDate = (dt: string) => { if (!porData.has(dt)) porData.set(dt, { cpUsd: 0, crUsd: 0, items: [] }); };
-
-          for (const l of cpUsdLan) {
-            const dt = l.data_vencimento;
-            addDate(dt);
-            const e = porData.get(dt)!;
-            e.cpUsd  += l.valor;
-            e.items.push({ tipo: "cp", desc: l.descricao || "—", valor: l.valor });
+          // Exposição em dólar (lib/bi/cambio.ts): títulos em aberto, saldo de contratos de grãos sem título e parcelas de
+          // contratos financeiros em USD. Lista bruta (não filtrada por safra); o ano civil filtra pela data.
+          const todosUsd = movimentosUsd({ titulos: lancamentos, contratos, itens: itensUsd, cfContratos, cfParcelas, hoje: hojeLocal() });
+          const msUsd = todosUsd.filter(m => dentroDoAno(m.data));
+          const porData: Map<string, { cpUsd: number; crUsd: number; atraso: boolean; items: { tipo: "cp"|"cr"; desc: string; valor: number }[] }> = new Map();
+          for (const m of msUsd) {
+            const e = porData.get(m.data) ?? { cpUsd: 0, crUsd: 0, atraso: m.atraso, items: [] };
+            if (m.tipo === "cp") e.cpUsd += m.valor; else e.crUsd += m.valor;
+            e.items.push({ tipo: m.tipo, desc: `${m.contraparte} · ${m.desc}`, valor: m.valor });
+            porData.set(m.data, e);
           }
-          for (const l of crUsdLan) {
-            const dt = l.data_vencimento;
-            addDate(dt);
-            const e = porData.get(dt)!;
-            e.crUsd  += l.valor;
-            e.items.push({ tipo: "cr", desc: l.descricao || "—", valor: l.valor });
-          }
-          for (const c of crUsdCon) {
-            const dt = c.data_pagamento || c.data_entrega!;
-            addDate(dt);
-            const e = porData.get(dt)!;
-            // quantidade_sc armazena KG — divide por 60 para obter sacas
-            const sacas = (c.quantidade_sc ?? 0) / 60;
-            const val   = (c.preco ?? 0) * sacas;
-            e.crUsd  += val;
-            e.items.push({ tipo: "cr", desc: `Contrato ${c.numero ?? c.comprador ?? "—"} — ${c.produto}`, valor: val });
-          }
-          // CF: parcelas USD em aberto (amortização + juros = saída USD futura)
-          for (const p of cfUsdParcelas) {
-            const dt = p.data_vencimento;
-            if (!dt) continue;
-            addDate(dt);
-            const e = porData.get(dt)!;
-            const val = (p.amortizacao ?? 0) + (p.juros ?? 0) + (p.despesas_acessorios ?? 0);
-            const cf  = cfUsdContratos.find(c => c.id === p.contrato_id);
-            e.cpUsd  += val;
-            e.items.push({ tipo: "cp", desc: `${cf?.descricao ?? "Contrato"} — Parcela ${p.num_parcela} (CF)`, valor: val });
-          }
-
           const datas = Array.from(porData.keys()).sort();
-          const totalCpUsdLanc = cpUsdLan.reduce((s, l) => s + l.valor, 0);
-          const totalCpUsdCf   = cfUsdParcelas.reduce((s, p) => s + (p.amortizacao ?? 0) + (p.juros ?? 0) + (p.despesas_acessorios ?? 0), 0);
-          const totalCpUsd = totalCpUsdLanc + totalCpUsdCf;
-          const totalCrUsd = crUsdLan.reduce((s, l) => s + l.valor, 0) + crUsdCon.reduce((s, c) => s + (c.preco ?? 0) * ((c.quantidade_sc ?? 0) / 60), 0);
+          const totalCpUsd = msUsd.filter(m => m.tipo === "cp").reduce((s, m) => s + m.valor, 0);
+          const totalCrUsd = msUsd.filter(m => m.tipo === "cr").reduce((s, m) => s + m.valor, 0);
           const saldoUsd   = totalCrUsd - totalCpUsd;
-          const descasadas = datas.filter(dt => (porData.get(dt)!.cpUsd) > (porData.get(dt)!.crUsd));
+          const descasadas = datasDescasadas(msUsd);
+          // Em atraso: vencido e ainda em aberto, de qualquer ano (não depende do filtro)
+          const atrasoCp = todosUsd.filter(m => m.atraso && m.tipo === "cp").reduce((s, m) => s + m.valor, 0);
+          const atrasoCr = todosUsd.filter(m => m.atraso && m.tipo === "cr").reduce((s, m) => s + m.valor, 0);
+          const meses = porMesUsd(msUsd);
+          const contrapartes = porContraparteUsd(msUsd);
           const cotacao    = precos?.usdBrl ?? 5.10;
 
           // ── Cessão de Crédito ───────────────────────────────────
@@ -3826,8 +3778,9 @@ export default function BI() {
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* KPIs USD */}
-              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12 }}>
                 {[
+                  { label: "Em atraso (USD, todos os anos)", v: `USD ${fmtN(atrasoCp, 2)}`, sub: atrasoCr > 0 ? `a pagar vencido · a receber vencido USD ${fmtN(atrasoCr, 2)}` : "a pagar vencido e em aberto", color: atrasoCp > 0 ? "#B45309" : "#16A34A", bg: atrasoCp > 0 ? "#FBF3E0" : "#ECFDF5" },
                   { label: "Total CP em USD",       v: `USD ${fmtN(totalCpUsd, 2)}`,  sub: fmtR(totalCpUsd * cotacao),  color: "#E24B4A", bg: "#FCEBEB" },
                   { label: "Total CR em USD",        v: `USD ${fmtN(totalCrUsd, 2)}`, sub: fmtR(totalCrUsd * cotacao),   color: "#16A34A", bg: "#ECFDF5" },
                   { label: "Saldo Líquido USD",      v: `${saldoUsd >= 0 ? "+" : ""}USD ${fmtN(Math.abs(saldoUsd), 2)}`, sub: saldoUsd >= 0 ? "Posição coberta" : "Posição descoberta", color: saldoUsd >= 0 ? "#16A34A" : "#E24B4A", bg: saldoUsd >= 0 ? "#ECFDF5" : "#FCEBEB" },
@@ -3864,6 +3817,55 @@ export default function BI() {
                   </div>
                 </div>
               </div>
+
+              {/* Resumos: por mês (com saldo acumulado) e por fornecedor / comprador */}
+              {msUsd.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(420px,1fr))", gap: 16 }}>
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                    <div style={{ padding: "12px 20px", background: "#111111", fontSize: 12, fontWeight: 700, color: "#fff" }}>Exposição por mês</div>
+                    <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr>{["Mês", "Sai (CP)", "Entra (CR)", "Saldo do mês", "Acumulado"].map((h, i) => <th key={h} style={{ padding: "8px 14px", textAlign: i ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", position: "sticky", top: 0, background: "var(--bg-card)" }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {meses.map(m => {
+                            const [y, mm] = m.mes.split("-");
+                            return (
+                              <tr key={m.mes} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: m.mes < hojeLocal().slice(0, 7) ? "#FFFBF2" : undefined }}>
+                                <td style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600 }}>{mm}/{y}</td>
+                                <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right", color: m.cp ? "#E24B4A" : "var(--text-3)" }}>{m.cp ? fmtN(m.cp, 2) : "—"}</td>
+                                <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right", color: m.cr ? "#16A34A" : "var(--text-3)" }}>{m.cr ? fmtN(m.cr, 2) : "—"}</td>
+                                <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right", fontWeight: 600, color: m.saldo >= 0 ? "#16A34A" : "#E24B4A" }}>{m.saldo >= 0 ? "+" : "−"}{fmtN(Math.abs(m.saldo), 2)}</td>
+                                <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right", fontWeight: 700, color: m.acumulado >= 0 ? "#16A34A" : "#E24B4A" }}>{m.acumulado >= 0 ? "+" : "−"}{fmtN(Math.abs(m.acumulado), 2)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </OperationalGrid>
+                    </div>
+                    <div style={{ padding: "8px 14px", fontSize: 10, color: "var(--text-3)", borderTop: "0.5px solid var(--border)" }}>Valores em USD. Meses passados (fundo amarelo) são títulos vencidos ainda em aberto. Acumulado negativo = dólar a comprar.</div>
+                  </div>
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                    <div style={{ padding: "12px 20px", background: "#111111", fontSize: 12, fontWeight: 700, color: "#fff" }}>Por fornecedor / comprador</div>
+                    <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr>{["Contraparte", "Tipo", "USD", "Títulos", "Em atraso", "Próximo venc."].map((h, i) => <th key={h} style={{ padding: "8px 14px", textAlign: i >= 2 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", position: "sticky", top: 0, background: "var(--bg-card)" }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {contrapartes.map(c => (
+                            <tr key={`${c.tipo}|${c.nome}`} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
+                              <td style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600 }}>{c.nome}</td>
+                              <td style={{ padding: "7px 14px", fontSize: 11 }}><span style={{ color: c.tipo === "cp" ? "#E24B4A" : "#16A34A", fontWeight: 600 }}>{c.tipo === "cp" ? "A pagar" : "A receber"}</span></td>
+                              <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right", fontWeight: 600 }}>{fmtN(c.valor, 2)}</td>
+                              <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right" }}>{c.titulos}</td>
+                              <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right", color: c.atraso ? "#B45309" : "var(--text-3)" }}>{c.atraso ? fmtN(c.atraso, 2) : "—"}</td>
+                              <td style={{ padding: "7px 14px", fontSize: 12, textAlign: "right" }}>{c.proximo ? fmtDt(c.proximo) : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </OperationalGrid>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Timeline de fluxo USD */}
               {datas.length === 0 ? (
@@ -3902,7 +3904,7 @@ export default function BI() {
                             title="Ver no Contas a Pagar"
                           >
                             <td style={{ padding: "10px 16px" }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{fmtDt(dt)}</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{fmtDt(dt)}{e.atraso && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#7A5200", background: "#FBF3E0", borderRadius: 4, padding: "1px 5px" }}>EM ATRASO</span>}</div>
                               {/* mini-barras */}
                               <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
                                 {e.cpUsd > 0 && (
@@ -3927,17 +3929,19 @@ export default function BI() {
                               <div style={{ fontSize: 12, fontWeight: 600, color: e.cpUsd > 0 ? "#E24B4A" : "var(--text-3)" }}>
                                 {e.cpUsd > 0 ? `USD ${fmtN(e.cpUsd, 2)}` : "—"}
                               </div>
-                              {e.items.filter(x => x.tipo === "cp").slice(0, 2).map((x, j) => (
-                                <div key={j} style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{x.desc.slice(0, 35)}</div>
+                              {e.items.filter(x => x.tipo === "cp").slice(0, 3).map((x, j) => (
+                                <div key={j} title={x.desc} style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{x.desc.slice(0, 48)} · USD {fmtN(x.valor, 2)}</div>
                               ))}
+                              {e.items.filter(x => x.tipo === "cp").length > 3 && <div style={{ fontSize: 9, color: "var(--text-3)" }}>+ {e.items.filter(x => x.tipo === "cp").length - 3} título(s)</div>}
                             </td>
                             <td style={{ padding: "10px 16px", textAlign: "right" }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: e.crUsd > 0 ? "#16A34A" : "var(--text-3)" }}>
                                 {e.crUsd > 0 ? `USD ${fmtN(e.crUsd, 2)}` : "—"}
                               </div>
-                              {e.items.filter(x => x.tipo === "cr").slice(0, 2).map((x, j) => (
-                                <div key={j} style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{x.desc.slice(0, 35)}</div>
+                              {e.items.filter(x => x.tipo === "cr").slice(0, 3).map((x, j) => (
+                                <div key={j} title={x.desc} style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{x.desc.slice(0, 48)} · USD {fmtN(x.valor, 2)}</div>
                               ))}
+                              {e.items.filter(x => x.tipo === "cr").length > 3 && <div style={{ fontSize: 9, color: "var(--text-3)" }}>+ {e.items.filter(x => x.tipo === "cr").length - 3} título(s)</div>}
                             </td>
                             <td style={{ padding: "10px 16px", textAlign: "right" }}>
                               <div style={{ fontSize: 13, fontWeight: 700, color: net >= 0 ? "#16A34A" : "#E24B4A" }}>
