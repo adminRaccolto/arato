@@ -3,7 +3,7 @@
  * Gera o XML de NF-e 4.00 não assinado para produtor rural (MT).
  * Todos os valores monetários são formatados com 2 casas; quantidades com 4.
  */
-import { CFOPS_INDUSTRIALIZACAO, CFOPS_TRANSFERENCIA, CFOPS_DEVOLUCAO_BEM_TERCEIRO, CST_RETORNO_BEM_TERCEIRO } from "./cst-por-cfop";
+import { CFOPS_INDUSTRIALIZACAO, CFOPS_TRANSFERENCIA, CFOPS_DEVOLUCAO_BEM_TERCEIRO, CFOPS_DEVOLUCAO_ST, CST_RETORNO_BEM_TERCEIRO } from "./cst-por-cfop";
 
 export interface EmitenteCfg {
   cpf_cnpj: string;       // apenas dígitos
@@ -269,6 +269,10 @@ interface ICMSRule {
 
 // isNaoContribuinte: true quando destinatário é PF sem IE (indIEDest=9)
 // Nesse caso diferimento não se aplica — operação interna vira isenta (CST 40)
+// CST 60 — ICMS cobrado anteriormente por substituição tributária. Sem imposto próprio a destacar; os campos de ST
+// retida (vBCSTRet, pST, vICMSSubstituto, vICMSSTRet) são opcionais no schema 4.00 e não são informados.
+const ICMS60: ICMSRule = { cst: "60", xml: () => `<ICMS60><orig>0</orig><CST>60</CST></ICMS60>` };
+
 function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICMS?: number): ICMSRule {
   const cod = cfop.replace(/\D/g, "");
   const prefix = cod.substring(0, 4);
@@ -291,6 +295,9 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
       xml: (vBC) => `<ICMS20><orig>0</orig><CST>20</CST><modBC>3</modBC><pRedBC>${red.toFixed(4)}</pRedBC><vBC>${fmtVal(vBC)}</vBC><pICMS>${aliq.toFixed(2)}</pICMS><vICMS>${fmtVal(valorIcms(vBC))}</vICMS></ICMS20>`,
     };
   }
+
+  // Devolução de compra com substituição tributária (5410–5413/6410–6413): ICMS já retido na compra → CST 60
+  if (CFOPS_DEVOLUCAO_ST.has(prefix)) return ICMS60;
 
   if (CST_RETORNO_BEM_TERCEIRO[prefix]) {
     const cst = CST_RETORNO_BEM_TERCEIRO[prefix];
@@ -353,11 +360,12 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
   };
 }
 
-// CST escolhido à mão na tela de emissão (só os que não têm imposto próprio a destacar): 40 isento,
+// CST escolhido à mão na tela de emissão (só os que não têm imposto próprio a destacar): 40 isento, 60 ICMS já retido por ST,
 // 41 não tributado, 50 suspensão (ex.: remessa para industrialização/conserto), 51 diferido 100% (Decreto MT 4.540/2004,
 // mesma montagem da venda interna).
-export const CSTS_ICMS_MANUAIS = ["40", "41", "50", "51"] as const;
+export const CSTS_ICMS_MANUAIS = ["40", "41", "50", "51", "60"] as const;
 function icmsRulePorCst(cst: string): ICMSRule | null {
+  if (cst === "60") return ICMS60;
   if (cst === "40" || cst === "41" || cst === "50") return { cst, xml: () => `<ICMS40><orig>0</orig><CST>${cst}</CST></ICMS40>` };
   if (cst === "51") return {
     cst: "51",

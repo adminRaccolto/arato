@@ -21,7 +21,7 @@ const REMESSA_EXTRA = new Set(["5117", "6117", "5119", "6119"]);
 // Devolução emitida pela fazenda: de compra (52xx, 5410-5412, 5553, 5556) e de bem de terceiro recebido para uso (5555)
 // Retorno de bem de terceiro recebido em comodato, demonstração ou conserto: fica com as devoluções
 const RETORNO_BEM = new Set(["5909", "6909", "5913", "6913", "5916", "6916"]);
-const DEVOLUCAO = /^[56](2\d\d|41[0-2]|55[356])$/;
+const DEVOLUCAO = /^[56](2\d\d|41[0-3]|55[356])$/;
 
 /** Em qual modo da tela uma NF de saída aparece. */
 export function modoDaNota(n: { cfop?: string | null; dados_nf_json?: unknown }): ModoFaturamento | null {

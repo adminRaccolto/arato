@@ -8,7 +8,7 @@ import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { cstExibicaoPorCfop } from "../../lib/nfe/cst-por-cfop";
+import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
 import { indexarConfigsEmitentes } from "../../lib/nfe/configs-emitentes";
 import TopNav from "../../components/TopNav";
 import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica, listarDepositos, buscarDepositoTerceiroPorCnpj } from "../../lib/db";
@@ -953,10 +953,7 @@ function FiscalInner() {
   function opcoesCstIcms() {
     return [
       <option key="" value="">Auto ({cstExibicaoPorCfop(fVenda.cfop)})</option>,
-      <option key="040" value="040">040 — Isenta</option>,
-      <option key="041" value="041">041 — Não tributada</option>,
-      <option key="050" value="050">050 — Suspensão</option>,
-      <option key="051" value="051">051 — Diferimento</option>,
+      ...OPCOES_CST_ICMS.map(o => <option key={o.v} value={o.v}>{o.rotulo}</option>),
     ];
   }
   function removeItem(id: string) { setNfeItens(p => p.filter(i => i.id !== id)); }

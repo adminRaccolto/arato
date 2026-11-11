@@ -7,7 +7,22 @@
  * Regra do dono (especialista fiscal): TRANSFERÊNCIA entre estabelecimentos do mesmo titular →
  * CST 41 (não tributado). CST 51 (diferido, Decreto MT 4.540/2004) é da VENDA interna.
  */
-export const CFOPS_TRANSFERENCIA = new Set(["5151", "6151", "5152", "6152", "5409", "6409", "5410", "6410", "5949", "6949"]);
+// 5410/6410 saiu daqui (11/11/2026): é DEVOLUÇÃO de compra com ST, não transferência (ver CFOPS_DEVOLUCAO_ST).
+export const CFOPS_TRANSFERENCIA = new Set(["5151", "6151", "5152", "6152", "5409", "6409", "5949", "6949"]);
+
+// Devolução de compra de mercadoria sujeita a substituição tributária (5410/6410 industrialização ou produção rural,
+// 5411/6411 comercialização, 5412/6412 ativo, 5413/6413 uso ou consumo): o ICMS já foi retido pelo substituto na
+// compra → CST 60 (ICMS cobrado anteriormente por ST). Antes caíam na regra da venda interna (CST 51, diferido).
+export const CFOPS_DEVOLUCAO_ST = new Set(["5410", "6410", "5411", "6411", "5412", "6412", "5413", "6413"]);
+
+/** CST do ICMS que o usuário pode escolher à mão no item da NF-e (os que não destacam imposto próprio). */
+export const OPCOES_CST_ICMS: { v: string; rotulo: string }[] = [
+  { v: "040", rotulo: "040 — Isenta" },
+  { v: "041", rotulo: "041 — Não tributada" },
+  { v: "050", rotulo: "050 — Suspensão" },
+  { v: "051", rotulo: "051 — Diferimento" },
+  { v: "060", rotulo: "060 — ICMS cobrado anteriormente por ST" },
+];
 
 export const ehTransferencia = (cfop?: string | null): boolean => CFOPS_TRANSFERENCIA.has(String(cfop ?? "").replace(/\D/g, "").slice(0, 4));
 
@@ -34,6 +49,7 @@ export function cstExibicaoPorCfop(cfop?: string | null): string {
   if (cod.startsWith("7")) return "041";
   if (p4 === "5905" || p4 === "6905" || p4 === "5934" || p4 === "6934") return "041";
   if (p4 === "5556" || p4 === "6556") return "020";
+  if (CFOPS_DEVOLUCAO_ST.has(p4)) return "060";
   if (CFOPS_DEVOLUCAO_BEM_TERCEIRO.has(p4)) return "050";
   if (CST_RETORNO_BEM_TERCEIRO[p4]) return "0" + CST_RETORNO_BEM_TERCEIRO[p4];
   if (CFOPS_INDUSTRIALIZACAO.has(p4)) return "050";

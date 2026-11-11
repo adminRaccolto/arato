@@ -30,3 +30,18 @@ test("devolução de bem de terceiro 6555: CST 50, finalidade de devolução e N
   assert.match(xml, /<finNFe>4<\/finNFe>/);
   assert.match(xml, /<refNFe>15260605054903000179558900042830431651288716<\/refNFe>/);
 });
+
+test("devolução de compra com ST 5411: CST 60 (ICMS cobrado anteriormente por ST), sem base nem ICMS", () => {
+  const b = base();
+  const { xml } = buildNFe({ ...b, finNFe: "4", itens: b.itens.map(i => ({ ...i, cfop: "5411" })) });
+  assert.match(xml, /<ICMS60><orig>0<\/orig><CST>60<\/CST><\/ICMS60>/);
+  assert.doesNotMatch(xml, /<ICMS51>/);
+  assert.match(xml, /<vBC>0\.00<\/vBC>/);
+});
+
+test("CST 060 escolhido à mão em outro CFOP e 5410 deixa de ser tratado como transferência", () => {
+  const b = base("60");
+  assert.match(buildNFe(b).xml, /<ICMS60><orig>0<\/orig><CST>60<\/CST><\/ICMS60>/);
+  const b2 = base();
+  assert.match(buildNFe({ ...b2, itens: b2.itens.map(i => ({ ...i, cfop: "5410" })) }).xml, /<CST>60<\/CST>/);
+});

@@ -1,6 +1,6 @@
 "use client";
 import { ehRetornoBemTerceiro, finalidadeDoRetorno } from "../../../lib/fiscal/retorno-bem-terceiro";
-import { cstExibicaoPorCfop } from "../../../lib/nfe/cst-por-cfop";
+import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../../lib/nfe/cst-por-cfop";
 import { MODOS_FATURAMENTO, lerModoFaturamento, modoDaNota } from "../../../lib/fiscal/modo-faturamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDoProdutor } from "../../../lib/fazenda-de";
@@ -101,6 +101,12 @@ const NATUREZAS_DEVOLUCAO = [
   { codigo: "1.201", descricao: "Devolução de venda de produção — intraestadual (CFOP 1.201)", obs: "Devolução de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissão original." },
   { codigo: "2.202", descricao: "Devolução de mercadoria adquirida — interestadual (CFOP 2.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação interestadual." },
   { codigo: "1.202", descricao: "Devolução de mercadoria adquirida — intraestadual (CFOP 1.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação intraestadual." },
+  { codigo: "5.410", descricao: "Devolução de compra p/ industrialização ou produção rural com ST — interna (CFOP 5.410)", obs: "Devolução de compra para industrialização ou produção rural, em operação com mercadoria sujeita ao regime de substituição tributária. ICMS cobrado anteriormente por substituição tributária (CST 60)." },
+  { codigo: "6.410", descricao: "Devolução de compra p/ industrialização ou produção rural com ST — interestadual (CFOP 6.410)", obs: "Devolução de compra para industrialização ou produção rural, em operação com mercadoria sujeita ao regime de substituição tributária. ICMS cobrado anteriormente por substituição tributária (CST 60)." },
+  { codigo: "5.411", descricao: "Devolução de compra p/ comercialização com ST — interna (CFOP 5.411)", obs: "Devolução de compra para comercialização em operação com mercadoria sujeita ao regime de substituição tributária. ICMS cobrado anteriormente por substituição tributária (CST 60)." },
+  { codigo: "6.411", descricao: "Devolução de compra p/ comercialização com ST — interestadual (CFOP 6.411)", obs: "Devolução de compra para comercialização em operação com mercadoria sujeita ao regime de substituição tributária. ICMS cobrado anteriormente por substituição tributária (CST 60)." },
+  { codigo: "5.413", descricao: "Devolução de mercadoria p/ uso ou consumo com ST — interna (CFOP 5.413)", obs: "Devolução de mercadoria destinada ao uso ou consumo, em operação com mercadoria sujeita ao regime de substituição tributária. ICMS cobrado anteriormente por substituição tributária (CST 60)." },
+  { codigo: "6.413", descricao: "Devolução de mercadoria p/ uso ou consumo com ST — interestadual (CFOP 6.413)", obs: "Devolução de mercadoria destinada ao uso ou consumo, em operação com mercadoria sujeita ao regime de substituição tributária. ICMS cobrado anteriormente por substituição tributária (CST 60)." },
   { codigo: "5.556", descricao: "Devolução de compra de material de uso ou consumo — interna (CFOP 5.556)", obs: "Devolução de compra de material de uso ou consumo. ICMS com base de cálculo reduzida (CST 20)." },
   { codigo: "6.556", descricao: "Devolução de compra de material de uso ou consumo — interestadual (CFOP 6.556)", obs: "Devolução de compra de material de uso ou consumo. ICMS com base de cálculo reduzida (CST 20)." },
 ];
@@ -137,7 +143,7 @@ const FVENDA_INICIAL = {
   dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cep: "", dest_fone: "",
   dest_cidade: "", dest_uf: "", dest_municipio_ibge: "",
   dest_tipo_pessoa: "juridica" as "fisica" | "juridica", dest_ie: "", dest_deposito: false,
-  cfop: "6.501", red_bc: "", aliq_icms: "", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
+  cfop: "6.501", red_bc: "", aliq_icms: "", cst_icms: "", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
   data_emissao: "", data_saida: "", hora_saida: "", dep_op: "",
   nota_livre: false, impressa: false, fiscal: true, enviar_dt_saida: true,
   transp_cadastrada: false, transportadora: "", frete_conta: "1",
@@ -1019,12 +1025,15 @@ function FaturamentoInner() {
                   pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
                   pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
                 } : {}),
+                // CST escolhido na devolução (vazio = automático pelo CFOP; 5.411 → 060)
+                ...(fVenda.cst_icms && NATUREZAS_DEVOLUCAO.some(n => n.codigo === fVenda.cfop) && !["5.556","6.556"].includes(fVenda.cfop) ? { cst_icms: fVenda.cst_icms.slice(-2) } : {}),
               })),
               natureza:  fVenda.natureza_texto,
               inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
               frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
               nfe_ref:   fVenda.nf_ref_chave || undefined,
-              fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? finalidadeDoRetorno([fVenda.cfop]) : undefined,
+              // Devolução de compra/venda (x2xx, x41x, x556/x553): finalidade 4, senão a SEFAZ rejeita (328)
+              fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? finalidadeDoRetorno([fVenda.cfop]) : /^[1256](2\d\d|41\d|55[36])$/.test(fVenda.cfop.replace(/\D/g, "")) ? "4" : undefined,
               tipo:      "1" as const,
               // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
               transporte: fVenda.transportadora || fVenda.placa ? {
@@ -1334,7 +1343,7 @@ function FaturamentoInner() {
             <SelectField style={inp} value={fVenda.cfop}
               onChange={e => {
                 const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === e.target.value);
-                fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat ? textoNat(nat) : "" });
+                fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat ? textoNat(nat) : "", cst_icms: "" });
               }}>
               <optgroup label="Vendas">
                 {NATUREZAS_VENDA.filter(n => !["6.934","5.934","6.949","5.949"].includes(n.codigo) && (n.codigo.startsWith("6") || n.codigo.startsWith("5.1") || n.codigo.startsWith("5.5") || n.codigo.startsWith("7"))).map(n => (
@@ -1355,10 +1364,13 @@ function FaturamentoInner() {
             <label data-arato-label="true" style={lbl}>CFOP</label>
             <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
-          {ehDevolucaoBem(fVenda.cfop) && (
+          {NATUREZAS_DEVOLUCAO.some(n => n.codigo === fVenda.cfop) && !["5.556","6.556"].includes(fVenda.cfop) && (
             <div>
-              <label data-arato-label="true" style={lbl}>CST do ICMS (automático)</label>
-              <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={cstExibicaoPorCfop(fVenda.cfop) === "041" ? "041 — Não tributada" : "050 — Suspensão"} readOnly />
+              <label data-arato-label="true" style={lbl}>CST do ICMS</label>
+              <SelectField style={inp} value={fVenda.cst_icms} onChange={e => fv({ cst_icms: e.target.value })} title="Vale para todos os itens. Automático = regra do CFOP">
+                <option value="">Automático ({cstExibicaoPorCfop(fVenda.cfop)})</option>
+                {OPCOES_CST_ICMS.map(o => <option key={o.v} value={o.v}>{o.rotulo}</option>)}
+              </SelectField>
             </div>
           )}
           {["5.556","6.556"].includes(fVenda.cfop) && (<>

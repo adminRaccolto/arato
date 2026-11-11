@@ -1,4 +1,5 @@
 "use client";
+import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
 import { RETORNO_DE_REMESSA, finalidadeDoRetorno, naturezaDoRetorno } from "../../lib/fiscal/retorno-bem-terceiro";
 import AvisoAdiantamentoFornecedor from "../financeiro/AvisoAdiantamentoFornecedor";
 // ═══════════════════════════════════════════════════════════════════════════
@@ -593,6 +594,7 @@ export default function ModalNf({
     cfop: string;   // CFOP próprio do item na NF de devolução (a natureza da operação é única)
     pRedBC: string;  // CST 20 (CFOP 5556/6556): % de redução da base de cálculo do ICMS
     pICMS: string;   // CST 20: alíquota do ICMS (vazio = padrão: 17% interno, 12% interestadual)
+    cstIcms: string; // CST do ICMS escolhido à mão (vazio = automático pelo CFOP; ex.: 5411 → 060)
   }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
@@ -2043,6 +2045,7 @@ export default function ModalNf({
           // CFOP de cada produto: sugerido pelo CFOP que o PRÓPRIO item tinha na NF de compra; sem ele, o do cabeçalho
           cfop:                CFOP_DEV[(i.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? cfopPadrao,
           pRedBC:              "",
+          cstIcms:             "",
           pICMS:               "",
           origem_item_id:      i.id,
           tipo_apropiacao:     (i.tipo_apropiacao === "direto" ? "direto" : "estoque") as "estoque" | "direto",
@@ -2147,6 +2150,7 @@ export default function ModalNf({
         ncm:             i.ncm!,
         cfop:            i.cfop,
         ...((["5556", "6556"].includes(i.cfop)) ? { pRedBC: parseFloat(i.pRedBC.replace(",", ".")), ...(parseFloat(i.pICMS.replace(",", ".")) > 0 ? { pICMS: parseFloat(i.pICMS.replace(",", ".")) } : {}) } : {}),
+        ...(i.cstIcms && !["5556", "6556"].includes(i.cfop) ? { cst_icms: i.cstIcms.slice(-2) } : {}),
         unidade:         i.unidade.toUpperCase(),
         quantidade:      i.quantidade_devolver,
         valor_unitario:  i.valor_unitario,
@@ -4685,6 +4689,16 @@ export default function ModalNf({
                           {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.l}</option>)}
                         </select>
                       </div>
+                      {!["5556", "6556"].includes(it.cfop) && !devExterna && it.quantidade_devolver > 0 && (
+                        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 8, padding: "2px 12px 8px", fontSize: 11, color: "var(--text-2)" }}>
+                          <label>CST do ICMS
+                            <select value={it.cstIcms} onChange={e => setDevItens(prev => prev.map(x => x.key === it.key ? { ...x, cstIcms: e.target.value } : x))} style={{ ...inp, marginLeft: 6, padding: "3px 6px", fontSize: 12, width: "auto" }} title="Vazio = automático pelo CFOP">
+                              <option value="">Automático ({cstExibicaoPorCfop(it.cfop)})</option>
+                              {OPCOES_CST_ICMS.map(o => <option key={o.v} value={o.v}>{o.rotulo}</option>)}
+                            </select>
+                          </label>
+                        </div>
+                      )}
                       {["5556", "6556"].includes(it.cfop) && !devExterna && (
                         <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "4px 12px 8px", fontSize: 11, color: "var(--text-2)", background: "#FBF3E0" }}>
                           <span><b>CST 20</b> (base reduzida) —</span>
