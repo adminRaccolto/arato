@@ -1,4 +1,5 @@
 "use client";
+import OpcoesUnidade from "../OpcoesUnidade";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
 import { RETORNO_DE_REMESSA, finalidadeDoRetorno, naturezaDoRetorno } from "../../lib/fiscal/retorno-bem-terceiro";
 import AvisoAdiantamentoFornecedor from "../financeiro/AvisoAdiantamentoFornecedor";
@@ -4513,21 +4514,7 @@ export default function ModalNf({
                   <label data-arato-label="true" style={lbl}>Unidade de medida *</label>
                   <SelectField style={inp} value={formNovoInsumo.unidade}
                     onChange={e => setFormNovoInsumo(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                    <option value="un">Unidade (un)</option>
-                    <option value="kg">Quilograma (kg)</option>
-                    <option value="g">Grama (g)</option>
-                    <option value="L">Litro (L)</option>
-                    <option value="mL">Mililitro (mL)</option>
-                    <option value="sc">Saca (sc)</option>
-                    <option value="bag">Bag</option>
-                    <option value="t">Tonelada (t)</option>
-                    <option value="m">Metro (m)</option>
-                    <option value="m2">Metro² (m²)</option>
-                    <option value="cx">Caixa (cx)</option>
-                    <option value="dose">Dose</option>
-                    <option value="pc">Peça (pc)</option>
-                    <option value="par">Par</option>
-                    <option value="outros">Outros</option>
+                    <OpcoesUnidade base={[["un", "Unidade (un)"], ["kg", "Quilograma (kg)"], ["g", "Grama (g)"], ["L", "Litro (L)"], ["mL", "Mililitro (mL)"], ["sc", "Saca (sc)"], ["bag", "Bag"], ["t", "Tonelada (t)"], ["m", "Metro (m)"], ["m2", "Metro² (m²)"], ["cx", "Caixa (cx)"], ["dose", "Dose"], ["pc", "Peça (pc)"], ["par", "Par"], ["outros", "Outros"]]} atual={formNovoInsumo.unidade} />
                   </SelectField>
                 </div>
               </div>

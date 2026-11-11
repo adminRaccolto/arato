@@ -210,6 +210,8 @@ Status: rascunho → aprovado → parcialmente entregue → entregue / cancelado
 ## Funcionamento por tema
 Como cada área funciona hoje. Para o passo a passo das tarefas comuns, use antes o Guia por tarefa.
 
+**Unidades de medida:** a lista fica em Cadastros → Unidades de Medida e é a mesma para todos os clientes. Toda unidade cadastrada ali aparece nos campos de unidade do cadastro de insumos, produtos agrícolas, culturas, lubrificantes, do novo insumo criado na NF, do estoque, da pulverização e da devolução, no grupo "Outras unidades do cadastro", abaixo das unidades de sempre de cada tela. Unidade por hectare (L/ha, kg/ha) das recomendações e da aplicação aérea continua com lista própria.
+
 ### Notas de entrada: NF de produtos, NFS-e, SIEG
 **Captura e processamento:** captura (XML, SIEG ou digitação manual) e processamento são fases distintas. Nota "capturada" ou "classificada" pelo SIEG não gera estoque nem CP até ser processada. No processamento, cada item vai para estoque, direto para uma máquina ou direto para um centro de custo (Apropriação Direta), conforme a Operação Gerencial do cabeçalho. Produto sem unidade compatível com o cadastro pode usar "Conversão manual (livre)": digite o total já na unidade do insumo. No processamento de NF (Insumos, Peças com Estoque), o seletor do item do catálogo tem busca por texto. Nunca edite direto o cabeçalho de uma nota já processada.
 

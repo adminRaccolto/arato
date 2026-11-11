@@ -1,4 +1,5 @@
 "use client";
+import OpcoesUnidade from "../../components/OpcoesUnidade";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -2719,21 +2720,7 @@ export default function Estoque() {
               <div>
                 <label data-arato-label="true" style={lbl}>Unidade *</label>
                 <SelectField style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value }))}>
-                  <option value="kg">kg</option>
-                  <option value="g">g (grama)</option>
-                  <option value="L">L (litro)</option>
-                  <option value="mL">mL (mililitro)</option>
-                  <option value="sc">sc (saca 60 kg)</option>
-                  <option value="bag">bag</option>
-                  <option value="t">t (tonelada)</option>
-                  <option value="un">un (unidade)</option>
-                  <option value="m">m (metro)</option>
-                  <option value="m2">m²</option>
-                  <option value="cx">cx (caixa)</option>
-                  <option value="dose">dose</option>
-                  <option value="pc">pc (peça)</option>
-                  <option value="par">par</option>
-                  <option value="outros">outros</option>
+                  <OpcoesUnidade base={["kg", ["g", "g (grama)"], ["L", "L (litro)"], ["mL", "mL (mililitro)"], ["sc", "sc (saca 60 kg)"], "bag", ["t", "t (tonelada)"], ["un", "un (unidade)"], ["m", "m (metro)"], ["m2", "m²"], ["cx", "cx (caixa)"], "dose", ["pc", "pc (peça)"], "par", "outros"]} atual={fIns.unidade} />
                 </SelectField>
               </div>
               <div style={{ gridColumn: "1/-1" }}>

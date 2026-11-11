@@ -1,4 +1,5 @@
 "use client";
+import OpcoesUnidade from "../../../components/OpcoesUnidade";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -534,7 +535,7 @@ export default function PulverizacaoPage() {
                             </div>
                           ) : (
                             <SelectField style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
-                              {["L","kg","mL","g","sc","t","un"].map(u => <option key={u} value={u}>{u}</option>)}
+                              <OpcoesUnidade base={["L","kg","mL","g","sc","t","un"]} atual={it.unidade} />
                             </SelectField>
                           )}
                         </td>

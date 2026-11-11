@@ -1,4 +1,5 @@
 "use client";
+import OpcoesUnidade from "../../components/OpcoesUnidade";
 import { imprimirCce } from "../../lib/fiscal/imprimir-cce";
 import VerificarCertificado from "../../components/fiscal/VerificarCertificado";
 import { hojeLocal } from "../../lib/data-local";
@@ -3411,7 +3412,7 @@ function FiscalInner() {
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 100px 100px 160px", gap: 14, marginBottom: 14 }}>
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>NCM *</label><SelectField style={inputSt} value={fDev.ncm} onChange={e => setFDev(p => ({ ...p, ncm: e.target.value }))}>{NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</SelectField></div>
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Quantidade *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0" value={fDev.quantidade} onChange={e => setFDev(p => ({ ...p, quantidade: e.target.value.replace(/\D/g, "") }))} /></div>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Unidade</label><SelectField style={inputSt} value={fDev.unidade} onChange={e => setFDev(p => ({ ...p, unidade: e.target.value }))}><option value="sc">sc</option><option value="kg">kg</option><option value="ton">ton</option></SelectField></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Unidade</label><SelectField style={inputSt} value={fDev.unidade} onChange={e => setFDev(p => ({ ...p, unidade: e.target.value }))}><OpcoesUnidade base={["sc", "kg", "ton"]} atual={fDev.unidade} /></SelectField></div>
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Valor unit. (R$) *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0,00" value={fDev.valorUnitario} onChange={e => setFDev(p => ({ ...p, valorUnitario: aplicarMascara(e.target.value) }))} /></div>
             </div>
             {(() => { const v = fDev.quantidade && fDev.valorUnitario ? Math.round(Number(fDev.quantidade) * desmascarar(fDev.valorUnitario) * 100) / 100 : 0; if (!v) return null; return <div style={{ background: "#FAEEDA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#633806", marginBottom: 12 }}>Valor total da devolução: <strong style={{ fontSize: 15 }}>{fmtMoeda(v)}</strong></div>; })()}

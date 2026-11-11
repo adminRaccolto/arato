@@ -1,4 +1,5 @@
 "use client";
+import OpcoesUnidade from "../../components/OpcoesUnidade";
 import {useOperationalPresentation} from '../../components/arato-layout/presentation-mode';
 import NativeRowActions from '../../components/arato-layout/NativeRowActions';
 import NativeCadastroDialog from '../../components/arato-layout/NativeCadastroDialog';
@@ -3965,9 +3966,7 @@ function CadastrosInner() {
                         <div>
                           <label data-arato-label="true" style={lbl}>Unidade</label>
                           <SelectField style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                            <option value="L">L (litros)</option>
-                            <option value="kg">kg (graxas em kg)</option>
-                            <option value="un">un (galões/latas)</option>
+                            <OpcoesUnidade base={[["L", "L (litros)"], ["kg", "kg (graxas em kg)"], ["un", "un (galões/latas)"]]} atual={fIns.unidade} />
                           </SelectField>
                         </div>
                         <div>
@@ -5154,21 +5153,7 @@ function CadastrosInner() {
                           </div>
                         ) : (
                           <SelectField style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                            <option value="kg">kg</option>
-                            <option value="g">g (gramas)</option>
-                            <option value="L">L (litros)</option>
-                            <option value="mL">mL (mililitros)</option>
-                            <option value="sc">sc (sacas 60kg)</option>
-                            <option value="bag">bag</option>
-                            <option value="t">t (tonelada)</option>
-                            <option value="un">un (unidade)</option>
-                            <option value="m">m (metro)</option>
-                            <option value="m2">m² (metro quadrado)</option>
-                            <option value="cx">cx (caixa)</option>
-                            <option value="dose">dose</option>
-                            <option value="pc">pc (peça)</option>
-                            <option value="par">par</option>
-                            <option value="outros">outros</option>
+                            <OpcoesUnidade base={["kg", ["g", "g (gramas)"], ["L", "L (litros)"], ["mL", "mL (mililitros)"], ["sc", "sc (sacas 60kg)"], "bag", ["t", "t (tonelada)"], ["un", "un (unidade)"], ["m", "m (metro)"], ["m2", "m² (metro quadrado)"], ["cx", "cx (caixa)"], "dose", ["pc", "pc (peça)"], "par", "outros"]} atual={fIns.unidade} />
                           </SelectField>
                         )}
                       </div>
@@ -5520,13 +5505,7 @@ function CadastrosInner() {
                       <div>
                         <label data-arato-label="true" style={lbl}>Unidade *</label>
                         <SelectField style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                          <option value="sc">sc (sacas 60kg)</option>
-                          <option value="@">@ (arrobas 15kg)</option>
-                          <option value="kg">kg</option>
-                          <option value="t">t (tonelada)</option>
-                          <option value="fardo">fardo</option>
-                          <option value="cx">cx</option>
-                          <option value="outros">outros</option>
+                          <OpcoesUnidade base={[["sc", "sc (sacas 60kg)"], ["@", "@ (arrobas 15kg)"], "kg", ["t", "t (tonelada)"], "fardo", "cx", "outros"]} atual={fIns.unidade} />
                         </SelectField>
                       </div>
                       {/* Nome do produto */}
@@ -5764,17 +5743,7 @@ function CadastrosInner() {
                       <div>
                         <label data-arato-label="true" style={lbl}>Unidade *</label>
                         <SelectField style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                          <option value="un">un (unidade)</option>
-                          <option value="kg">kg</option>
-                          <option value="bag">bag</option>
-                          <option value="L">L (litros)</option>
-                          <option value="m">m (metro)</option>
-                          <option value="m2">m² (metro quadrado)</option>
-                          <option value="cx">cx (caixa)</option>
-                          <option value="dose">dose</option>
-                          <option value="pc">pc (peça)</option>
-                          <option value="par">par</option>
-                          <option value="outros">outros</option>
+                          <OpcoesUnidade base={[["un", "un (unidade)"], "kg", "bag", ["L", "L (litros)"], ["m", "m (metro)"], ["m2", "m² (metro quadrado)"], ["cx", "cx (caixa)"], "dose", ["pc", "pc (peça)"], "par", "outros"]} atual={fIns.unidade} />
                         </SelectField>
                       </div>
                       <div>
@@ -7161,13 +7130,7 @@ function CadastrosInner() {
                         <div data-arato-dialog-body="true">
                           <label data-arato-label="true" style={lbl}>Unidade de Medida *</label>
                           <SelectField style={inp} value={fCultura.unidade} onChange={e => setFCultura(p => ({ ...p, unidade: e.target.value }))}>
-                            <option value="sc">Saca (60 kg)</option>
-                            <option value="@">Arroba (15 kg)</option>
-                            <option value="kg">Quilograma</option>
-                            <option value="t">Tonelada</option>
-                            <option value="cx">Caixa</option>
-                            <option value="fardo">Fardo</option>
-                            <option value="outro">Outro</option>
+                            <OpcoesUnidade base={[["sc", "Saca (60 kg)"], ["@", "Arroba (15 kg)"], ["kg", "Quilograma"], ["t", "Tonelada"], ["cx", "Caixa"], ["fardo", "Fardo"], ["outro", "Outro"]]} atual={fCultura.unidade} />
                           </SelectField>
                         </div>
                         <div data-arato-dialog-body="true">
