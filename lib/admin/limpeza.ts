@@ -1,5 +1,6 @@
 /**
- * Catálogo da limpeza seletiva (Dados & Limpeza). Cada item lista as tabelas na ordem de apagar: filhas primeiro.
+ * Catálogo da limpeza seletiva (Dados & Limpeza). Cada item lista as tabelas na ordem de apagar: filhas primeiro
+ * (ex.: lançamentos antes dos borderôs, porque lancamentos.lote_id aponta para pagamento_lotes).
  * Quem resolve a linha de cada cliente é o banco (fn_limpar_dados): fazenda_id, conta_id ou a chave da tabela-mãe.
  * A tela e a rota usam este mesmo catálogo; a rota nunca aceita nome de tabela vindo do navegador.
  */
@@ -22,7 +23,7 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
   {
     id: "financeiro", label: "Financeiro", icon: "💰", cor: "#E24B4A", bg: "#FFF0F0",
     subitens: [
-      { id: "lancamentos", label: "Lançamentos CP/CR do produtor", icon: "📄", contar: "lancamentos", tabelas: ["pagamento_lote_itens", "pagamento_lotes", "lancamentos"], aviso: "Faça antes de limpar contratos, folha e cartões, se eles também forem sair." },
+      { id: "lancamentos", label: "Lançamentos CP/CR do produtor", icon: "📄", contar: "lancamentos", tabelas: ["pagamento_lote_itens", "lancamentos", "pagamento_lotes"], aviso: "Faça antes de limpar contratos, folha e cartões, se eles também forem sair." },
       { id: "empresa_lancamentos", label: "Lançamentos CP/CR de Empresa", icon: "🏢", contar: "empresa_lancamentos", tabelas: ["empresa_lancamentos"] },
       { id: "extrato", label: "Extratos e conciliação bancária", icon: "🏦", contar: "extrato_transacoes", tabelas: ["conciliacao_pendencias", "historico_conciliacao", "extrato_transacoes", "extratos_bancarios"] },
       { id: "contratos_fin", label: "Contratos Financeiros", icon: "🏦", contar: "contratos_financeiros", tabelas: ["parcelas_pagamento", "parcelas_liberacao", "garantias_contrato", "aditivos_contrato", "contrato_cessao_debitos", "contratos_refinanciamento", "contratos_financeiros"] },
