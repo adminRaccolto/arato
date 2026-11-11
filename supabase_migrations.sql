@@ -21199,3 +21199,48 @@ GRANT EXECUTE ON FUNCTION public.folha_og_por_classificacao(uuid,text),public.fo
   public.folha_criar_adiantamento(jsonb,uuid,uuid) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 433 — Limpeza de dados: borderô com títulos de outras fazendas não é apagado (11/11/2026)
+-- O borderô (pagamento_lotes) junta títulos de várias fazendas do mesmo cliente. Ao limpar só algumas fazendas,
+-- os lançamentos das outras continuam ligados a ele (lancamentos.lote_id) e o DELETE falhava com
+-- "violates foreign key constraint lancamentos_lote_id_fkey", travando a limpeza inteira. Agora a limpeza apaga
+-- só o borderô que ficou sem nenhum lançamento ligado; o que ainda tem títulos de outra fazenda fica.
+-- ═══════════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION fn_limpar_dados(p_conta uuid, p_fazendas uuid[], p_incluir_conta boolean, p_tabelas text[], p_filtro jsonb, p_aplicar boolean)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public SET statement_timeout = '280s' AS $$
+DECLARE
+  v_tabela text; v_filtro text; v_extra text := ''; v_cond text; k text; n bigint; v_contagem jsonb := '{}'::jsonb; v_total bigint := 0;
+BEGIN
+  IF EXISTS (SELECT 1 FROM unnest(p_fazendas) f WHERE f NOT IN (SELECT id FROM fazendas WHERE conta_id = p_conta)) THEN
+    RAISE EXCEPTION 'Fazenda não pertence a este cliente.';
+  END IF;
+  FOR k IN SELECT jsonb_object_keys(coalesce(p_filtro, '{}'::jsonb)) LOOP
+    v_extra := v_extra || format(' AND %I = %L', k, p_filtro ->> k);
+  END LOOP;
+  FOREACH v_tabela IN ARRAY p_tabelas LOOP
+    SELECT filtro INTO v_filtro FROM fn_admin_alvos_cliente(p_incluir_conta) WHERE tabela = v_tabela;
+    IF v_filtro IS NULL THEN CONTINUE; END IF;
+    v_cond := v_extra;
+    -- Borderô que ainda tem lançamento ligado (de fazenda fora da limpeza) fica
+    IF v_tabela = 'pagamento_lotes' THEN
+      v_cond := v_cond || ' AND NOT EXISTS (SELECT 1 FROM lancamentos l WHERE l.lote_id = pagamento_lotes.id)';
+    END IF;
+    IF p_aplicar THEN
+      BEGIN
+        EXECUTE format('DELETE FROM %I WHERE (%s)%s', v_tabela, v_filtro, v_cond) USING p_conta, p_fazendas;
+        GET DIAGNOSTICS n = ROW_COUNT;
+      EXCEPTION WHEN foreign_key_violation THEN
+        RAISE EXCEPTION 'Não dá para apagar "%": existem outros registros ligados a ele. %', v_tabela, SQLERRM;
+      END;
+    ELSE
+      EXECUTE format('SELECT count(*) FROM %I WHERE (%s)%s', v_tabela, v_filtro, v_extra) INTO n USING p_conta, p_fazendas;
+    END IF;
+    IF n > 0 THEN v_contagem := v_contagem || jsonb_build_object(v_tabela, n); v_total := v_total + n; END IF;
+  END LOOP;
+  RETURN jsonb_build_object('tabelas', v_contagem, 'total', v_total);
+END $$;
+REVOKE ALL ON FUNCTION fn_limpar_dados(uuid, uuid[], boolean, text[], jsonb, boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION fn_limpar_dados(uuid, uuid[], boolean, text[], jsonb, boolean) TO service_role;
+NOTIFY pgrst, 'reload schema';
