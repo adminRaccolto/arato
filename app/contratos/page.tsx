@@ -1062,12 +1062,25 @@ export default function Contratos() {
     return [...m.values()].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
   })();
   const produtoFiltroSel = produtosFiltro.find(p => p.label === filtroProduto);
+  // Produtos que algum ciclo produz: contrato ligado a um produto fora dessa lista (ex.: cadastro genérico "Soja") casa
+  // pela cultura, senão sumia da lista com qualquer filtro de produto e não dava para abrir e corrigir.
+  const idsProdutosCiclo = new Set(produtosFiltro.flatMap(p => [...p.ids]));
   const contratoNoProduto = (c: { produto?: string | null; produto_agricola_id?: string | null }) => {
     if (!filtroProduto) return true;
     if (!produtoFiltroSel) return c.produto === filtroProduto;
     const pid = c.produto_agricola_id ? (nomesProdutoCiclo.get(c.produto_agricola_id)?.id ?? c.produto_agricola_id) : null;
-    if (pid && produtoFiltroSel.ids.size) return produtoFiltroSel.ids.has(pid);
+    if (pid && produtoFiltroSel.ids.size && idsProdutosCiclo.has(pid)) return produtoFiltroSel.ids.has(pid);
     return culturaBase(c.produto) === produtoFiltroSel.base;
+  };
+  // Filtro por ciclo: contrato sem ciclo da mesma safra e cultura também aparece (marcado "sem ciclo"), para ser corrigido
+  const cicloSelFiltro = filtroCiclo ? ciclosDoFiltro.find(c => c.id === filtroCiclo) : undefined;
+  const contratoNoCiclo = (c: { ciclo_id?: string | null; ano_safra_id?: string | null; produto?: string | null }) => {
+    if (!filtroCiclo) return true;
+    if (c.ciclo_id) return c.ciclo_id === filtroCiclo;
+    if (!cicloSelFiltro) return false;
+    const pid = (cicloSelFiltro as { produto_agricola_id?: string | null }).produto_agricola_id ?? null;
+    const nomeCiclo = (pid ? nomesProdutoCiclo.get(pid)?.nome : undefined) ?? String(cicloSelFiltro.cultura ?? "");
+    return c.ano_safra_id === cicloSelFiltro.ano_safra_id && culturaBase(c.produto) === culturaBase(nomeCiclo);
   };
   const COMMODITIES_VFE_DIN: string[] = culturasCont.length > 0
     ? culturasCont.filter(c => c.categoria === "graos").map(c => c.nome)
@@ -1766,7 +1779,7 @@ export default function Contratos() {
       const porText = !c.ano_safra_id && safraDescFiltro && c.safra === safraDescFiltro;
       if (!porId && !porText) return false;
     }
-    if (filtroCiclo    && c.ciclo_id !== filtroCiclo) return false;
+    if (!contratoNoCiclo(c)) return false;
     if (!contratoNoProduto(c)) return false;
     if (filtroStatus   && c.status   !== filtroStatus)  return false;
     if (filtroComprador && c.comprador !== filtroComprador) return false;
@@ -1999,6 +2012,7 @@ export default function Contratos() {
                                 </td>
                                 <td style={{ padding:"10px 12px" }}>
                                   <span style={{ fontSize:10, background:cp.bg, color:cp.color, padding:"2px 8px", borderRadius:8 }}>{c.produto}</span>
+                                  {!c.ciclo_id && !(c as { is_arrendamento?: boolean }).is_arrendamento && c.tipo !== "compra" && <span title="Contrato sem ciclo: abra e escolha o ciclo para ele contar na posição do ciclo certo" style={{ fontSize:9, fontWeight:700, marginLeft:4, background:"#FBF3E0", color:"#7A5200", padding:"1px 6px", borderRadius:6 }}>sem ciclo</span>}
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color:"var(--text-1)" }}>{(c.quantidade_sc??0).toLocaleString("pt-BR")} sc</td>
                                 <td style={{ padding:"10px 12px", textAlign:"center" }}>
