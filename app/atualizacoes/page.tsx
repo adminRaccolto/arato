@@ -14,6 +14,7 @@ const RELEASES = [
     itens: [
       { tipo: "novidade", texto: "Folha de Pagamento → 13º Salário: novo campo \"% na 1ª parcela\" (padrão 50%). A 1ª parcela sai sem descontos e a 2ª paga o restante com INSS e IRRF, como prevê a lei. Abaixo de 50% a tela avisa; acima, a 1ª fica limitada ao 13º menos os impostos." },
       { tipo: "melhoria", texto: "Menu de ícones: o botão Início abre a tela inicial direto, sem a camada intermediária." },
+      { tipo: "correcao", texto: "Controle de Seguros: a lista de apólices usa a largura da tela e a vigência não fica mais por cima da situação (Vigente)." },
     ],
   },
   {

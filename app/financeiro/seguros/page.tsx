@@ -579,7 +579,7 @@ export default function SegurosPage() {
     <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
+      <main style={{ maxWidth: 1600, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
@@ -663,7 +663,7 @@ export default function SegurosPage() {
                   return (
                     <div key={a.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: `0.5px solid ${urgente ? "#C9921B60" : "var(--border-table)"}`, overflow: "hidden" }}>
                       <div onClick={() => setExpandido(exp ? null : a.id)}
-                        style={{ display: "grid", gridTemplateColumns: "1fr 140px 130px 150px 180px", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer" }}>
+                        style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) 150px 130px 200px auto", alignItems: "center", gap: 16, padding: "14px 18px", cursor: "pointer" }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{a.numero_apolice}</span>
@@ -684,9 +684,9 @@ export default function SegurosPage() {
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: 11, color: "#666" }}>Vigência</div>
-                          <div style={{ fontSize: 12 }}>{fmtData(a.data_inicio_vigencia)} → {fmtData(a.data_fim_vigencia)}</div>
+                          <div style={{ fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(a.data_inicio_vigencia)} → {fmtData(a.data_fim_vigencia)}</div>
                         </div>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center", whiteSpace: "nowrap" }}>
                           {badge(sm.label, sm.bg, sm.cl)}
                           {a.arquivo_url && (
                             <a href={a.arquivo_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ padding: "4px 10px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>PDF</a>
