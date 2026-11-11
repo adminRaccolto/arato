@@ -196,6 +196,7 @@ export const NAV: NavItem[] = [
       { id: "fin-fluxo-real",      label: "Fluxo de Caixa Realizado",     path: "/financeiro/relatorios?aba=fluxo&tipo=realizado", moduleId: "fin_relatorios", bloco: "Tesouraria" },
       { id: "fin-posicao-banc",    label: "Posição Bancária",             path: "/financeiro/relatorios?aba=posicao",             moduleId: "fin_relatorios", bloco: "Tesouraria" },
       { id: "fin-endividamento",   label: "Endividamento",                path: "/financeiro/endividamento",                     moduleId: "fin_relatorios", bloco: "Complemento Financeiro" },
+      { id: "fin-rel-folha",       label: "Folha de Pagamento",           path: "/financeiro/folha/relatorios",                  moduleId: "fin_relatorios", bloco: "Pessoal" },
       { id: "fin-comercializacao", label: "Posição de Comercialização",   path: "/financeiro/relatorios?aba=comercializacao",     moduleId: "fin_relatorios", bloco: "Comercialização" },
       { type: "divider", label: "Complemento Financeiro" },
       { id: "fin-contratos",        label: "Contratos Financeiros",      path: "/financeiro/contratos",           moduleId: "fin_contratos"     },

@@ -1224,6 +1224,55 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, adis: adis ?? [], prems: unificarPremiacoes(prems ?? [], historicas ?? []) });
     }
 
+    // ─── relatorio_folha ──────────────────────────────────────────────────────
+    // Tudo o que os Relatórios da Folha precisam no período (competência de/até), só leitura: linhas das folhas,
+    // cadastro dos funcionários, gratificações, adiantamentos, 13º e rescisões das fazendas do cliente.
+    if (operacao === "relatorio_folha") {
+      const { fazenda_ids, de, ate } = payload as { fazenda_ids?: string[]; de?: string; ate?: string };
+      const ids = (fazenda_ids ?? []).filter(Boolean);
+      if (!ids.length || !/^\d{4}-\d{2}$/.test(de ?? "") || !/^\d{4}-\d{2}$/.test(ate ?? "")) return NextResponse.json({ error: "Informe as fazendas e o período (AAAA-MM)." }, { status: 400 });
+      const [ay, am] = (ate as string).split("-").map(Number);
+      const dataIni = `${de}-01`, dataFim = `${ate}-${String(new Date(ay, am, 0).getDate()).padStart(2, "0")}`;
+      const anoIni = Number((de as string).slice(0, 4)), anoFim = ay;
+      const lote = <T,>(lista: T[], n = 100) => Array.from({ length: Math.ceil(lista.length / n) }, (_, i) => lista.slice(i * n, i * n + n));
+
+      const folhas = await buscarPaginado<Record<string, unknown>>((a, b) => sb.from("folha_pagamento").select("*")
+        .in("fazenda_id", ids).gte("competencia", de as string).lte("competencia", ate as string).order("id").range(a, b));
+      const itens: Record<string, unknown>[] = [];
+      for (const fl of lote(folhas.map(f => f.id as string))) {
+        itens.push(...await buscarPaginado<Record<string, unknown>>((a, b) => sb.from("folha_funcionarios").select("*").in("folha_id", fl).order("id").range(a, b)));
+      }
+      const [funcionarios, premAtuais, premHist, adiantamentos, decimos, rescisoes] = await Promise.all([
+        buscarPaginado<Record<string, unknown>>((a, b) => sb.from("funcionarios").select("id, nome, fazenda_id, area_trabalho, funcao, empresa_id, produtor_id, data_admissao, data_demissao, ativo, salario_base").in("fazenda_id", ids).order("id").range(a, b)),
+        buscarPaginado<Record<string, unknown>>((a, b) => sb.from("funcionarios_premiacoes").select("*").in("fazenda_id", ids).gte("mes_referencia", de as string).lte("mes_referencia", ate as string).order("id").range(a, b)),
+        buscarPaginado<Record<string, unknown>>((a, b) => sb.from("funcionario_premiacoes").select("*").in("fazenda_id", ids).gte("mes_referencia", de as string).lte("mes_referencia", ate as string).order("id").range(a, b)),
+        buscarPaginado<Record<string, unknown>>((a, b) => sb.from("adiantamentos_salario").select("*").in("fazenda_id", ids).gte("data", dataIni).lte("data", dataFim).order("id").range(a, b)),
+        buscarPaginado<Record<string, unknown>>((a, b) => sb.from("decimo_terceiro").select("*").in("fazenda_id", ids).gte("ano", anoIni).lte("ano", anoFim).order("id").range(a, b))
+          .catch(() => [] as Record<string, unknown>[]),
+        buscarPaginado<Record<string, unknown>>((a, b) => sb.from("funcionario_rescisoes").select("*").in("fazenda_id", ids).gte("data_desligamento", dataIni).lte("data_desligamento", dataFim).order("id").range(a, b))
+          .catch(() => [] as Record<string, unknown>[]),
+      ]);
+      // Situação dos títulos no CP (13º e gratificações em título próprio)
+      const titulos = [...new Set([
+        ...decimos.flatMap(d => [d.parcela1_lancamento_id, d.parcela2_lancamento_id]),
+        ...[...premAtuais, ...premHist].map(p => p.lancamento_id),
+      ].filter((x): x is string => typeof x === "string" && !!x))];
+      const situacao: Record<string, { status: string; valor_pago: number }> = {};
+      for (const l of lote(titulos, 200)) {
+        const { data } = await sb.from("lancamentos").select("id, status, valor_pago").in("id", l);
+        for (const t of data ?? []) situacao[t.id as string] = { status: String(t.status), valor_pago: Number(t.valor_pago ?? 0) };
+      }
+      const empIds = [...new Set([...folhas, ...funcionarios].map(r => r.empresa_id).filter((x): x is string => typeof x === "string"))];
+      const prodIds = [...new Set([...folhas, ...funcionarios].map(r => r.produtor_id).filter((x): x is string => typeof x === "string"))];
+      const [{ data: empresas }, { data: produtores }, { data: fazendas }] = await Promise.all([
+        empIds.length ? sb.from("empresas").select("id, nome, razao_social").in("id", empIds) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+        prodIds.length ? sb.from("produtores").select("id, nome").in("id", prodIds) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+        sb.from("fazendas").select("id, nome").in("id", ids),
+      ]);
+      return NextResponse.json({ ok: true, folhas, itens, funcionarios, premiacoes: unificarPremiacoes(premAtuais as { id: string; lancamento_id?: string | null }[], premHist as { id: string; lancamento_id?: string | null }[]),
+        adiantamentos, decimos, rescisoes, situacao, empresas: empresas ?? [], produtores: produtores ?? [], fazendas: fazendas ?? [] });
+    }
+
     // ─── salvar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "salvar_adiantamento") {
       const { fazenda_id: fazendaPayload, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;

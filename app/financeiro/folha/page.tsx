@@ -20,6 +20,7 @@ import TopNav from "../../../components/TopNav";
 import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
 import DecimoTerceiro from "../../../components/folha/DecimoTerceiro";
 import Rescisoes from "../../../components/folha/Rescisoes";
+import RelatoriosFolha from "../../../components/folha/RelatoriosFolha";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../lib/print";
 import { criarResolvedorEmpregador, funcionariosSemFolha, mesAnterior, type CadastroDoc } from "../../../lib/folha/empregador";
@@ -223,7 +224,7 @@ const ST_COLOR: Record<string,string>  = { rascunho:"#888", fechado:"#C9921B", p
 const ADI_LABEL: Record<string,string> = { pendente:"Pendente", descontado:"Descontado", cancelado:"Cancelado" };
 const ADI_COLOR: Record<string,string> = { pendente:"#C9921B", descontado:"#16A34A", cancelado:"#888" };
 
-type Aba = "processamento" | "adiantamentos" | "gratificacoes" | "decimo" | "rescisoes" | "divergencias";
+type Aba = "processamento" | "adiantamentos" | "gratificacoes" | "decimo" | "rescisoes" | "divergencias" | "relatorios";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
@@ -239,7 +240,7 @@ export default function FolhaPagamentoPage() {
   const [aba, setAba]             = useState<Aba>("processamento");
   const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome do arquivo
   // ?aba=decimo (endereço antigo do 13º Salário) abre direto na aba
-  useEffect(() => { try { const a = new URLSearchParams(window.location.search).get("aba"); if (a === "decimo" || a === "rescisoes") setAba(a); } catch { /* sem URL */ } }, []);
+  useEffect(() => { try { const a = new URLSearchParams(window.location.search).get("aba"); if (a === "decimo" || a === "rescisoes" || a === "relatorios") setAba(a); } catch { /* sem URL */ } }, []);
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
   const [saving, setSaving]       = useState(false);
@@ -1269,13 +1270,13 @@ export default function FolhaPagamentoPage() {
           {([
             ["processamento", "Processamento"], ["adiantamentos", "Adiantamentos"],
             ["gratificacoes", "Gratificações"], ["decimo", "13º Salário"], ["rescisoes", "Rescisões"],
-            ["divergencias", `Divergências${pendenciasFolha ? ` (${pendenciasFolha})` : ""}`],
+            ["divergencias", `Divergências${pendenciasFolha ? ` (${pendenciasFolha})` : ""}`], ["relatorios", "Relatórios"],
           ] as [Aba, string][]).map(([id, label]) => (
             <OperationalButton key={id} type="button" role="tab" id={`folha-tab-${id}`}
               aria-selected={aba === id} tabIndex={aba === id ? 0 : -1} onKeyDown={e => {
                 if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
                 e.preventDefault();
-                const ids: Aba[] = ["processamento", "adiantamentos", "gratificacoes", "decimo", "rescisoes", "divergencias"];
+                const ids: Aba[] = ["processamento", "adiantamentos", "gratificacoes", "decimo", "rescisoes", "divergencias", "relatorios"];
                 const index = e.key === "Home" ? 0 : e.key === "End" ? ids.length - 1 : (ids.indexOf(id) + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length;
                 setAba(ids[index]); document.getElementById(`folha-tab-${ids[index]}`)?.focus();
               }} aria-controls={`folha-painel-${id}`}
@@ -1287,6 +1288,7 @@ export default function FolhaPagamentoPage() {
         {/* ══════════════════ ABA 13º SALÁRIO ══════════════════ */}
         {aba === "decimo" && <DecimoTerceiro />}
         {aba === "rescisoes" && <Rescisoes />}
+        {aba === "relatorios" && <RelatoriosFolha />}
 
         {(aba === "processamento" || aba === "divergencias") && (
             <OperationalFilters className={folhaStyles.filters} data-arato-filters="true" style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>

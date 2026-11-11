@@ -17,6 +17,7 @@ export function alvosFolha(operacao: string, p: P): AlvosFolha | null {
     case "listar_folhas":
     case "listar_adi_prem":
     case "listar_controle":
+    case "relatorio_folha":
       a.fazendas = ids(p.fazenda_id, p.fazenda_ids); break;
     case "upsert_folha":
       a.fazendas = ids(p.fazenda_id); a.empresas = ids(p.empresa_id); a.produtores = ids(p.produtor_id); break;

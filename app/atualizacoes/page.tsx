@@ -9,12 +9,13 @@ const RELEASES = [
   {
     versao: "2026.11.11-a",
     data: "11/11/2026",
-    titulo: "13º: percentual da 1ª parcela",
+    titulo: "Folha: relatório único e 13º em percentual",
     modulos: ["Financeiro", "Navegação"],
     itens: [
       { tipo: "novidade", texto: "Folha de Pagamento → 13º Salário: novo campo \"% na 1ª parcela\" (padrão 50%). A 1ª parcela sai sem descontos e a 2ª paga o restante com INSS e IRRF, como prevê a lei. Abaixo de 50% a tela avisa; acima, a 1ª fica limitada ao 13º menos os impostos." },
       { tipo: "melhoria", texto: "Menu de ícones: o botão Início abre a tela inicial direto, sem a camada intermediária." },
       { tipo: "correcao", texto: "Controle de Seguros: a lista de apólices usa a largura da tela e a vigência não fica mais por cima da situação (Vigente)." },
+      { tipo: "novo", texto: "Relatório da Folha de Pagamento (Financeiro → Relatórios Financeiros → Folha de Pagamento, e aba Relatórios da Folha): um relatório só, com janela de filtro como o de CP/CR. Escolha modalidades (salário, gratificação, horas extras, DSR, complemento, benefícios, descontos, encargos, 13º, rescisões, adiantamentos) e origens em qualquer combinação, por período, empregador, fazenda, área e funcionário; quadro por modalidade ou mês a mês, ou lista detalhada, com agrupamento e subtotais; sai em PDF, Excel ou na tela." },
     ],
   },
   {
