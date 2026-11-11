@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.11-a",
+    data: "11/11/2026",
+    titulo: "13º: percentual da 1ª parcela",
+    modulos: ["Financeiro", "Navegação"],
+    itens: [
+      { tipo: "novidade", texto: "Folha de Pagamento → 13º Salário: novo campo \"% na 1ª parcela\" (padrão 50%). A 1ª parcela sai sem descontos e a 2ª paga o restante com INSS e IRRF, como prevê a lei. Abaixo de 50% a tela avisa; acima, a 1ª fica limitada ao 13º menos os impostos." },
+      { tipo: "melhoria", texto: "Menu de ícones: o botão Início abre a tela inicial direto, sem a camada intermediária." },
+    ],
+  },
+  {
     versao: "2026.11.10-g",
     data: "10/11/2026",
     titulo: "Carta de correção com quebra de linha",

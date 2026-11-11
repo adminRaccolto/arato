@@ -1,6 +1,6 @@
 "use client";
-// 13º Salário (aba da Folha de Pagamento) — controle por funcionário e ano: avos, base, bruto, 1ª parcela (metade, sem descontos) e 2ª parcela
-// (bruto − INSS − IRRF − 1ª). Cada parcela é lançada no Contas a Pagar no nome do funcionário (Seção 386,
+// 13º Salário (aba da Folha de Pagamento) — controle por funcionário e ano: avos, base, bruto, 1ª parcela (% escolhido, padrão 50%,
+// sem descontos) e 2ª parcela (bruto − INSS − IRRF − 1ª). Cada parcela é lançada no Contas a Pagar no nome do funcionário (Seção 386,
 // /api/folha/decimo-terceiro). Regra de cálculo em lib/folha/decimo-terceiro.ts (testada).
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useAuth } from "../AuthProvider";
@@ -8,7 +8,7 @@ import InputData from "../InputData";
 import { OperationalButton } from "../OperationalUI";
 import { confirmarAcao } from "../ConfirmarAcao";
 import { supabase } from "../../lib/supabase";
-import { avosDecimo, calcularDecimo } from "../../lib/folha/decimo-terceiro";
+import { avosDecimo, calcularDecimo, PCT_PRIMEIRA_MINIMO } from "../../lib/folha/decimo-terceiro";
 
 type Func = { id: string; nome: string; fazenda_id: string; data_admissao: string | null; data_demissao: string | null; salario_base: number | null; complemento_salarial?: number | null; area_trabalho: string | null; funcao?: string | null; ativo: boolean };
 type Reg = { id: string; funcionario_id: string; avos: number; base: number; bruto: number; inss: number; irrf: number; parcela1_valor: number | null; parcela1_vencimento: string | null; parcela1_lancamento_id: string | null; parcela2_valor: number | null; parcela2_vencimento: string | null; parcela2_lancamento_id: string | null };
@@ -18,6 +18,7 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
 const numBR = (v: string) => parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
 const fmtBase = (v: number) => v.toFixed(2).replace(".", ",");
+const fmtPct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 const baseCadastro = (f: Func, comComplemento: boolean) => Number(f.salario_base ?? 0) + (comComplemento ? Number(f.complemento_salarial ?? 0) : 0);
 const th: CSSProperties = { padding: "7px 8px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)" };
 const td: CSSProperties = { padding: "6px 8px", fontSize: 12, textAlign: "right", fontVariantNumeric: "tabular-nums", borderBottom: "0.5px solid var(--border-row)", verticalAlign: "top" };
@@ -43,6 +44,9 @@ export default function DecimoTerceiro() {
   const [comComplemento, setComComplemento] = useState(false);
   const [avosEd, setAvosEd] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<Set<string>>(new Set());
+  // % do 13º pago na 1ª parcela (padrão e mínimo legal 50%); os descontos ficam todos na 2ª. Lembrado no navegador.
+  const [pct1Txt, setPct1Txt] = useState(String(PCT_PRIMEIRA_MINIMO));
+  const pct1 = Math.max(0, Math.min(100, numBR(pct1Txt)));
   const [venc1, setVenc1] = useState(`${anoAtual}-11-30`);
   const [venc2, setVenc2] = useState(`${anoAtual}-12-20`);
   const [busca, setBusca] = useState("");
@@ -82,6 +86,12 @@ export default function DecimoTerceiro() {
   }
   // Preferência lida após montar (evita divergência com o HTML do servidor)
   useEffect(() => { try { if (localStorage.getItem("decimo_base_complemento") === "1") trocarBase(true); } catch { /* sem storage */ } }, [funcs]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { try { const v = localStorage.getItem("decimo_pct_primeira"); if (v) setPct1Txt(v); } catch { /* sem storage */ } }, []);
+  function trocarPct1(v: string) {
+    const limpo = v.replace(/[^\d,]/g, "").slice(0, 6);
+    setPct1Txt(limpo);
+    try { localStorage.setItem("decimo_pct_primeira", limpo); } catch { /* sem storage */ }
+  }
   useEffect(() => { carregar(); setVenc1(`${ano}-11-30`); setVenc2(`${ano}-12-20`); }, [ids.join(","), ano]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trocar a base recalcula quem ainda não tem a 1ª parcela lançada (depois dela a base fica travada)
@@ -106,7 +116,7 @@ export default function DecimoTerceiro() {
     // fica travada: vale o que foi gravado nela, não o seletor atual.
     const compCadastro = Number(f.complemento_salarial ?? 0);
     const temComplemento = s1 === "lancar" ? comComplemento : compCadastro > 0 && base >= Number(f.salario_base ?? 0) + compCadastro - 0.01;
-    const c = calcularDecimo(base, avos, temComplemento ? compCadastro : 0);
+    const c = calcularDecimo(base, avos, temComplemento ? compCadastro : 0, pct1);
     // 2ª parcela desconta o que foi lançado na 1ª (se já lançada, o valor gravado)
     const p1 = s1 !== "lancar" ? Number(reg?.parcela1_valor ?? c.parcela1) : c.parcela1;
     const p2 = s2 !== "lancar" ? Number(reg?.parcela2_valor ?? 0) : Math.max(0, Math.round((c.bruto - c.inss - c.irrf - p1) * 100) / 100);
@@ -119,12 +129,17 @@ export default function DecimoTerceiro() {
     if (!alvo.length) { setErro(`Nenhum funcionário${sel.size ? " marcado" : ""} com a ${parcela}ª parcela a lançar.`); return; }
     const venc = parcela === 1 ? venc1 : venc2;
     const total = alvo.reduce((t, l) => t + (parcela === 1 ? l.p1 : l.p2), 0);
-    if (!(await confirmarAcao({ titulo: `Lançar ${parcela}ª parcela do 13º?`, perigo: false, textoConfirmar: "Lançar no Contas a Pagar",
-      mensagem: `${alvo.length} funcionário(s), total ${fmtBRL(total)}, vencimento ${fmtData(venc)}. Cada um vira um título no Contas a Pagar no nome do funcionário (operação 13º Salário).` }))) return;
+    const limitados = parcela === 1 ? alvo.filter(l => l.c.limitada).length : 0;
+    const avisos = parcela === 1 ? [
+      pct1 < PCT_PRIMEIRA_MINIMO ? `Atenção: ${fmtPct(pct1)} está abaixo do mínimo legal de 50% para a 1ª parcela (Lei 4.749/65).` : "",
+      limitados ? `${limitados} funcionário(s) com a 1ª limitada ao líquido (13º − INSS − IRRF), para a 2ª ter de onde descontar os impostos.` : "",
+    ].filter(Boolean).join(" ") : "";
+    if (!(await confirmarAcao({ titulo: `Lançar ${parcela}ª parcela do 13º?`, perigo: parcela === 1 && pct1 < PCT_PRIMEIRA_MINIMO, textoConfirmar: "Lançar no Contas a Pagar",
+      mensagem: `${alvo.length} funcionário(s), total ${fmtBRL(total)}, vencimento ${fmtData(venc)}${parcela === 1 ? `, ${fmtPct(pct1)} do 13º sem descontos` : ", com INSS e IRRF descontados"}. Cada um vira um título no Contas a Pagar no nome do funcionário (operação 13º Salário).${avisos ? ` ${avisos}` : ""}` }))) return;
     setErro(""); setMsg("");
     const r = await fetch("/api/folha/decimo-terceiro", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       acao: "lancar", ano, parcela, vencimento: venc,
-      itens: alvo.map(l => ({ funcionario_id: l.f.id, avos: l.avos, base: l.base, bruto: l.c.bruto, inss: l.c.inss, irrf: l.c.irrf, valor: parcela === 1 ? l.p1 : l.p2 })),
+      itens: alvo.map(l => ({ funcionario_id: l.f.id, avos: l.avos, base: l.base, bruto: l.c.bruto, inss: l.c.inss, irrf: l.c.irrf, valor: parcela === 1 ? l.p1 : l.p2, pct: parcela === 1 ? l.c.pct1 : undefined })),
     }) });
     const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; lancados?: number; avisos?: string[] };
     if (!j.ok) { setErro(j.error ?? `Erro HTTP ${r.status}`); return; }
@@ -149,7 +164,7 @@ export default function DecimoTerceiro() {
   return (
     <div>
       <div>
-        <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10 }}>Avos de cada funcionário no ano, 1ª parcela (metade, sem descontos, até 30/11) e 2ª parcela (com INSS e IRRF, até 20/12) lançadas no Contas a Pagar.</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10 }}>Avos de cada funcionário no ano, 1ª parcela (% escolhido do 13º, mínimo legal 50%, sem descontos, até 30/11) e 2ª parcela (o restante, com INSS e IRRF, até 20/12) lançadas no Contas a Pagar.</div>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
           <div><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>Ano</div>
@@ -162,6 +177,9 @@ export default function DecimoTerceiro() {
           <div style={{ flex: "1 1 200px" }}><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>Funcionário</div>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="nome" style={{ ...inp, width: "100%", boxSizing: "border-box" }} /></div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <div><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>% na 1ª parcela</div>
+              <input value={pct1Txt} onChange={e => trocarPct1(e.target.value)} inputMode="decimal" title="Percentual do 13º bruto pago na 1ª parcela, sem descontos. A 2ª paga o restante com INSS e IRRF." style={{ ...inp, width: 58, textAlign: "right", borderColor: pct1 < PCT_PRIMEIRA_MINIMO ? "#E24B4A" : undefined }} />
+              <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 4 }}>2ª: {fmtPct(Math.max(0, 100 - pct1))}</span></div>
             <div><div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3 }}>Vencimento 1ª parcela</div><InputData type="date" value={venc1} onChange={e => setVenc1(e.target.value)} style={inp} /></div>
             <OperationalButton data-arato-button="primary" onClick={() => lancar(1)} style={{ ...inp, background: "#1A4870", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}>Lançar 1ª parcela</OperationalButton>
           </div>
@@ -170,6 +188,7 @@ export default function DecimoTerceiro() {
             <OperationalButton data-arato-button="primary" onClick={() => lancar(2)} style={{ ...inp, background: "#1A4870", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}>Lançar 2ª parcela</OperationalButton>
           </div>
         </div>
+        {pct1 < PCT_PRIMEIRA_MINIMO && <div style={{ padding: 8, background: "#FEF2F2", color: "#B91C1C", borderRadius: 8, fontSize: 12, marginBottom: 8 }}>A lei exige que a 1ª parcela seja de pelo menos metade do 13º (Lei 4.749/65, art. 2º). Com {fmtPct(pct1)} o pagamento fica abaixo do mínimo.</div>}
         <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{sel.size ? `${sel.size} funcionário(s) marcado(s) — os botões lançam só os marcados.` : "Sem marcação, os botões lançam todos os que ainda não têm a parcela."} A base vem do salário da carteira (ou salário + complemento, conforme o seletor Base do 13º) e pode ser ajustada (ex.: média de horas extras e variáveis) antes de lançar. INSS e IRRF são estimativa pela tabela da folha — confira com o contador.</div>
 
         {msg && <div style={{ padding: 10, background: "#E8F5E9", color: "#1A6B3C", borderRadius: 8, fontSize: 12, marginBottom: 8 }}>{msg}</div>}
@@ -181,7 +200,7 @@ export default function DecimoTerceiro() {
               <th style={{ ...th, textAlign: "center", width: 30 }}><input type="checkbox" checked={linhas.length > 0 && sel.size === linhas.length} onChange={e => setSel(e.target.checked ? new Set(linhas.map(l => l.f.id)) : new Set())} /></th>
               <th style={{ ...th, textAlign: "left" }}>Funcionário</th><th style={{ ...th, textAlign: "left" }}>Admissão</th>
               <th style={th}>Avos</th><th style={th}>Base</th><th style={th}>13º bruto</th>
-              <th style={th}>1ª parcela</th><th style={th}>INSS</th><th style={th}>IRRF</th><th style={th}>2ª parcela</th>
+              <th style={th}>1ª parcela ({fmtPct(pct1)})</th><th style={th}>INSS</th><th style={th}>IRRF</th><th style={th}>2ª parcela</th>
             </tr></thead>
             <tbody>
               {carregando ? <tr><td colSpan={10} style={{ ...td, textAlign: "center", padding: 24, color: "var(--text-3)" }}>Carregando…</td></tr>
@@ -196,7 +215,7 @@ export default function DecimoTerceiro() {
                       <td style={td}><input value={avosEd[l.f.id] ?? ""} disabled={travado} onChange={e => setAvosEd(p => ({ ...p, [l.f.id]: e.target.value.replace(/\D/g, "").slice(0, 2) }))} style={{ ...inp, width: 44, textAlign: "right" }} title="Meses com 15 dias ou mais trabalhados no ano" />/12</td>
                       <td style={td}><input value={bases[l.f.id] ?? ""} disabled={travado} onChange={e => setBases(p => ({ ...p, [l.f.id]: e.target.value }))} style={{ ...inp, width: 100, textAlign: "right" }} /></td>
                       <td style={{ ...td, fontWeight: 600 }}>{fmtBRL(l.c.bruto)}</td>
-                      <td style={td}>{fmtBRL(l.p1)}<div>{chip(l.s1, l.reg?.parcela1_vencimento)}{l.s1 === "aberto" && <button type="button" onClick={() => estornar(l.f, 1)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
+                      <td style={td}>{fmtBRL(l.p1)}{l.s1 === "lancar" && l.c.limitada && <div style={{ fontSize: 10, color: "#7A5200" }} title="A 1ª não pode passar do 13º menos INSS e IRRF: a 2ª precisa ter valor para os descontos">limitada ao líquido ({fmtPct(l.c.pct1)})</div>}<div>{chip(l.s1, l.reg?.parcela1_vencimento)}{l.s1 === "aberto" && <button type="button" onClick={() => estornar(l.f, 1)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
                       <td style={{ ...td, color: "var(--text-2)" }} title={l.c.brutoTributavel !== l.c.bruto ? `INSS e IRRF sobre ${fmtBRL(l.c.brutoTributavel)}, sem o complemento` : undefined}>{fmtBRL(l.c.inss)}{l.c.brutoTributavel !== l.c.bruto && <div style={{ fontSize: 10, color: "var(--text-3)" }}>sobre {fmtBRL(l.c.brutoTributavel)}</div>}</td>
                       <td style={{ ...td, color: "var(--text-2)" }}>{fmtBRL(l.c.irrf)}</td>
                       <td style={td}>{fmtBRL(l.p2)}<div>{chip(l.s2, l.reg?.parcela2_vencimento)}{l.s2 === "aberto" && <button type="button" onClick={() => estornar(l.f, 2)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>

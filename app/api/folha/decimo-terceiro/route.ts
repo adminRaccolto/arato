@@ -14,7 +14,7 @@ const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.
 const erro = (msg: string, status = 400) => NextResponse.json({ ok: false, error: msg }, { status });
 const r2 = (n: number) => Math.round(Number(n || 0) * 100) / 100;
 
-type ItemLancar = { funcionario_id: string; avos: number; base: number; bruto: number; inss: number; irrf: number; valor: number };
+type ItemLancar = { funcionario_id: string; avos: number; base: number; bruto: number; inss: number; irrf: number; valor: number; pct?: number };
 type Corpo = { acao: "lancar" | "estornar"; ano: number; parcela: 1 | 2; vencimento?: string; itens?: ItemLancar[]; funcionario_id?: string };
 
 /** OG de 13º pela classificação, preferindo a da fazenda e caindo para a de outra fazenda do cliente. */
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         tipo: "pagar", moeda: "BRL", natureza: "real", status: "em_aberto", auto: true,
         descricao: `13º Salário ${b.parcela}ª parcela ${b.ano} — ${f.nome}`.slice(0, 200), categoria: "Pessoal / 13º Salário",
         valor: r2(it.valor), data_lancamento: hoje, data_vencimento: b.vencimento, origem_lancamento: "folha",
-        operacao_gerencial_id: ogCache.get(k), observacao: `13º ${b.ano}: ${it.avos}/12 avos sobre R$ ${r2(it.base).toFixed(2)}${b.parcela === 2 ? ` · INSS R$ ${r2(it.inss).toFixed(2)} · IRRF R$ ${r2(it.irrf).toFixed(2)}` : " · sem descontos"}`,
+        operacao_gerencial_id: ogCache.get(k), observacao: `13º ${b.ano}: ${it.avos}/12 avos sobre R$ ${r2(it.base).toFixed(2)}${b.parcela === 2 ? ` · INSS R$ ${r2(it.inss).toFixed(2)} · IRRF R$ ${r2(it.irrf).toFixed(2)}` : `${Number.isFinite(Number(it.pct)) ? ` · ${r2(Number(it.pct)).toLocaleString("pt-BR")}% do 13º` : ""} · sem descontos`}`,
       }).select("id").single();
       if (error) { avisos.push(`${f.nome}: ${error.message}`); continue; }
       const dados = {

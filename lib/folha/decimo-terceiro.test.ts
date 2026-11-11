@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { avosDecimo, calcularDecimo } from "./decimo-terceiro.ts";
+import { avosDecimo, calcularDecimo, valorPrimeira } from "./decimo-terceiro.ts";
 
 test("avos: ano inteiro, admissão no meio do ano e a regra dos 15 dias", () => {
   assert.equal(avosDecimo("2020-03-10", null, 2026), 12);
@@ -38,4 +38,20 @@ test("complemento proporcional aos avos e sem base negativa", () => {
   assert.equal(c.brutoTributavel, 1500);
   assert.equal(calcularDecimo(1000, 12, 2000).inss, 0);
   assert.equal(calcularDecimo(3000, 12).brutoTributavel, 3000);
+});
+
+test("% da 1ª parcela: descontos sempre na 2ª e 1ª limitada ao líquido", () => {
+  const c70 = calcularDecimo(3000, 12, 0, 70);
+  assert.equal(c70.parcela1, 2100);
+  assert.equal(c70.limitada, false);
+  assert.equal(c70.pct1, 70);
+  assert.equal(Math.round((c70.parcela1 + c70.parcela2 + c70.inss + c70.irrf) * 100) / 100, 3000);
+  const c100 = calcularDecimo(3000, 12, 0, 100);
+  assert.equal(c100.limitada, true);
+  assert.equal(c100.parcela1, Math.round((3000 - c100.inss - c100.irrf) * 100) / 100);
+  assert.equal(c100.parcela2, 0);
+  assert.ok(c100.pct1 < 100);
+  assert.equal(calcularDecimo(3000, 12).parcela1, 1500);          // padrão continua 50%
+  assert.equal(valorPrimeira(1000, 0, 0, 40).valor, 400);          // abaixo do mínimo: calcula, a tela avisa
+  assert.equal(valorPrimeira(1000, 50, 0, 200).valor, 950);        // % fora da faixa vira 100% e bate no teto
 });
