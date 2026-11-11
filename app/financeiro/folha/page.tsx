@@ -2,6 +2,7 @@
 import { assinaturaAusencia, confirmacaoAusencia, type DecisaoDivergencia } from "../../../lib/folha/divergencias";
 import { useOperationalPresentation } from "../../../components/arato-layout/presentation-mode";
 import folhaStyles from "./FolhaPagamento.module.css";
+import { requisicaoAdiantamento, type RequisicaoAdiantamento } from "../../../lib/folha/adiantamento";
 import { descontoNoSalario } from "../../../lib/folha/gratificacoes";
 import { planilhaFormatada } from "../../../lib/relatorios/xlsx-estilo";
 import { rotuloPagamentoFolha } from "../../../lib/folha/titulo-linha";
@@ -14,7 +15,7 @@ import { calcINSS, calcIRRF, vencimentoSalario } from "../../../lib/folha-calcul
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { baixarLancamento, listarContasProdutorDaConta, listarContasPorEmpresa } from "../../../lib/db";
+import { listarContasProdutorDaConta, listarContasPorEmpresa } from "../../../lib/db";
 import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
@@ -291,6 +292,8 @@ export default function FolhaPagamentoPage() {
   const [corrPlano, setCorrPlano] = useState<PlanoCorrecao[] | null>(null);
   const [corrErro, setCorrErro] = useState("");
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
+  const adiRequisicao = useRef<RequisicaoAdiantamento | null>(null);
+  const adiEmEnvio = useRef(false);
   const [vencCp,     setVencCp]     = useState<Record<string, string>>({});
   // Situação do salário no Contas a Pagar (folha fechada): soma o título e as partes de pagamento parcial (Seção 375)
   const [situacaoCp, setSituacaoCp] = useState<Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null; travado: boolean }>>({});
@@ -904,63 +907,57 @@ export default function FolhaPagamentoPage() {
   })();
 
   async function salvarAdiantamento() {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
-    if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
-      setMsg("Preencha funcionário, data e valor."); return;
-    }
-    if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
-    if (adiEdit.tipo === "gratificacao") {
-      if (!adiEdit.competencia_ref) { setMsg("Adiantamento de gratificação: informe a competência da gratificação."); return; }
-      if (adiGratInfo.lancada <= 0) { setMsg("Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações."); return; }
-      if ((adiEdit.valor ?? 0) > adiGratInfo.disponivel + 0.005) {
-        setMsg(`O valor excede a gratificação disponível (${moeda(adiGratInfo.disponivel)}). O excedente deve ser lançado manualmente como empréstimo a terceiros.`); return;
-      }
-    }
-    setSaving(true);
-    const funcionario_nome = funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "";
+    if (adiEmEnvio.current) return;
+    adiEmEnvio.current = true;
     try {
+      if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
+      if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
+        setMsg("Preencha funcionário, data e valor."); return;
+      }
+      if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
+      if (adiEdit.tipo === "gratificacao") {
+        if (!adiEdit.competencia_ref) { setMsg("Adiantamento de gratificação: informe a competência da gratificação."); return; }
+        if (adiGratInfo.lancada <= 0) { setMsg("Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações."); return; }
+        if ((adiEdit.valor ?? 0) > adiGratInfo.disponivel + 0.005) {
+          setMsg(`O valor excede a gratificação disponível (${moeda(adiGratInfo.disponivel)}). O excedente deve ser lançado manualmente como empréstimo a terceiros.`); return;
+        }
+      }
+      setSaving(true);
+      const funcionario_nome = funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "";
       if (adiEdit.id) {
-        // Edição de adiantamento existente
-        await apiFolha({
-          operacao: "editar_adiantamento",
-          tipo: adiEdit.tipo ?? "salario",
-          id: adiEdit.id,
-          funcionario_id: adiEdit.funcionario_id,
-          data: adiEdit.data,
-          valor: adiEdit.valor,
-          competencia_ref: adiEdit.competencia_ref || null,
-          descricao: adiEdit.descricao || null,
-          funcionario_nome,
-        });
+        await apiFolha({ operacao: "editar_adiantamento", tipo: adiEdit.tipo ?? "salario", id: adiEdit.id,
+          funcionario_id: adiEdit.funcionario_id, data: adiEdit.data, valor: adiEdit.valor,
+          competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null, funcionario_nome });
         setMsg("Adiantamento atualizado.");
+        carregar();
       } else {
-        const r = await apiFolha({
-          operacao: "salvar_adiantamento",
-          tipo: adiEdit.tipo ?? "salario",
-          fazenda_id: fazendaId,
-          funcionario_id: adiEdit.funcionario_id,
-          data: adiEdit.data,
-          valor: adiEdit.valor,
-          competencia_ref: adiEdit.competencia_ref || null,
-          descricao: adiEdit.descricao || null,
-          funcionario_nome,
-        }) as { lancamento_id?: string | null };
-        // Adiantamento é dinheiro que já saiu: CP nasce baixado, na conta informada (entra no fluxo de caixa)
-        if (r?.lancamento_id) {
-          try {
-            await baixarLancamento(r.lancamento_id, adiEdit.valor, adiEdit.data, adiConta);
-            setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
-          } catch (eb: any) {
-            setMsg(`Adiantamento registrado e CP gerado, mas a baixa falhou: ${eb.message}. Baixe o CP manualmente em Contas a Pagar.`);
-          }
-        } else setMsg("Adiantamento registrado e CP gerado.");
+        const dados = { fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
+          valor: adiEdit.valor, competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null,
+          tipo: adiEdit.tipo === "gratificacao" ? "gratificacao" as const : "salario" as const, conta_bancaria: adiConta };
+        adiRequisicao.current = requisicaoAdiantamento(adiRequisicao.current, dados);
+        const r = await apiFolha({ operacao: "salvar_adiantamento", ...dados, requisicao_id: adiRequisicao.current.id }) as {
+          adiantamento: Adiantamento;
+          folhas_atualizadas: { id: string; valor_liquido: number }[];
+          linhas_atualizadas: { id: string; folha_id: string; adiantamento: number; cp_lancamento_id: string | null }[];
+        };
+        // O servidor devolve o CP já baixado. Atualiza somente o movimento e os resumos afetados.
+        setAdiantamentos(antes => [r.adiantamento, ...antes.filter(a => a.id !== r.adiantamento.id)]
+          .sort((a, b) => b.data.localeCompare(a.data)));
+        setFolhas(antes => antes.map(f => ({ ...f, ...r.folhas_atualizadas?.find(x => x.id === f.id) })));
+        setFolhaEdit(antes => ({ ...antes, funcionarios: antes.funcionarios.map(it => {
+          const atualizada = r.linhas_atualizadas?.find(x => x.id === it.id && x.folha_id === antes.id);
+          return atualizada ? { ...it, adiantamento: atualizada.adiantamento,
+            cp_lancamento_id: atualizada.cp_lancamento_id ?? undefined } : it;
+        }) }));
+        adiRequisicao.current = null;
+        setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
       }
       setModalAdi(false);
       setAdiEdit({});
-      carregar();
     } catch (e: any) {
       setMsg("Erro: " + e.message);
     } finally {
+      adiEmEnvio.current = false;
       setSaving(false);
     }
   }

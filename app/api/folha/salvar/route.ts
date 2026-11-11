@@ -1,3 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { criarAdiantamentoFuncionario } from "../../../../lib/folha/adiantamento";
+import { randomUUID } from "node:crypto";
 import { assinaturaAusencia, validarDecisaoAusencia } from "../../../../lib/folha/divergencias";
 import { carregarControleFolha, validarPeriodoControle } from "../../../../lib/folha/controle-server";
 import { assinaturaConferencia, podeUsarControleFolha } from "../../../../lib/folha/controle";
@@ -158,22 +161,17 @@ async function apagarPrevisoesDaFolha(sb: any, folhaId: string): Promise<void> {
   if (error && !tabelaPrevisoesAusente(error)) console.error("[folha] apagar previsões:", error.message);
 }
 
-// Adiantamento lançado, editado ou cancelado: as folhas em rascunho com o funcionário refazem a previsão do salário no CP
-// (senão ela ficava com o valor antigo até alguém salvar a folha de novo). Falha aqui não desfaz o adiantamento.
-/* eslint-disable @typescript-eslint/no-explicit-any */
-async function ressincronizarFolhasDoFuncionario(sb: any, funcionarioId: string | null | undefined): Promise<void> {
+// Ajusta somente a previsão do funcionário; criação/baixa usa a mesma rotina dentro da transação SQL.
+async function ressincronizarFolhasDoFuncionario(
+  sb: SupabaseClient, funcionarioId: string | null | undefined, competencias?: (string | null)[],
+): Promise<void> {
   if (!funcionarioId) return;
-  try {
-    const { data: linhas } = await sb.from("folha_funcionarios").select("folha_id").eq("funcionario_id", funcionarioId);
-    const ids = [...new Set((linhas ?? []).map((l: any) => l.folha_id as string))];
-    if (!ids.length) return;
-    const { data: rascunhos } = await sb.from("folha_pagamento").select("id").in("id", ids).eq("status", "rascunho");
-    for (const f of rascunhos ?? []) await sincronizarPrevisoesFolha(sb, f.id as string);
-  } catch (e) {
-    console.error("[folha] ressincronizar previsões após adiantamento", e);
-  }
+  const { error } = await sb.rpc("folha_sincronizar_adiantamento", {
+    p_funcionario: funcionarioId, p_competencias: competencias ?? null,
+  });
+  // Estas chamadas também atendem rotinas antigas de correção e gratificação, cujo registro já foi gravado.
+  if (error) console.error("[folha] sincronizar previsão individual", error.message);
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /** Folha em rascunho já aparece no Contas a Pagar e no fluxo de caixa como PREVISÃO (natureza "previsao"):
  *  um título por funcionário + FGTS + INSS Patronal. Ao fechar a folha (ou ao efetivar o título no CP) a
@@ -1275,50 +1273,23 @@ export async function POST(req: Request) {
 
     // ─── salvar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "salvar_adiantamento") {
-      const { fazenda_id: fazendaPayload, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
-      // Fazenda do funcionário (não a fazenda de referência da sessão)
-      const { data: funcFaz } = await sb.from("funcionarios").select("fazenda_id").eq("id", funcionario_id).maybeSingle();
-      const fazenda_id: string = await fazendaDoMesmoCliente(sb, funcFaz?.fazenda_id as string | undefined, fazendaPayload);
-      const tipoAdi: "salario" | "gratificacao" = (payload as any).tipo === "gratificacao" ? "gratificacao" : "salario";
-      if (tipoAdi === "gratificacao") {
-        const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor });
-        if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
+      const { funcionario_id, data, valor, competencia_ref, descricao, conta_bancaria, requisicao_id } = payload;
+      if (typeof funcionario_id !== "string" || typeof data !== "string" || !Number.isFinite(Number(valor)) || Number(valor) <= 0
+        || (competencia_ref != null && competencia_ref !== "" && !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(competencia_ref)))
+        || (requisicao_id != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(requisicao_id)))) {
+        return NextResponse.json({ error: "Informe funcionário, data, valor positivo e competência válida." }, { status: 422 });
       }
-      const ogAdiantFunc = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.09.002");
-      // CP do adiantamento nasce já ligado ao empregador (empresa ou produtor) do funcionário —
-      // sem isso o título ficava "solto" e não aparecia no filtro de origem do Contas a Pagar.
-      const { data: funcEmp } = await sb.from("funcionarios").select("empresa_id, produtor_id").eq("id", funcionario_id).maybeSingle();
-      const { data: lanc, error: lancErr } = await inserirLancamentoFolha(sb, {
-        fazenda_id, empresa_id: funcEmp?.empresa_id ?? null, produtor_id: funcEmp?.produtor_id ?? null,
-        tipo: "pagar", natureza: "real",
-        descricao: `Adiantamento${tipoAdi === "gratificacao" ? " de gratificação" : ""} — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
-        valor, moeda: "BRL", status: "em_aberto",
-        categoria: "Pessoal / Adiantamentos",
-        origem_lancamento: "folha",
-        operacao_gerencial_id: ogAdiantFunc,
-        data_vencimento: data, data_lancamento: data,
-      });
-      if (lancErr) throw lancErr;
-      const linhaAdi: Record<string, unknown> = {
-        fazenda_id, funcionario_id, data, valor,
-        competencia_ref: competencia_ref || null,
-        descricao: descricao || null,
-        lancamento_id: lanc?.id ?? null,
-        status: "pendente",
-      };
-      let { error: adiErr } = await sb.from("adiantamentos_salario").insert({ ...linhaAdi, tipo: tipoAdi });
-      // Coluna tipo ainda não existe (Seção 344 não rodada): só o adiantamento de salário segue sem ela
-      if (adiErr && tipoAdi === "salario" && (adiErr.code === "42703" || adiErr.code === "PGRST204")) {
-        ({ error: adiErr } = await sb.from("adiantamentos_salario").insert(linhaAdi));
-      }
-      if (adiErr) {
-        if (lanc?.id) await sb.from("lancamentos").delete().eq("id", lanc.id);
-        throw tipoAdi === "gratificacao" && (adiErr.code === "42703" || adiErr.code === "PGRST204")
-          ? new Error("Aplique a Seção 344 do supabase_migrations.sql para usar adiantamento de gratificação.")
-          : adiErr;
-      }
-      await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
-      return NextResponse.json({ ok: true, lancamento_id: lanc?.id ?? null });
+      const { data: funcionario, error } = await sb.from("funcionarios").select("fazenda_id").eq("id", funcionario_id).maybeSingle();
+      if (error) throw error;
+      if (!funcionario?.fazenda_id) return NextResponse.json({ error: "Funcionário não encontrado." }, { status: 404 });
+      const resultado = await criarAdiantamentoFuncionario(sb, {
+        fazenda_id: funcionario.fazenda_id, funcionario_id, data, valor: Number(valor),
+        competencia_ref: competencia_ref ? String(competencia_ref) : null,
+        descricao: typeof descricao === "string" ? descricao : null,
+        tipo: payload.tipo === "gratificacao" ? "gratificacao" : "salario",
+        conta_bancaria: typeof conta_bancaria === "string" && conta_bancaria ? conta_bancaria : null,
+      }, typeof requisicao_id === "string" ? requisicao_id : randomUUID(), user.id);
+      return NextResponse.json(resultado);
     }
 
     // ─── editar_adiantamento ──────────────────────────────────────────────────
@@ -1329,6 +1300,9 @@ export async function POST(req: Request) {
         const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor, ignorarId: id });
         if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
       }
+      const { data: anterior, error: erroAnterior } = await sb.from("adiantamentos_salario")
+        .select("funcionario_id,competencia_ref").eq("id", id).single();
+      if (erroAnterior) throw erroAnterior;
       // Atualiza o registro de adiantamento
       const { error: adiErr } = await sb.from("adiantamentos_salario").update({
         funcionario_id, data, valor,
@@ -1346,7 +1320,12 @@ export async function POST(req: Request) {
           data_lancamento: data,
         }).eq("id", adi.lancamento_id);
       }
-      await ressincronizarFolhasDoFuncionario(sb, funcionario_id);
+      if (anterior.funcionario_id === funcionario_id) {
+        await ressincronizarFolhasDoFuncionario(sb, funcionario_id, [anterior.competencia_ref, competencia_ref || null]);
+      } else {
+        await ressincronizarFolhasDoFuncionario(sb, anterior.funcionario_id, [anterior.competencia_ref]);
+        await ressincronizarFolhasDoFuncionario(sb, funcionario_id, [competencia_ref || null]);
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -1504,13 +1483,13 @@ export async function POST(req: Request) {
       // Busca lancamento_id vinculado antes de cancelar
       const { data: adi } = await sb
         .from("adiantamentos_salario")
-        .select("lancamento_id, funcionario_id, tipo")
+        .select("lancamento_id, funcionario_id, tipo, competencia_ref")
         .eq("id", id)
         .single();
       if (adi?.tipo === "gratificacao") {
         const { error } = await sb.rpc("fn_cancelar_adiantamento_gratificacao_cp", { p_id: id });
         if (error) throw error;
-        await ressincronizarFolhasDoFuncionario(sb, adi.funcionario_id);
+        await ressincronizarFolhasDoFuncionario(sb, adi.funcionario_id, [adi.competencia_ref]);
         return NextResponse.json({ ok: true });
       }
       // Exclui o CP se não estiver baixado
@@ -1527,7 +1506,7 @@ export async function POST(req: Request) {
       }
       const { error } = await sb.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
       if (error) throw error;
-      await ressincronizarFolhasDoFuncionario(sb, adi?.funcionario_id);
+      await ressincronizarFolhasDoFuncionario(sb, adi?.funcionario_id, [adi?.competencia_ref ?? null]);
       return NextResponse.json({ ok: true });
     }
 

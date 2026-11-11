@@ -20999,3 +20999,203 @@ REVOKE ALL ON FUNCTION public.ativar_certificado_a1(jsonb) FROM PUBLIC,anon,auth
 GRANT EXECUTE ON FUNCTION public.ativar_certificado_a1(jsonb) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';
+
+-- =============================================================================
+-- Seção 432 — Adiantamento de funcionário: baixa atômica e previsão individual
+-- Executar inteira antes de publicar. Não reprocessa lançamentos históricos.
+-- =============================================================================
+BEGIN;
+ALTER TABLE adiantamentos_salario ADD COLUMN IF NOT EXISTS requisicao_id uuid;
+ALTER TABLE adiantamentos_salario ADD COLUMN IF NOT EXISTS requisicao_dados jsonb;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_adi_sal_requisicao ON adiantamentos_salario(requisicao_id) WHERE requisicao_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_folha_funcionario_folha ON folha_funcionarios(funcionario_id,folha_id);
+CREATE INDEX IF NOT EXISTS idx_adi_sal_pendente_comp ON adiantamentos_salario(funcionario_id,competencia_ref) WHERE status='pendente';
+
+CREATE OR REPLACE FUNCTION public.folha_og_por_classificacao(p_fazenda uuid,p_classificacao text)
+RETURNS uuid LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
+ SELECT o.id FROM operacoes_gerenciais o
+ JOIN fazendas alvo ON alvo.id=p_fazenda LEFT JOIN fazendas origem ON origem.id=o.fazenda_id
+ WHERE o.classificacao=p_classificacao AND o.inativo=false
+   AND (o.fazenda_id=p_fazenda OR (o.fazenda_id IS NULL AND o.conta_id IS NULL)
+     OR (alvo.conta_id IS NOT NULL AND (o.conta_id=alvo.conta_id OR origem.conta_id=alvo.conta_id)))
+ ORDER BY (o.fazenda_id=p_fazenda) DESC NULLS LAST,
+   (o.conta_id=alvo.conta_id) DESC NULLS LAST,(o.fazenda_id IS NULL) DESC,o.id LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.folha_sincronizar_adiantamento(p_funcionario uuid,p_competencias text[] DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE
+ f folha_pagamento%ROWTYPE; it folha_funcionarios%ROWTYPE; l lancamentos%ROWTYPE;
+ pr previsoes_gasto%ROWTYPE; cad funcionarios%ROWTYPE;
+ v_conta uuid; v_og uuid; v_prev uuid; v_ano uuid; v_venc date;
+ v_adi numeric; v_liquido numeric; v_total numeric; v_anterior numeric;
+ v_folhas jsonb:='[]'; v_linhas jsonb:='[]'; v_comp_todas boolean;
+BEGIN
+ IF p_funcionario IS NULL THEN RETURN jsonb_build_object('folhas_atualizadas',v_folhas,'linhas_atualizadas',v_linhas); END IF;
+ SELECT * INTO STRICT cad FROM funcionarios WHERE id=p_funcionario;
+ v_comp_todas:=p_competencias IS NULL OR array_position(p_competencias,NULL) IS NOT NULL;
+ FOR f IN SELECT fp.* FROM folha_pagamento fp
+   WHERE fp.status='rascunho' AND (v_comp_todas OR fp.competencia=ANY(p_competencias))
+     AND EXISTS(SELECT 1 FROM folha_funcionarios ff WHERE ff.folha_id=fp.id AND ff.funcionario_id=p_funcionario)
+   ORDER BY fp.id FOR UPDATE
+ LOOP
+   -- A reconstrução integral reserva o cabeçalho entre suas requisições. Nunca compete com ela.
+   IF f.previsoes_sync_em>clock_timestamp()-interval '2 minutes' THEN
+     RAISE EXCEPTION 'Esta folha está sendo atualizada. Aguarde um instante e tente novamente.';
+   END IF;
+   SELECT conta_id INTO v_conta FROM fazendas WHERE id=f.fazenda_id;
+   IF NOT EXISTS(SELECT 1 FROM fazendas fc WHERE fc.id=cad.fazenda_id AND
+     (fc.id=f.fazenda_id OR (v_conta IS NOT NULL AND fc.conta_id=v_conta))) THEN
+     RAISE EXCEPTION 'Funcionário e folha pertencem a clientes diferentes.';
+   END IF;
+   SELECT round(coalesce(sum(greatest(0,a.valor-coalesce(a.descontado_gratificacao_cp,0))),0),2)
+     INTO v_adi FROM adiantamentos_salario a WHERE a.funcionario_id=p_funcionario AND a.status='pendente'
+       AND (a.competencia_ref=f.competencia OR a.competencia_ref IS NULL);
+   FOR it IN SELECT * FROM folha_funcionarios WHERE folha_id=f.id AND funcionario_id=p_funcionario ORDER BY id FOR UPDATE LOOP
+     IF coalesce(it.adiantamento,0) IS DISTINCT FROM v_adi THEN
+       UPDATE folha_funcionarios SET adiantamento=v_adi WHERE id=it.id RETURNING * INTO it;
+     END IF;
+     v_liquido:=greatest(0,round(coalesce(it.salario_bruto,0)-coalesce(it.inss_trabalhador,0)-coalesce(it.irrf,0)
+       -v_adi-coalesce(it.outros_descontos,0)+coalesce(it.vale_transporte,0)+coalesce(it.vale_refeicao,0)
+       +coalesce(it.outros_beneficios,0)+coalesce(it.complemento_salarial,0),2));
+     l:=NULL;
+     IF it.cp_lancamento_id IS NOT NULL THEN
+       SELECT * INTO l FROM lancamentos WHERE id=it.cp_lancamento_id FOR UPDATE;
+       -- Título real, pago, conciliado, agrupado ou parcial conserva seu valor e vínculo.
+       IF NOT FOUND OR l.natureza IS DISTINCT FROM 'previsao' OR coalesce(l.valor_pago,0)<>0
+         OR l.status NOT IN ('em_aberto','vencido','vencendo') AND NOT(l.status='cancelado' AND l.valor=0)
+         OR coalesce(l.conciliado,false) OR l.lote_id IS NOT NULL OR l.contrato_financeiro_id IS NOT NULL
+         OR l.fatura_cartao_id IS NOT NULL OR l.titulo_origem_id IS NOT NULL THEN
+         v_linhas:=v_linhas||jsonb_build_array(jsonb_build_object('id',it.id,'folha_id',f.id,'adiantamento',v_adi,'cp_lancamento_id',it.cp_lancamento_id));
+         CONTINUE;
+       END IF;
+       IF l.fazenda_id<>f.fazenda_id OR l.tipo<>'pagar' OR coalesce(l.moeda,'BRL')<>'BRL' THEN
+         RAISE EXCEPTION 'Previsão salarial incompatível com a folha.';
+       END IF;
+     END IF;
+     v_og:=coalesce(l.operacao_gerencial_id,public.folha_og_por_classificacao(f.fazenda_id,'2.01.01.10.001'));
+     v_venc:=coalesce(f.data_vencimento,(date_trunc('month',(f.competencia||'-01')::date)+interval '1 month 4 days')::date);
+     v_anterior:=l.valor;
+     IF l.id IS NULL THEN
+       v_ano:=public.fn_ano_safra_da_data(f.fazenda_id,v_venc);
+       INSERT INTO lancamentos(fazenda_id,empresa_id,produtor_id,funcionario_id,ano_safra_id,natureza,tipo,descricao,
+         valor,moeda,status,categoria,origem_lancamento,operacao_gerencial_id,data_vencimento,data_lancamento)
+       VALUES(f.fazenda_id,coalesce(f.empresa_id,cad.empresa_id),coalesce(it.produtor_id,cad.produtor_id),p_funcionario,v_ano,
+         'previsao','pagar','Salário '||f.competencia||' — '||it.nome_funcionario,v_liquido,'BRL',
+         CASE WHEN v_liquido=0 THEN 'cancelado' ELSE 'em_aberto' END,'Pessoal / Salários','folha',v_og,v_venc,current_date)
+       RETURNING * INTO l;
+       UPDATE folha_funcionarios SET cp_lancamento_id=l.id WHERE id=it.id;
+     ELSIF l.valor IS DISTINCT FROM v_liquido THEN
+       UPDATE lancamentos SET valor=v_liquido,status=CASE WHEN v_liquido=0 THEN 'cancelado' ELSE 'em_aberto' END
+         WHERE id=l.id RETURNING * INTO l;
+     END IF;
+     pr:=NULL; v_prev:=NULL;
+     SELECT * INTO pr FROM previsoes_gasto WHERE lancamento_previsao_id=l.id AND origem='folha' AND folha_id=f.id ORDER BY id LIMIT 1 FOR UPDATE;
+     IF l.previsao_gasto_id IS NOT NULL AND l.previsao_gasto_id IS DISTINCT FROM pr.id THEN
+       RAISE EXCEPTION 'Vínculo da previsão salarial divergente. Confira a folha antes de lançar.';
+     END IF;
+     IF pr.id IS NOT NULL THEN
+       IF (pr.status<>'aberta' OR pr.saldo IS DISTINCT FROM pr.valor)
+         AND NOT(pr.status='cancelada' AND pr.saldo=0 AND v_anterior=0) THEN
+         RAISE EXCEPTION 'Previsão salarial já utilizada ou encerrada. Confira a folha antes de lançar.';
+       END IF;
+       IF v_liquido=0 THEN
+         UPDATE previsoes_gasto SET saldo=0,status='cancelada',updated_at=now() WHERE id=pr.id AND (saldo<>0 OR status<>'cancelada');
+       ELSE
+         UPDATE previsoes_gasto SET valor=v_liquido,saldo=v_liquido,status='aberta',updated_at=now()
+           WHERE id=pr.id AND (valor IS DISTINCT FROM v_liquido OR saldo IS DISTINCT FROM v_liquido OR status<>'aberta');
+       END IF;
+       v_prev:=pr.id;
+     ELSIF v_liquido>0 AND v_conta IS NOT NULL AND v_og IS NOT NULL THEN
+       INSERT INTO previsoes_gasto(conta_id,fazenda_id,produtor_id,empresa_id,operacao_gerencial_id,og_classificacao,
+         ano_safra_id,descricao,valor,saldo,data_vencimento,status,origem,folha_id,lancamento_previsao_id)
+       SELECT v_conta,f.fazenda_id,l.produtor_id,l.empresa_id,v_og,o.classificacao,l.ano_safra_id,l.descricao,
+         v_liquido,v_liquido,l.data_vencimento,'aberta','folha',f.id,l.id FROM operacoes_gerenciais o WHERE o.id=v_og
+       RETURNING id INTO v_prev;
+     END IF;
+     IF v_prev IS NOT NULL AND l.previsao_gasto_id IS DISTINCT FROM v_prev THEN
+       UPDATE lancamentos SET previsao_gasto_id=v_prev WHERE id=l.id;
+     END IF;
+     v_linhas:=v_linhas||jsonb_build_array(jsonb_build_object('id',it.id,'folha_id',f.id,'adiantamento',v_adi,'cp_lancamento_id',l.id));
+   END LOOP;
+   SELECT round(coalesce(sum(greatest(0,salario_liquido)),0),2) INTO v_total FROM folha_funcionarios WHERE folha_id=f.id;
+   UPDATE folha_pagamento SET valor_liquido=v_total WHERE id=f.id AND valor_liquido IS DISTINCT FROM v_total;
+   v_folhas:=v_folhas||jsonb_build_array(jsonb_build_object('id',f.id,'valor_liquido',v_total));
+ END LOOP;
+ RETURN jsonb_build_object('folhas_atualizadas',v_folhas,'linhas_atualizadas',v_linhas);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.folha_criar_adiantamento(p_dados jsonb,p_requisicao uuid,p_usuario uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE
+ f funcionarios%ROWTYPE; a adiantamentos_salario%ROWTYPE;
+ v_fazenda uuid:=(p_dados->>'fazenda_id')::uuid; v_func uuid:=(p_dados->>'funcionario_id')::uuid;
+ v_conta uuid:=nullif(p_dados->>'conta_bancaria','')::uuid; v_titulo uuid;
+ v_valor numeric:=round((p_dados->>'valor')::numeric,2); v_data date:=(p_dados->>'data')::date;
+ v_comp text:=nullif(p_dados->>'competencia_ref',''); v_tipo text:=coalesce(p_dados->>'tipo','salario');
+ v_desc text:=nullif(trim(p_dados->>'descricao'),''); v_pedido jsonb; v_sync jsonb;
+ v_grat numeric; v_adi numeric;
+BEGIN
+ IF p_requisicao IS NULL OR p_usuario IS NULL OR v_data IS NULL OR v_valor IS NULL OR v_valor<=0
+   OR v_valor::text IN ('NaN','Infinity','-Infinity') OR v_tipo NOT IN ('salario','gratificacao')
+   OR (v_comp IS NOT NULL AND v_comp!~'^[0-9]{4}-(0[1-9]|1[0-2])$') THEN
+   RAISE EXCEPTION 'Informe funcionário, data, valor positivo, competência válida e identificação do lançamento.';
+ END IF;
+ v_pedido:=jsonb_build_object('fazenda_id',v_fazenda,'funcionario_id',v_func,'data',v_data,'valor',v_valor,
+   'competencia_ref',v_comp,'tipo',v_tipo,'descricao',v_desc,'conta_bancaria',v_conta,'usuario_id',p_usuario);
+ PERFORM pg_advisory_xact_lock(hashtextextended('folha_adi:'||p_requisicao::text,0));
+ SELECT * INTO a FROM adiantamentos_salario WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+   IF a.requisicao_dados IS DISTINCT FROM v_pedido THEN RAISE EXCEPTION 'Identificação de lançamento já utilizada com outros dados.'; END IF;
+   SELECT * INTO f FROM funcionarios WHERE id=a.funcionario_id;
+   -- Resposta perdida após o commit: devolve também os resumos atuais, sem repetir gravação ou baixa.
+   v_sync:=jsonb_build_object('folhas_atualizadas',coalesce((
+     SELECT jsonb_agg(jsonb_build_object('id',fp.id,'valor_liquido',fp.valor_liquido)) FROM folha_pagamento fp
+     WHERE fp.status='rascunho' AND (v_comp IS NULL OR fp.competencia=v_comp)
+       AND EXISTS(SELECT 1 FROM folha_funcionarios ff WHERE ff.folha_id=fp.id AND ff.funcionario_id=v_func)
+   ),'[]'::jsonb),'linhas_atualizadas',coalesce((
+     SELECT jsonb_agg(jsonb_build_object('id',ff.id,'folha_id',ff.folha_id,'adiantamento',ff.adiantamento,'cp_lancamento_id',ff.cp_lancamento_id))
+     FROM folha_funcionarios ff JOIN folha_pagamento fp ON fp.id=ff.folha_id
+     WHERE ff.funcionario_id=v_func AND fp.status='rascunho' AND (v_comp IS NULL OR fp.competencia=v_comp)
+   ),'[]'::jsonb));
+   RETURN v_sync||jsonb_build_object('ok',true,'repetido',true,'lancamento_id',a.lancamento_id,'baixado',v_conta IS NOT NULL,
+     'adiantamento',to_jsonb(a)||jsonb_build_object('funcionario_nome',f.nome));
+ END IF;
+ SELECT * INTO f FROM funcionarios WHERE id=v_func FOR UPDATE;
+ IF NOT FOUND OR f.fazenda_id IS DISTINCT FROM v_fazenda THEN RAISE EXCEPTION 'Funcionário não pertence à fazenda informada.'; END IF;
+ IF v_conta IS NOT NULL AND NOT EXISTS(SELECT 1 FROM contas_bancarias b LEFT JOIN fazendas fb ON fb.id=b.fazenda_id
+   JOIN fazendas ff ON ff.id=f.fazenda_id WHERE b.id=v_conta AND b.ativa IS DISTINCT FROM false AND coalesce(b.moeda,'BRL')='BRL'
+     AND (b.fazenda_id=f.fazenda_id OR (ff.conta_id IS NOT NULL AND coalesce(b.conta_id,fb.conta_id)=ff.conta_id))) THEN
+   RAISE EXCEPTION 'Selecione uma conta bancária em reais do mesmo cliente.';
+ END IF;
+ IF v_tipo='gratificacao' THEN
+   IF v_comp IS NULL THEN RAISE EXCEPTION 'Informe a competência da gratificação.'; END IF;
+   SELECT coalesce(sum(valor),0) INTO v_grat FROM funcionarios_premiacoes WHERE funcionario_id=v_func AND left(mes_referencia::text,7)=v_comp;
+   IF v_grat<=0 THEN SELECT coalesce(sum(valor),0) INTO v_grat FROM funcionario_premiacoes WHERE funcionario_id=v_func AND left(mes_referencia::text,7)=v_comp; END IF;
+   SELECT coalesce(sum(valor),0) INTO v_adi FROM adiantamentos_salario WHERE funcionario_id=v_func AND tipo='gratificacao' AND status<>'cancelado' AND competencia_ref=v_comp;
+   IF v_grat<=0 OR v_valor>v_grat-v_adi THEN RAISE EXCEPTION 'Valor superior à gratificação disponível nesta competência.'; END IF;
+ END IF;
+ INSERT INTO lancamentos(fazenda_id,empresa_id,produtor_id,funcionario_id,tipo,natureza,descricao,valor,moeda,status,
+   categoria,origem_lancamento,operacao_gerencial_id,data_vencimento,data_lancamento,data_baixa,valor_pago,conta_bancaria)
+ VALUES(v_fazenda,f.empresa_id,f.produtor_id,f.id,'pagar','real',
+   'Adiantamento'||CASE WHEN v_tipo='gratificacao' THEN ' de gratificação' ELSE '' END||' — '||f.nome||coalesce(' — '||v_desc,''),
+   v_valor,'BRL',CASE WHEN v_conta IS NULL THEN 'em_aberto' ELSE 'baixado' END,'Pessoal / Adiantamentos','folha',
+   public.folha_og_por_classificacao(v_fazenda,'2.01.01.09.002'),v_data,v_data,
+   CASE WHEN v_conta IS NOT NULL THEN v_data END,CASE WHEN v_conta IS NOT NULL THEN v_valor END,v_conta)
+ RETURNING id INTO v_titulo;
+ INSERT INTO adiantamentos_salario(fazenda_id,funcionario_id,data,valor,competencia_ref,descricao,lancamento_id,status,tipo,requisicao_id,requisicao_dados)
+ VALUES(v_fazenda,v_func,v_data,v_valor,v_comp,v_desc,v_titulo,'pendente',v_tipo,p_requisicao,v_pedido) RETURNING * INTO a;
+ -- A inserção pode ter recalculado a gratificação e sua parcela já compensada no CP.
+ SELECT * INTO a FROM adiantamentos_salario WHERE id=a.id;
+ v_sync:=public.folha_sincronizar_adiantamento(v_func,ARRAY[v_comp]);
+ RETURN v_sync||jsonb_build_object('ok',true,'lancamento_id',v_titulo,'baixado',v_conta IS NOT NULL,
+   'adiantamento',to_jsonb(a)||jsonb_build_object('funcionario_nome',f.nome));
+END;
+$$;
+REVOKE ALL ON FUNCTION public.folha_og_por_classificacao(uuid,text),public.folha_sincronizar_adiantamento(uuid,text[]),
+  public.folha_criar_adiantamento(jsonb,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.folha_og_por_classificacao(uuid,text),public.folha_sincronizar_adiantamento(uuid,text[]),
+  public.folha_criar_adiantamento(jsonb,uuid,uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';

@@ -1,14 +1,15 @@
 "use client";
+import { requisicaoAdiantamento, type RequisicaoAdiantamento } from "../../../lib/folha/adiantamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao, baixarLancamento, listarContasPorEmpresa } from "../../../lib/db";
+import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao, listarContasPorEmpresa } from "../../../lib/db";
 import { vencimentoSalario } from "../../../lib/folha-calculo";
 import type { Empresa, ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
@@ -131,6 +132,8 @@ export default function FolhaEmpresaPage() {
   const [modalAdi,    setModalAdi]    = useState(false);
   const [adiEdit,     setAdiEdit]     = useState<Partial<Adiantamento>>({});
   const [adiConta,    setAdiConta]    = useState("");
+  const adiRequisicao = useRef<RequisicaoAdiantamento | null>(null);
+  const adiEmEnvio = useRef(false);
   const [contasAdi,   setContasAdi]   = useState<ContaBancaria[]>([]);
   const [modalPrem,   setModalPrem]   = useState(false);
   const [premEdit,    setPremEdit]    = useState<Partial<Premiacao>>({});
@@ -315,35 +318,30 @@ export default function FolhaEmpresaPage() {
   }
 
   async function salvarAdiantamento() {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
-    if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
-    if (!adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
-    setSaving(true);
+    if (adiEmEnvio.current) return;
+    adiEmEnvio.current = true;
     try {
-      const ogAdiantFunc = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.09.002");
-      const { data: lanc, error: lancErr } = await supabase.from("lancamentos").insert({
-        fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, empresa_id: empresaSel, tipo: "pagar",
-        descricao: `Adiantamento — ${funcionarios.find(f=>f.id===adiEdit.funcionario_id)?.nome ?? ""}${adiEdit.descricao ? ` — ${adiEdit.descricao}` : ""}`,
-        valor: adiEdit.valor, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Adiantamentos",
-        operacao_gerencial_id: ogAdiantFunc ?? null,
-        data_vencimento: adiEdit.data, data_lancamento: adiEdit.data,
-      }).select("id").single();
-      if (lancErr || !lanc?.id) throw new Error(`Não foi possível gerar o CP do adiantamento: ${lancErr?.message ?? "sem retorno"}`);
-      await supabase.from("adiantamentos_salario").insert({
-        fazenda_id: (await fazendaDaEmpresa(empresaSel)) ?? fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
-        valor: adiEdit.valor, competencia_ref: adiEdit.competencia_ref || null,
-        descricao: adiEdit.descricao || null, lancamento_id: lanc.id, status: "pendente",
-      });
-      try {
-        // Adiantamento é dinheiro que já saiu: CP nasce baixado na conta informada (entra no fluxo de caixa)
-        await baixarLancamento(lanc.id, adiEdit.valor, adiEdit.data, adiConta);
-        setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
-      } catch (eb: any) {
-        setMsg(`Adiantamento registrado e CP gerado, mas a baixa falhou: ${eb.message}. Baixe o CP manualmente em Contas a Pagar.`);
-      }
-      setModalAdi(false); setAdiEdit({}); carregar();
+      if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
+      if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
+      if (!adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
+      setSaving(true);
+      const dados = { fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data, valor: adiEdit.valor,
+        competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null, conta_bancaria: adiConta };
+      adiRequisicao.current = requisicaoAdiantamento(adiRequisicao.current, dados);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/folha/salvar", { method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({ operacao: "salvar_adiantamento", ...dados, requisicao_id: adiRequisicao.current.id }) });
+      const r = await res.json();
+      if (!res.ok || !r.ok) throw new Error(r.error ?? "Não foi possível registrar o adiantamento.");
+      setAdiantamentos(antes => [r.adiantamento, ...antes.filter(a => a.id !== r.adiantamento.id)]
+        .sort((a, b) => b.data.localeCompare(a.data)));
+      setFolhas(antes => antes.map(f => ({ ...f, ...r.folhas_atualizadas?.find((x: { id: string }) => x.id === f.id) })));
+      adiRequisicao.current = null;
+      setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
+      setModalAdi(false); setAdiEdit({});
     } catch (e: any) { setMsg("Erro: " + e.message); }
-    finally { setSaving(false); }
+    finally { adiEmEnvio.current = false; setSaving(false); }
   }
 
   async function cancelarAdiantamento(id: string) {
