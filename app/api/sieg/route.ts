@@ -11,7 +11,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
-import { baixarXmlsSieg, credenciaisEnv, credenciaisValidas, parseNFeXml } from "../../../lib/sieg";
+import { buscarXmlNfePorChaveSieg, credenciaisEnv, credenciaisValidas } from "../../../lib/sieg";
 import { exigirAcessoFazenda } from "../../../lib/api-auth";
 
 export const runtime = "nodejs";
@@ -21,23 +21,6 @@ function adminClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
-}
-
-// Extrai AAMM da chave NF-e (posição 3-6) → datas de busca
-function datasDoChave(chave: string): { inicio: string; fim: string } {
-  const aa = chave.substring(2, 4); // ano 2 dígitos
-  const mm = chave.substring(4, 6); // mês
-  const ano = parseInt(aa) + 2000;
-  const mes = parseInt(mm);
-  const inicio = new Date(ano, mes - 1, 1);
-  const fim    = new Date(ano, mes,     0);   // último dia do mês
-  const toISO  = (d: Date) => d.toISOString().replace(/\..*/, "") + ".000Z";
-  return { inicio: toISO(inicio), fim: toISO(fim) };
-}
-
-// Extrai CNPJ emitente da chave NF-e (posição 6-19)
-function cnpjEmitenteDaChave(chave: string): string {
-  return chave.substring(6, 20);
 }
 
 export async function GET(req: NextRequest) {
@@ -77,59 +60,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { inicio, fim } = datasDoChave(chave);
-    const cnpjEmit = cnpjEmitenteDaChave(chave);
-
-    // Baixa XMLs do mês da emissão filtrado pelo emitente
-    const xmls = await baixarXmlsSieg(siegCreds, {
-      TipoXml:          1,
-      DataEmissaoInicio: inicio,
-      DataEmissaoFim:    fim,
-      CnpjEmit:         cnpjEmit,
-    });
-
-    // Encontra o XML com a chave exata
-    for (const xml of xmls) {
-      const parsed = parseNFeXml(xml);
-      if (parsed?.chave === chave) {
-        // Salva no Storage para próximas consultas
-        await sb.storage.from("arquivos").upload(xmlPath, xml, {
-          contentType: "application/xml", upsert: true,
-        });
-        return new NextResponse(xml, { headers: { "Content-Type": "application/xml" } });
-      }
+    // Mês da emissão (inteiro, com folga) pelo emitente e depois pelos CPF/CNPJ do cliente (lib/sieg buscarXmlNfePorChaveSieg)
+    const { data: faz } = await sb.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    const { data: fzs } = faz?.conta_id ? await sb.from("fazendas").select("id").eq("conta_id", faz.conta_id) : { data: [{ id: fazendaId }] };
+    const fids = (fzs ?? []).map(f => f.id as string);
+    const filtro = faz?.conta_id ? `conta_id.eq.${faz.conta_id},fazenda_id.in.(${fids.join(",")})` : `fazenda_id.in.(${fids.join(",")})`;
+    const [{ data: prods }, { data: emps }] = await Promise.all([
+      sb.from("produtores").select("cpf_cnpj").or(filtro),
+      sb.from("empresas").select("cpf_cnpj").or(filtro),
+    ]);
+    const docs = [...new Set([...(prods ?? []), ...(emps ?? [])].map(p => String(p.cpf_cnpj ?? "").replace(/\D/g, "")).filter(Boolean))];
+    const xml = await buscarXmlNfePorChaveSieg(siegCreds, chave, docs);
+    if (xml) {
+      await sb.storage.from("arquivos").upload(xmlPath, xml, { contentType: "application/xml", upsert: true });
+      return new NextResponse(xml, { headers: { "Content-Type": "application/xml" } });
     }
-
-    // 2b. Tenta filtrar por CNPJ destinatário (NF em nome do produtor)
-    // Busca o CNPJ da fazenda nas configurações
-    const { data: cfgRow } = await sb.from("configuracoes_modulo")
-      .select("config")
-      .eq("fazenda_id", fazendaId)
-      .like("modulo", "fiscal%")
-      .limit(1)
-      .maybeSingle();
-    const cnpjDest = ((cfgRow?.config as Record<string,string>)?.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
-
-    if (cnpjDest && cnpjDest !== cnpjEmit) {
-      const xmlsDest = await baixarXmlsSieg(siegCreds, {
-        TipoXml:          1,
-        DataEmissaoInicio: inicio,
-        DataEmissaoFim:    fim,
-        CnpjDest:         cnpjDest,
-        CnpjEmit:         cnpjEmit,
-      });
-      for (const xml of xmlsDest) {
-        const parsed = parseNFeXml(xml);
-        if (parsed?.chave === chave) {
-          await sb.storage.from("arquivos").upload(xmlPath, xml, {
-            contentType: "application/xml", upsert: true,
-          });
-          return new NextResponse(xml, { headers: { "Content-Type": "application/xml" } });
-        }
-      }
-    }
-
-    return new NextResponse("NF não encontrada no Sieg", { status: 404 });
+    return new NextResponse("NF não encontrada no SIEG: a conta SIEG da Raccolto não tem esta nota (procurado pelo emitente e pelos CPF/CNPJ do cliente no mês da emissão). Importe o XML do fornecedor (opção XML).", { status: 404 });
   } catch (e) {
     console.error("[api/sieg]", e);
     return new NextResponse(`Erro na consulta Sieg: ${String(e)}`, { status: 502 });
