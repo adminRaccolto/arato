@@ -6,6 +6,7 @@
  *   abertas                 → previsões em aberto (seletor do CP / NF): { lado?: "produtor" | "empresa" }
  *   criar                   → { linha, recorrencia?: { datas } | { qtd, freq } }
  *   editar / cancelar       → { id, campos? }
+ *   cancelar_serie          → { id }: esta previsão e as seguintes abertas da mesma recorrência (exclusão pelo CP)
  *   consumir                → { previsao_id, valor, lancamento_id?, emp_lancamento_id?, origem }
  *   consumir_nf             → { previsao_id, nf_entrada_id } (soma os títulos gerados pela NF)
  *   decidir                 → { id, decisao: "efetivada" | "saldo" }
@@ -131,6 +132,22 @@ export async function POST(req: NextRequest) {
 
     if (operacao === "editar") { await daConta(body.id); await editarPrevisao(sb, body.id, body.campos ?? {}); return NextResponse.json({ ok: true }); }
     if (operacao === "cancelar") { await daConta(body.id); await cancelarPrevisao(sb, body.id); return NextResponse.json({ ok: true }); }
+    // Excluir pelo Contas a Pagar: esta previsão e, se for de uma recorrência, as seguintes da mesma série (abertas)
+    if (operacao === "cancelar_serie") {
+      await daConta(body.id);
+      const { data: p } = await sb.from("previsoes_gasto").select("id, recorrencia_grupo, data_vencimento, origem").eq("id", body.id).single();
+      if (!p) throw new Error("Previsão não encontrada.");
+      if (p.origem === "folha") throw new Error("Previsão da folha de pagamento: corrija pela Folha de Pagamento.");
+      let ids = [p.id as string];
+      if (p.recorrencia_grupo) {
+        const { data: serie } = await sb.from("previsoes_gasto").select("id").eq("conta_id", conta_id).eq("recorrencia_grupo", p.recorrencia_grupo)
+          .eq("status", "aberta").gte("data_vencimento", p.data_vencimento).order("data_vencimento").order("id");
+        ids = [...new Set([p.id as string, ...(serie ?? []).map(x => x.id as string)])];
+      }
+      const falhas: string[] = [];
+      for (const id of ids) { try { await cancelarPrevisao(sb, id); } catch (e) { falhas.push(e instanceof Error ? e.message : String(e)); } }
+      return NextResponse.json({ ok: falhas.length === 0, canceladas: ids.length - falhas.length, falhas, ...(falhas.length ? { error: `${ids.length - falhas.length} de ${ids.length} excluída(s). Falharam: ${falhas.slice(0, 3).join("; ")}` } : {}) });
+    }
 
     if (operacao === "consumir") {
       await daConta(body.previsao_id);

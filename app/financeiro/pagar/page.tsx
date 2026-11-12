@@ -851,9 +851,42 @@ export default function ContasAPagarPage() {
   // no banco), cancelado não precisa de exclusão (já está fora do fluxo).
   // Regra do dono (27/10/2026): excluir CP só vale para lançamento manual, sem vínculo com documento fiscal. Título
   // gerado por NF, folha, contrato, arrendamento etc. se desfaz pela tela de origem.
+  // Previsão: manual exclui direto; da Previsão de Gastos cancela a previsão (só esta ou a série); da folha NÃO se
+  // exclui pelo CP — corrige-se pela Folha de Pagamento (regra do dono, 12/11/2026).
   function podeExcluir(l: RelLancamento): boolean {
+    const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido";
+    if (ehPrevisao(l) && l.origem_lancamento === "previsao") return aberto;
     if (l.origem_lancamento && l.origem_lancamento !== "manual") return false;
-    return l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido";
+    return aberto;
+  }
+  const ehPrevisaoDaFolha = (l: RelLancamento) => ehPrevisao(l) && l.origem_lancamento === "folha" && l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado";
+
+  // Excluir previsão da Previsão de Gastos: só esta ou esta e as próximas da mesma recorrência
+  const [excluirPrev, setExcluirPrev] = useState<{ l: RelLancamento; previsaoId: string; proximas: number } | null>(null);
+  const [excluindoPrev, setExcluindoPrev] = useState(false);
+  async function previsaoDoTitulo(id: string): Promise<{ previsaoId: string; proximas: number } | null> {
+    const { data: t } = await supabase.from("lancamentos").select("previsao_gasto_id").eq("id", id).maybeSingle();
+    if (!t?.previsao_gasto_id) return null;
+    const { data: p } = await supabase.from("previsoes_gasto").select("id, recorrencia_grupo, data_vencimento").eq("id", t.previsao_gasto_id).maybeSingle();
+    if (!p) return null;
+    let proximas = 0;
+    if (p.recorrencia_grupo) {
+      const { count } = await supabase.from("previsoes_gasto").select("id", { count: "exact", head: true })
+        .eq("recorrencia_grupo", p.recorrencia_grupo).eq("status", "aberta").gt("data_vencimento", p.data_vencimento);
+      proximas = count ?? 0;
+    }
+    return { previsaoId: p.id as string, proximas };
+  }
+  async function confirmarExcluirPrevisao(serie: boolean) {
+    if (!excluirPrev) return;
+    setExcluindoPrev(true);
+    try {
+      await apiPrevisoes({ operacao: serie ? "cancelar_serie" : "cancelar", id: excluirPrev.previsaoId });
+      setExcluirPrev(null);
+      await carregar();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally { setExcluindoPrev(false); }
   }
 
   // Exclusão em lote (barra de seleção): só os lançamentos manuais em aberto, sem NF/NFS-e; os demais são pulados
@@ -867,7 +900,12 @@ export default function ContasAPagarPage() {
     let ok = 0;
     for (const l of candidatos) {
       try {
-        if (l.origem_tabela === "lancamentos") await excluirLancamento(l.id); else await excluirEmpresaLancamento(l.id);
+        if (ehPrevisao(l) && l.origem_lancamento === "previsao") {
+          // Previsão de Gastos: cancela a previsão (no lote, só esta — não a série)
+          const pv = await previsaoDoTitulo(l.id);
+          if (!pv) throw new Error("previsão não encontrada");
+          await apiPrevisoes({ operacao: "cancelar", id: pv.previsaoId });
+        } else if (l.origem_tabela === "lancamentos") await excluirLancamento(l.id); else await excluirEmpresaLancamento(l.id);
         ok++;
       } catch (e: unknown) {
         falhas.push(`${l.descricao ?? l.id}: ${e instanceof Error ? e.message : "erro"}`);
@@ -880,6 +918,12 @@ export default function ContasAPagarPage() {
 
   async function excluirLanc(l: RelLancamento) {
     if (!podeExcluir(l)) return;
+    if (ehPrevisao(l) && l.origem_lancamento === "previsao") {
+      const pv = await previsaoDoTitulo(l.id);
+      if (!pv) { alert("Não achei a previsão ligada a este título. Abra Financeiro → Previsão de Gastos."); return; }
+      setExcluirPrev({ l, ...pv });
+      return;
+    }
     // Título de NF/NFS-e processada: avisa antes de pedir confirmação (a exclusão é recusada em lib/db.ts)
     const bloqueio = motivoBloqueioExclusao(await notaDoTitulo(supabase, l.origem_tabela === "lancamentos" ? "lancamentos" : "empresa_lancamentos", l.id));
     if (bloqueio) { alert(bloqueio); return; }
@@ -2149,6 +2193,9 @@ export default function ContasAPagarPage() {
                 {podeExcluir(l) && (
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</OperationalButton>
                 )}
+                {ehPrevisaoDaFolha(l) && (
+                  <OperationalButton data-arato-button="secondary" title="Previsão de salário/encargo de uma folha em rascunho. Não se exclui pelo Contas a Pagar: corrija a folha do mês (funcionário, valores ou a própria folha) em Financeiro → Folha de Pagamento." onClick={() => { setPopover(null); window.location.assign("/financeiro/folha"); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>📋 Corrigir pela Folha</OperationalButton>
+                )}
               </NativeActionOrbit>
             </NativeRecordPanel>
           </>
@@ -2663,6 +2710,9 @@ export default function ContasAPagarPage() {
                 {podeExcluir(l) && (
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</OperationalButton>
                 )}
+                {ehPrevisaoDaFolha(l) && (
+                  <OperationalButton data-arato-button="secondary" title="Previsão de salário/encargo de uma folha em rascunho. Não se exclui pelo Contas a Pagar: corrija a folha do mês (funcionário, valores ou a própria folha) em Financeiro → Folha de Pagamento." onClick={() => { setPopover(null); window.location.assign("/financeiro/folha"); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>📋 Corrigir pela Folha</OperationalButton>
+                )}
               </div>
             </div>
           </>
@@ -2991,6 +3041,26 @@ export default function ContasAPagarPage() {
             setCadPessoaAberto(false);
           }}
         />
+      )}
+      {/* Excluir previsão da Previsão de Gastos: só esta ou a série */}
+      {excluirPrev && (
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div role="dialog" aria-modal="true" aria-label="Excluir previsão" style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(96vw, 480px)", padding: 20, fontSize: 13 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 8 }}>Excluir previsão</div>
+            <div style={{ color: "var(--text-2)", lineHeight: 1.5, marginBottom: 14 }}>
+              <strong>{excluirPrev.l.descricao}</strong> — {fmtBRL(saldoBase(excluirPrev.l))}, vencimento {fmtData(excluirPrev.l.data_vencimento)}.<br />
+              É uma previsão da <strong>Previsão de Gastos</strong>: ela sai do Contas a Pagar e do fluxo de caixa e fica cancelada no histórico da Previsão de Gastos.
+              {excluirPrev.proximas > 0 && <><br />Ela faz parte de uma recorrência com mais <strong>{excluirPrev.proximas}</strong> previsão(ões) em aberto depois desta.</>}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+              <OperationalButton data-arato-button="secondary" disabled={excluindoPrev} onClick={() => setExcluirPrev(null)} style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-card)", cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="danger" disabled={excluindoPrev} onClick={() => confirmarExcluirPrevisao(false)} style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#B91C1C", fontWeight: 600, cursor: "pointer" }}>{excluirPrev.proximas > 0 ? "Só esta" : "Excluir"}</OperationalButton>
+              {excluirPrev.proximas > 0 && (
+                <OperationalButton data-arato-button="danger" disabled={excluindoPrev} onClick={() => confirmarExcluirPrevisao(true)} style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#B91C1C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Esta e as próximas ({excluirPrev.proximas + 1})</OperationalButton>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {modalBaixa && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
