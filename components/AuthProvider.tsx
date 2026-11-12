@@ -565,40 +565,33 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fazendaId, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Carrega o Ano Safra vigente (data_inicio <= hoje <= data_fim) quando a fazenda muda
+  // Carrega o Ano Safra vigente (data_inicio <= hoje <= data_fim). A safra é do CLIENTE: busca pela conta (e pelas
+  // fazendas dele), nunca só pela fazenda ativa — achado 12/11/2026: no Ogliari a 2026/2027 está cadastrada na Frei
+  // Galvão e a 2025/2026 na Fazenda Ogliari; a busca só pela fazenda ativa caía no "mais recente já iniciado" (2025/2026)
+  // e, chegando depois da busca completa, sobrescrevia a certa. Resposta de busca antiga é descartada.
+  const anoSafraSeq = useRef(0);
   useEffect(() => {
     if (!fazendaId) return;
+    const seq = ++anoSafraSeq.current;
     const hoje = hojeLocal();
-    supabase
-      .from("anos_safra")
-      .select("id, descricao, data_inicio, data_fim")
-      .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
-      .lte("data_inicio", hoje)
-      .gte("data_fim", hoje)
-      .order("data_inicio", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setAnoSafraVigenteId(data.id);
-          setAnoSafraVigenteDesc(data.descricao);
-        } else {
-          // Fallback: ano safra mais recente com início no passado
-          supabase
-            .from("anos_safra")
-            .select("id, descricao")
-            .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId])
-            .lte("data_inicio", hoje)
-            .order("data_inicio", { ascending: false })
-            .limit(1)
-            .single()
-            .then(({ data: d }) => {
-              setAnoSafraVigenteId(d?.id ?? null);
-              setAnoSafraVigenteDesc(d?.descricao ?? null);
-            });
-        }
-      });
-  }, [fazendaId, fazendaIds]);
+    const ids = fazendaIds.length ? fazendaIds : [fazendaId];
+    const doCliente = contaId ? `conta_id.eq.${contaId},fazenda_id.in.(${ids.join(",")})` : `fazenda_id.in.(${ids.join(",")})`;
+    (async () => {
+      const { data: vig } = await supabase.from("anos_safra").select("id, descricao, data_inicio")
+        .or(doCliente).lte("data_inicio", hoje).gte("data_fim", hoje)
+        .order("data_inicio", { ascending: false }).limit(1);
+      let escolhido = vig?.[0] ?? null;
+      if (!escolhido) {
+        // Sem safra cobrindo hoje: a mais recente já iniciada
+        const { data: ant } = await supabase.from("anos_safra").select("id, descricao, data_inicio")
+          .or(doCliente).lte("data_inicio", hoje).order("data_inicio", { ascending: false }).limit(1);
+        escolhido = ant?.[0] ?? null;
+      }
+      if (seq !== anoSafraSeq.current) return;   // chegou uma busca mais nova (ex.: lista completa de fazendas)
+      setAnoSafraVigenteId(escolhido?.id ?? null);
+      setAnoSafraVigenteDesc(escolhido?.descricao ?? null);
+    })().catch(() => {});
+  }, [fazendaId, fazendaIds, contaId]);
 
   const podeAcessar = useCallback((modulo: string) => {
     const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "");
