@@ -1575,7 +1575,7 @@ function ContasReceberInner() {
                       <SelectBusca
                         value={baixa.operacao_gerencial_id}
                         onChange={id => setBaixa(p => ({ ...p, operacao_gerencial_id: id }))}
-                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        options={opGerenciais.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
                         placeholder="— Sem operação gerencial —"
                         style={inp}
                       />
@@ -1969,7 +1969,7 @@ function ContasReceberInner() {
                           const op = opGerenciais.find(o => o.id === id);
                           setForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaReceita(op.classificacao ?? "") : p.categoria }));
                         }}
-                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        options={opGerenciais.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
                         placeholder="— Selecionar operação —"
                         style={inp}
                       />

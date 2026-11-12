@@ -3214,7 +3214,7 @@ export default function ModalNf({
                         <SelectBusca
                           value={cab.operacao_gerencial_id}
                           onChange={id => setCab(p => ({ ...p, operacao_gerencial_id: id }))}
-                          options={reclassOps.map(o => ({ value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                          options={reclassOps.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
                           placeholder="— nenhuma —"
                           style={inp}
                         />
@@ -4774,7 +4774,7 @@ export default function ModalNf({
                   <SelectBusca
                     value={reclassOpId}
                     onChange={setReclassOpId}
-                    options={reclassOps.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                    options={reclassOps.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
                     placeholder="— sem operação —"
                     style={inp}
                   />

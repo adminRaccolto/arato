@@ -1,0 +1,54 @@
+{
+  "consulta_em": "2026-11-11T21:56:16.492Z",
+  "origem": "Fontes primárias oficiais; PDFs/XLSX lidos localmente e páginas consultadas por navegador de pesquisa.",
+  "fontes": [
+    {
+      "id": "RFB-LCDPR-PORTAL",
+      "url": "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/declaracoes-e-demonstrativos/lcdpr-livro-caixa-digital-do-produtor-rural",
+      "uso": "Índice oficial; confirma links do leiaute e manual."
+    },
+    {
+      "id": "RFB-LCDPR-MANUAL",
+      "arquivo": "lcdpr-manual.pdf",
+      "url": "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/declaracoes-e-demonstrativos/lcdpr-livro-caixa-digital-do-produtor-rural/manual-de-preenchimento-do-lcdpr-1-3",
+      "uso": "Manual 1.3; campos, saldo anual e numerário em trânsito.",
+      "bytes": 848329,
+      "sha256": "336ff00598e2917ea04eec898a8e1a8b074f13ceec9bb920f69ae9278d852f9b"
+    },
+    {
+      "id": "RFB-LCDPR-LEIAUTE",
+      "arquivo": "lcdpr-leiaute.xlsx",
+      "url": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/documentos-tecnicos/lcdpr/leiaute-lcdpr-1-3",
+      "uso": "Definição de campos, tipos e registros condicionais.",
+      "bytes": 29550,
+      "sha256": "8b015fdca6a4f35af40118e227f998d39be2baa9f6017532b0003230a26c6dd7"
+    },
+    {
+      "id": "RFB-LCDPR-PONTOS",
+      "arquivo": "lcdpr-pontos.pdf",
+      "url": "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/declaracoes-e-demonstrativos/lcdpr-livro-caixa-digital-do-produtor-rural/pontos-de-atencao-no-preenchimento.pdf",
+      "uso": "Verificações de vínculos e totalização.",
+      "bytes": 204101,
+      "sha256": "aef8cfaf7430b086c0b2d6f145be2b9a824b5690a8a0ad4e9ebbfb75b0cadcae"
+    },
+    {
+      "id": "RFB-ECD-2026",
+      "arquivo": "ecd-manual-2026.pdf",
+      "url": "https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/ecd/manuais-e-documentos-tecnicos/manual_de_orientacao_da_ecd_leiaute_9_janeiro_2026.pdf",
+      "download": "https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/ecd/manuais-e-documentos-tecnicos/manual_de_orientacao_da_ecd_leiaute_9_janeiro_2026.pdf/@@display-file/file",
+      "uso": "Manual leiaute 9, atualização janeiro/2026; não houve mudança para ano-calendário 2025; tipos de registros e formatação numérica.",
+      "bytes": 2971696,
+      "sha256": "7ddf47755f616ecd76671b8be9c8b61e30adbb0e8408634e45af95f616119b2e"
+    },
+    {
+      "id": "CONFAZ-MOC7",
+      "url": "https://www.confaz.fazenda.gov.br/legislacao/arquivo-manuais/moc7-anexo-i-leiaute-e-rv.pdf",
+      "uso": "Relação CRT/CST/CSOSN e leiaute NF-e. Conferir notas técnicas complementares por cenário."
+    },
+    {
+      "id": "NF-E-INFORMES",
+      "url": "https://www.nfe.fazenda.gov.br/portal/informe.aspx?AspxAutoDetectCookieSupport=1&ehCTG=false&page=0&pagesize=30",
+      "uso": "Acompanhamento de versões de NT; não usado para determinar alíquota universal. A nova tentativa de abertura no fim da auditoria retornou loop de redirecionamento; informações anteriores não equivalem a homologação."
+    }
+  ]
+}

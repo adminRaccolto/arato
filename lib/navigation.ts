@@ -218,7 +218,7 @@ export const NAV: NavItem[] = [
       { id: "fiscal-certificado",   label: "Certificado Digital",      path: "/fiscal?aba=certificado",             moduleId: "fiscal_nfe"  },
       { type: "divider", label: "Obrigações" },
       { id: "fiscal-lcdpr",         label: "LCDPR",                    path: "/lcdpr",                              moduleId: "fiscal_sped" },
-      { id: "fiscal-sped-contabil", label: "SPED ECD — Contábil",      path: "/fiscal/sped-contabil",               moduleId: "fiscal_sped" },
+      { id: "fiscal-sped-contabil", label: "Preparação contábil",      path: "/fiscal/sped-contabil",               moduleId: "fiscal_sped" },
       { id: "fiscal-esocial",       label: "eSocial Rural",            path: "/fiscal/esocial",                     moduleId: "fiscal_sped" },
       { id: "fiscal-ibs",           label: "IBS / CBS — 2027",         path: "/ibs",                                moduleId: "fiscal_sped" },
       { id: "fiscal-parcerias",     label: "Parcerias & Grupos",       path: "/parcerias",                          moduleId: "fiscal_sped" },

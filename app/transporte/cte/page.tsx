@@ -1,4 +1,5 @@
 "use client";
+import EmissoesConferencia from "../../../components/fiscal/EmissoesConferencia";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
@@ -1572,7 +1573,8 @@ function CtePageInner() {
 
     try {
       const res  = await fetch("/api/fiscal/emitir-cte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string; aviso?: string };
+      const data = await res.json() as { sucesso: boolean; pendente?:boolean;sincronizacao_pendente?:boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string; aviso?: string };
+      if(data.pendente||data.sincronizacao_pendente){alert((data.sucesso?"Documento autorizado; sincronização local pendente. ":"Resultado ainda não confirmado. ")+"Use Emissões em conferência para consultar e recuperar a mesma chave.\n\n"+data.xMotivo);await carregar();return;}
 
       // Atualização otimista — o alert() bloqueia o browser antes do React re-renderizar,
       // então atualizamos o estado local imediatamente para o DACTE abrir com a chave correta.
@@ -1733,6 +1735,7 @@ function CtePageInner() {
         {/* Cabeçalho */}
         <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>CT-e — Conhecimento de Transporte Eletrônico</h1>
+          <EmissoesConferencia />
         </div>
 
         {/* KPI cards */}

@@ -54,6 +54,7 @@ export interface CTeInput {
   uf_fim:           string;
   cfop:             string;   // ex: "6353"
   natureza:         string;
+  data_emissao?:string;
   valor_prestacao:  number;
   valor_receber:    number;
   componentes:      Array<{ nome: string; valor: number }>;
@@ -301,7 +302,10 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     throw new Error(`Número de CT-e inválido: ${nCTXml}`);
   }
 
-  const dhEmi = dhEmiParaUF(e.uf);
+  const data=input.data_emissao?.slice(0,10);
+  if(data&&(!/^\d{4}-\d{2}-\d{2}$/.test(data)||!Number.isFinite(Date.parse(data+"T12:00:00Z"))||new Date(data+"T12:00:00Z").toISOString().slice(0,10)!==data))throw new Error("Data de emissão do CT-e inválida.");
+  const agora=dhEmiParaUF(e.uf);
+  const dhEmi=data?data+agora.slice(10):agora;
   const aamm  = dhEmi.slice(2, 4) + dhEmi.slice(5, 7);
 
   const cpfcnpjE = e.cpf_cnpj.replace(/\D/g, "");
@@ -382,7 +386,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       // NT 2025.001 v1.13 — em 2026 os valores de IBS e CBS NÃO são somados ao vTotDFe
       // (vTotDFe = vTPrest); somar gera a rejeição 365 "Total do DF-e inválido" (achado 24/09/2026).
       // A regra geral (vTPrest + vIBS + vCBS) volta a valer a partir de 2027.
-      vTotDFeXml = `<vTotDFe>${p2(new Date().getFullYear() === 2026 ? vBC : vBC + vIBS + vCBS)}</vTotDFe>`;
+      vTotDFeXml = `<vTotDFe>${p2(dhEmi.startsWith("2026-") ? vBC : vBC + vIBS + vCBS)}</vTotDFe>`;
     } else {
       ibscbsXml = `<IBSCBS><CST>${ic.cst}</CST><cClassTrib>${ic.cclasstrib}</cClassTrib></IBSCBS>`;
       vTotDFeXml = `<vTotDFe>${p2(input.valor_prestacao)}</vTotDFe>`;

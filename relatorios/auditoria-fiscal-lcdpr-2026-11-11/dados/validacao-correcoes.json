@@ -1,0 +1,61 @@
+{
+  "verificado_em_utc": "2026-11-11T23:41:50.013287+00:00",
+  "base_commit": "7cb5eb23f712d0500f57d54f1d1f347dd7024503",
+  "testes": {
+    "comando": "npm test",
+    "exit_code": 0,
+    "tests": 809,
+    "pass": 809,
+    "fail": 0,
+    "skipped": 0
+  },
+  "build": {
+    "comando": "npm run build",
+    "exit_code": 0,
+    "typescript": true,
+    "verificacao_integracao_layouts": true
+  },
+  "diff_check": {
+    "comando": "git diff --check",
+    "exit_code": 0
+  },
+  "migracoes": {
+    "secoes_novas": [
+      440,
+      441,
+      442,
+      443,
+      444,
+      445
+    ],
+    "historico_ate_439_inalterado": true,
+    "testadas_pglite": true,
+    "aplicadas_producao": false
+  },
+  "transmissoes_fiscais_executadas": false,
+  "alteracoes_dados_producao": false,
+  "homologacao_visual_autenticada": false,
+  "validacao_xsd_pva": false,
+  "commit_criado": false,
+  "hashes_sha256": {
+    "supabase_migrations.sql": "5208e42068415b1d29868bc4291c37161aa662ce1bad9ca6af444e5aaf529612",
+    "package.json": "e5950fecb3e3e1330ae025ad40adfe85c0b809a2db438306d0538e6fa3b67e4c",
+    "lib/fiscal/correcoes.test.ts": "e59e94eb5d98b5a02b64179c0142a29174316a7fdd47338bf97eb022e5344dda",
+    "lib/fiscal/fluxos-regressao.test.mjs": "af640cbe70223ce4ee9d28eba4494be2137bb0d140c215d1f27bc070f2fafe43",
+    "lib/fiscal/integridade-sql.test.mjs": "6bb0135e10797acf776cbd08484d42ba2158831998354beb46028b36ac2e12b5",
+    "lib/fiscal/tributacao-nfe.ts": "a29551faae92cf15f460bf619e24850b8df378c3b98abb36c3094817bacf4b62",
+    "lib/fiscal/operacao.ts": "6684e804ee786de8d0fdb66a93857447e087e91587c87f51026b6a41e654b052",
+    "lib/fiscal/persistencia.ts": "2819079749b050248372b9ba29d52626aa280acc262a9558f746cc8102387c50",
+    "lib/fiscal/evento-consulta.ts": "d44877e37e56942d4a8b20b99812e84224e27cc88f6ba885d077ae39e06eecd7",
+    "lib/fiscal/recuperar-evento.ts": "864f042b7ac7d4d170a57f602549597cb7671d7cd263a7d2c4fe468bcaf53608",
+    "lib/lcdpr/modelo.ts": "1e8eb1df4130d3876188d3de1979160627cb8fad6e8437d7ec177907077759a9",
+    "lib/lcdpr/arquivo.ts": "03960d550d193fd23f27686bc710d7fbb93facfde819404bbdd21af1fb582438",
+    "lib/nfe/index.ts": "a98792ad8444a84b41e956e66b025da7e82436e790e0d30658f3fc5c77f56f37",
+    "lib/nfe/builder.ts": "3d553e46e31b19e9a04075ff55a4244ba54261211aed0cb57445dcb5658ecbb0",
+    "lib/nfe/transmitter.ts": "de8230ea66ce6a2a9ad1e588c44c6bc1ba5822985344ca50630d13dab70306b7",
+    "lib/nfe/endpoints.ts": "784a0c616e3c18debb3b0a46370cf7d2e371bf2c3bc369672f855722d1038845",
+    "app/lcdpr/page.tsx": "17a0f29285cb9c0445be5ebbf8fe4a6508332e8529a1ba03a4880ed53e0f74a8",
+    "app/configuracoes/modulos/page.tsx": "ca9c4db46503e014c7570369fd713e41ea60e2da174b9a9627fee84f35c642f0",
+    "app/api/fiscal/eventos/route.ts": "27d7d0ac92d0bdd0b0080d80ba6e55c4d1d0c6ce5925c373bde08351f11fe2dc"
+  }
+}

@@ -2591,7 +2591,7 @@ function ContasPagarInner() {
                       <SelectBusca
                         value={baixa.operacao_gerencial_id}
                         onChange={id => setBaixa(p => ({ ...p, operacao_gerencial_id: id }))}
-                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        options={opGerenciais.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
                         placeholder="— Sem operação gerencial —"
                         style={inp}
                       />
@@ -3121,10 +3121,10 @@ function ContasPagarInner() {
                           setForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria }));
                         }}
                         options={(() => {
-                          const base = opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }));
+                          const base = opGerenciais.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }));
                           if (form.operacao_gerencial_id && !opGerenciais.find(o => o.id === form.operacao_gerencial_id)) {
                             const missing = allOgs.find(o => o.id === form.operacao_gerencial_id);
-                            if (missing) base.unshift({ value: missing.id, label: `${missing.classificacao} — ${missing.descricao}`, group: (missing.classificacao ?? "").split(".").slice(0, 3).join(".") });
+                            if (missing) base.unshift({aliases:missing.ids_equivalentes,value: missing.id, label: `${missing.classificacao} — ${missing.descricao}`, group: (missing.classificacao ?? "").split(".").slice(0, 3).join(".") });
                           }
                           return base;
                         })()}

@@ -1,0 +1,426 @@
+[
+  {
+    "id": "LC-01",
+    "resumo": "CPF A exporta também a receita do produtor B",
+    "evidencia": {
+      "produtores": 2,
+      "cpfSelecionado": "A",
+      "receitaDeA": 100,
+      "receitaExportada": 1000
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-02",
+    "resumo": "Lançamento sem imóvel exportado é atribuído ao primeiro imóvel",
+    "evidencia": {
+      "imovelOriginalSegundo": "faz-b",
+      "imovelGravado": "001 da faz-a"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-03",
+    "resumo": "Rateio do CPF é aplicado ao conjunto inteiro sem discriminar propriedade",
+    "evidencia": {
+      "receitasOriginais": [
+        100,
+        900
+      ],
+      "quota": 50,
+      "receitasExportadas": [
+        50,
+        450
+      ]
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-04",
+    "resumo": "Exclusão por nome não distingue venda/serviço real de transferência interna",
+    "evidencia": {
+      "operacao": "venda",
+      "baixada": true,
+      "categoriaInterna": false,
+      "excluida": true
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-05",
+    "resumo": "Elegibilidade ignora natureza e a origem da compensação",
+    "evidencia": {
+      "compensacaoIncluida": true,
+      "previsaoPagaIncluida": true,
+      "nota": "Incidência fiscal deve ser avaliada por evento, evitando duplicar adiantamento e compensação."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-06",
+    "resumo": "Sem data de baixa, vencimento substitui a data do fato de caixa",
+    "evidencia": {
+      "dataEfetiva": null,
+      "exercicioEscolhidoPeloVencimento": 2026
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-07",
+    "resumo": "Exportação oficial prossegue sem 0045 condicionalmente obrigatório",
+    "evidencia": {
+      "tipoExploracao": 2,
+      "participacao": 50,
+      "registro0045": false,
+      "nota": "A tela exibe aviso, mas não gera o registro nem bloqueia a exportação."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-08",
+    "resumo": "Saldo inicial configurável contamina o resultado da atividade no ano",
+    "evidencia": {
+      "saldoInicial": 500,
+      "receitaJaneiro": 100,
+      "saldoExportado": 600,
+      "referencia": "Manual LCDPR 1.3, Q100: início anual zero."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-09",
+    "resumo": "Número do documento não é escapado e histórico retém quebras",
+    "evidencia": {
+      "camposEsperados": 13,
+      "camposGerados": 14,
+      "quebraInterna": true
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-10",
+    "resumo": "Lançamento manual existe apenas no estado React",
+    "evidencia": {
+      "gravacaoEmBanco": false,
+      "efeito": "É perdido ao recarregar/trocar ano ou contexto."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "LC-11",
+    "resumo": "NUM_CONTA recebe pontuação incompatível com campo numérico",
+    "evidencia": {
+      "numeroEmitido": "123456-7",
+      "referencia": "Planilha oficial LCDPR 1.3: 0050.NUM_CONTA é N, tamanho 16."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "CFG-01",
+    "resumo": "Cadastro fiscal aceita visualmente falha de persistência",
+    "evidencia": {
+      "modalFechado": true,
+      "gravado": false
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "CFG-02",
+    "resumo": "Edição conta-wide desloca NCM para a fazenda ativa",
+    "evidencia": {
+      "fazendaAntes": "original",
+      "fazendaDepois": "ativa"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "CFG-03",
+    "resumo": "Estado antigo tem precedência sobre configuração carregada de outro cliente",
+    "evidencia": {
+      "clienteAtual": "B",
+      "ambienteCarregado": "homologacao",
+      "ambienteMostrado": "producao",
+      "emitenteAnteriorRetido": true
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "CFG-04",
+    "resumo": "Quota exibida pode não ter sido salva",
+    "evidencia": {
+      "exibida": 50,
+      "gravada": false,
+      "erroPropagado": false
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-01",
+    "resumo": "Numeração NF-e usa leitura externa e update sem reserva atômica",
+    "evidencia": {
+      "numeros": [
+        10,
+        10
+      ],
+      "contadorFinal": "11"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-02",
+    "resumo": "Falha no contador CT-e não impede seguir para transmissão",
+    "evidencia": {
+      "numeroRetornado": 10,
+      "contadorAtualizado": false
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-03",
+    "resumo": "MDF-e não reserva número por documento antes do envio",
+    "evidencia": {
+      "numeros": [
+        10,
+        10
+      ],
+      "nota": "Não transmitiu documentos reais; colisão demonstrada no cálculo."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-01",
+    "resumo": "ICMS00 é fixado em 12% apesar de pICMS informado",
+    "evidencia": {
+      "aliquotaSolicitada": 7,
+      "aliquotaXml": 12,
+      "nota": "Não determina qual seria a alíquota devida no caso real."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-02",
+    "resumo": "Contrato de emissão não transporta PIS/COFINS da operação fiscal",
+    "evidencia": {
+      "cstConfiguradoParaTeste": "08",
+      "cstXml": "07"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-03",
+    "resumo": "Regime selecionado não muda o grupo ICMS emitido",
+    "evidencia": {
+      "crt": 1,
+      "grupo": "ICMS00",
+      "csosnAusente": true
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-04",
+    "resumo": "Construtor aceita quantidade negativa e produz imposto/total negativos",
+    "evidencia": {
+      "quantidade": -1,
+      "valorProduto": -100
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "OG-01",
+    "resumo": "Update de OG sem linha afetada conclui sem erro",
+    "evidencia": {
+      "linhasAfetadas": 0,
+      "erro": false
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "OG-02",
+    "resumo": "Campos opcionais apagados na tela continuam gravados",
+    "evidencia": {
+      "campo": "conta_debito",
+      "valorPersistido": "1.1"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-04",
+    "resumo": "CT-e retorna autorizado enquanto o registro continua rascunho",
+    "evidencia": {
+      "retorno": "sucesso",
+      "estadoPersistido": "rascunho",
+      "integracao": "simulada; sem transmissão real"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEG-01",
+    "resumo": "Acesso à fazenda de origem não valida o CT-e de destino atualizado pela chave de serviço",
+    "evidencia": {
+      "fazendaAutorizada": "A",
+      "registroAlterado": "B",
+      "chamadasExternas": "todas simuladas"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEG-02",
+    "resumo": "Fazenda enviada separadamente é usada como contexto sem conferir o documento",
+    "evidencia": {
+      "registroAutorizado": "mdfe-a",
+      "fazendaDoDocumento": "A",
+      "contextoAceito": "B",
+      "limite": "Handler reproduzido; emissão externa não executada."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-05",
+    "resumo": "Falha na seleção do emitente real cai silenciosamente no módulo anterior",
+    "evidencia": {
+      "titularInformado": "novo",
+      "titularUsado": "anterior"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-06",
+    "resumo": "Após 103, processamento 105 termina sem manter recibo recuperável",
+    "evidencia": {
+      "consultasRetorno": 1,
+      "retorno": "105",
+      "reciboNoResultadoFinal": false
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "OG-03",
+    "resumo": "IDs equivalentes existem como metadado, mas IDs removidos não são opções normais",
+    "evidencia": {
+      "idGravado": "legado",
+      "idsDisponiveis": [
+        "da-conta"
+      ],
+      "equivalenciaPreservada": true,
+      "limite": "Consumidores que não usam ids_equivalentes perdem o rótulo/vínculo visual."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "ECD-01",
+    "resumo": "Arquivo apresentado como ECD usa estrutura incompatível para lançamentos",
+    "evidencia": {
+      "versaoDeclarada": 10,
+      "cabecalhoLcto": "I150",
+      "partidas": "I155",
+      "I200": false,
+      "I250": false,
+      "separadorValor": ".",
+      "referencia": "Manual oficial ECD leiaute 9, atualização 2026."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-05",
+    "resumo": "Somatório usa valores não arredondados; XML dos itens usa centavos",
+    "evidencia": {
+      "somaItens": 0.03,
+      "totalEmitido": 0.02
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-06",
+    "resumo": "Total IBS/CBS também soma valores não arredondados",
+    "evidencia": {
+      "somaIBSUFItens": 0,
+      "totalIBSUFEmitido": 0.01
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-07",
+    "resumo": "Caminho de consulta mantém TLS inseguro e espera ilimitada",
+    "evidencia": {
+      "validacaoServidor": false,
+      "prazoDefinido": false,
+      "limite": "Nenhuma conexão real interceptada; parâmetros reais capturados em laboratório."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-08",
+    "resumo": "Falha de autenticação do primeiro certificado não tenta o segundo válido",
+    "evidencia": {
+      "certificadosDisponiveis": 2,
+      "certificadosUsados": [
+        "A"
+      ]
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "TRI-07",
+    "resumo": "Falha técnica é tratada como falta de cadastro e escolhe não incidência",
+    "evidencia": {
+      "consultaNcm": "erro",
+      "cstEscolhido": "410",
+      "retornoSucesso": true,
+      "integracao": "simulada"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "OG-04",
+    "resumo": "Reclassificação fiscal e financeira não é atômica",
+    "evidencia": {
+      "retorno": 500,
+      "ogNF": "nova",
+      "ogCP": "antiga"
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEG-03",
+    "resumo": "API com chave de serviço confere a NF, mas não o cliente da OG/centro de custo",
+    "evidencia": {
+      "clienteNF": "A",
+      "clienteOG": "B",
+      "retorno": 200,
+      "limite": "Banco e autenticação simulados; não testado contra outro cliente real."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "OG-05",
+    "resumo": "Filtro de ativos aplicado antes de escolher a cópia do cliente recupera o modelo global",
+    "evidencia": {
+      "copiaClienteInativa": true,
+      "idMostrado": "global",
+      "limite": "O helper mais novo AtivasDaConta já resolve a precedência; o antigo continua divergente."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-09",
+    "resumo": "Cursor de distribuição ultrapassa documento que falhou ao salvar",
+    "evidencia": {
+      "documentosInformados": 1,
+      "documentosGravados": 0,
+      "nsuAvancou": true,
+      "retornoOk": true
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  },
+  {
+    "id": "SEF-10",
+    "resumo": "Parser descarta documento ilegível sem marcar falha no lote",
+    "evidencia": {
+      "documentosDescartados": 1,
+      "errosEstruturados": 0,
+      "nsuRetornado": "000000000000002",
+      "limite": "Quando coexistem documentos legíveis, a rota pode avançar o cursor além do ilegível; se todos falham, a rota atual interrompe antes de avançar."
+    },
+    "ambiente": "laboratório isolado com funções reais e dados sintéticos"
+  }
+]

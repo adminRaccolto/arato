@@ -1,0 +1,382 @@
+[
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 113,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cert-meta/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 103,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/nfe/xml-por-chave/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 116,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cert-upload/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 28,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/seed-cfops/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 45,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/mdfe/salvar-ciot/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 35,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/cancelar-cte/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 38,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/fiscal/encerrar-mdfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 44,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/danfe-lote/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 54,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/cert-validar/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 18,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/cte/distribuicao/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 165,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 163,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/integracoes/sieg-cert/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 105,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/status-sefaz/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 183,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/reclassificar-nf/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 73,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 3,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/emitir-mdfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 29,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/eventos/route.ts",
+    "methods": [
+      "POST",
+      "GET"
+    ],
+    "lines": 169,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 9,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/emitir-cte/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 136,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/consultar-nfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 250,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 5,
+    "rpc": true,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/notas-proprias/consultar-chave/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 79,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/remessas/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 243,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 10,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/numeracao-nfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 48,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/emitir-nfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 128,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": false,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/cancelar-mdfe/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 36,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 1,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/danfe/route.ts",
+    "methods": [
+      "GET"
+    ],
+    "lines": 186,
+    "importedAuth": 3,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/nfs-canceladas/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 202,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 2,
+    "rpc": false,
+    "maxDuration": "300"
+  },
+  {
+    "file": "app/api/fiscal/carta-correcao-cte/route.ts",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "lines": 46,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": "60"
+  },
+  {
+    "file": "app/api/fiscal/cte-entrada/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 244,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 9,
+    "rpc": false,
+    "maxDuration": null
+  },
+  {
+    "file": "app/api/fiscal/consultar-cadastro/route.ts",
+    "methods": [
+      "POST"
+    ],
+    "lines": 79,
+    "importedAuth": 1,
+    "authSignals": true,
+    "serviceRole": true,
+    "writes": 0,
+    "rpc": false,
+    "maxDuration": null
+  }
+]

@@ -3,6 +3,7 @@
 // das telas só mandava o cookie — com a aba aberta por muito tempo o cookie vence e a ação falha com "Não autenticado"
 // (achado real 28/10/2026, baixa de CP). O token vem de supabase.auth.getSession(), que o renova quando expirou.
 import { supabase } from "./supabase";
+import { identificarRequisicaoFiscal, registrarRespostaFiscal } from "./fiscal/requisicao";
 
 const MARCA = "__aratoFetchComToken";
 
@@ -28,6 +29,11 @@ export function instalarFetchComToken() {
         if (session?.access_token) headers.set("authorization", `Bearer ${session.access_token}`);
       } catch { /* sem sessão: segue só com o cookie */ }
     }
-    return original(input, { ...init, headers });
+    const url=typeof input==="string"?input:input instanceof URL?input.href:input.url;
+    const path=new URL(url,window.location.origin).pathname;
+    const fiscal=await identificarRequisicaoFiscal(path,{...init,headers});
+    const response=await original(input,fiscal.init);
+    await registrarRespostaFiscal(response,fiscal.assinatura);
+    return response;
   };
 }

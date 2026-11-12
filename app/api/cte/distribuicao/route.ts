@@ -27,21 +27,20 @@ function sb() {
 }
 
 
-async function lerUltNSU(fazendaId: string, chave: string): Promise<string> {
-  const { data } = await sb()
+async function lerUltNSU(fazendaId:string,chave:string,ambiente:AmbienteDist): Promise<string> {
+  const { data, error } = await sb()
     .from("configuracoes_modulo")
     .select("config")
     .eq("fazenda_id", fazendaId)
     .eq("modulo", chave)
     .maybeSingle();
+  if(error)throw error;
+  if(data?.config?.ambiente && data.config.ambiente!==ambiente)throw new Error("Cursor de outro ambiente. Confira o histórico da distribuição.");
   return (data?.config as { ult_nsu?: string } | undefined)?.ult_nsu ?? "000000000000000";
 }
 
-async function salvarUltNSU(fazendaId: string, chave: string, nsu: string) {
-  await sb().from("configuracoes_modulo").upsert(
-    { fazenda_id: fazendaId, modulo: chave, config: { ult_nsu: nsu } },
-    { onConflict: "fazenda_id,modulo" },
-  );
+async function salvarUltNSU(fazendaId:string,chave:string,nsu:string,ambiente:AmbienteDist){
+  const {error}=await sb().rpc("fiscal_avancar_nsu",{p_fazenda:fazendaId,p_modulo:chave,p_nsu:nsu,p_ambiente:ambiente});if(error)throw error;
 }
 
 export async function POST(req: NextRequest) {
@@ -68,16 +67,18 @@ export async function POST(req: NextRequest) {
     const cnpj = emitenteDigits.padStart(14, "0");
     const cUF  = cteConfig.cuf ?? fiscalConfig.cuf ?? "51";
 
-    const chaveNSU = `dist_cte_${cnpj}`;
+    const chaveNSU=ambiente==="producao"?`dist_cte_${cnpj}`:`dist_cte_${cnpj}_homologacao`;
 
     // ── Paginação: consulta até não ter mais documentos ───────────────────────
-    let ultNSU   = forcar_zero ? "000000000000000" : await lerUltNSU(fazenda_id, chaveNSU);
+    let ultNSU   = forcar_zero ? "000000000000000" : await lerUltNSU(fazenda_id,chaveNSU,ambiente);
     let totalDocs = 0;
+    let recebidos=0;let outrosTipos=0;
     let novoUltNSU = ultNSU;
     const erros: string[] = [];
     const docTypes: Record<string, number> = {};
 
-    for (let pagina = 0; pagina < 10; pagina++) {
+    const limite=Date.now()+40_000;let temMaisPaginas=false;
+    for (let pagina = 0; pagina < 10 && Date.now()<limite; pagina++) {
       const resultado = await consultarDFeInteresse({ cnpj, cUF, ambiente, ultNSU, pem });
       const { cStat, xMotivo, ultNSU: nsuRetornado, maxNSU, docs } = resultado;
 
@@ -93,16 +94,19 @@ export async function POST(req: NextRequest) {
 
       // ── Persiste cada documento recebido ─────────────────────────────────
       for (const doc of docs) {
-        const schema    = doc.schema ?? "";
+        const schema = doc.schema ?? "";
+        // Inbox durável inclui eventos e tipos ainda não interpretados pela tela.
+        const guardado=await sb().from("fiscal_distribuicao_documentos").upsert({fazenda_id,documento:cnpj,ambiente,nsu:doc.nsu,schema_sefaz:schema,xml_raw:doc.xml},{onConflict:"fazenda_id,documento,ambiente,nsu"});
+        if(guardado.error)throw new Error(`NSU ${doc.nsu}: falha ao guardar documento; cursor preservado. ${guardado.error.message}`);
+        recebidos++;
         docTypes[schema] = (docTypes[schema] ?? 0) + 1;
 
         if (!schema.startsWith("procCTe") && !schema.startsWith("cteProc") && !schema.startsWith("CTe")) {
           // Eventos, procEventoCTe, etc.: registra mas não insere em cte_recebidos
-          continue;
+          outrosTipos++;continue;
         }
 
         const meta = extrairMetaCTe(doc.xml);
-        totalDocs++;
 
         const { error } = await sb().from("cte_recebidos").upsert(
           {
@@ -132,25 +136,28 @@ export async function POST(req: NextRequest) {
           { onConflict: "fazenda_id,nsu" },
         );
 
-        if (error) erros.push(`NSU ${doc.nsu}: ${error.message}`);
+        if (error) throw new Error(`NSU ${doc.nsu} não gravado: ${error.message}. Repita a sincronização; o cursor foi preservado.`);
+        totalDocs++;
       }
 
       novoUltNSU = nsuRetornado ?? maxNSU ?? ultNSU;
 
       // Avança NSU e verifica se há mais
       const temMais = nsuRetornado !== maxNSU && parseInt(nsuRetornado) < parseInt(maxNSU);
+      temMaisPaginas=temMais;
+      await salvarUltNSU(fazenda_id,chaveNSU,novoUltNSU,ambiente);
       ultNSU        = novoUltNSU;
       if (!temMais) break;
     }
 
     // ── Persiste o último NSU processado ─────────────────────────────────────
-    if (novoUltNSU !== (forcar_zero ? "000000000000000" : await lerUltNSU(fazenda_id, chaveNSU))) {
-      await salvarUltNSU(fazenda_id, chaveNSU, novoUltNSU);
+    if (novoUltNSU !== (forcar_zero ? "000000000000000" : await lerUltNSU(fazenda_id,chaveNSU,ambiente))) {
+      await salvarUltNSU(fazenda_id,chaveNSU,novoUltNSU,ambiente);
     }
 
     return NextResponse.json({
       ok: true,
-      totalDocs,
+      totalDocs,recebidos,outrosTipos,preservados:recebidos,temMais:temMaisPaginas,
       ultNSU: novoUltNSU,
       docTypes,
       erros,

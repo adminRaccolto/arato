@@ -4,6 +4,7 @@
  * Todos os valores monetários são formatados com 2 casas; quantidades com 4.
  */
 import { CFOPS_INDUSTRIALIZACAO, CFOPS_TRANSFERENCIA, CFOPS_DEVOLUCAO_BEM_TERCEIRO, CFOPS_DEVOLUCAO_ST, CST_RETORNO_BEM_TERCEIRO } from "./cst-por-cfop";
+import { arredondarMoeda, contribuicao, percentual } from "./tributos";
 
 export interface EmitenteCfg {
   cpf_cnpj: string;       // apenas dígitos
@@ -68,6 +69,12 @@ export interface ItemNFe {
   pICMS?: number;
   /** CST do ICMS escolhido pelo usuário (40, 41 ou 51). Sem ele, vale a regra por CFOP (icmsRule). */
   cst_icms?: string;
+  csosn?: string;
+  pis_cst?: string;
+  pis_aliq?: number;
+  cofins_cst?: string;
+  cofins_aliq?: number;
+  regra_fiscal?: Record<string,unknown>;
   ibsCbs?: IBSCBSItem;
 }
 
@@ -88,6 +95,10 @@ export interface NFeInput {
   destinatario: DestinatarioCfg;
   itens: ItemNFe[];
   natureza: string;
+  data_emissao?: string;
+  variaveis_fiscais?:Record<string,string>;
+  operacao_fiscal_id?: string;
+  operacao_gerencial_id?: string;
   infCpl?: string;
   frete?: "0" | "1" | "2" | "9"; // 0=emitente, 1=dest, 2=3rd, 9=sem
   nfe_ref?: string | string[];   // chave(s) da NF-e referenciada (devolução/complemento/retorno de várias remessas)
@@ -364,14 +375,21 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
 // 41 não tributado, 50 suspensão (ex.: remessa para industrialização/conserto), 51 diferido 100% (Decreto MT 4.540/2004,
 // mesma montagem da venda interna).
 export const CSTS_ICMS_MANUAIS = ["40", "41", "50", "51", "60"] as const;
-function icmsRulePorCst(cst: string): ICMSRule | null {
+function icmsRulePorCst(cst: string, aliq = 12, reducao?:number): ICMSRule | null {
+  percentual(aliq,"ICMS");
+  if(cst==="00" || cst==="20") {
+    const red=cst==="20" ? percentual(Number(reducao),"Redução da base ICMS") : 0;
+    const valorIcms=(base:number)=>arredondarMoeda(base*aliq/100);
+    return {cst,baseCalc:(v)=>arredondarMoeda(v*(1-red/100)),valorIcms,
+      xml:(v)=>`<ICMS${cst}><orig>0</orig><CST>${cst}</CST><modBC>3</modBC>${cst==="20"?`<pRedBC>${red.toFixed(4)}</pRedBC>`:""}<vBC>${fmtVal(v)}</vBC><pICMS>${fmtVal(aliq)}</pICMS><vICMS>${fmtVal(valorIcms(v))}</vICMS></ICMS${cst}>`};
+  }
   if (cst === "60") return ICMS60;
   if (cst === "40" || cst === "41" || cst === "50") return { cst, xml: () => `<ICMS40><orig>0</orig><CST>${cst}</CST></ICMS40>` };
   if (cst === "51") return {
     cst: "51",
     xml: (vBC) => {
-      const vICMSOp = fmtVal(vBC * 12 / 100);
-      return `<ICMS51><orig>0</orig><CST>51</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pICMS>12.00</pICMS><vICMSOp>${vICMSOp}</vICMSOp><pDif>100.00</pDif><vICMSDif>${vICMSOp}</vICMSDif><vICMS>0.00</vICMS></ICMS51>`;
+      const vICMSOp = fmtVal(arredondarMoeda(vBC * aliq / 100));
+      return `<ICMS51><orig>0</orig><CST>51</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pICMS>${fmtVal(aliq)}</pICMS><vICMSOp>${vICMSOp}</vICMSOp><pDif>100.00</pDif><vICMSDif>${vICMSOp}</vICMSDif><vICMS>0.00</vICMS></ICMS51>`;
     },
   };
   return null;
@@ -393,6 +411,12 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   } = input;
 
   if (!itens.length) throw new Error("NF-e sem itens");
+  for(const [indice,item] of itens.entries()) {
+    if(!Number.isFinite(item.quantidade)||item.quantidade<=0||!Number.isFinite(item.valor_unitario)||item.valor_unitario<0||
+      !Number.isFinite(item.valor_desconto ?? 0)||(item.valor_desconto ?? 0)<0||(item.valor_desconto ?? 0)>arredondarMoeda(item.quantidade*item.valor_unitario))
+      throw new Error("Confira quantidade, preço e desconto do item "+(indice+1)+".");
+    if(!/^\d{8}$/.test(soDigitos(item.ncm))||!/^\d{4}$/.test(soDigitos(item.cfop)))throw new Error("Confira NCM e CFOP do item "+(indice+1)+".");
+  }
   if (!emit.ie.trim()) throw new Error(
     "IE do emitente não configurada. Acesse Configurações → Parâmetros do Sistema → Fiscal e preencha o campo 'Inscrição Estadual' do emitente selecionado."
   );
@@ -403,7 +427,12 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   const serie = pad(emit.serie, 3);
   const nNF   = pad(emit.numero_nfe, 9);
   const cNF   = gerarCNF();
-  const dhEmi = gerarDhEmi(emit.uf);
+  let dhEmi = gerarDhEmi(emit.uf);
+  if(input.data_emissao) {
+    const data=input.data_emissao.slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(data)||new Date(data+"T12:00:00Z").toISOString().slice(0,10)!==data)throw new Error("Data de emissão inválida.");
+    dhEmi=data+dhEmi.slice(10);
+  }
   const AAMM  = dhEmi.slice(2, 4) + dhEmi.slice(5, 7);
 
   // Chave: cUF(2)+AAMM(4)+CNPJ/CPF(14)+mod(2)+serie(3)+nNF(9)+tpEmis(1)+cNF(8)
@@ -463,6 +492,8 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   let vDescTotal      = 0;
   let vICMSTotal      = 0;
   let vBCTotal        = 0;
+  let vPISTotal=0;
+  let vCOFINSTotal=0;
 
   // Totais IBS/CBS — só viram <IBSCBSTot> no <total> se pelo menos 1 item tiver ibsCbs.
   let temIBSCBS       = false;
@@ -473,17 +504,30 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
   let vCBSTotal       = 0;
 
   const itensXml = itens.map((item, idx) => {
-    const vProdBruto = item.quantidade * item.valor_unitario;
-    const vDescItem  = item.valor_desconto ?? 0;
-    const vProdLiq   = vProdBruto - vDescItem; // usado como BC do ICMS
+    const vProdBruto = arredondarMoeda(item.quantidade * item.valor_unitario);
+    const vDescItem  = arredondarMoeda(item.valor_desconto ?? 0);
+    const vProdLiq   = arredondarMoeda(vProdBruto - vDescItem);
 
     vProdBrutoTotal += vProdBruto;
     vDescTotal      += vDescItem;
 
     const cstManual = String(item.cst_icms ?? "").replace(/\D/g, "").slice(-2);
-    const rule = (cstManual && icmsRulePorCst(cstManual)) || icmsRule(item.cfop, indIEDest === "9", item.pRedBC, item.pICMS);
+    if(cstManual && !["1","4"].includes(emit.crt) && !icmsRulePorCst(cstManual,item.pICMS ?? 12,item.pRedBC))throw new Error("CST de ICMS não suportado por esta emissão: "+item.cst_icms+". Configure uma operação compatível.");
+    if(item.ibsCbs){
+      const ic=item.ibsCbs;
+      if(!["000","200","410"].includes(ic.cst))throw new Error("CST IBS/CBS exige grupos específicos ainda não suportados por esta emissão. Confira a operação fiscal.");
+      if(!/^\d{3}$/.test(ic.cst)||!/^\d{6}$/.test(ic.cclasstrib)||!ic.cclasstrib.startsWith(ic.cst))throw new Error("CST e classificação IBS/CBS inválidos ou incompatíveis.");
+      for(const v of [ic.ibsEstadualAliq,ic.ibsMunicipalAliq,ic.cbsAliq,ic.reducaoPct ?? 0])percentual(v,"IBS/CBS");
+    }
+    let rule = (cstManual && icmsRulePorCst(cstManual,item.pICMS ?? 12,item.pRedBC)) || icmsRule(item.cfop, indIEDest === "9", item.pRedBC, item.pICMS);
+    if(!cstManual && item.pICMS!=null && ["00","51","20"].includes(rule.cst))rule=icmsRulePorCst(rule.cst,item.pICMS,item.pRedBC)!;
+    if(["1","4"].includes(emit.crt)) {
+      const csosn=item.csosn ?? (String(item.cst_icms ?? "").length===3&&!String(item.cst_icms).startsWith("0")?item.cst_icms:undefined);
+      if(!csosn || !["102","103","300","400","500"].includes(csosn))throw new Error("Informe o CSOSN da operação do Simples (102, 103, 300, 400 ou 500). Outros enquadramentos exigem os campos específicos de crédito/ST.");
+      rule={cst:csosn,xml:()=>csosn==="500"?`<ICMSSN500><orig>0</orig><CSOSN>500</CSOSN></ICMSSN500>`:`<ICMSSN102><orig>0</orig><CSOSN>${csosn}</CSOSN></ICMSSN102>`};
+    }
     // BC = vProd líquido (após desconto) para CST 00/51; CST 20 usa a base reduzida
-    const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : (rule.baseCalc ? rule.baseCalc(vProdLiq) : 0);
+    const vBC = rule.baseCalc ? rule.baseCalc(vProdLiq) : (["00","51"].includes(rule.cst) ? vProdLiq : 0);
     // <ICMSTot><vBC> tem que bater com a soma do <vBC> de TODOS os itens que
     // declaram essa tag — inclui CST 51 (diferido), que grava <vBC> real
     // dentro de <ICMS51> mesmo com <vICMS>0.00</vICMS>. Só somar quando
@@ -496,7 +540,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       vBCTotal += vBC;
     }
     if (rule.cst === "00") {
-      vICMSTotal += vBC * 12 / 100;
+      vICMSTotal += rule.valorIcms ? rule.valorIcms(vBC) : arredondarMoeda(vBC * (item.pICMS ?? 12) / 100);
     }
     if (rule.cst === "20" && rule.valorIcms) {
       vICMSTotal += rule.valorIcms(vBC);
@@ -508,8 +552,10 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     // PIS/COFINS CST 07 — operação isenta da contribuição:
     // Deve usar <PISNT>/<COFINSNT>, não <PISAliq>/<COFINSAliq>.
     // PISAliq/COFINSAliq só são válidos para CST 01, 02 e 03.
-    const pisXml    = `<PIS><PISNT><CST>07</CST></PISNT></PIS>`;
-    const cofinsXml = `<COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>`;
+    const pis=contribuicao("PIS",item.pis_cst ?? "07",item.pis_aliq ?? 0,vProdLiq);
+    const cofins=contribuicao("COFINS",item.cofins_cst ?? "07",item.cofins_aliq ?? 0,vProdLiq);
+    const pisXml=pis.xml;const cofinsXml=cofins.xml;
+    vPISTotal+=pis.valor;vCOFINSTotal+=cofins.valor;
 
     // IBS/CBS (Reforma Tributária) — grupo <IBSCBS>, schema TTribNFe/TCIBS_NFe
     // (NT 2023.001, validado contra o XSD oficial nfephp-org/sped-nfe PL_010).
@@ -535,10 +581,10 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       const pIBSUFEfet  = red > 0 ? ic.ibsEstadualAliq * (1 - red / 100) : ic.ibsEstadualAliq;
       const pIBSMunEfet = red > 0 ? ic.ibsMunicipalAliq * (1 - red / 100) : ic.ibsMunicipalAliq;
       const pCBSEfet    = red > 0 ? ic.cbsAliq * (1 - red / 100) : ic.cbsAliq;
-      const vIBSUF  = vBCIbsCbs * pIBSUFEfet / 100;
-      const vIBSMun = vBCIbsCbs * pIBSMunEfet / 100;
-      const vIBS    = vIBSUF + vIBSMun;
-      const vCBS    = vBCIbsCbs * pCBSEfet / 100;
+      const vIBSUF  = arredondarMoeda(vBCIbsCbs * pIBSUFEfet / 100);
+      const vIBSMun = arredondarMoeda(vBCIbsCbs * pIBSMunEfet / 100);
+      const vIBS    = arredondarMoeda(vIBSUF + vIBSMun);
+      const vCBS    = arredondarMoeda(vBCIbsCbs * pCBSEfet / 100);
 
       temIBSCBS      = true;
       vBCIBSCBSTotal += vBCIbsCbs;
@@ -745,8 +791,8 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
         <vII>0.00</vII>
         <vIPI>0.00</vIPI>
         <vIPIDevol>0.00</vIPIDevol>
-        <vPIS>0.00</vPIS>
-        <vCOFINS>0.00</vCOFINS>
+        <vPIS>${fmtVal(vPISTotal)}</vPIS>
+        <vCOFINS>${fmtVal(vCOFINSTotal)}</vCOFINS>
         <vOutro>0.00</vOutro>
         <vNF>${fmtVal(vNF)}</vNF>
         ${temIBSCBS ? `<vTotTrib>0.00</vTotTrib>` : ""}

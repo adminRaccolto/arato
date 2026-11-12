@@ -1,0 +1,186 @@
+[
+  {
+    "file": "components/fiscal/VerificarCertificado.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "components/fiscal/ModalCadastroFornecedor.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "components/fiscal/ModalCteEntradaNovo.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "components/fiscal/ModalCteEntradaNovo.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "components/fiscal/ModalCteEntrada.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "components/fiscal/ModalCteEntrada.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "lib/db.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "lib/db.ts",
+    "kind": "swallowedEmpty"
+  },
+  {
+    "file": "lib/db.ts",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "kind": "swallowedEmpty"
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "lib/fiscal/sieg-monitoramento.ts",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "lib/fiscal/estornar-nf-cliente.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "lib/fiscal/sieg-sincronizacao.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "kind": "disabledTls"
+  },
+  {
+    "file": "lib/cte/financeiro.ts",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "lib/nfe/certificado-a1.ts",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "kind": "modulePermission"
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "kind": "swallowedEmpty"
+  },
+  {
+    "file": "app/api/fiscal/danfe-lote/route.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "kind": "modulePermission"
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "kind": "modulePermission"
+  },
+  {
+    "file": "app/api/integracoes/sieg-cert/route.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "kind": "modulePermission"
+  },
+  {
+    "file": "app/transporte/acerto-frete/page.tsx",
+    "kind": "calendarViaUtc"
+  },
+  {
+    "file": "app/api/fiscal/danfe/route.ts",
+    "kind": "fetchWithoutAbort"
+  },
+  {
+    "file": "app/api/fiscal/nfs-canceladas/route.ts",
+    "kind": "calendarViaUtc"
+  }
+]

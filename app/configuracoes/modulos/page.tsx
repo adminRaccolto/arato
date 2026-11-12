@@ -1,10 +1,12 @@
 "use client";
+import { salvarCadastroFiscal } from "../../../lib/fiscal/cadastros";
+import { lerPaginas } from "../../../lib/paginar";
 import VerificarCertificado from "../../../components/fiscal/VerificarCertificado";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import type { ProdutorIE } from "../../../lib/supabase";
@@ -21,6 +23,8 @@ interface ProdutorMin { id: string; nome: string; cpf_cnpj?: string; inscricao_e
 interface EmitterEntry { type: "empresa" | "produtor"; id: string; nome: string; cpf_cnpj?: string; moduloKey: string; }
 
 interface NcmTributacao {
+  versao?:number;
+  vigencia_inicio?:string|null; vigencia_fim?:string|null;
   id: string;
   ncm: string;
   descricao: string;
@@ -113,6 +117,7 @@ const FISCAL_IDENT: FieldDef[] = [
   { key: "ie_emitente",      label: "Inscrição Estadual",    type: "text",     placeholder: "" },
   { key: "im_emitente",      label: "Inscrição Municipal",   type: "text",     placeholder: "" },
   { key: "crt",              label: "CRT (Regime Tributário)",type: "select",  options: ["1","2","3","4"], labels: ["1 – Simples Nacional","2 – SN – Excesso de sublimite","3 – Regime Normal","4 – MEI"] },
+  { key: "csosn_padrao", label: "CSOSN (Simples/MEI)", type: "select", options: ["","102","103","300","400","500"], labels: ["Selecione para Simples/MEI","102 — Sem permissão de crédito","103 — Isenção por faixa de receita","300 — Imune","400 — Não tributada","500 — ICMS cobrado anteriormente por ST"] },
 ];
 
 // PF (Produtor): sem série/número/IE/CRT — isso agora é configurado por IE, na
@@ -142,6 +147,7 @@ const IE_FISCAL_FIELDS: FieldDef[] = [
   { key: "serie_nfe",       label: "Série NF-e",             type: "text",   placeholder: "001" },
   { key: "numero_inicial",  label: "Próx. Número NF-e",      type: "number", placeholder: "1" },
   { key: "crt",             label: "CRT (Regime Tributário)",type: "select", options: ["1","2","3","4"], labels: ["1 – Simples Nacional","2 – SN – Excesso de sublimite","3 – Regime Normal","4 – MEI"] },
+  { key: "csosn_padrao", label: "CSOSN (Simples/MEI)", type: "select", options: ["","102","103","300","400","500"], labels: ["Selecione para Simples/MEI","102 — Sem permissão de crédito","103 — Isenção por faixa de receita","300 — Imune","400 — Não tributada","500 — ICMS cobrado anteriormente por ST"] },
   { key: "ibs_cbs_ativo",   label: "Destacar IBS/CBS na NF-e",type: "select", options: ["nao","sim"], labels: ["Não (padrão atual)","Sim — fase de transição"] },
 ];
 
@@ -317,6 +323,8 @@ const NCM_PRESETS_MT: NcmPreset[] = [
 
 // ─── Operações Fiscais ────────────────────────────────────────────────────────
 interface OperacaoFiscal {
+  versao?:number;
+  vigencia_inicio?:string|null; vigencia_fim?:string|null;
   id: string;
   nome: string;
   descricao?: string;
@@ -334,6 +342,7 @@ interface OperacaoFiscal {
   ibs_cbs_reducao_pct: number;
   inf_cpl_template: string;
   ativa: boolean;
+  ibs_cbs_cst?:string|null;ibs_cbs_cclasstrib?:string|null;
 }
 
 type OpPreset = Omit<OperacaoFiscal, "id">;
@@ -484,6 +493,9 @@ function ParametrosSistemaContent() {
     const abaParam = searchParams.get("aba");
     if (abaParam) setAba(abaParam);
   }, [searchParams]);
+  const cfgBases = useRef<Record<string, {fazenda_id: string | null; conta_id: string | null; config: CfgModulo}[]>>({});
+  const cfgContexto = useRef<string | null>(null);
+  const contextoAtual = (contaId ?? "")+":"+(fazendaId ?? "");
   const [cfgs, setCfgs] = useState<{ [modulo: string]: CfgModulo }>({});
   const [salvando, setSalvando] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -497,11 +509,14 @@ function ParametrosSistemaContent() {
   const [iesPorProdutor, setIesPorProdutor] = useState<Record<string, ProdutorIE[]>>({});
   useEffect(() => {
     if (produtores.length === 0) { setIesPorProdutor({}); return; }
+    let ativo=true;
     listarIEsDeMultiplosProdutores(produtores.map(p => p.id)).then(ies => {
+      if(!ativo)return;
       const grouped: Record<string, ProdutorIE[]> = {};
       for (const ie of ies) (grouped[ie.produtor_id] ??= []).push(ie);
       setIesPorProdutor(grouped);
-    }).catch(() => {});
+    }).catch(e=>{if(ativo)alert("Não foi possível carregar as inscrições estaduais: "+String(e));});
+    return()=>{ativo=false;};
   }, [produtores]);
   // Chave de armazenamento em configuracoes_modulo pra cada IE — mesma tabela/
   // padrão já usado pro resto da config fiscal, só mais granular (por IE em vez
@@ -518,6 +533,7 @@ function ParametrosSistemaContent() {
 
   async function fazerUploadCert(emitter: { id: string; moduloKey: string; cpf_cnpj?: string; nome: string }) {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Fazer upload cert)", perigo: false }))) return;
+    const contexto=contextoAtual;
     const st = getCertState(emitter.moduloKey);
     if (!st.file || !st.senha.trim() || !fazendaId) return;
     setCertField(emitter.moduloKey, { loading: true, erro: "" });
@@ -532,6 +548,7 @@ function ParametrosSistemaContent() {
       const res = await fetch("/api/cert-upload", { method: "POST", body: form });
       const json = await res.json() as { ok?: boolean; error?: string; storage_path?: string; data_vencimento?: string | null };
       if (!res.ok || !json.ok) throw new Error(json.error ?? "Erro no upload");
+      if(cfgContexto.current!==contexto)return;
       // Atualiza cfgs com o caminho correto + recria o registro certificado_a1_*
       const certKey = `certificado_a1_${emitter.id}`;
       setCfgs(prev => {
@@ -540,10 +557,23 @@ function ParametrosSistemaContent() {
         return { ...prev, [emitter.moduloKey]: fiscal, [certKey]: meta };
       });
       setCertField(emitter.moduloKey, { loading: false, ok: true, file: null, senha: "" });
-      setTimeout(() => setCertField(emitter.moduloKey, { ok: false }), 3000);
+      setTimeout(()=>{if(cfgContexto.current===contexto)setCertField(emitter.moduloKey,{ok:false});},3000);
     } catch (e) {
+      if(cfgContexto.current!==contexto)return;
       setCertField(emitter.moduloKey, { loading: false, erro: String(e instanceof Error ? e.message : e) });
     }
+  }
+
+  async function revalidarCertificado(modulo:string,documento:string,caminho:string){
+    const contexto=contextoAtual;
+    setCertField(modulo,{loading:true,erro:""});
+    try{
+      const r=await fetch("/api/fiscal/certificado/revalidar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fazenda_id:fazendaId,documento,caminho})});
+      const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error ?? "O A1 não foi revalidado.");
+      if(cfgContexto.current!==contexto)return;
+      setCfgs(prev=>({...prev,[modulo]:{...prev[modulo],cert_a1_path:j.storage_path,cert_a1_vencimento:j.data_vencimento}}));
+      setCertField(modulo,{loading:false,ok:true});
+    }catch(e){if(cfgContexto.current===contexto)setCertField(modulo,{loading:false,erro:(e as Error).message});}
   }
 
   // ── Tributação NCM
@@ -614,116 +644,80 @@ function ParametrosSistemaContent() {
     for (const r of rows) { const k = chave(r); if (!m.has(k) || r.fazenda_id === fazendaId) m.set(k, r); }
     return [...m.values()];
   };
-  const chaveNcm = (r: NcmTributacao) => String(r.ncm ?? "").replace(/\D/g, "");
-  const chaveOp  = (r: OperacaoFiscal) => `${(r.nome ?? "").trim().toLowerCase()}|${(r as { cfop_interno?: string }).cfop_interno ?? ""}`;
+  const chaveNcm = (r: NcmTributacao) => [String(r.ncm ?? "").replace(/\D/g,""),r.vigencia_inicio ?? "",r.vigencia_fim ?? ""].join("|");
+  const chaveOp  = (r: OperacaoFiscal) => `${(r.nome ?? "").trim().toLowerCase()}|${(r as { cfop_interno?: string }).cfop_interno ?? ""}|${r.vigencia_inicio ?? ""}|${r.vigencia_fim ?? ""}`;
   const recarregarNcms = async () => {
-    const { data } = await supabase.from("ncm_tributacoes").select("*").in("fazenda_id", fidsCliente()).order("ncm");
-    if (data) setNcms(umPorChave(data as (NcmTributacao & { fazenda_id?: string })[], chaveNcm));
+    const contexto=contextoAtual;
+    const data=await lerPaginas((a,b)=>supabase.from("ncm_tributacoes").select("*").in("fazenda_id",fidsCliente()).order("ncm").order("id").range(a,b));
+    if(cfgContexto.current===contexto)setNcms(umPorChave(data,chaveNcm));
   };
   const recarregarOps = async () => {
-    const { data } = await supabase.from("operacoes_fiscais").select("*").in("fazenda_id", fidsCliente()).order("nome");
-    if (data) setOperacoes(umPorChave(data as (OperacaoFiscal & { fazenda_id?: string })[], chaveOp));
+    const contexto=contextoAtual;
+    const data=await lerPaginas((a,b)=>supabase.from("operacoes_fiscais").select("*").in("fazenda_id",fidsCliente()).order("nome").order("id").range(a,b));
+    if(cfgContexto.current===contexto)setOperacoes(umPorChave(data,chaveOp));
   };
 
   useEffect(() => {
+    let ativo = true;
+    cfgContexto.current = null; cfgBases.current = {};
+    setCertUploadState({});setExpandedEmitter(null);setIesPorProdutor({});
+    setResolvedContaId(null); setLogoUrl(""); setModalNcm(null); setModalOp(null);
+    setCfgs({}); setNcms([]); setOperacoes([]); setProdutores([]); setEmpresas([]); setContaFazendaIds([]); setOk(null);
     if (!fazendaId) return;
-    supabase.from("configuracoes_modulo").select("modulo, config, fazenda_id").in("fazenda_id", fidsCliente())
-      .then(({ data }) => {
-        if (!data) return;
-        const map: { [mod: string]: CfgModulo } = {};
-        for (const r of umPorChave(data, r => r.modulo as string)) if (r.config) map[r.modulo] = r.config as CfgModulo;
-        setCfgs(prev => ({ ...map, ...prev })); // prev pode já ter os fiscal_* carregados conta-wide (ver efeito abaixo)
-      });
-    recarregarNcms();
-    recarregarOps();
-  }, [fazendaId, contaFazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
+    (async () => {
+      const {data: faz, error: erroFaz} = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single();
+      if (erroFaz) throw erroFaz;
+      const cid = contaId ?? faz?.conta_id;
+      if (!cid) throw new Error("Cliente dos parâmetros não identificado.");
+      const r = await fetch("/api/fazenda/da-conta", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({conta_id:cid,fazenda_id:fazendaId})});
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error ?? json.erro ?? "Não foi possível carregar as fazendas do cliente.");
+      const ids = (json.fazendas ?? []).map((f:{id:string})=>f.id);
+      if (!ids.length) throw new Error("Nenhuma fazenda disponível para este cliente.");
+      const [configs,ncmsDb,opsDb,emps,prodRes] = await Promise.all([
+        lerPaginas((a,b)=>supabase.from("configuracoes_modulo").select("modulo,config,fazenda_id,conta_id,updated_at").or("conta_id.eq."+cid+",fazenda_id.in.("+ids.join(",")+")").order("updated_at").order("modulo").order("fazenda_id").range(a,b)),
+        lerPaginas((a,b)=>supabase.from("ncm_tributacoes").select("*").in("fazenda_id",ids).order("ncm").order("id").range(a,b)),
+        lerPaginas((a,b)=>supabase.from("operacoes_fiscais").select("*").in("fazenda_id",ids).order("nome").order("id").range(a,b)),
+        lerPaginas((a,b)=>supabase.from("empresas").select("*").in("fazenda_id",ids).order("id").range(a,b)),
+        fetch("/api/produtores/listar?conta_id="+cid),
+      ]);
+      const prods = await prodRes.json();
+      if (!prodRes.ok) throw new Error(prods.error ?? "Não foi possível carregar os produtores.");
+      if(!ativo) return;
+      const map:Record<string,CfgModulo> = {};
+      for(const row of configs) {
+        (cfgBases.current[row.modulo] ??= []).push({fazenda_id:row.fazenda_id,conta_id:row.conta_id,config:row.config as CfgModulo});
+        map[row.modulo] = row.config as CfgModulo;
+      }
+      cfgContexto.current = contextoAtual;
+      setResolvedContaId(cid); setContaFazendaIds(ids); setCfgs(map);
+      setNcms(umPorChave(ncmsDb,chaveNcm)); setOperacoes(umPorChave(opsDb,chaveOp));
+      setProdutores(prods.produtores ?? []);
+      const vistos = new Set<string>();
+      setEmpresas(emps.filter(e=>{const chave=(e.cpf_cnpj ?? "").replace(/\D/g,"") || e.id;if(vistos.has(chave))return false;vistos.add(chave);return true;}));
+    })().catch(e=>{if(ativo)alert(e instanceof Error ? e.message : String(e));});
+    return ()=>{ativo=false;};
+  }, [fazendaId,contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Emitentes (produtores/empresas) e config fiscal são do CLIENTE (conta),
-  // não da fazenda ativa — um cliente com 7 fazendas continua tendo os mesmos
-  // produtores/empresas em todas. Filtrar por fazenda_id aqui fazia a aba
-  // inteira de Parâmetros Fiscais "sumir" sempre que a fazenda ativa não fosse
-  // a mesma que originalmente recebeu o cadastro (bug real, reportado em
-  // set/2026 — "sumiram todos os parâmetros fiscais" era só a fazenda ativa
-  // ter trocado pra uma sem produtor/empresa próprios).
-  useEffect(() => {
-    const cid = resolvedContaId ?? contaId;
-    if (!cid) return;
-    fetch("/api/fazenda/da-conta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conta_id: cid, fazenda_id: fazendaId }),
-    })
-      .then(r => r.json())
-      .then(json => setContaFazendaIds((json.fazendas ?? []).map((f: { id: string }) => f.id)))
-      .catch(() => {});
-  }, [resolvedContaId, contaId, fazendaId]);
+  useEffect(()=>{
+    let ativo=true;
+    setTransportadoras([]);setVeiculos([]);setMotoristas([]);setPessoasFrota([]);
+    if(!fazendaId||!contaFazendaIds.length)return;
+    Promise.all([
+      lerPaginas((a,b)=>supabase.from("transportadoras").select("*").in("fazenda_id",contaFazendaIds).order("id").range(a,b)),
+      lerPaginas((a,b)=>supabase.from("veiculos").select("*").in("fazenda_id",contaFazendaIds).order("id").range(a,b)),
+      lerPaginas((a,b)=>supabase.from("motoristas").select("*").in("fazenda_id",contaFazendaIds).order("id").range(a,b)),
+      lerPaginas((a,b)=>supabase.from("pessoas").select("id,nome,cpf_cnpj").in("fazenda_id",contaFazendaIds).order("id").range(a,b)),
+    ]).then(([ts,vs,ms,ps])=>{if(ativo){setTransportadoras(ts);setVeiculos(vs);setMotoristas(ms);setPessoasFrota(ps);}}).catch(e=>{if(ativo)alert(e.message);});
+    return ()=>{ativo=false;};
+  },[fazendaId,contaFazendaIds]);
 
-  useEffect(() => {
-    const cid = resolvedContaId ?? contaId;
-    if (!cid || contaFazendaIds.length === 0) return;
-
-    fetch(`/api/produtores/listar?conta_id=${cid}`)
-      .then(r => r.json())
-      .then(json => setProdutores((json.produtores ?? []) as ProdutorMin[]))
-      .catch(() => {});
-
-    supabase.from("empresas")
-      .select("id, razao_social, nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio, estado, cep, telefone")
-      .in("fazenda_id", contaFazendaIds)
-      .then(({ data }) => {
-        if (!data) return;
-        // Mesma empresa pode estar registrada em mais de uma fazenda (cadastro
-        // legado por fazenda) — dedup por CNPJ, senão por nome
-        const seen = new Set<string>();
-        const dedup = data.filter(e => {
-          const key = (e.cpf_cnpj ?? "").replace(/\D/g, "") || e.nome?.trim().toUpperCase() || e.id;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        setEmpresas(dedup as EmpresaMin[]);
-      });
-
-    // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*, e as chaves
-    // __ie_* granulares) também precisa ser conta-wide pelo mesmo motivo.
-    // Se existir mais de uma linha pro mesmo modulo (aconteceu de verdade —
-    // salvar com a fazenda ativa errada criava uma linha duplicada em vez de
-    // atualizar a certa), fica com a mais recente.
-    supabase.from("configuracoes_modulo")
-      .select("modulo, config, updated_at")
-      .in("fazenda_id", contaFazendaIds)
-      .like("modulo", "fiscal_%")
-      .order("updated_at", { ascending: true })
-      .then(({ data }) => {
-        if (!data) return;
-        const map: { [mod: string]: CfgModulo } = {};
-        data.forEach(r => { if (r.config) map[r.modulo] = r.config as CfgModulo; }); // ascending — último sobrescreve, fica o mais recente
-        setCfgs(prev => ({ ...prev, ...map }));
-      });
-  }, [resolvedContaId, contaId, contaFazendaIds]);
-
-  useEffect(() => {
-    if (!fazendaId) return;
-    supabase.from("transportadoras").select("*").in("fazenda_id", fidsCliente()).then(({ data }) => data && setTransportadoras(data));
-    supabase.from("veiculos").select("*").in("fazenda_id", fidsCliente()).then(({ data }) => data && setVeiculos(data));
-    supabase.from("motoristas").select("*").in("fazenda_id", fidsCliente()).then(({ data }) => data && setMotoristas(data));
-    // Pessoa é do cliente inteiro, não só da fazenda ativa
-    supabase.from("pessoas").select("id, nome, cpf_cnpj").in("fazenda_id", contaFazendaIds.length ? contaFazendaIds : [fazendaId]).order("nome").then(({ data }) => data && setPessoasFrota(data as PessoaMin[]));
-  }, [fazendaId, contaFazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Resolve contaId: usa direto se disponível, senão busca da fazenda (admin Raccolto ou backfill pendente)
-  useEffect(() => {
-    if (contaId) { setResolvedContaId(contaId); return; }
-    if (!fazendaId) return;
-    supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle()
-      .then(({ data }) => { if (data?.conta_id) setResolvedContaId(data.conta_id as string); });
-  }, [contaId, fazendaId]);
-
-  useEffect(() => {
-    if (!resolvedContaId) return;
-    supabase.from("contas").select("logo_url").eq("id", resolvedContaId).maybeSingle()
-      .then(({ data }) => { if (data?.logo_url) setLogoUrl(data.logo_url); });
-  }, [resolvedContaId]);
+  useEffect(()=>{
+    let ativo=true;setLogoUrl(null);
+    if(!resolvedContaId)return;
+    supabase.from("contas").select("logo_url").eq("id",resolvedContaId).maybeSingle().then(({data,error})=>{if(ativo&&!error)setLogoUrl(data?.logo_url ?? null);});
+    return()=>{ativo=false;};
+  },[resolvedContaId]);
 
   // ── Upload de logo via API route (usa service role key para bypass de RLS)
   const uploadLogo = async (file: File) => {
@@ -765,102 +759,44 @@ function ParametrosSistemaContent() {
   // uma IE enquanto outra fazenda estava ativa gravava o registro na fazenda
   // errada — a emissão da fazenda dona da IE nunca achava a config (mesma
   // classe do bug da Muriana Transportes, Seção 258).
-  const salvar = async (modulo: string, fazendaIdAlvo?: string) => {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
-    const fazAlvo = fazendaIdAlvo ?? fazendaId;
-    if (!fazAlvo) return;
-    setSalvando(modulo);
-    // Sem fazenda específica, o parâmetro é do cliente: grava em todas as cópias já existentes dele
-    // (nunca cria uma cópia nova e desencontrada na fazenda de referência). A config por IE segue a mesma regra:
-    // gravar só na fazenda da IE criava outra cópia, e a IE ficava com duas séries (achado real 03/11/2026).
-    let fazendas = [fazAlvo];
-    if ((!fazendaIdAlvo || modulo.includes("__ie_")) && contaFazendaIds.length > 0) {
-      const { data: existentes } = await supabase.from("configuracoes_modulo").select("fazenda_id")
-        .in("fazenda_id", contaFazendaIds).eq("modulo", modulo);
-      if (existentes && existentes.length > 0) fazendas = existentes.map(e => e.fazenda_id as string);
-    }
-    const agora = new Date().toISOString();
-    const { error } = await supabase.from("configuracoes_modulo").upsert(
-      fazendas.map(fid => ({ fazenda_id: fid, modulo, config: cfgs[modulo] ?? {}, updated_at: agora })),
-      { onConflict: "fazenda_id,modulo" }
-    );
-    setSalvando(null);
-    // Sem checar o erro, uma sessão ociosa (JWT expirado, RLS 42501) fazia a tela mostrar "✓ Salvo"
-    // mesmo sem gravar nada — o usuário via o campo preenchido e achava que estava tudo certo, mas
-    // o valor nunca chegava ao banco (achado real: série de NF-e "salva" na tela, ausente no banco).
-    if (error) { alert(`Não foi possível salvar — sua sessão pode ter expirado. Atualize a página e tente de novo.\n\n${error.message}`); return; }
-    setOk(modulo);
-    setTimeout(() => setOk(null), 2500);
+  const persistirConfig = async (modulo:string,newCfg:CfgModulo,fazendaAlvo?:string) => {
+    if(!fazendaId || cfgContexto.current!==contextoAtual) {alert("Aguarde o carregamento dos parâmetros do cliente.");return;}
+    const contexto = contextoAtual;
+    setSalvando(modulo); setOk(null);
+    try {
+      const {data:{session}} = await supabase.auth.getSession();
+      const response = await fetch("/api/fiscal/configurar",{method:"POST",headers:{"Content-Type":"application/json",...(session ? {Authorization:"Bearer "+session.access_token}:{})},
+        body:JSON.stringify({fazenda_id:fazendaAlvo ?? fazendaId,modulo,config:newCfg,base:cfgBases.current[modulo] ?? []})});
+      const json = await response.json();
+      if(!response.ok || !json.ok) throw new Error(json.error ?? "Não foi possível salvar os parâmetros.");
+      if(cfgContexto.current!==contexto) return;
+      cfgBases.current[modulo] = json.linhas;
+      setCfgs(prev=>({...prev,[modulo]:json.linhas[0]?.config ?? newCfg}));
+      setOk(modulo);
+      setTimeout(()=>{if(cfgContexto.current===contexto)setOk(null);},2500);
+    } catch(e){alert(e instanceof Error ? e.message : String(e));}
+    finally{if(cfgContexto.current===contexto)setSalvando(null);}
   };
 
-  // Salva com valor explícito (evita race condition de setState + save imediato)
-  const salvarComValor = async (modulo: string, newCfg: CfgModulo) => {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar com valor)", perigo: false }))) return;
-    if (!fazendaId) return;
-    setSalvando(modulo);
-    setCfgs(prev => ({ ...prev, [modulo]: newCfg }));
-
-    // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*) e os parâmetros de CT-e/MDF-e por
-    // emitente (cte_emp_*, mdfe_emp_*) são da EMPRESA/cliente inteiro, NUNCA da fazenda ativa — mas
-    // a coluna fazenda_id é NOT NULL e o upsert usa onConflict (fazenda_id, modulo). Editar um
-    // emitente com uma fazenda ativa diferente da que criou o registro original inseria uma linha
-    // NOVA e duplicada em vez de atualizar a existente (foi assim que a Muriana terminou com
-    // série/número de CT-e desencontrados, e é a mesma causa do "Ambiente SEFAZ não pega" e do
-    // "número do MDF-e não avança" — achados reais de set/2026).
-    //
-    // Achado real 28/09/2026 (dono pediu a correção de raiz): guardar numa fazenda só não bastava
-    // — quando já existiam VÁRIAS cópias (uma por fazenda em que alguém salvou antes), escolher
-    // "a primeira encontrada" deixava as outras cópias desatualizadas, e alguma leitura no sistema
-    // podia pegar exatamente a cópia velha. Agora grava em TODAS as cópias existentes desse
-    // módulo na conta — ficam sempre idênticas entre si (mesmo efeito prático de uma fonte única,
-    // sem precisar apagar/consolidar linhas às cegas). Só cria uma linha nova (na fazenda ativa)
-    // quando não existe NENHUMA cópia ainda.
-    let fazendasParaSalvar = [fazendaId];
-    if (contaFazendaIds.length > 0) {
-      const { data: existentes } = await supabase
-        .from("configuracoes_modulo")
-        .select("fazenda_id")
-        .in("fazenda_id", contaFazendaIds)
-        .eq("modulo", modulo);
-      if (existentes && existentes.length > 0) fazendasParaSalvar = existentes.map(e => e.fazenda_id as string);
-    }
-    const fazendaIdParaSalvar = fazendasParaSalvar[0];
-
-    // O formulário pode estar com uma cópia velha da config (ex.: depois de enviar o certificado,
-    // a tela guardava o caminho mas não a senha). Salvar a cópia velha por cima apagava a senha do
-    // certificado e a NF-e passava a falhar com "Certificado A1 não configurado". Por isso a senha e
-    // o caminho já gravados no banco só são trocados se a tela trouxer um valor novo.
-    let cfgFinal = newCfg;
-    if (modulo.startsWith("fiscal_")) {
-      const { data: atual } = await supabase.from("configuracoes_modulo").select("config")
-        .eq("fazenda_id", fazendaIdParaSalvar).eq("modulo", modulo).maybeSingle();
-      const cfgBanco = (atual?.config ?? {}) as Record<string, unknown>;
-      const herdar: Record<string, unknown> = {};
-      for (const k of ["cert_a1_senha", "cert_a1_path", "cert_a1_vencimento"]) {
-        if (!(newCfg as Record<string, unknown>)[k] && cfgBanco[k]) herdar[k] = cfgBanco[k];
-      }
-      if (Object.keys(herdar).length > 0) {
-        cfgFinal = { ...newCfg, ...herdar } as CfgModulo;
-        setCfgs(prev => ({ ...prev, [modulo]: cfgFinal }));
-      }
-    }
-    const linhas = fazendasParaSalvar.map(fid => ({ fazenda_id: fid, modulo, config: cfgFinal, updated_at: new Date().toISOString() }));
-    const { error } = await supabase.from("configuracoes_modulo").upsert(linhas, { onConflict: "fazenda_id,modulo" });
-    setSalvando(null);
-    // Mesmo motivo do salvar() acima — sem isso, sessão ociosa fazia a tela mostrar "✓ Salvo" com
-    // nada gravado no banco (é assim que a série/número de NF-e por IE "sumia").
-    if (error) { alert(`Não foi possível salvar — sua sessão pode ter expirado. Atualize a página e tente de novo.\n\n${error.message}`); return; }
-    setOk(modulo);
-    setTimeout(() => setOk(null), 2500);
+  const salvar = async (modulo:string,fazendaIdAlvo?:string) => {
+    if (!(await confirmarAcao({titulo:"Confirmar ação",mensagem:"Salvar os parâmetros conferidos?",perigo:false}))) return;
+    await persistirConfig(modulo,cfgs[modulo] ?? {},fazendaIdAlvo);
   };
 
+  const salvarComValor = async (modulo:string,newCfg:CfgModulo) => {
+    if (!(await confirmarAcao({titulo:"Confirmar ação",mensagem:"Salvar os parâmetros conferidos?",perigo:false}))) return;
+    await persistirConfig(modulo,newCfg);
+  };
+
+  const cepSeq=useRef<Record<string,number>>({});
   const buscarCep = async (cep: string, moduloKey: string) => {
+    const contexto=cfgContexto.current;const sequencia=(cepSeq.current[moduloKey] ?? 0)+1;cepSeq.current[moduloKey]=sequencia;
     const cleaned = cep.replace(/\D/g, "");
     if (cleaned.length !== 8) return;
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cleaned}/json/`);
       const data = await res.json();
-      if (data.erro) return;
+      if(data.erro||cfgContexto.current!==contexto||cepSeq.current[moduloKey]!==sequencia)return;
       setCfgs(prev => ({
         ...prev,
         [moduloKey]: {
@@ -877,62 +813,63 @@ function ParametrosSistemaContent() {
   };
 
   const salvarNcm = async () => {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar ncm)", perigo: false }))) return;
-    if (!modalNcm || !fazendaId) return;
-    const payload = { ...NCM_MODAL_VAZIO, ...modalNcm, fazenda_id: fazendaId };
-    if (modalNcm.id) {
-      await supabase.from("ncm_tributacoes").update(payload).eq("id", modalNcm.id);
-    } else {
-      await supabase.from("ncm_tributacoes").insert(payload);
-    }
-    await recarregarNcms();
-    setModalNcm(null);
+    const contexto=contextoAtual;
+    if (!(await confirmarAcao({titulo:"Confirmar ação",mensagem:"Salvar os dados conferidos?",perigo:false}))) return;
+    if(!modalNcm || !fazendaId || cfgContexto.current!==contexto)return;
+    try {
+      await salvarCadastroFiscal(supabase,"ncm_tributacoes",{...NCM_MODAL_VAZIO,...modalNcm},fazendaId);
+      await recarregarNcms(); if(cfgContexto.current===contexto)setModalNcm(null);
+    } catch(e){alert((e as {message?:string}).message ?? String(e));}
   };
 
-  const excluirNcm = async (id: string) => {
-    if (!confirm("Excluir esta configuração de NCM?")) return;
-    await supabase.from("ncm_tributacoes").delete().eq("id", id);
-    setNcms(prev => prev.filter(n => n.id !== id));
+  const excluirNcm = async (id:string) => {
+    const contexto=contextoAtual;
+    if(!confirm("Excluir este cadastro fiscal?"))return;
+    try{
+      const {data,error}=await supabase.from("ncm_tributacoes").delete().eq("id",id).eq("versao",ncms.find(n=>n.id===id)?.versao ?? 0).select("id").maybeSingle();
+      if(error)throw error;if(!data)throw new Error("O registro não foi excluído.");
+      if(cfgContexto.current===contexto)setNcms(prev=>prev.filter(v=>v.id!==id));
+    }catch(e){alert((e as {message?:string}).message ?? String(e));}
   };
 
   const carregarPresetsMT = async () => {
-    if (!fazendaId) return;
+    if(!fazendaId||cfgContexto.current!==contextoAtual)return;
     setCarregandoPresets(true);
-    for (const preset of NCM_PRESETS_MT) {
-      const exists = ncms.find(n => n.ncm === preset.ncm);
-      if (!exists) {
-        await supabase.from("ncm_tributacoes").insert({ ...preset, fazenda_id: fazendaId });
-      }
-    }
-    await recarregarNcms();
-    setCarregandoPresets(false);
+    try{
+      const novos=NCM_PRESETS_MT.filter(p=>!ncms.some(n=>n.ncm===p.ncm)).map(p=>({...p,fazenda_id:fazendaId}));
+      if(novos.length){const {error}=await supabase.from("ncm_tributacoes").insert(novos);if(error)throw error;}
+      await recarregarNcms();
+    }catch(e){alert((e as {message?:string}).message ?? String(e));}finally{setCarregandoPresets(false);}
   };
 
   const salvarOp = async () => {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar op)", perigo: false }))) return;
-    if (!modalOp || !fazendaId) return;
-    const payload = { ...OP_MODAL_VAZIO, ...modalOp, fazenda_id: fazendaId };
-    if (modalOp.id) await supabase.from("operacoes_fiscais").update(payload).eq("id", modalOp.id);
-    else await supabase.from("operacoes_fiscais").insert(payload);
-    await recarregarOps();
-    setModalOp(null);
+    const contexto=contextoAtual;
+    if (!(await confirmarAcao({titulo:"Confirmar ação",mensagem:"Salvar os dados conferidos?",perigo:false}))) return;
+    if(!modalOp || !fazendaId || cfgContexto.current!==contexto)return;
+    try {
+      await salvarCadastroFiscal(supabase,"operacoes_fiscais",{...OP_MODAL_VAZIO,...modalOp},fazendaId);
+      await recarregarOps(); if(cfgContexto.current===contexto)setModalOp(null);
+    } catch(e){alert((e as {message?:string}).message ?? String(e));}
   };
 
-  const excluirOp = async (id: string) => {
-    if (!confirm("Excluir esta operação fiscal?")) return;
-    await supabase.from("operacoes_fiscais").delete().eq("id", id);
-    setOperacoes(prev => prev.filter(o => o.id !== id));
+  const excluirOp = async (id:string) => {
+    const contexto=contextoAtual;
+    if(!confirm("Excluir este cadastro fiscal?"))return;
+    try{
+      const {data,error}=await supabase.from("operacoes_fiscais").delete().eq("id",id).eq("versao",operacoes.find(n=>n.id===id)?.versao ?? 0).select("id").maybeSingle();
+      if(error)throw error;if(!data)throw new Error("O registro não foi excluído.");
+      if(cfgContexto.current===contexto)setOperacoes(prev=>prev.filter(v=>v.id!==id));
+    }catch(e){alert((e as {message?:string}).message ?? String(e));}
   };
 
   const carregarOperacoesPresets = async () => {
-    if (!fazendaId) return;
+    if(!fazendaId||cfgContexto.current!==contextoAtual)return;
     setCarregandoOps(true);
-    for (const preset of OPERACOES_PRESETS) {
-      const exists = operacoes.find(o => o.cfop_interno === preset.cfop_interno && o.nome === preset.nome);
-      if (!exists) await supabase.from("operacoes_fiscais").insert({ ...preset, fazenda_id: fazendaId });
-    }
-    await recarregarOps();
-    setCarregandoOps(false);
+    try{
+      const novos=OPERACOES_PRESETS.filter(p=>!operacoes.some(o=>o.cfop_interno===p.cfop_interno&&o.nome===p.nome)).map(p=>({...p,fazenda_id:fazendaId}));
+      if(novos.length){const {error}=await supabase.from("operacoes_fiscais").insert(novos);if(error)throw error;}
+      await recarregarOps();
+    }catch(e){alert((e as {message?:string}).message ?? String(e));}finally{setCarregandoOps(false);}
   };
 
   // ── Aba Operações Fiscais ──────────────────────────────────────────────────
@@ -1478,9 +1415,9 @@ function ParametrosSistemaContent() {
                         <div style={{ marginBottom: 14, padding: "10px 14px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
                           <span style={{ color: "#166534", flex: 1 }}>Certificado cadastrado: <code>{certCorrectPath}</code></span>
                           <OperationalButton data-arato-button="primary"
-                            onClick={() => salvarComValor(emitter.moduloKey, { ...(cfgs[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: certCorrectPath })}
+                            disabled={getCertState(emitter.moduloKey).loading} onClick={()=>revalidarCertificado(emitter.moduloKey,emitter.cpf_cnpj ?? "",certCorrectPath)}
                             style={{ padding: "4px 14px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                            ✓ Usar caminho correto
+                            Revalidar vínculo do certificado
                           </OperationalButton>
                         </div>
                       )}
@@ -1579,7 +1516,7 @@ function ParametrosSistemaContent() {
                               />
                               Funrural retido na fonte pelo adquirente
                             </label>
-                            <span style={{ fontSize: 11, color: "#888", fontStyle: "italic" }}>Art. 25, Lei 8.212/1991 — aplica-se a produtor rural PF (CPF)</span>
+                            <span style={{ fontSize: 11, color: "#888", fontStyle: "italic" }}>Texto complementar para produtor rural PF. O cálculo e a retenção financeira devem ser conferidos na operação.</span>
                           </div>
                           {c.funrural_retido === "true" && (
                             <div>
@@ -2496,6 +2433,8 @@ function ParametrosSistemaContent() {
 
             {/* Identificação */}
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+              {campo("Vigência de", inp({ type:"date", value:modalOp.vigencia_inicio ?? "", onChange:e=>setModalOp(p=>({...p!,vigencia_inicio:e.target.value || null})) }))}
+              {campo("Vigência até", inp({ type:"date", value:modalOp.vigencia_fim ?? "", onChange:e=>setModalOp(p=>({...p!,vigencia_fim:e.target.value || null})) }))}
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 {campo("Nome da Operação *", inp({ value: modalOp.nome ?? "", placeholder: "Ex: Venda para Industrialização", onChange: e => setModalOp(p => ({ ...p!, nome: e.target.value })) }))}
               </div>
@@ -2511,7 +2450,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interno", sel({ value: modalOp.icms_cst_interno ?? "051", onChange: e => setModalOp(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("CST Interestadual", sel({ value: modalOp.icms_cst_externo ?? "020", onChange: e => setModalOp(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.icms_aliq ?? 12, onChange: e => setModalOp(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
-              {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalOp.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
+              {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalOp.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: e.target.value === "" ? 100 : Number(e.target.value) })) }))}
               {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
@@ -2525,6 +2464,8 @@ function ParametrosSistemaContent() {
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("IBS / CBS — Reforma Tributária")}</div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+              {campo("CST IBS/CBS (opcional)",inp({value:modalOp.ibs_cbs_cst ?? "",maxLength:3,placeholder:"Herdar do NCM",onChange:e=>setModalOp(p=>({...p!,ibs_cbs_cst:e.target.value.replace(/\D/g,"") || null}))}))}
+              {campo("cClassTrib (opcional)",inp({value:modalOp.ibs_cbs_cclasstrib ?? "",maxLength:6,placeholder:"Herdar do NCM",onChange:e=>setModalOp(p=>({...p!,ibs_cbs_cclasstrib:e.target.value.replace(/\D/g,"") || null}))}))}
               {campo("Imunidade (exportação)", sel({ value: modalOp.ibs_cbs_imune ? "sim" : "nao", onChange: e => setModalOp(p => ({ ...p!, ibs_cbs_imune: e.target.value === "sim", ibs_cbs_reducao_pct: e.target.value === "sim" ? 100 : (p?.ibs_cbs_reducao_pct ?? 0) })), children: [<option key="nao" value="nao">Não</option>, <option key="sim" value="sim">Sim — Art. 149-B CF (exportação)</option>] as React.ReactNode }))}
               {campo("Redução %", sel({ value: String(modalOp.ibs_cbs_reducao_pct ?? 0), onChange: e => setModalOp(p => ({ ...p!, ibs_cbs_reducao_pct: parseFloat(e.target.value) })), children: [["0","0% — sem redução"],["60","60% — produção rural"],["100","100% — imune/zero"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Status", sel({ value: modalOp.ativa === false ? "inativa" : "ativa", onChange: e => setModalOp(p => ({ ...p!, ativa: e.target.value === "ativa" })), children: [<option key="ativa" value="ativa">Ativa</option>, <option key="inativa" value="inativa">Inativa</option>] as React.ReactNode }))}
@@ -2533,7 +2474,7 @@ function ParametrosSistemaContent() {
             <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("Texto Complementar (infCpl) — template")}</div>
             <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
-                Use <code>[CONTRATO]</code>, <code>[RE_NUMERO]</code>, <code>[DUE_NUMERO]</code> como variáveis — o sistema substitui ao emitir a NF-e.
+                Use <code>[CONTRATO]</code>, <code>[RE_NUMERO]</code>, <code>[DUE_NUMERO]</code> como variáveis — preencha os campos correspondentes ao escolher a operação na emissão.
               </div>
               {campo("Template infCpl",
                 txta({ rows: 4, value: modalOp.inf_cpl_template ?? "", onChange: e => setModalOp(p => ({ ...p!, inf_cpl_template: e.target.value })), placeholder: "Texto legal que aparece em todas as NF-e com esta operação..." })
@@ -2558,6 +2499,8 @@ function ParametrosSistemaContent() {
             </div>
 
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+              {campo("Vigência de", inp({ type:"date", value:modalNcm.vigencia_inicio ?? "", onChange:e=>setModalNcm(p=>({...p!,vigencia_inicio:e.target.value || null})) }))}
+              {campo("Vigência até", inp({ type:"date", value:modalNcm.vigencia_fim ?? "", onChange:e=>setModalNcm(p=>({...p!,vigencia_fim:e.target.value || null})) }))}
               {campo("NCM (8 dígitos) *", inp({ value: modalNcm.ncm ?? "", maxLength: 8, placeholder: "12019000", onChange: e => setModalNcm(p => ({ ...p!, ncm: e.target.value.replace(/\D/g,"") })) }))}
               <div data-arato-dialog-body="true" style={{ gridColumn: "2 / 4" }}>
                 {campo("Descrição *", inp({ value: modalNcm.descricao ?? "", placeholder: "Soja em grão", onChange: e => setModalNcm(p => ({ ...p!, descricao: e.target.value })) }))}
@@ -2569,7 +2512,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interno", sel({ value: modalNcm.icms_cst_interno ?? "051", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.icms_aliq ?? 12, onChange: e => setModalNcm(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
-              {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalNcm.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
+              {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalNcm.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: e.target.value === "" ? 100 : Number(e.target.value) })) }))}
               {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 

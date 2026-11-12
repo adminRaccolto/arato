@@ -1,240 +1,14 @@
 "use client";
 import { OperationalButton, OperationalHeading } from "../../../components/OperationalUI";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import type { ConfigContabilidade, Lancamento, OperacaoGerencial } from "../../../lib/supabase";
 
-// ─────────────────────────────────────────────────────────────
-// Helpers de formatação para SPED
-// ─────────────────────────────────────────────────────────────
-function dtSped(s: string): string {
-  // "YYYY-MM-DD" → "DDMMYYYY"
-  if (!s) return "";
-  const [y, m, d] = s.split("-");
-  return `${d}${m}${y}`;
-}
+import { lerPaginas } from "../../../lib/paginar";
+import { listarOperacoesGerenciais } from "../../../lib/db";
+import { prepararContabilAuxiliar,csvContabilAuxiliar,type EventoContabil } from "../../../lib/fiscal/contabil-auxiliar";
 
-function fmtValorSped(v: number): string {
-  // SPED usa ponto decimal, 2 casas
-  return v.toFixed(2);
-}
-
-function limpar(s: string | undefined): string {
-  return (s ?? "").replace(/[|]/g, " ").trim();
-}
-
-function seq(n: number): string {
-  return String(n).padStart(9, "0");
-}
-
-// ─────────────────────────────────────────────────────────────
-// Tipos internos
-// ─────────────────────────────────────────────────────────────
-interface LancamentoContabil {
-  id: string;
-  data: string;
-  descricao: string;
-  valor: number;
-  conta_debito: string;
-  conta_credito: string;
-  entidade: "pf" | "pj";
-  vinculo: string;
-  doc_ref?: string;
-}
-
-interface ContaResumo {
-  codigo: string;
-  descricao: string;
-  nivel: number;
-  tipo: "S" | "A"; // S=Sintética, A=Analítica
-  natureza: "D" | "C"; // D=Devedora, C=Credora
-}
-
-// ─────────────────────────────────────────────────────────────
-// Geração do arquivo SPED ECD (Leiaute 10)
-// ─────────────────────────────────────────────────────────────
-function gerarSpedEcd(
-  cfg: ConfigContabilidade,
-  lancamentos: LancamentoContabil[],
-  contas: ContaResumo[],
-  anoExercicio: string,
-): string {
-  const dtIni = `01/01/${anoExercicio}`;
-  const dtFin = `31/12/${anoExercicio}`;
-  const dtIniSped = `0101${anoExercicio}`;
-  const dtFinSped = `3112${anoExercicio}`;
-  const linhas: string[] = [];
-  let nrSeq = 1;
-
-  const L = (...campos: string[]) => {
-    linhas.push("|" + campos.join("|") + "|");
-    nrSeq++;
-  };
-
-  // ─── Bloco 0 — Abertura ────────────────────────────────────
-  L("0000",
-    "10",             // leiaute
-    dtIniSped,
-    dtFinSped,
-    limpar(cfg.nome_empresarial),
-    cfg.entidade === "pj" ? limpar(cfg.cnpj ?? "") : "",
-    cfg.entidade === "pf" ? limpar(cfg.cpf ?? "") : "",
-    limpar(cfg.uf ?? "MT"),
-    limpar(cfg.ie ?? ""),
-    limpar(cfg.cod_municipio_ibge ?? ""),
-    limpar(cfg.nire ?? ""),
-    limpar(cfg.ind_sit_ini ?? "0"),
-    "",               // ind_sit_esp
-  );
-
-  // 0001 — indicador de movimento (1 = sem dados, 0 = com dados)
-  L("0001", lancamentos.length === 0 ? "1" : "0");
-
-  // 0007 — participantes (SCP) — opcional, omitido
-  // 0035 — identificação da SCP — opcional, omitido
-
-  // 0150 — participantes (emitentes/destinatários) — opcional; gera um registro para a própria entidade
-  L("0150",
-    "0001",   // cod_part
-    limpar(cfg.nome_empresarial),
-    "1058",   // cod_pais: Brasil
-    cfg.entidade === "pj" ? limpar(cfg.cnpj ?? "") : "",
-    cfg.entidade === "pf" ? limpar(cfg.cpf ?? "") : "",
-    limpar(cfg.ie ?? ""),
-    limpar(cfg.cod_municipio_ibge ?? ""),
-    "",       // suframa
-    "",       // ddd
-    "",       // tel
-  );
-
-  // 0990 — encerramento bloco 0
-  L("0990", String(nrSeq));
-  nrSeq = 1;
-
-  // ─── Bloco I — Lançamentos ────────────────────────────────
-  L("I001", lancamentos.length === 0 ? "1" : "0");
-
-  // I010 — identificação do livro
-  L("I010",
-    limpar(cfg.tipo_escrituracao ?? "G"),   // ident_med
-    "S",                                    // ind_ccusto: S=Sim
-    limpar(cfg.nome_livro ?? "Livro Diário"),
-    "",                                     // cod_agl
-  );
-
-  // I012 — identificação das demonstrações contábeis
-  L("I012",
-    limpar(cfg.nr_livro ?? "1"),   // num_ord
-    dtIniSped,
-    limpar(cfg.nome_livro ?? "Livro Diário"),
-    "",   // hash_ord
-  );
-
-  // I020 — identificação de documentos auxiliares
-  // Omitido para simplificar — a validação aceita sem ele
-
-  // I050 — plano de contas
-  // Gera uma linha por conta encontrada nos lançamentos
-  const contasUsadas = new Map<string, ContaResumo>();
-  for (const c of contas) contasUsadas.set(c.codigo, c);
-
-  // Adiciona contas sintéticas derivadas (a partir dos códigos dos lançamentos)
-  for (const lc of lancamentos) {
-    for (const cod of [lc.conta_debito, lc.conta_credito]) {
-      if (!cod || contasUsadas.has(cod)) continue;
-      // Infere nível pelo número de segmentos
-      const partes = cod.split(".");
-      contasUsadas.set(cod, {
-        codigo: cod,
-        descricao: `Conta ${cod}`,
-        nivel: partes.length,
-        tipo: partes.length >= 4 ? "A" : "S",
-        natureza: partes[0] <= "2" ? "D" : "C",
-      });
-    }
-  }
-
-  for (const [, conta] of contasUsadas) {
-    L("I050",
-      limpar(conta.codigo),  // cod_cta
-      "",                    // ccus_plano
-      "",                    // cod_plano (padrão BRGAAP ou IFRS — deixar em branco)
-      "S",                   // ind_eng: S=Sim (escrituracao)
-      limpar(conta.descricao),
-      String(conta.nivel),
-      "",                    // cod_cta_sup
-      "",                    // ind_ctareferencialntercado
-      conta.tipo,            // ind_cta: A=Analítica, S=Sintética
-      "",                    // vl_cta_ini (saldo inicial)
-      "",                    // dt_alt
-    );
-  }
-
-  // I100 — saldo inicial/final das contas (simplificado — omitido pois requer cálculo de balanço)
-  // I150 — cabeçalho dos lançamentos contábeis
-  // I155 — partidas do lançamento
-
-  for (const lc of lancamentos) {
-    // I150 — cabeçalho
-    L("I150",
-      limpar(lc.id.substring(0, 20)),   // num_lcto
-      dtSped(lc.data),
-      fmtValorSped(lc.valor),
-      "",                                // ind_lcto (reservado)
-    );
-    // I155 — partida débito
-    L("I155",
-      "1",                              // num_li_lcto
-      limpar(lc.conta_debito),          // cod_cta
-      "",                               // cod_ccus
-      fmtValorSped(lc.valor),           // vl_dc
-      "D",                              // ind_dc
-      "",                               // num_arql
-      limpar(lc.descricao),             // ds_doc
-    );
-    // I155 — partida crédito
-    L("I155",
-      "2",
-      limpar(lc.conta_credito),
-      "",
-      fmtValorSped(lc.valor),
-      "C",
-      "",
-      limpar(lc.descricao),
-    );
-  }
-
-  // I990 — encerramento bloco I
-  L("I990", String(nrSeq));
-  nrSeq = 1;
-
-  // ─── Bloco J — Demonstrações (simplificado) ───────────────
-  L("J001", "1");  // sem demonstrações neste arquivo — apenas marcador
-  L("J990", String(nrSeq));
-  nrSeq = 1;
-
-  // ─── Bloco 9 — Encerramento ────────────────────────────────
-  L("9001", "0");
-  // 9900 — quantidade de registros por tipo
-  const contagem = new Map<string, number>();
-  for (const linha of linhas) {
-    const reg = linha.split("|")[1];
-    contagem.set(reg, (contagem.get(reg) ?? 0) + 1);
-  }
-  for (const [reg, qtd] of contagem) {
-    L("9900", reg, String(qtd));
-  }
-  L("9990", String(nrSeq));
-  L("9999", String(linhas.length + 1));
-
-  return linhas.join("\r\n") + "\r\n";
-}
-
-// ─────────────────────────────────────────────────────────────
-// Componente
-// ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
 const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "20px 24px", marginBottom: 20 };
@@ -243,7 +17,7 @@ export default function SpedContabilPage() {
   const { fazendaId, fazendaIds } = useAuth();
   const [entidade, setEntidade] = useState<"pf" | "pj">("pf");
   const [anoExercicio, setAnoExercicio] = useState(new Date().getFullYear() - 1 + "");
-  const [vinculos, setVinculos] = useState<string[]>(["rural", "pessoa_fisica", "investimento"]);
+  const [vinculos, setVinculos] = useState<string[]>(["rural", "pessoa_fisica", "investimento", "nao_tributavel", "sem_vinculo"]);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<{ total: number; erros: string[] } | null>(null);
   const [err, setErr] = useState("");
@@ -254,132 +28,32 @@ export default function SpedContabilPage() {
     );
   }
 
-  const gerar = useCallback(async (baixar: boolean) => {
-    if (!fazendaId) return;
-    setLoading(true);
-    setErr("");
-    setPreview(null);
-
+  const contexto = `${fazendaIds.join(",")}:${entidade}:${anoExercicio}:${vinculos.join(",")}`;
+  const contextoRef=useRef(contexto);contextoRef.current=contexto;
+  useEffect(()=>{setPreview(null);setErr("");},[contexto]);
+  const gerar=useCallback(async(baixar:boolean)=>{
+    if(!fazendaId||!fazendaIds.length)return;
+    const atual=contexto;setLoading(true);setErr("");setPreview(null);
     try {
-      // 1. Busca configuração contábil da entidade
-      const { data: cfgData } = await supabase
-        .from("config_contabilidade")
-        .select("*")
-        .in("fazenda_id", fazendaIds)
-        .eq("entidade", entidade)
-        .single();
-
-      if (!cfgData) {
-        setErr(`Configure os dados da entidade ${entidade.toUpperCase()} em Configurações → Configuração Contábil antes de gerar o SPED.`);
-        setLoading(false);
-        return;
-      }
-
-      const cfg = cfgData as ConfigContabilidade;
-
-      // 2. Busca lançamentos do exercício com vinculo_atividade filtrado
-      const dtIni = `${anoExercicio}-01-01`;
-      const dtFin = `${anoExercicio}-12-31`;
-
-      let query = supabase
-        .from("lancamentos")
-        .select("*")
-        .in("fazenda_id", fazendaIds)
-        .eq("entidade_contabil", entidade)
-        .gte("data_lancamento", dtIni)
-        .lte("data_lancamento", dtFin)
-        .neq("status", "em_aberto"); // apenas liquidados
-
-      if (vinculos.length > 0) {
-        query = query.in("vinculo_atividade", vinculos);
-      }
-
-      const { data: lancsData } = await query;
-      const lancs = (lancsData ?? []) as Lancamento[];
-
-      // 3. Busca operações gerenciais (plano de contas) para obter conta_debito/conta_credito
-      const { data: opsData } = await supabase
-        .from("operacoes_gerenciais")
-        .select("id, classificacao, descricao, conta_debito, conta_credito, tipo")
-        .in("fazenda_id", fazendaIds);
-
-      const ops = (opsData ?? []) as Pick<OperacaoGerencial, "id" | "classificacao" | "descricao" | "conta_debito" | "conta_credito" | "tipo">[];
-      const opMap = new Map(ops.map(o => [o.id, o]));
-
-      const erros: string[] = [];
-      const lancContabeis: LancamentoContabil[] = [];
-      const contasSet = new Map<string, ContaResumo>();
-
-      for (const lc of lancs) {
-        if (!lc.operacao_gerencial_id) {
-          erros.push(`Lançamento "${lc.descricao}" (${lc.data_lancamento}) sem operação gerencial — ignorado.`);
-          continue;
-        }
-        const op = opMap.get(lc.operacao_gerencial_id);
-        if (!op) {
-          erros.push(`Operação gerencial não encontrada para: "${lc.descricao}" — ignorado.`);
-          continue;
-        }
-        if (!op.conta_debito || !op.conta_credito) {
-          erros.push(`Operação "${op.descricao}" sem contas contábeis configuradas — configure em Operações Gerenciais.`);
-          continue;
-        }
-
-        lancContabeis.push({
-          id: lc.id,
-          data: lc.data_baixa ?? lc.data_lancamento,
-          descricao: lc.descricao,
-          valor: lc.valor_pago ?? lc.valor,
-          conta_debito: op.conta_debito,
-          conta_credito: op.conta_credito,
-          entidade,
-          vinculo: lc.vinculo_atividade ?? "rural",
-          doc_ref: lc.nfe_numero,
-        });
-
-        // Registra contas usadas
-        for (const [cod, tipo] of [[op.conta_debito, "D"], [op.conta_credito, "C"]] as [string, "D"|"C"][]) {
-          if (!contasSet.has(cod)) {
-            const partes = cod.split(".");
-            contasSet.set(cod, {
-              codigo: cod,
-              descricao: op.descricao,
-              nivel: partes.length,
-              tipo: partes.length >= 4 ? "A" : "S",
-              natureza: tipo,
-            });
-          }
-        }
-      }
-
-      setPreview({ total: lancContabeis.length, erros });
-
-      if (!baixar) {
-        setLoading(false);
-        return;
-      }
-
-      // 4. Gera o arquivo
-      const conteudo = gerarSpedEcd(cfg, lancContabeis, [...contasSet.values()], anoExercicio);
-
-      // 5. Download
-      const blob = new Blob([conteudo], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const nomeEntidade = (cfg.nome_empresarial || entidade.toUpperCase()).substring(0, 20).replace(/\s+/g, "_");
-      a.href = url;
-      a.download = `SPED_ECD_${nomeEntidade}_${anoExercicio}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Erro ao gerar SPED ECD");
-    } finally {
-      setLoading(false);
-    }
-  }, [fazendaId, entidade, anoExercicio, vinculos, fazendaIds]);
+      const [pf,pj,ops]=await Promise.all([
+        lerPaginas((a,b)=>supabase.from("lancamentos").select("*").in("fazenda_id",fazendaIds).eq("entidade_contabil",entidade).in("status",["baixado","pago","parcial"]).order("id").range(a,b)),
+        entidade==="pj"?lerPaginas((a,b)=>supabase.from("empresa_lancamentos").select("*").in("fazenda_id",fazendaIds).in("status",["baixado","pago","parcial"]).order("id").range(a,b)):Promise.resolve([]),
+        listarOperacoesGerenciais(fazendaId),
+      ]);
+      const eventos=[...pf.map(e=>({...e,origem:"lancamentos"})),...pj.map(e=>({...e,origem:"empresa_lancamentos"}))] as EventoContabil[];
+      const linhas=prepararContabilAuxiliar(eventos.filter(e=>vinculos.includes(e.vinculo_atividade || "sem_vinculo")),ops,anoExercicio);
+      if(contextoRef.current!==atual)return;
+      const erros=linhas.filter(l=>l.pendencias.length).map(l=>`${l.origem}/${l.id}: ${l.pendencias.join("; ")}`);
+      setPreview({total:linhas.length,erros});
+      if(!baixar||!linhas.length)return;
+      const url=URL.createObjectURL(new Blob([csvContabilAuxiliar(linhas)],{type:"text/csv;charset=utf-8"}));
+      const a=document.createElement("a");a.href=url;a.download=`AUXILIAR_CONTABIL_${entidade.toUpperCase()}_${anoExercicio}.csv`;a.click();URL.revokeObjectURL(url);
+    }catch(e){if(contextoRef.current===atual)setErr(e instanceof Error?e.message:String(e));}
+    finally{setLoading(false);}
+  },[fazendaId,fazendaIds,entidade,anoExercicio,vinculos,contexto]);
 
   const VINCULOS_DISPONIVEIS = [
+    { id: "sem_vinculo", label:"Sem vínculo definido", cor:"var(--text-3)",bg:"var(--bg-page)" },
     { id: "rural",           label: "Atividade Rural",       cor: "#16A34A", bg: "#E8F5E9" },
     { id: "pessoa_fisica",   label: "Pessoa Física (não rural)", cor: "#2A2A2A", bg: "#E8E8E8" },
     { id: "investimento",    label: "Investimentos",         cor: "#C9921B", bg: "#FBF3E0" },
@@ -394,7 +68,7 @@ export default function SpedContabilPage() {
         <div style={{ marginBottom: 24 }}>
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
+              <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>Preparação contábil</h1>
             </div>
             <a
               href="/configuracoes/contabilidade"
@@ -407,10 +81,8 @@ export default function SpedContabilPage() {
 
         {/* Como funciona */}
         <div style={{ background: "#E8E8E8", border: "0.5px solid #A8CDE8", borderRadius: 10, padding: "14px 18px", marginBottom: 24, fontSize: 13, color: "#0D0D0D" }}>
-          <strong>Como funciona:</strong> os lançamentos contábeis são derivados automaticamente dos lançamentos gerenciais.
-          Cada operação gerencial tem <em>conta_débito</em> e <em>conta_crédito</em> configuradas — essa é a ponte.
-          Configure as contas em{" "}
-          <a href="/cadastros?tab=operacoes_gerenciais" style={{ color: "#2A2A2A" }}>Cadastros → Operações Gerenciais</a>.
+          <strong>Exportação auxiliar ao contador:</strong> reúne pagamentos e recebimentos por data da baixa, com as contas sugeridas pelas operações gerenciais.
+          O CSV mantém as pendências identificadas para conferência. A ECD exige escrituração por competência, saldos e demonstrações que devem ser preparados no sistema contábil.
         </div>
 
         {/* Parâmetros */}
@@ -470,8 +142,8 @@ export default function SpedContabilPage() {
               ))}
             </div>
             <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
-              Selecione quais vínculos devem integrar este livro.
-              Lançamentos sem vínculo definido <strong>não serão incluídos</strong>.
+              Selecione quais vínculos devem integrar a conferência.
+              Use “Sem vínculo definido” para conferir também os lançamentos sem classificação.
             </p>
           </div>
         </div>
@@ -485,17 +157,17 @@ export default function SpedContabilPage() {
             <div data-arato-kpis="true" style={{ display: "flex", gap: 20, marginBottom: 16 }}>
               <div data-arato-statistic="display" style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#16A34A" }}>{preview.total}</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)" }}>lançamentos contábeis</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>eventos para conferência</div>
               </div>
               <div data-arato-statistic="display" style={{ background: preview.erros.length > 0 ? "#FCEBEB" : "#E8F5E9", border: `0.5px solid ${preview.erros.length > 0 ? "#E24B4A40" : "#16A34A40"}`, borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: preview.erros.length > 0 ? "#E24B4A" : "#16A34A" }}>{preview.erros.length}</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)" }}>ignorados (sem conta)</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>eventos com pendências</div>
               </div>
             </div>
 
             {preview.erros.length > 0 && (
               <div style={{ background: "#FFF8E8", border: "0.5px solid #C9921B50", borderRadius: 8, padding: "12px 16px" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#7B4A00", marginBottom: 8 }}>Lançamentos ignorados — configure a conta contábil nas Operações Gerenciais:</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#7B4A00", marginBottom: 8 }}>Pendências mantidas no arquivo para revisão:</div>
                 <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 160, overflowY: "auto" as const }}>
                   {preview.erros.slice(0, 20).map((e, i) => (
                     <li key={i} style={{ fontSize: 12, color: "#7B4A00", marginBottom: 4 }}>{e}</li>
@@ -537,19 +209,17 @@ export default function SpedContabilPage() {
               color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14,
             }}
           >
-            {loading ? "Gerando..." : "Baixar SPED ECD (.txt)"}
+            {loading ? "Gerando..." : "Baixar auxiliar contábil (.csv)"}
           </OperationalButton>
         </div>
 
         {/* Nota rodapé */}
         <div style={{ marginTop: 32, padding: "14px 18px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", fontSize: 12, color: "#666", lineHeight: 1.6 }}>
-          <strong style={{ color: "#111111" }}>Sobre o arquivo gerado:</strong>
-          <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
-            <li>Formato: texto plano, separado por pipe <code style={{ background: "var(--bg-page)", padding: "1px 4px", borderRadius: 4 }}>|</code>, CRLF, codificação UTF-8</li>
-            <li>Leiaute: SPED ECD Leiaute 10 (vigente desde 2022)</li>
-            <li>Transmissão: via <strong>PGE (Programa Gerador ECD)</strong> disponível no site da Receita Federal</li>
-            <li>Compatibilidade: aceito pelo <strong>Domínio Sistemas</strong> para importação e pela Receita Federal para transmissão direta</li>
-            <li>Este arquivo contém apenas os lançamentos <strong>baixados/liquidados</strong> — lançamentos em aberto não são incluídos</li>
+          <strong>Sobre o arquivo:</strong>
+          <ul style={{margin:"8px 0 0",paddingLeft:18}}>
+            <li>CSV em UTF-8, separado por ponto e vírgula. Cada linha identifica a fonte, o registro e seus titulares.</li>
+            <li>Pagamentos parciais acumulados, datas ausentes, compensações e contas não configuradas recebem indicação para conferência.</li>
+            <li>Este arquivo auxilia a escrituração do contador. Não deve ser transmitido como ECD nem representa um livro contábil completo.</li>
           </ul>
         </div>
       </div>

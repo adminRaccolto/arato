@@ -21990,3 +21990,536 @@ GRANT EXECUTE ON FUNCTION public.estoque_movimento_manual(uuid,jsonb,uuid) TO se
 CREATE INDEX IF NOT EXISTS idx_audit_exclusoes_financeiras ON audit_log(id) WHERE acao='DELETE' AND tabela IN ('lancamentos','empresa_lancamentos');
 COMMIT;
 NOTIFY pgrst,'reload schema';
+
+-- Seção 440 — Reclassificação fiscal atômica e parâmetros com controle de concorrência
+-- Requer 434. Não altera classificações ou parâmetros históricos automaticamente.
+BEGIN;
+CREATE TABLE IF NOT EXISTS fiscal_alteracoes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),fazenda_id uuid NOT NULL REFERENCES fazendas(id),
+ tabela text NOT NULL,registro_id text NOT NULL,acao text NOT NULL,usuario_id uuid,antes jsonb NOT NULL,depois jsonb NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE fiscal_alteracoes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON fiscal_alteracoes FROM PUBLIC,anon,authenticated;
+GRANT SELECT,INSERT ON fiscal_alteracoes TO service_role;
+DROP POLICY IF EXISTS fiscal_alteracoes_leitura ON fiscal_alteracoes;
+CREATE POLICY fiscal_alteracoes_leitura ON fiscal_alteracoes FOR SELECT TO authenticated
+ USING(fazenda_id IN(SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+GRANT SELECT ON fiscal_alteracoes TO authenticated;
+CREATE OR REPLACE FUNCTION public.fiscal_config_auditavel(p jsonb) RETURNS jsonb
+LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+ SELECT coalesce(jsonb_object_agg(key,value),'{}') FROM jsonb_each(coalesce(p,'{}'))
+ WHERE key !~* '(senha|password|token|secret|api.?key|cert_a1_path|storage_path)';
+$$;
+CREATE OR REPLACE FUNCTION public.fiscal_reclassificar_nf(p_nf uuid,p_fazenda uuid,p_og uuid DEFAULT NULL,p_centro uuid DEFAULT NULL,p_usuario uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE n nf_entradas%ROWTYPE;v_antes jsonb;v_pf integer;v_pj integer;
+BEGIN
+ SELECT * INTO n FROM nf_entradas WHERE id=p_nf FOR UPDATE;
+ IF NOT FOUND OR n.fazenda_id IS DISTINCT FROM p_fazenda THEN RAISE EXCEPTION 'NF não encontrada na fazenda autorizada.'; END IF;
+ IF n.status<>'processada' THEN RAISE EXCEPTION 'Só NF processada pode ser reclassificada.'; END IF;
+ PERFORM financeiro_validar_referencias(n.fazenda_id,jsonb_build_object('operacao_gerencial_id',p_og,'centro_custo_id',p_centro));
+ v_antes:=jsonb_build_object('nf',jsonb_build_object('og',n.operacao_gerencial_id,'centro',n.centro_custo_id),
+  'pf',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'og',operacao_gerencial_id,'centro',centro_custo_id)),'[]') FROM lancamentos WHERE nf_entrada_id=n.id),
+  'pj',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'og',operacao_gerencial_id,'centro',centro_custo_id)),'[]') FROM empresa_lancamentos WHERE nf_entrada_id=n.id));
+ UPDATE nf_entradas SET operacao_gerencial_id=p_og,centro_custo_id=p_centro WHERE id=n.id;
+ UPDATE lancamentos SET operacao_gerencial_id=p_og,centro_custo_id=p_centro WHERE nf_entrada_id=n.id;
+ GET DIAGNOSTICS v_pf=ROW_COUNT;
+ UPDATE empresa_lancamentos SET operacao_gerencial_id=p_og,centro_custo_id=p_centro WHERE nf_entrada_id=n.id;
+ GET DIAGNOSTICS v_pj=ROW_COUNT;
+ INSERT INTO fiscal_alteracoes(fazenda_id,tabela,registro_id,acao,usuario_id,antes,depois)VALUES(n.fazenda_id,'nf_entradas',n.id::text,'reclassificar',p_usuario,v_antes,jsonb_build_object('og',p_og,'centro',p_centro));
+ RETURN jsonb_build_object('ok',true,'lancamentos_atualizados',v_pf,'empresa_lancamentos_atualizados',v_pj);
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_reclassificar_nf(uuid,uuid,uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.fiscal_reclassificar_nf(uuid,uuid,uuid,uuid,uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.fiscal_salvar_config(p_fazenda uuid,p_modulo text,p_config jsonb,p_base jsonb,p_usuario uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_conta uuid;r record;b jsonb;v_cfg jsonb;v_linhas jsonb:='[]';v_n integer:=0;
+ v_protegidos text[]:=ARRAY['numero_inicial','cert_a1_senha','cert_a1_path','cert_a1_vencimento'];
+BEGIN
+ IF nullif(trim(p_modulo),'') IS NULL OR coalesce(jsonb_typeof(p_config),'')<>'object' OR coalesce(jsonb_typeof(p_base),'')<>'array' THEN RAISE EXCEPTION 'Parâmetros inválidos.'; END IF;
+ SELECT conta_id INTO v_conta FROM fazendas WHERE id=p_fazenda;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Fazenda não encontrada.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(coalesce(v_conta,p_fazenda)::text||':config:'||p_modulo,0));
+ FOR r IN SELECT * FROM configuracoes_modulo c WHERE c.modulo=p_modulo AND
+   (c.fazenda_id=p_fazenda OR (v_conta IS NOT NULL AND (c.conta_id=v_conta OR c.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id=v_conta))))
+   ORDER BY c.fazenda_id NULLS FIRST FOR UPDATE LOOP
+  v_n:=v_n+1;
+  SELECT x INTO b FROM jsonb_array_elements(p_base) x WHERE x->>'fazenda_id' IS NOT DISTINCT FROM r.fazenda_id::text
+    AND x->>'conta_id' IS NOT DISTINCT FROM r.conta_id::text;
+  IF b IS NULL OR coalesce(r.config,'{}')-v_protegidos IS DISTINCT FROM coalesce(b->'config','{}')-v_protegidos THEN
+   RAISE EXCEPTION 'Os parâmetros foram alterados por outra operação. Recarregue antes de salvar.';
+  END IF;
+  -- A senha/caminho só mudam pela rotina dedicada de certificado. O contador não pode regredir por tela antiga.
+  v_cfg:=(p_config-ARRAY['cert_a1_senha','cert_a1_path','cert_a1_vencimento'])||
+    (SELECT coalesce(jsonb_object_agg(key,value),'{}') FROM jsonb_each(coalesce(r.config,'{}')) WHERE key IN ('cert_a1_senha','cert_a1_path','cert_a1_vencimento'));
+  IF coalesce(p_config->>'serie_nfe',p_config->>'serie_cte',p_config->>'serie_mdfe',p_config->>'serie','')=coalesce(r.config->>'serie_nfe',r.config->>'serie_cte',r.config->>'serie_mdfe',r.config->>'serie','')
+    AND coalesce(r.config->>'numero_inicial','') ~ '^[0-9]+$' THEN
+   v_cfg:=v_cfg||jsonb_build_object('numero_inicial',greatest((r.config->>'numero_inicial')::bigint,
+     CASE WHEN coalesce(p_config->>'numero_inicial','') ~ '^[0-9]+$' THEN (p_config->>'numero_inicial')::bigint ELSE 1 END)::text);
+  END IF;
+  UPDATE configuracoes_modulo SET config=v_cfg,updated_at=clock_timestamp() WHERE modulo=p_modulo
+    AND fazenda_id IS NOT DISTINCT FROM r.fazenda_id AND conta_id IS NOT DISTINCT FROM r.conta_id;
+  v_linhas:=v_linhas||jsonb_build_array(jsonb_build_object('fazenda_id',r.fazenda_id,'conta_id',r.conta_id,'config',v_cfg));
+ END LOOP;
+ IF v_n<>jsonb_array_length(p_base) THEN RAISE EXCEPTION 'O conjunto de parâmetros mudou. Recarregue antes de salvar.'; END IF;
+ IF v_n=0 THEN
+  v_cfg:=p_config-ARRAY['cert_a1_senha','cert_a1_path','cert_a1_vencimento'];
+  INSERT INTO configuracoes_modulo(fazenda_id,modulo,config,updated_at) VALUES(p_fazenda,p_modulo,v_cfg,clock_timestamp());
+  v_linhas:=jsonb_build_array(jsonb_build_object('fazenda_id',p_fazenda,'conta_id',NULL,'config',v_cfg));
+ END IF;
+ INSERT INTO fiscal_alteracoes(fazenda_id,tabela,registro_id,acao,usuario_id,antes,depois)
+ VALUES(p_fazenda,'configuracoes_modulo',p_modulo,'salvar',p_usuario,
+  (SELECT coalesce(jsonb_agg(jsonb_build_object('fazenda_id',x->'fazenda_id','config',public.fiscal_config_auditavel(x->'config'))),'[]') FROM jsonb_array_elements(p_base) x),public.fiscal_config_auditavel(p_config));
+ RETURN jsonb_build_object('ok',true,'linhas',v_linhas);
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_salvar_config(uuid,text,jsonb,jsonb,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.fiscal_salvar_config(uuid,text,jsonb,jsonb,uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 441 — Movimentos próprios do LCDPR e terceiros do imóvel, com autoria e reenvio idempotente
+-- Não cria movimentos fiscais históricos nem altera baixas financeiras.
+BEGIN;
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS lcdpr_participantes jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS lcdpr_responsavel boolean NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS lcdpr_movimentos (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),fazenda_id uuid NOT NULL REFERENCES fazendas(id),
+ produtor_id uuid NOT NULL REFERENCES produtores(id),data date NOT NULL,dados jsonb NOT NULL,
+ origem text NOT NULL CHECK(origem IN ('manual','importado')),importacao_ref text,excluido boolean NOT NULL DEFAULT false,
+ created_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lcdpr_importacao ON lcdpr_movimentos(fazenda_id,produtor_id,importacao_ref) WHERE importacao_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_lcdpr_movimentos_periodo ON lcdpr_movimentos(fazenda_id,data) WHERE NOT excluido;
+ALTER TABLE lcdpr_movimentos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS lcdpr_movimentos_leitura ON lcdpr_movimentos;
+CREATE POLICY lcdpr_movimentos_leitura ON lcdpr_movimentos FOR SELECT TO authenticated
+ USING(fazenda_id IN(SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+GRANT SELECT ON lcdpr_movimentos TO authenticated;
+GRANT SELECT,INSERT,UPDATE ON lcdpr_movimentos TO service_role;
+
+CREATE OR REPLACE FUNCTION public.lcdpr_incluir_movimentos(p_fazenda uuid,p_linhas jsonb,p_requisicao uuid,p_usuario uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_conta uuid;v_outra uuid;v_faz uuid;v_prod uuid;v_cpf text;x jsonb;r lcdpr_movimentos%ROWTYPE;
+ v_out jsonb:='[]';v_req financeiro_operacoes%ROWTYPE;v_dados jsonb;v_receita numeric;v_despesa numeric;v_ref text;v_criados integer:=0;v_reusados integer:=0;
+BEGIN
+ IF p_requisicao IS NULL OR p_usuario IS NULL OR coalesce(jsonb_typeof(p_linhas),'')<>'array' OR jsonb_array_length(p_linhas) NOT BETWEEN 1 AND 1000 THEN RAISE EXCEPTION 'Informe os movimentos e a identificação da operação.'; END IF;
+ SELECT conta_id INTO v_conta FROM fazendas WHERE id=p_fazenda;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Fazenda não encontrada.'; END IF;
+ v_dados:=jsonb_build_object('fazenda_id',p_fazenda,'linhas',p_linhas,'usuario',p_usuario);
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+ SELECT * INTO v_req FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+  IF v_req.tabela<>'lcdpr_movimentos' OR v_req.dados<>v_dados THEN RAISE EXCEPTION 'Identificação já utilizada com outros dados.'; END IF;
+  RETURN v_req.retorno;
+ END IF;
+ FOR x IN SELECT value FROM jsonb_array_elements(p_linhas) LOOP
+  v_faz:=(x->>'fazendaId')::uuid;v_prod:=(x->>'produtorId')::uuid;
+  SELECT conta_id INTO v_outra FROM fazendas WHERE id=v_faz;
+  IF NOT FOUND OR (v_faz<>p_fazenda AND (v_conta IS NULL OR v_outra IS DISTINCT FROM v_conta)) THEN RAISE EXCEPTION 'Imóvel pertence a outro cliente.'; END IF;
+  PERFORM financeiro_validar_referencias(p_fazenda,jsonb_build_object('produtor_id',v_prod));
+  SELECT regexp_replace(cpf_cnpj,'[^0-9]','','g') INTO v_cpf FROM produtores WHERE id=v_prod;
+  IF length(coalesce(v_cpf,''))<>11 THEN RAISE EXCEPTION 'Escolha um produtor pessoa física para o LCDPR.'; END IF;
+  v_receita:=round((x->>'receita')::numeric,2);v_despesa:=round((x->>'despesa')::numeric,2);
+  IF v_receita IS NULL OR v_despesa IS NULL OR least(v_receita,v_despesa)<0 OR greatest(v_receita,v_despesa)<=0
+    OR least(v_receita,v_despesa)>0 OR v_receita::text IN ('NaN','Infinity','-Infinity') OR v_despesa::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Informe somente receita ou despesa com valor positivo.'; END IF;
+  IF nullif(trim(x->>'historico'),'') IS NULL OR (x->>'tipoDoc') NOT IN ('1','2','3','4','5','6') OR (x->>'origem') NOT IN ('manual','importado') THEN RAISE EXCEPTION 'Confira histórico, documento e origem.'; END IF;
+  v_ref:=CASE WHEN x->>'origem'='importado' THEN nullif(x->>'importacao_ref','') ELSE NULL END;
+  IF x->>'origem'='importado' AND (v_ref IS NULL OR v_ref !~ '^[a-f0-9]{64}:[0-9]+$') THEN RAISE EXCEPTION 'Importação sem identificação de arquivo e linha.'; END IF;
+  IF v_ref IS NOT NULL THEN
+   PERFORM pg_advisory_xact_lock(hashtextextended(v_faz::text||v_prod::text||v_ref,0));
+   SELECT * INTO r FROM lcdpr_movimentos WHERE fazenda_id=v_faz AND produtor_id=v_prod AND importacao_ref=v_ref;
+   IF FOUND THEN v_reusados:=v_reusados+1;v_out:=v_out||jsonb_build_array(r.dados||jsonb_build_object('id',r.id));CONTINUE; END IF;
+  END IF;
+  INSERT INTO lcdpr_movimentos(fazenda_id,produtor_id,data,dados,origem,created_by,importacao_ref)
+   VALUES(v_faz,v_prod,(x->>'data')::date,(x-ARRAY['id','lancId'])||jsonb_build_object('produtorCpf',v_cpf,'compartilhada',false,'receita',v_receita,'despesa',v_despesa),x->>'origem',p_usuario,v_ref) RETURNING * INTO r;
+  v_criados:=v_criados+1;
+  v_out:=v_out||jsonb_build_array(r.dados||jsonb_build_object('id',r.id));
+ END LOOP;
+ INSERT INTO financeiro_operacoes VALUES(p_requisicao,'lcdpr_movimentos',p_requisicao,'incluir',v_dados,'{}',v_out,jsonb_build_object('ok',true,'linhas',v_out,'criados',v_criados,'reutilizados',v_reusados),clock_timestamp());
+ RETURN jsonb_build_object('ok',true,'linhas',v_out,'criados',v_criados,'reutilizados',v_reusados);
+END $$;
+REVOKE ALL ON FUNCTION public.lcdpr_incluir_movimentos(uuid,jsonb,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.lcdpr_incluir_movimentos(uuid,jsonb,uuid,uuid) TO service_role;
+CREATE OR REPLACE FUNCTION public.lcdpr_alterar_movimento(p_id uuid,p_acao text,p_tipo text,p_motivo text,p_usuario uuid,p_versao timestamptz)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE r lcdpr_movimentos%ROWTYPE;v_antes jsonb;
+BEGIN
+ IF p_usuario IS NULL OR p_acao NOT IN('documento','excluir') THEN RAISE EXCEPTION 'Ação LCDPR inválida.'; END IF;
+ SELECT * INTO r FROM lcdpr_movimentos WHERE id=p_id FOR UPDATE;
+ IF NOT FOUND OR r.excluido THEN RAISE EXCEPTION 'Movimento não encontrado. Recarregue o livro.'; END IF;
+ IF p_versao IS DISTINCT FROM r.updated_at THEN RAISE EXCEPTION 'Movimento alterado. Recarregue antes de salvar.'; END IF;
+ v_antes:=to_jsonb(r);
+ IF p_acao='excluir' THEN
+  IF length(trim(coalesce(p_motivo,'')))<3 THEN RAISE EXCEPTION 'Informe o motivo da exclusão.'; END IF;
+  UPDATE lcdpr_movimentos SET excluido=true,updated_at=clock_timestamp() WHERE id=r.id RETURNING * INTO r;
+ ELSE
+  IF p_tipo NOT IN('1','2','3','4','5','6') OR p_tipo IS NULL THEN RAISE EXCEPTION 'Tipo documental inválido.'; END IF;
+  UPDATE lcdpr_movimentos SET dados=jsonb_set(dados,'{tipoDoc}',to_jsonb(p_tipo)),updated_at=clock_timestamp() WHERE id=r.id RETURNING * INTO r;
+ END IF;
+ INSERT INTO fiscal_alteracoes(fazenda_id,tabela,registro_id,acao,usuario_id,antes,depois)
+ VALUES(r.fazenda_id,'lcdpr_movimentos',r.id::text,p_acao,p_usuario,v_antes,to_jsonb(r)||jsonb_build_object('motivo',p_motivo));
+ RETURN jsonb_build_object('ok',true,'updated_at',r.updated_at);
+END $$;
+REVOKE ALL ON FUNCTION public.lcdpr_alterar_movimento(uuid,text,text,text,uuid,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.lcdpr_alterar_movimento(uuid,text,text,text,uuid,timestamptz) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 442 — Reserva concorrente e operação fiscal durável (NF-e, CT-e e MDF-e)
+-- Não retransmite nem altera documentos históricos. A chave e o XML são guardados ANTES do envio.
+BEGIN;
+CREATE TABLE IF NOT EXISTS fiscal_numeracoes (
+ cliente_id uuid NOT NULL,documento text NOT NULL,modelo integer NOT NULL CHECK(modelo IN(55,57,58)),
+ serie integer NOT NULL CHECK(serie BETWEEN 0 AND 999),ambiente text NOT NULL CHECK(ambiente IN('producao','homologacao')),
+ proximo bigint NOT NULL CHECK(proximo BETWEEN 1 AND 1000000000),
+ PRIMARY KEY(cliente_id,documento,modelo,serie,ambiente)
+);
+CREATE TABLE IF NOT EXISTS fiscal_operacoes (
+ id uuid PRIMARY KEY,fazenda_id uuid NOT NULL REFERENCES fazendas(id),cliente_id uuid NOT NULL,
+ documento text NOT NULL,modelo integer NOT NULL,serie integer NOT NULL,ambiente text NOT NULL,numero bigint NOT NULL,
+ registro_id uuid,modulo text NOT NULL,dados jsonb NOT NULL,
+ estado text NOT NULL CHECK(estado IN('reservada','enviada','pendente','autorizada','rejeitada','sincronizada','cancelada_pre_envio','cancelada')),
+ tributacao_itens jsonb,chave text,xml_assinado text,xml_processo text,resposta jsonb,retorno jsonb,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ UNIQUE(cliente_id,documento,modelo,serie,ambiente,numero)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fiscal_operacao_documento_ativo ON fiscal_operacoes(modelo,registro_id)
+ WHERE registro_id IS NOT NULL AND estado IN('reservada','enviada','pendente','autorizada','sincronizada');
+CREATE INDEX IF NOT EXISTS idx_fiscal_operacoes_fazenda ON fiscal_operacoes(fazenda_id,created_at DESC);
+ALTER TABLE fiscal_numeracoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fiscal_operacoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS fiscal_operacoes_leitura ON fiscal_operacoes;
+CREATE POLICY fiscal_operacoes_leitura ON fiscal_operacoes FOR SELECT TO authenticated
+ USING(fazenda_id IN(SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+REVOKE ALL ON fiscal_numeracoes,fiscal_operacoes FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON fiscal_operacoes TO authenticated;
+GRANT ALL ON fiscal_numeracoes,fiscal_operacoes TO service_role;
+
+CREATE OR REPLACE FUNCTION public.fiscal_reservar_emissao(p_id uuid,p_fazenda uuid,p_modelo integer,p_documento text,
+ p_serie integer,p_ambiente text,p_dados jsonb,p_modulo text,p_proximo bigint DEFAULT 1,p_registro uuid DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_cliente uuid;v_num bigint;v_inicial bigint;v_hist bigint;v_j jsonb;o fiscal_operacoes%ROWTYPE;
+BEGIN
+ IF p_id IS NULL OR p_modelo NOT IN(55,57,58) OR p_serie NOT BETWEEN 0 AND 999 OR p_ambiente NOT IN('producao','homologacao')
+  OR p_documento !~ '^([0-9]{11}|[0-9]{14})$' OR coalesce(jsonb_typeof(p_dados),'')<>'object' THEN RAISE EXCEPTION 'Identificação da operação fiscal inválida.'; END IF;
+ SELECT coalesce(conta_id,id) INTO v_cliente FROM fazendas WHERE id=p_fazenda;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Fazenda não encontrada.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_id::text,0));
+ SELECT * INTO o FROM fiscal_operacoes WHERE id=p_id;
+ IF FOUND THEN
+  IF o.fazenda_id<>p_fazenda OR o.modelo<>p_modelo OR o.documento<>p_documento OR o.serie<>p_serie OR o.ambiente<>p_ambiente OR o.modulo<>p_modulo OR o.registro_id IS DISTINCT FROM p_registro OR o.dados<>p_dados THEN RAISE EXCEPTION 'Identificação fiscal já usada com outros dados.'; END IF;
+  RETURN to_jsonb(o)||jsonb_build_object('executar',false);
+ END IF;
+ IF p_registro IS NOT NULL THEN
+  IF p_modelo=55 THEN SELECT to_jsonb(t) INTO v_j FROM notas_fiscais t WHERE id=p_registro FOR UPDATE;
+  ELSIF p_modelo=57 THEN SELECT to_jsonb(t) INTO v_j FROM ctes t WHERE id=p_registro FOR UPDATE;
+  ELSE SELECT to_jsonb(t) INTO v_j FROM mdfes t WHERE id=p_registro FOR UPDATE; END IF;
+  IF v_j IS NULL OR v_j->>'fazenda_id' IS DISTINCT FROM p_fazenda::text THEN RAISE EXCEPTION 'Documento não pertence à fazenda autorizada.'; END IF;
+  SELECT * INTO o FROM fiscal_operacoes WHERE modelo=p_modelo AND registro_id=p_registro
+    AND estado IN('reservada','enviada','pendente','autorizada','sincronizada') LIMIT 1;
+  IF FOUND THEN RETURN to_jsonb(o)||jsonb_build_object('executar',false); END IF;
+  IF v_j->>'status' IN('autorizada','autorizado','cancelada','cancelado','encerrado') THEN RAISE EXCEPTION 'Documento já autorizado/cancelado. Consulte a situação existente.'; END IF;
+ END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(v_cliente::text||':'||p_modelo||':'||p_documento||':'||p_serie||':'||p_ambiente,0));
+ v_inicial:=greatest(coalesce(p_proximo,1),1);
+ -- O maior número local conhecido só semeia uma sequência nova. Não reconstitui autorizações ausentes.
+ IF p_modelo=55 THEN
+  SELECT max(CASE WHEN t.numero ~ '^[0-9]+$' THEN t.numero::bigint END) INTO v_hist FROM notas_fiscais t
+   JOIN fazendas f ON f.id=t.fazenda_id WHERE coalesce(f.conta_id,f.id)=v_cliente
+   AND coalesce(nullif(regexp_replace(t.serie,'[^0-9]','','g'),''),'0')::integer=p_serie
+   AND regexp_replace(coalesce(t.dados_nf_json->>'emit_cnpj',f.cpf_cnpj_fiscal,''),'[^0-9]','','g')=p_documento;
+ ELSIF p_modelo=57 THEN
+  SELECT max(CASE WHEN numero_cte ~ '^[0-9]+$' THEN numero_cte::bigint END) INTO v_hist FROM ctes t JOIN fazendas f ON f.id=t.fazenda_id
+   WHERE coalesce(f.conta_id,f.id)=v_cliente AND regexp_replace(coalesce(t.emitente_cnpj,''),'[^0-9]','','g')=p_documento
+   AND coalesce(nullif(regexp_replace(t.serie,'[^0-9]','','g'),''),'0')::integer=p_serie;
+ ELSE
+  SELECT max(CASE WHEN numero_mdfe ~ '^[0-9]+$' THEN numero_mdfe::bigint END) INTO v_hist FROM mdfes t JOIN fazendas f ON f.id=t.fazenda_id
+   WHERE coalesce(f.conta_id,f.id)=v_cliente AND regexp_replace(coalesce(t.emitente_cnpj,''),'[^0-9]','','g')=p_documento
+   AND coalesce(nullif(regexp_replace(t.serie,'[^0-9]','','g'),''),'0')::integer=p_serie;
+ END IF;
+ INSERT INTO fiscal_numeracoes VALUES(v_cliente,p_documento,p_modelo,p_serie,p_ambiente,greatest(v_inicial,coalesce(v_hist,0)+1)) ON CONFLICT DO NOTHING;
+ UPDATE fiscal_numeracoes SET proximo=greatest(proximo,v_inicial)+1
+  WHERE cliente_id=v_cliente AND documento=p_documento AND modelo=p_modelo AND serie=p_serie AND ambiente=p_ambiente RETURNING proximo-1 INTO v_num;
+ IF v_num>999999999 THEN RAISE EXCEPTION 'Numeração fiscal esgotada para esta série.'; END IF;
+ INSERT INTO fiscal_operacoes(id,fazenda_id,cliente_id,documento,modelo,serie,ambiente,numero,registro_id,modulo,dados,estado)
+  VALUES(p_id,p_fazenda,v_cliente,p_documento,p_modelo,p_serie,p_ambiente,v_num,p_registro,p_modulo,p_dados,'reservada') RETURNING * INTO o;
+ -- Atualiza só o contador nas cópias da MESMA série, sem regravar certificado ou outros parâmetros.
+ UPDATE configuracoes_modulo c SET config=jsonb_set(coalesce(c.config,'{}'),'{numero_inicial}',to_jsonb((v_num+1)::text)),updated_at=clock_timestamp()
+ WHERE c.modulo=p_modulo AND (c.conta_id=v_cliente OR c.fazenda_id IN(SELECT id FROM fazendas WHERE coalesce(conta_id,id)=v_cliente))
+  AND coalesce(nullif(coalesce(c.config->>'serie_nfe',c.config->>'serie_cte',c.config->>'serie_mdfe',c.config->>'serie'),'')::integer,p_serie)=p_serie;
+ RETURN to_jsonb(o)||jsonb_build_object('executar',true);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.fiscal_preparar_envio(p_id uuid,p_xml text,p_chave text,p_tributacao jsonb DEFAULT '[]') RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE o fiscal_operacoes%ROWTYPE;v_soma integer:=0;v_peso integer:=2;v_i integer;v_dv integer;
+BEGIN
+ SELECT * INTO o FROM fiscal_operacoes WHERE id=p_id FOR UPDATE;
+ IF NOT FOUND OR o.estado<>'reservada' OR o.xml_assinado IS NOT NULL THEN RAISE EXCEPTION 'Operação já enviada ou ausente. Consulte sua situação antes de reenviar.'; END IF;
+ IF coalesce(p_chave,'') !~ '^[0-9]{44}$' OR nullif(p_xml,'') IS NULL OR coalesce(jsonb_typeof(p_tributacao),'')<>'array' THEN RAISE EXCEPTION 'XML/chave inválidos.'; END IF;
+ FOR v_i IN REVERSE 43..1 LOOP
+  v_soma:=v_soma+substring(p_chave,v_i,1)::integer*v_peso;v_peso:=CASE WHEN v_peso=9 THEN 2 ELSE v_peso+1 END;
+ END LOOP;
+ v_dv:=11-(v_soma%11);IF v_dv>=10 THEN v_dv:=0; END IF;
+ IF substring(p_chave,44,1)::integer<>v_dv OR substring(p_chave,7,14)<>lpad(o.documento,14,'0')
+  OR substring(p_chave,21,2)::integer<>o.modelo OR substring(p_chave,23,3)::integer<>o.serie
+  OR substring(p_chave,26,9)::bigint<>o.numero OR position(p_chave IN p_xml)=0
+  OR position('<tpAmb>'||CASE WHEN o.ambiente='producao' THEN '1' ELSE '2' END||'</tpAmb>' IN p_xml)=0 THEN
+  RAISE EXCEPTION 'A chave/XML não corresponde ao titular, modelo, série, número ou ambiente reservado.';
+ END IF;
+ UPDATE fiscal_operacoes SET xml_assinado=p_xml,chave=p_chave,tributacao_itens=p_tributacao,estado='enviada',updated_at=clock_timestamp() WHERE id=p_id;
+END $$;
+CREATE OR REPLACE FUNCTION public.fiscal_registrar_retorno(p_id uuid,p_estado text,p_resposta jsonb,p_retorno jsonb,p_xml text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF p_estado NOT IN('pendente','autorizada','rejeitada','sincronizada','cancelada_pre_envio') THEN RAISE EXCEPTION 'Estado fiscal inválido.'; END IF;
+ UPDATE fiscal_operacoes SET estado=p_estado,resposta=coalesce(p_resposta,resposta),retorno=p_retorno,
+  xml_processo=coalesce(p_xml,xml_processo),updated_at=clock_timestamp()
+ WHERE id=p_id AND estado<>'cancelada' AND (estado NOT IN('autorizada','sincronizada') OR p_estado IN('autorizada','sincronizada'))
+  AND (p_estado<>'cancelada_pre_envio' OR (estado='reservada' AND xml_assinado IS NULL))
+  AND (p_estado NOT IN('autorizada','sincronizada') OR (chave IS NOT NULL AND xml_assinado IS NOT NULL AND nullif(p_retorno->>'protocolo','') IS NOT NULL AND nullif(coalesce(p_xml,xml_processo),'') IS NOT NULL));
+ IF NOT FOUND THEN RAISE EXCEPTION 'A operação não admite esta alteração de estado.'; END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_reservar_emissao(uuid,uuid,integer,text,integer,text,jsonb,text,bigint,uuid),public.fiscal_preparar_envio(uuid,text,text,jsonb),public.fiscal_registrar_retorno(uuid,text,jsonb,jsonb,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.fiscal_reservar_emissao(uuid,uuid,integer,text,integer,text,jsonb,text,bigint,uuid),public.fiscal_preparar_envio(uuid,text,text,jsonb),public.fiscal_registrar_retorno(uuid,text,jsonb,jsonb,text) TO service_role;
+
+CREATE TABLE IF NOT EXISTS fiscal_distribuicao_documentos (
+ fazenda_id uuid NOT NULL REFERENCES fazendas(id),documento text NOT NULL,ambiente text NOT NULL,nsu text NOT NULL,
+ schema_sefaz text NOT NULL,xml_raw text NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ PRIMARY KEY(fazenda_id,documento,ambiente,nsu)
+);
+ALTER TABLE fiscal_distribuicao_documentos ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON fiscal_distribuicao_documentos TO service_role;
+CREATE OR REPLACE FUNCTION public.fiscal_avancar_nsu(p_fazenda uuid,p_modulo text,p_nsu text,p_ambiente text) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_config jsonb;v_nsu text;
+BEGIN
+ IF coalesce(p_nsu,'') !~ '^[0-9]{1,15}$' OR p_ambiente NOT IN('producao','homologacao') OR p_modulo NOT LIKE 'dist_cte_%' THEN RAISE EXCEPTION 'Cursor de distribuição inválido.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_fazenda::text||':'||p_modulo,0));
+ SELECT config INTO v_config FROM configuracoes_modulo WHERE fazenda_id=p_fazenda AND modulo=p_modulo FOR UPDATE;
+ IF v_config->>'ambiente' IS NOT NULL AND v_config->>'ambiente'<>p_ambiente THEN RAISE EXCEPTION 'O cursor existente pertence a outro ambiente. Confira antes de retomar.'; END IF;
+ v_nsu:=lpad(greatest(p_nsu::bigint,CASE WHEN coalesce(v_config->>'ult_nsu','') ~ '^[0-9]{1,15}$' THEN (v_config->>'ult_nsu')::bigint ELSE 0 END)::text,15,'0');
+ INSERT INTO configuracoes_modulo(fazenda_id,modulo,config,updated_at)VALUES(p_fazenda,p_modulo,coalesce(v_config,'{}')||jsonb_build_object('ult_nsu',v_nsu,'ambiente',p_ambiente),clock_timestamp())
+ ON CONFLICT(fazenda_id,modulo)DO UPDATE SET config=EXCLUDED.config,updated_at=EXCLUDED.updated_at;
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_avancar_nsu(uuid,text,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.fiscal_avancar_nsu(uuid,text,text,text) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 443 — Recuperação fiscal exclusiva, vínculo da NF gravada e vigência dos cadastros
+BEGIN;
+ALTER TABLE ncm_tributacoes ADD COLUMN IF NOT EXISTS vigencia_inicio date;
+ALTER TABLE ncm_tributacoes ADD COLUMN IF NOT EXISTS vigencia_fim date;
+-- O mesmo NCM pode ter regras de períodos diferentes, sem substituir a regra antiga.
+-- Troca somente a unicidade original de fazenda/NCM; preserva as demais restrições.
+DO $$ DECLARE r record; BEGIN
+ FOR r IN SELECT c.conname FROM pg_constraint c
+  WHERE c.conrelid='public.ncm_tributacoes'::regclass AND c.contype='u'
+   AND (SELECT array_agg(a.attname::text ORDER BY a.attname) FROM unnest(c.conkey) k(attnum)
+     JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.attnum)=ARRAY['fazenda_id','ncm']::text[] LOOP
+  EXECUTE format('ALTER TABLE public.ncm_tributacoes DROP CONSTRAINT %I',r.conname);
+ END LOOP;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ncm_tributacao_periodo ON ncm_tributacoes
+ (fazenda_id,ncm,coalesce(vigencia_inicio,'-infinity'::date),coalesce(vigencia_fim,'infinity'::date));
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS ibs_cbs_cst varchar(3);
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS ibs_cbs_cclasstrib varchar(6);
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS vigencia_inicio date;
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS vigencia_fim date;
+ALTER TABLE ncm_tributacoes ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT clock_timestamp();
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT clock_timestamp();
+ALTER TABLE ncm_tributacoes ADD COLUMN IF NOT EXISTS versao integer NOT NULL DEFAULT 1;
+ALTER TABLE operacoes_fiscais ADD COLUMN IF NOT EXISTS versao integer NOT NULL DEFAULT 1;
+CREATE OR REPLACE FUNCTION public.fn_fiscal_catalogo_versao() RETURNS trigger
+LANGUAGE plpgsql SET search_path=public AS $$BEGIN NEW.versao:=OLD.versao+1;NEW.updated_at:=clock_timestamp();RETURN NEW;END$$;
+DROP TRIGGER IF EXISTS trg_ncm_catalogo_versao ON ncm_tributacoes;
+CREATE TRIGGER trg_ncm_catalogo_versao BEFORE UPDATE ON ncm_tributacoes FOR EACH ROW EXECUTE FUNCTION public.fn_fiscal_catalogo_versao();
+DROP TRIGGER IF EXISTS trg_operacao_catalogo_versao ON operacoes_fiscais;
+CREATE TRIGGER trg_operacao_catalogo_versao BEFORE UPDATE ON operacoes_fiscais FOR EACH ROW EXECUTE FUNCTION public.fn_fiscal_catalogo_versao();
+ALTER TABLE fiscal_operacoes ADD COLUMN IF NOT EXISTS recuperacao_token uuid;
+ALTER TABLE fiscal_operacoes ADD COLUMN IF NOT EXISTS recuperacao_em timestamptz;
+CREATE OR REPLACE FUNCTION public.fiscal_obter_recuperacao(p_id uuid,p_token uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE o fiscal_operacoes%ROWTYPE;
+BEGIN
+ UPDATE fiscal_operacoes SET recuperacao_token=p_token,recuperacao_em=clock_timestamp()
+ WHERE id=p_id AND (recuperacao_em IS NULL OR recuperacao_em<clock_timestamp()-interval '2 minutes')
+   AND updated_at<clock_timestamp()-interval '10 seconds' RETURNING * INTO o;
+ IF NOT FOUND THEN RAISE EXCEPTION 'A operação está em processamento. Aguarde e consulte novamente.'; END IF;
+ RETURN to_jsonb(o);
+END $$;
+CREATE OR REPLACE FUNCTION public.fiscal_liberar_recuperacao(p_id uuid,p_token uuid) RETURNS void
+LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
+ UPDATE fiscal_operacoes SET recuperacao_token=NULL,recuperacao_em=NULL WHERE id=p_id AND recuperacao_token=p_token;
+$$;
+CREATE OR REPLACE FUNCTION public.fiscal_vincular_nota(p_nota uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE n notas_fiscais%ROWTYPE;
+BEGIN
+ SELECT * INTO n FROM notas_fiscais WHERE id=p_nota FOR UPDATE;
+ IF NOT FOUND OR n.chave_acesso IS NULL THEN RAISE EXCEPTION 'A NF com chave de acesso não foi encontrada.'; END IF;
+ UPDATE fiscal_operacoes SET registro_id=n.id,estado=CASE WHEN estado IN('autorizada','sincronizada') AND n.status='autorizada' AND n.xml_url IS NOT NULL THEN 'sincronizada' ELSE estado END,updated_at=clock_timestamp()
+ WHERE modelo=55 AND fazenda_id=n.fazenda_id AND chave=n.chave_acesso AND estado IN('enviada','pendente','autorizada','sincronizada','rejeitada');
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_obter_recuperacao(uuid,uuid),public.fiscal_liberar_recuperacao(uuid,uuid),public.fiscal_vincular_nota(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.fiscal_obter_recuperacao(uuid,uuid),public.fiscal_liberar_recuperacao(uuid,uuid),public.fiscal_vincular_nota(uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 444 — Gravação idempotente da NF por chave, sem sobrescrever a nota existente
+BEGIN;
+CREATE OR REPLACE FUNCTION public.fiscal_gravar_nota(p_dados jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path=public AS $$
+DECLARE v_faz uuid;v_chave text;v_cols text;v_n integer;v_ret jsonb;
+BEGIN
+ IF coalesce(jsonb_typeof(p_dados),'')<>'object' THEN RAISE EXCEPTION 'Dados da NF inválidos.'; END IF;
+ v_faz:=(p_dados->>'fazenda_id')::uuid;v_chave:=nullif(p_dados->>'chave_acesso','');
+ IF p_dados->>'status'='autorizada' AND (v_chave IS NULL OR nullif(p_dados->'dados_nf_json'->>'protocolo_autorizacao','') IS NULL) THEN
+  IF coalesce((p_dados->'dados_nf_json'->>'origem_externa')::boolean,false) THEN
+   p_dados:=jsonb_set(p_dados,'{dados_nf_json}',coalesce(p_dados->'dados_nf_json','{}')||'{"autorizacao_nao_conferida":true}'::jsonb);
+  ELSE RAISE EXCEPTION 'A NF autorizada exige chave e protocolo de autorização comprovados.'; END IF;
+ END IF;
+ IF v_chave IS NOT NULL THEN
+  IF v_chave !~ '^[0-9]{44}$' THEN RAISE EXCEPTION 'Chave de acesso inválida.'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(v_faz::text||':NF:'||v_chave,0));
+  SELECT count(*) INTO v_n FROM notas_fiscais WHERE fazenda_id=v_faz AND chave_acesso=v_chave;
+  IF v_n>1 THEN RAISE EXCEPTION 'Há notas históricas repetidas com esta chave. Confira antes de gravar novamente.'; END IF;
+  IF v_n=1 THEN SELECT to_jsonb(n) INTO v_ret FROM notas_fiscais n WHERE fazenda_id=v_faz AND chave_acesso=v_chave;RETURN v_ret; END IF;
+ END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_dados) x(key) WHERE key IN('id','created_at') OR NOT EXISTS(SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name='notas_fiscais' AND c.column_name=key)) THEN RAISE EXCEPTION 'Há campo de NF inválido ou incompatível com o banco.'; END IF;
+ SELECT string_agg(quote_ident(key),',' ORDER BY key) INTO v_cols FROM jsonb_object_keys(p_dados) x(key);
+ EXECUTE format('INSERT INTO notas_fiscais(%1$s) SELECT %1$s FROM jsonb_populate_record(NULL::notas_fiscais,$1) RETURNING to_jsonb(notas_fiscais)',v_cols) INTO v_ret USING p_dados;
+ RETURN v_ret;
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_gravar_nota(jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.fiscal_gravar_nota(jsonb) TO authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.fn_fiscal_estado_terminal() RETURNS trigger
+LANGUAGE plpgsql SET search_path=public AS $$
+BEGIN
+ IF OLD.status IN('cancelada','cancelado','encerrado','substituido') AND NEW.status NOT IN('cancelada','cancelado','encerrado','substituido') THEN
+  RAISE EXCEPTION 'Documento fiscal em estado final não pode ser reaberto por gravação atrasada. Confira a situação oficial.';
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_nfe_estado_terminal ON notas_fiscais;
+CREATE TRIGGER trg_nfe_estado_terminal BEFORE UPDATE ON notas_fiscais FOR EACH ROW EXECUTE FUNCTION public.fn_fiscal_estado_terminal();
+DROP TRIGGER IF EXISTS trg_cte_estado_terminal ON ctes;
+CREATE TRIGGER trg_cte_estado_terminal BEFORE UPDATE ON ctes FOR EACH ROW EXECUTE FUNCTION public.fn_fiscal_estado_terminal();
+DROP TRIGGER IF EXISTS trg_mdfe_estado_terminal ON mdfes;
+CREATE TRIGGER trg_mdfe_estado_terminal BEFORE UPDATE ON mdfes FOR EACH ROW EXECUTE FUNCTION public.fn_fiscal_estado_terminal();
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 445 — Eventos NF-e duráveis e conclusão local atômica do cancelamento
+-- Não recompõe custos/compensações históricas sem fotografia. Esses casos ficam pendentes, com motivo.
+BEGIN;
+CREATE TABLE IF NOT EXISTS fiscal_eventos_operacoes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),nota_id uuid NOT NULL REFERENCES notas_fiscais(id),fazenda_id uuid NOT NULL REFERENCES fazendas(id),
+ acao text NOT NULL CHECK(acao IN('cancelar','carta_correcao')),sequencia integer NOT NULL,dados jsonb NOT NULL,
+ estado text NOT NULL CHECK(estado IN('enviada','pendente','confirmada','concluida','rejeitada')),resposta jsonb,motivo text,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ UNIQUE(nota_id,acao,sequencia)
+);
+ALTER TABLE fiscal_eventos_operacoes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON fiscal_eventos_operacoes FROM PUBLIC,anon,authenticated;
+GRANT ALL ON fiscal_eventos_operacoes TO service_role;
+DROP POLICY IF EXISTS fiscal_eventos_leitura ON fiscal_eventos_operacoes;
+CREATE POLICY fiscal_eventos_leitura ON fiscal_eventos_operacoes FOR SELECT TO authenticated
+ USING(fazenda_id IN(SELECT public.rls_minhas_fazendas()) OR public.rls_sou_raccotlo());
+GRANT SELECT ON fiscal_eventos_operacoes TO authenticated;
+CREATE OR REPLACE FUNCTION public.fiscal_reservar_evento(p_nota uuid,p_acao text,p_dados jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE n notas_fiscais%ROWTYPE;e fiscal_eventos_operacoes%ROWTYPE;v_seq integer;
+BEGIN
+ IF p_acao NOT IN('cancelar','carta_correcao') OR coalesce(jsonb_typeof(p_dados),'')<>'object' THEN RAISE EXCEPTION 'Evento fiscal inválido.'; END IF;
+ SELECT * INTO STRICT n FROM notas_fiscais WHERE id=p_nota FOR UPDATE;
+ SELECT * INTO e FROM fiscal_eventos_operacoes WHERE nota_id=p_nota AND acao=p_acao AND estado IN('enviada','pendente','confirmada') ORDER BY sequencia DESC LIMIT 1;
+ IF FOUND THEN RETURN to_jsonb(e)||jsonb_build_object('executar',false); END IF;
+ IF n.status<>'autorizada' OR n.chave_acesso IS NULL THEN RAISE EXCEPTION 'O evento exige NF-e autorizada com chave.'; END IF;
+ IF p_acao='cancelar' THEN SELECT coalesce(max(sequencia),0)+1 INTO v_seq FROM fiscal_eventos_operacoes WHERE nota_id=p_nota AND acao=p_acao;
+ ELSE
+  SELECT greatest(coalesce((SELECT max(sequencia) FROM fiscal_eventos_operacoes WHERE nota_id=p_nota AND acao=p_acao),0),
+    coalesce((SELECT max(sequencia) FROM nfe_cartas_correcao WHERE chave_acesso=n.chave_acesso),0))+1 INTO v_seq;
+  IF v_seq>20 THEN RAISE EXCEPTION 'Limite de sequências de CC-e atingido. Confira o histórico.'; END IF;
+ END IF;
+ INSERT INTO fiscal_eventos_operacoes(nota_id,fazenda_id,acao,sequencia,dados,estado)VALUES(n.id,n.fazenda_id,p_acao,v_seq,p_dados,'enviada') RETURNING * INTO e;
+ RETURN to_jsonb(e)||jsonb_build_object('executar',true);
+END $$;
+CREATE OR REPLACE FUNCTION public.fiscal_concluir_evento(p_id uuid,p_resposta jsonb DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE e fiscal_eventos_operacoes%ROWTYPE;n notas_fiscais%ROWTYPE;v_dev uuid;d nf_entradas%ROWTYPE;
+ v_carga contrato_faturamentos%ROWTYPE;v_guard uuid;v_saldo numeric;v_origem uuid;v_erro text;
+BEGIN
+ SELECT * INTO STRICT e FROM fiscal_eventos_operacoes WHERE id=p_id FOR UPDATE;
+ IF e.estado='concluida' THEN RETURN jsonb_build_object('ok',true,'repetido',true); END IF;
+ p_resposta:=coalesce(p_resposta,e.resposta);
+ IF NOT coalesce((p_resposta->>'sucesso')::boolean,false) THEN RAISE EXCEPTION 'Não há confirmação externa para concluir o evento.'; END IF;
+ IF nullif(p_resposta->>'protocoloEvento','') IS NULL AND NOT coalesce((p_resposta->>'confirmado_consulta')::boolean,false) THEN RAISE EXCEPTION 'O evento exige protocolo ou consulta fiscal comprovada.'; END IF;
+ SELECT * INTO STRICT n FROM notas_fiscais WHERE id=e.nota_id FOR UPDATE;
+ UPDATE fiscal_eventos_operacoes SET estado='confirmada',resposta=p_resposta,updated_at=clock_timestamp() WHERE id=e.id;
+ IF e.acao='carta_correcao' THEN
+  INSERT INTO nfe_cartas_correcao(nota_id,fazenda_id,chave_acesso,sequencia,texto_correcao,status,cstat,xmotivo,protocolo_evento)
+   VALUES(n.id,n.fazenda_id,n.chave_acesso,e.sequencia,e.dados->>'correcao','aceita',p_resposta->>'cStat',p_resposta->>'xMotivo',p_resposta->>'protocoloEvento')
+   ON CONFLICT(chave_acesso,sequencia) DO UPDATE SET status='aceita',cstat=EXCLUDED.cstat,xmotivo=EXCLUDED.xmotivo,protocolo_evento=EXCLUDED.protocolo_evento;
+ ELSE
+  -- O estado fiscal confirmado permanece visível mesmo se a conclusão interna exigir regularização.
+  UPDATE notas_fiscais SET status='cancelada',dados_nf_json=coalesce(dados_nf_json,'{}')||jsonb_build_object(
+   'cancelamento_protocolo',p_resposta->>'protocoloEvento','cancelamento_justificativa',e.dados->>'justificativa',
+   'cancelamento_evento_id',e.id,'cancelamento_data',clock_timestamp(),'cancelamento_local_pendente',true) WHERE id=n.id;
+  UPDATE fiscal_operacoes SET estado='cancelada',updated_at=clock_timestamp() WHERE modelo=55 AND fazenda_id=n.fazenda_id AND chave=n.chave_acesso;
+  BEGIN
+   v_dev:=nullif(n.dados_nf_json->>'devolucao_nf_entrada_id','')::uuid;
+   IF v_dev IS NOT NULL THEN
+    SELECT * INTO STRICT d FROM nf_entradas WHERE id=v_dev FOR UPDATE;
+    IF d.fazenda_id<>n.fazenda_id THEN RAISE EXCEPTION 'Devolução vinculada a outra fazenda: conferir referência.'; END IF;
+    IF d.compensacoes IS NOT NULL AND d.compensacoes<>'[]'::jsonb THEN RAISE EXCEPTION 'Devolução com compensações históricas: conferir valores e partes antes de restaurar.'; END IF;
+    IF EXISTS(SELECT 1 FROM nf_entrada_itens i WHERE i.nf_entrada_id=d.id AND i.tipo_apropiacao='direto') THEN
+     RAISE EXCEPTION 'Devolução com apropriação direta: conferir o custo original antes de restaurar manutenção/abastecimento.';
+    END IF;
+    IF EXISTS(SELECT 1 FROM lancamentos WHERE nf_entrada_id=d.id AND (status NOT IN('em_aberto','vencido','vencendo','cancelado') OR coalesce(valor_pago,0)>0 OR lote_id IS NOT NULL OR conciliado))
+      OR EXISTS(SELECT 1 FROM empresa_lancamentos WHERE nf_entrada_id=d.id) THEN RAISE EXCEPTION 'Financeiro da devolução movimentado: regularize a baixa antes de concluir.'; END IF;
+    -- O saldo é derivado pelo trigger da Seção 365. Não se soma o insumo e depois apaga o movimento.
+    IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.movimentacoes_estoque'::regclass AND tgname='trg_mov_estoque_recalcula' AND tgenabled<>'D') THEN RAISE EXCEPTION 'Estoque sem recálculo derivado: aplique a Seção 365.'; END IF;
+    DELETE FROM movimentacoes_estoque WHERE nf_entrada_id=d.id;
+    DELETE FROM lancamentos WHERE nf_entrada_id=d.id;
+    DELETE FROM nf_entrada_itens WHERE nf_entrada_id=d.id;
+    UPDATE nf_entradas SET status='cancelada' WHERE id=d.id;
+    v_origem:=d.nf_origem_id;
+    IF v_origem IS NOT NULL THEN
+     UPDATE nf_entradas SET devolucao_situacao=CASE
+      WHEN NOT EXISTS(SELECT 1 FROM nf_entrada_itens i JOIN nf_entradas x ON x.id=i.nf_entrada_id WHERE x.nf_origem_id=v_origem AND x.status<>'cancelada' AND i.quantidade>0) THEN NULL
+      WHEN NOT EXISTS(SELECT 1 FROM nf_entrada_itens o WHERE o.nf_entrada_id=v_origem AND o.quantidade>coalesce((SELECT sum(i.quantidade) FROM nf_entrada_itens i JOIN nf_entradas x ON x.id=i.nf_entrada_id WHERE i.origem_item_id=o.id AND x.nf_origem_id=v_origem AND x.status<>'cancelada'),0)+0.0005) THEN 'total' ELSE 'parcial' END WHERE id=v_origem;
+    END IF;
+   END IF;
+   SELECT * INTO v_carga FROM contrato_faturamentos WHERE nota_fiscal_id=n.id FOR UPDATE;
+   IF FOUND THEN
+    PERFORM id FROM lancamentos WHERE id=v_carga.cr_lancamento_id FOR UPDATE;
+    IF EXISTS(SELECT 1 FROM lancamentos WHERE id=v_carga.cr_lancamento_id AND (coalesce(valor_pago,0)>0 OR status IN('pago','baixado','parcial') OR lote_id IS NOT NULL OR conciliado)) THEN RAISE EXCEPTION 'CR da carga movimentado: estorne a baixa antes de concluir o cancelamento local.'; END IF;
+    SELECT lancamento_cr_id INTO v_guard FROM contratos WHERE id=v_carga.contrato_id FOR UPDATE;
+    IF coalesce(v_carga.valor_abatido,0)>0 THEN
+     PERFORM id FROM lancamentos WHERE id=v_guard FOR UPDATE;
+     IF NOT FOUND OR EXISTS(SELECT 1 FROM lancamentos WHERE id=v_guard AND (coalesce(valor_pago,0)>0 OR status IN('pago','baixado','parcial') OR lote_id IS NOT NULL)) THEN RAISE EXCEPTION 'CR do contrato indisponível para recompor o abatimento.'; END IF;
+     UPDATE lancamentos SET valor=round(CASE WHEN status='cancelado' THEN 0 ELSE valor END+v_carga.valor_abatido,2),status='em_aberto' WHERE id=v_guard;
+    END IF;
+    DELETE FROM lancamentos WHERE id=v_carga.cr_lancamento_id;
+    DELETE FROM contrato_faturamentos WHERE id=v_carga.id;
+   END IF;
+   UPDATE transferencias_maquinas SET status='cancelada' WHERE fazenda_id=n.fazenda_id AND nf_saida_chave=n.chave_acesso AND direcao IS DISTINCT FROM 'entrada';
+   UPDATE transferencias_maquinas SET status='emitida',nf_retorno_chave=NULL,nf_retorno_numero=NULL,nf_retorno_protocolo=NULL,nf_retorno_data=NULL WHERE fazenda_id=n.fazenda_id AND nf_retorno_chave=n.chave_acesso;
+   UPDATE notas_fiscais SET dados_nf_json=dados_nf_json||'{"cancelamento_local_pendente":false}'::jsonb WHERE id=n.id;
+  EXCEPTION WHEN OTHERS THEN
+   GET STACKED DIAGNOSTICS v_erro=MESSAGE_TEXT;
+   UPDATE fiscal_eventos_operacoes SET estado='pendente',motivo=v_erro,updated_at=clock_timestamp() WHERE id=e.id;
+   RETURN jsonb_build_object('ok',true,'sincronizacao_pendente',true,'aviso',v_erro,'evento_id',e.id);
+  END;
+ END IF;
+ UPDATE fiscal_eventos_operacoes SET estado='concluida',motivo=NULL,updated_at=clock_timestamp() WHERE id=e.id;
+ RETURN jsonb_build_object('ok',true,'evento_id',e.id);
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_reservar_evento(uuid,text,jsonb),public.fiscal_concluir_evento(uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.fiscal_reservar_evento(uuid,text,jsonb),public.fiscal_concluir_evento(uuid,jsonb) TO service_role;
+COMMIT;
+NOTIFY pgrst,'reload schema';

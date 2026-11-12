@@ -1,0 +1,7118 @@
+[
+  {
+    "file": "components/fiscal/ModalProcessarLote.tsx",
+    "line": 56,
+    "name": "motivoNaoProntaEstoque",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalProcessarLote.tsx",
+    "line": 102,
+    "name": "associarPeloHistorico",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalProcessarLote.tsx",
+    "line": 133,
+    "name": "ModalProcessarLote",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalProcessarLote.tsx",
+    "line": 214,
+    "name": "escolherPedido",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalProcessarLote.tsx",
+    "line": 232,
+    "name": "processarEmLote",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalProcessarLote.tsx",
+    "line": 237,
+    "name": "processarEmLoteInterno",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/VerificarCertificado.tsx",
+    "line": 4,
+    "name": "VerificarCertificado",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 127,
+    "name": "tipoApropDeCfop",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 132,
+    "name": "badge",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 215,
+    "name": "tipoPorCategoria",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 221,
+    "name": "normUnidade",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 254,
+    "name": "canonUnidade",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 264,
+    "name": "getConversao",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 270,
+    "name": "calcQtdCatalogo",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 399,
+    "name": "ModalNf",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 695,
+    "name": "abrirNovo",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 742,
+    "name": "abrirEditar",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 891,
+    "name": "resyncWizard",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 956,
+    "name": "aplicarDuplicatasXml",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 971,
+    "name": "aplicarTotaisDoXml",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 992,
+    "name": "parsearXml",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1200,
+    "name": "buscarSieg",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1220,
+    "name": "salvarRascunho",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1362,
+    "name": "gerarParcelasNf",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1409,
+    "name": "processarNF",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1414,
+    "name": "processarNFInterno",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1915,
+    "name": "chamarApiExcluir",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1928,
+    "name": "iniciarExclusaoNf",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1950,
+    "name": "confirmarExclusao",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1965,
+    "name": "estornarNFClick",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 1995,
+    "name": "abrirDevolucao",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2093,
+    "name": "confirmarDevolucao",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2292,
+    "name": "abrirReclassificar",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2299,
+    "name": "salvarReclassificacao",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2319,
+    "name": "abrirNovoInsumo",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2325,
+    "name": "salvarNovoInsumo",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2352,
+    "name": "carregarProdutoresFiltro",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2374,
+    "name": "carregarWizardData",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2458,
+    "name": "pessoaPorCnpj",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2471,
+    "name": "produtorPorCnpj",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2489,
+    "name": "onPessoaChange",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNf.tsx",
+    "line": 2513,
+    "name": "onPedidoChange",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalCadastroFornecedor.tsx",
+    "line": 25,
+    "name": "ibgePorMunicipio",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalCadastroFornecedor.tsx",
+    "line": 39,
+    "name": "ModalCadastroFornecedor",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalCadastroFornecedor.tsx",
+    "line": 52,
+    "name": "consultar",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalCadastroFornecedor.tsx",
+    "line": 82,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 113,
+    "name": "ModalNfServico",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 207,
+    "name": "pessoaPorCnpjNFS",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 212,
+    "name": "tomadorPorCnpjNFS",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 239,
+    "name": "onPrestadorChange",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 247,
+    "name": "onTomadorChange",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 333,
+    "name": "gerarParcelasServico",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 348,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 530,
+    "name": "cancelarNf",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 538,
+    "name": "estornarNf",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 557,
+    "name": "iniciarExclusao",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalNfServico.tsx",
+    "line": 585,
+    "name": "confirmarExclusao",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalCteEntradaNovo.tsx",
+    "line": 21,
+    "name": "ModalCteEntradaNovo",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalCteEntradaNovo.tsx",
+    "line": 52,
+    "name": "lerArquivo",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalCteEntradaNovo.tsx",
+    "line": 60,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalCteEntrada.tsx",
+    "line": 32,
+    "name": "ogFretePorProduto",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalCteEntrada.tsx",
+    "line": 40,
+    "name": "ModalCteEntrada",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/ModalCteEntrada.tsx",
+    "line": 103,
+    "name": "enviar",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/ModalCteEntrada.tsx",
+    "line": 132,
+    "name": "abrirXml",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/PatrimonioServico.tsx",
+    "line": 8,
+    "name": "PatrimonioServico",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 94,
+    "name": "RemessasMaquinas",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 145,
+    "name": "resolverEmitente",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 212,
+    "name": "destinoSelecionado",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 220,
+    "name": "escolherProdutorDestino",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 226,
+    "name": "abrirNova",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 238,
+    "name": "montarTransporte",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 255,
+    "name": "blocoTransporte",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 317,
+    "name": "registrarNoMonitor",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 345,
+    "name": "abrirDanfe",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 352,
+    "name": "emitirRemessa",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/RemessasMaquinas.tsx",
+    "line": 505,
+    "name": "emitirRetorno",
+    "async": true
+  },
+  {
+    "file": "components/fiscal/EmissaoNfe.tsx",
+    "line": 19,
+    "name": "useDadosEmissao",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/EmissaoNfe.tsx",
+    "line": 69,
+    "name": "resolverEmitente",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/EmissaoNfe.tsx",
+    "line": 82,
+    "name": "ieSugerida",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/EmissaoNfe.tsx",
+    "line": 91,
+    "name": "SeletorIE",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/EmissaoNfe.tsx",
+    "line": 107,
+    "name": "montarTransporte",
+    "async": false
+  },
+  {
+    "file": "components/fiscal/EmissaoNfe.tsx",
+    "line": 124,
+    "name": "BlocoTransporte",
+    "async": false
+  },
+  {
+    "file": "lib/estoque/auditoria-fiscal.ts",
+    "line": 51,
+    "name": "classificarMov",
+    "async": false
+  },
+  {
+    "file": "lib/estoque/auditoria-fiscal.ts",
+    "line": 69,
+    "name": "auditarFiscalFisico",
+    "async": false
+  },
+  {
+    "file": "lib/estoque/auditoria-fiscal.ts",
+    "line": 138,
+    "name": "situacaoLinha",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 37,
+    "name": "registrarLog",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 68,
+    "name": "listarLogs",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 83,
+    "name": "criarContaTenant",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 89,
+    "name": "listarContasTenant",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 95,
+    "name": "listarContasAdmin",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 108,
+    "name": "atualizarConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 117,
+    "name": "listarFazendas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 164,
+    "name": "listarFazendasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 184,
+    "name": "criarFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 196,
+    "name": "atualizarFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 207,
+    "name": "excluirFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 217,
+    "name": "listarTalhoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 223,
+    "name": "criarTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 239,
+    "name": "atualizarTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 254,
+    "name": "excluirTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 260,
+    "name": "listarArrendamentosTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 268,
+    "name": "listarArrendamentosUsadosFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 276,
+    "name": "salvarArrendamentosTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 292,
+    "name": "listarDocumentacaoTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 298,
+    "name": "salvarDocumentacaoTalhao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 314,
+    "name": "listarSafras",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 320,
+    "name": "criarSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 326,
+    "name": "atualizarSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 330,
+    "name": "excluirSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 339,
+    "name": "listarOperacoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 349,
+    "name": "criarOperacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 355,
+    "name": "atualizarOperacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 377,
+    "name": "listarInsumos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 408,
+    "name": "listarInsumosParaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 451,
+    "name": "normalizarNomeInsumo",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 461,
+    "name": "criarInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 522,
+    "name": "listarDuplicadosRevisados",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 532,
+    "name": "buscarRegistroPorDocumentoNaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 556,
+    "name": "reabrirDuplicadoRevisado",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 561,
+    "name": "marcarDuplicadoRevisado",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 582,
+    "name": "insumoTemMovimento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 590,
+    "name": "atualizarInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 622,
+    "name": "excluirInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 627,
+    "name": "excluirInsumos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 638,
+    "name": "listarSaldoPorDeposito",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 656,
+    "name": "listarMovimentacoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 680,
+    "name": "listarDepositosDasTransferencias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 715,
+    "name": "listarMovimentacoesRel",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 736,
+    "name": "listarMovimentacoesRelComDepositos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 760,
+    "name": "saldoPorLote",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 796,
+    "name": "saldoPorLoteDetalhado",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 835,
+    "name": "criarMovimentacaoManual",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 862,
+    "name": "transferirEntreDepositos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 879,
+    "name": "registrarMovimentacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 889,
+    "name": "listarLancamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 909,
+    "name": "listarLancamentosPeriodo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 939,
+    "name": "listarLancamentosContaPeriodo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1020,
+    "name": "calcularSaldoAnterior",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1036,
+    "name": "criarLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1054,
+    "name": "buscarLancamentoDuplicado",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1071,
+    "name": "excluirLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1082,
+    "name": "atualizarLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1090,
+    "name": "criarParcelamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1108,
+    "name": "resolverAnoSafra",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1137,
+    "name": "baixarLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1187,
+    "name": "reabrirLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1200,
+    "name": "reabrirLancamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1232,
+    "name": "criarPagamentoLote",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1284,
+    "name": "chamarBorderoAcao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1303,
+    "name": "confirmarPagamentoBordero",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1313,
+    "name": "cancelarBordero",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1318,
+    "name": "estornarBordero",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1331,
+    "name": "listarBorderosPagos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1348,
+    "name": "listarPagamentoLotes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1364,
+    "name": "listarBorderosPendentes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1385,
+    "name": "listarContratos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1395,
+    "name": "criarContrato",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1401,
+    "name": "listarRomaneios",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1407,
+    "name": "criarRomaneio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1413,
+    "name": "atualizarRomaneio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1418,
+    "name": "excluirRomaneio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1427,
+    "name": "atualizarContrato",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1432,
+    "name": "excluirContrato",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1438,
+    "name": "encerrarContratosPorSafras",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1475,
+    "name": "listarItensContrato",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1481,
+    "name": "salvarItensContrato",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1490,
+    "name": "listarCessaoDebitos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1503,
+    "name": "salvarCessaoDebitos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1514,
+    "name": "listarNotasFiscais",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1520,
+    "name": "criarNotaFiscal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1526,
+    "name": "atualizarStatusNFe",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1539,
+    "name": "listarSimulacoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1545,
+    "name": "criarSimulacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1551,
+    "name": "toggleSimulacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1556,
+    "name": "atualizarSimulacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1561,
+    "name": "excluirSimulacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1574,
+    "name": "listarProdutores",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1579,
+    "name": "criarProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1600,
+    "name": "atualizarProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1605,
+    "name": "excluirProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1612,
+    "name": "listarProdutoresViaFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1626,
+    "name": "listarProdutoresDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1642,
+    "name": "listarIEsDoProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1660,
+    "name": "salvarIEsDoProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1681,
+    "name": "adicionarIEAoProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1687,
+    "name": "listarIEsDeMultiplosProdutores",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1701,
+    "name": "listarMatriculas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1706,
+    "name": "criarMatricula",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1711,
+    "name": "atualizarMatricula",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1715,
+    "name": "excluirMatricula",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1729,
+    "name": "riquezaPessoa",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1742,
+    "name": "dedupPessoas",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1754,
+    "name": "listarPessoas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1773,
+    "name": "resolverFazendaIdsDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1800,
+    "name": "resolverContaId",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1815,
+    "name": "listarPessoasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1834,
+    "name": "listarContasBancariasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1843,
+    "name": "criarPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1878,
+    "name": "atualizarPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1883,
+    "name": "excluirPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1902,
+    "name": "listarAnosSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1925,
+    "name": "criarAnoSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1941,
+    "name": "atualizarAnoSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1946,
+    "name": "excluirAnoSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1952,
+    "name": "encerrarAnoSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1960,
+    "name": "reabrirAnoSafra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1969,
+    "name": "listarCiclos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1977,
+    "name": "listarCiclosDasFazendas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1983,
+    "name": "listarTalhoesDasFazendas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 1993,
+    "name": "listarCiclosDoCliente",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2007,
+    "name": "listarTodosCiclos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2012,
+    "name": "criarCiclo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2017,
+    "name": "atualizarCiclo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2021,
+    "name": "excluirCiclo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2030,
+    "name": "listarMaquinas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2055,
+    "name": "listarVeiculosUnificados",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2095,
+    "name": "criarMaquina",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2105,
+    "name": "atualizarMaquina",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2109,
+    "name": "excluirMaquina",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2114,
+    "name": "excluirMaquinas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2128,
+    "name": "listarBombasDoCliente",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2141,
+    "name": "listarBombas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2146,
+    "name": "criarBomba",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2151,
+    "name": "atualizarBomba",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2155,
+    "name": "excluirBomba",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2164,
+    "name": "listarFuncionarios",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2172,
+    "name": "criarFuncionario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2184,
+    "name": "atualizarFuncionario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2188,
+    "name": "excluirFuncionario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2195,
+    "name": "listarFuncoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2200,
+    "name": "salvarFuncao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2206,
+    "name": "excluirFuncao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2215,
+    "name": "listarPremiacoesFuncionario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2224,
+    "name": "criarPremiacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2232,
+    "name": "excluirPremiacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2241,
+    "name": "listarFeriasFuncionario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2246,
+    "name": "salvarFeriasGozo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2250,
+    "name": "sincronizarPeriodosFerias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2277,
+    "name": "processarFolhaMensal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2345,
+    "name": "listarGrupos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2354,
+    "name": "criarGrupo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2359,
+    "name": "atualizarGrupo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2363,
+    "name": "excluirGrupo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2372,
+    "name": "listarUsuarios",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2393,
+    "name": "criarUsuario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2417,
+    "name": "atualizarUsuario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2421,
+    "name": "excluirUsuario",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2430,
+    "name": "listarEmpresas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2439,
+    "name": "listarEmpresasDoProdutor",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2445,
+    "name": "listarEmpresasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2468,
+    "name": "listarEmpresaLancamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2497,
+    "name": "listarEmpresaLancamentosComoLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2530,
+    "name": "criarEmpresaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2538,
+    "name": "atualizarEmpresaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2545,
+    "name": "excluirEmpresaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2552,
+    "name": "baixarEmpresaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2561,
+    "name": "criarEmpresa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2568,
+    "name": "atualizarEmpresa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2574,
+    "name": "excluirEmpresa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2584,
+    "name": "listarBancos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2590,
+    "name": "listarContas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2601,
+    "name": "listarContasProdutorDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2613,
+    "name": "listarContasPorEmpresa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2622,
+    "name": "comContaAtual",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2628,
+    "name": "criarConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2635,
+    "name": "atualizarContaBancaria",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2641,
+    "name": "excluirConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2652,
+    "name": "listarBenfeitorias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2657,
+    "name": "criarBenfeitoria",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2662,
+    "name": "atualizarBenfeitoria",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2666,
+    "name": "excluirBenfeitoria",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2674,
+    "name": "listarBens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2688,
+    "name": "criarBem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2694,
+    "name": "atualizarBem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2699,
+    "name": "excluirBem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2704,
+    "name": "vincularConsorciosBem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2714,
+    "name": "listarConsorciosContemplados",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2729,
+    "name": "listarBensPorConsorcio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2738,
+    "name": "listarDepositos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2743,
+    "name": "listarDepositosMulti",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2749,
+    "name": "criarDeposito",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2759,
+    "name": "atualizarDeposito",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2763,
+    "name": "excluirDeposito",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2772,
+    "name": "listarHistoricoMaquina",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2777,
+    "name": "criarHistoricoManutencao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2782,
+    "name": "excluirHistoricoManutencao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2791,
+    "name": "listarNfEntradas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2796,
+    "name": "listarNfEntradasPorFazendas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2802,
+    "name": "criarNfEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2807,
+    "name": "atualizarNfEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2811,
+    "name": "listarNfEntradaItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2816,
+    "name": "listarNfEntradasPorPedido",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2828,
+    "name": "limparNfEntradaItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2833,
+    "name": "criarNfEntradaItem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2849,
+    "name": "buscarDepositoTerceiroPorCnpj",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2877,
+    "name": "creditarInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2918,
+    "name": "limparMovimentacoesEFinanceiroDaNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 2980,
+    "name": "verificarMovimentoEmpresaNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3001,
+    "name": "registrarAutorizacaoMovimentoEmpresa",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3012,
+    "name": "resolverProdutorDaNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3032,
+    "name": "outraCopiaProcessadaDaNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3053,
+    "name": "lancarItensDaNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3334,
+    "name": "processarNfEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3757,
+    "name": "verificarExclusaoNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3770,
+    "name": "confirmarEntregaNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3795,
+    "name": "excluirNfEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3846,
+    "name": "estornarNfProcessamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3904,
+    "name": "devolvidoPorItem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 3916,
+    "name": "processarDevolucaoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4096,
+    "name": "listarEstoqueTerceiros",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4101,
+    "name": "criarEstoqueTerceiro",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4107,
+    "name": "atualizarEstoqueTerceiro",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4125,
+    "name": "normalizarContrato",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4167,
+    "name": "listarContratosFinanceiros",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4174,
+    "name": "resolverFazendaIds",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4202,
+    "name": "listarContratosFinanceirosDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4215,
+    "name": "listarContratosDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4228,
+    "name": "desnormalizarContrato",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4283,
+    "name": "criarContratoFinanceiro",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4295,
+    "name": "atualizarContratoFinanceiro",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4307,
+    "name": "excluirContratoFinanceiro",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4315,
+    "name": "listarParcelasLiberacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4321,
+    "name": "criarParcelaLiberacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4371,
+    "name": "criarParcelaDespesaFinanciada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4418,
+    "name": "excluirParcelaLiberacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4440,
+    "name": "listarParcelasPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4446,
+    "name": "salvarParcelasPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4513,
+    "name": "buscarOgsCf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4535,
+    "name": "baixarParcelaPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4609,
+    "name": "listarGarantias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4619,
+    "name": "criarGarantia",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4638,
+    "name": "excluirGarantia",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4644,
+    "name": "listarCentrosCusto",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4650,
+    "name": "salvarCentrosCusto",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4668,
+    "name": "listarAditivos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4678,
+    "name": "criarAditivo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4684,
+    "name": "excluirAditivo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4693,
+    "name": "listarOrigensRefinanciamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4714,
+    "name": "listarCorrecoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4719,
+    "name": "criarCorrecao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4724,
+    "name": "criarCorrecaoItem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4729,
+    "name": "listarCorrecaoItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4734,
+    "name": "excluirCorrecao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4766,
+    "name": "processarCorrecao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4803,
+    "name": "listarAdubacoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4808,
+    "name": "criarAdubacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4813,
+    "name": "criarAdubacaoItem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4818,
+    "name": "listarAdubacaoItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4823,
+    "name": "excluirAdubacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4856,
+    "name": "processarAdubacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4891,
+    "name": "listarPlantios",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4897,
+    "name": "criarPlantio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4903,
+    "name": "atualizarPlantio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4908,
+    "name": "excluirPlantio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4932,
+    "name": "processarPlantio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4969,
+    "name": "listarPulverizacoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4975,
+    "name": "criarPulverizacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4981,
+    "name": "listarPulverizacaoItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4987,
+    "name": "criarPulverizacaoItem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 4996,
+    "name": "criarPulverizacaoTalhoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5007,
+    "name": "listarPulverizacaoTalhoesPorIds",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5020,
+    "name": "excluirPulverizacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5044,
+    "name": "processarPulverizacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5093,
+    "name": "listarColheitas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5099,
+    "name": "criarColheita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5105,
+    "name": "atualizarColheita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5110,
+    "name": "excluirColheita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5116,
+    "name": "listarColheitaRomaneios",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5122,
+    "name": "criarColheitaRomaneio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5130,
+    "name": "excluirColheitaRomaneio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5136,
+    "name": "recalcularColheita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5169,
+    "name": "finalizarColheita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5201,
+    "name": "listarGruposInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5206,
+    "name": "listarGruposInsumoDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5215,
+    "name": "criarGrupoInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5221,
+    "name": "atualizarGrupoInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5226,
+    "name": "excluirGrupoInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5233,
+    "name": "listarSubgruposInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5240,
+    "name": "listarSubgruposInsumoDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5251,
+    "name": "criarSubgrupoInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5257,
+    "name": "atualizarSubgrupoInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5262,
+    "name": "excluirSubgrupoInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5269,
+    "name": "seederGruposInsumo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5340,
+    "name": "listarTiposPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5345,
+    "name": "listarTiposPessoaDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5354,
+    "name": "criarTipoPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5360,
+    "name": "atualizarTipoPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5365,
+    "name": "excluirTipoPessoa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5372,
+    "name": "listarCentrosCustoGeral",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5377,
+    "name": "listarCentrosCustoGeralDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5386,
+    "name": "criarCentroCusto",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5392,
+    "name": "atualizarCentroCusto",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5397,
+    "name": "excluirCentroCusto",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5404,
+    "name": "listarCategoriasLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5409,
+    "name": "criarCategoriaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5414,
+    "name": "atualizarCategoriaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5418,
+    "name": "excluirCategoriaLancamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5427,
+    "name": "listarArrendamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5444,
+    "name": "criarArrendamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5450,
+    "name": "atualizarArrendamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5455,
+    "name": "excluirArrendamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5464,
+    "name": "listarArrendamentoMatriculas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5470,
+    "name": "criarArrendamentoMatricula",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5476,
+    "name": "excluirArrendamentoMatricula",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5482,
+    "name": "salvarArrendamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5553,
+    "name": "listarPedidosCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5559,
+    "name": "criarPedidoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5565,
+    "name": "atualizarPedidoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5570,
+    "name": "excluirPedidoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5577,
+    "name": "listarPedidoCompraItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5591,
+    "name": "salvarPedidoCompraItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5619,
+    "name": "atualizarPedidoCompraItem",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5624,
+    "name": "listarPedidoCompraEntregas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5633,
+    "name": "recalcularStatusPedidoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5650,
+    "name": "encerrarPedidoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5709,
+    "name": "recalcularEntregaPedidoFiscal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5759,
+    "name": "reavaliarStatusPedidoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5767,
+    "name": "registrarEntrega",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5792,
+    "name": "editarEntrega",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5816,
+    "name": "excluirEntrega",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5836,
+    "name": "listarRegrasRateio",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5850,
+    "name": "listarRegrasRateioTodasFazendas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5865,
+    "name": "criarRateioRegra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5881,
+    "name": "atualizarRateioRegra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5898,
+    "name": "excluirRateioRegra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5912,
+    "name": "listarRegrasRateioGlobal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5941,
+    "name": "_inserirFazendasGlobal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5962,
+    "name": "criarRateioGlobal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5972,
+    "name": "atualizarRateioGlobal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5985,
+    "name": "excluirRateioGlobal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 5994,
+    "name": "listarRegrasClassificacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6005,
+    "name": "criarRegraClassificacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6011,
+    "name": "atualizarRegraClassificacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6016,
+    "name": "excluirRegraClassificacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6026,
+    "name": "aplicarRegraClassificacao",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6065,
+    "name": "listarOperacoesCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6070,
+    "name": "criarOperacaoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6075,
+    "name": "atualizarOperacaoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6079,
+    "name": "excluirOperacaoCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6100,
+    "name": "sincronizarOperacoesCompra",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6148,
+    "name": "listarFormasPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6153,
+    "name": "listarFormasPagamentoDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6162,
+    "name": "criarFormaPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6168,
+    "name": "atualizarFormaPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6173,
+    "name": "excluirFormaPagamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6184,
+    "name": "resolverContaIdDaFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6192,
+    "name": "ogOrFilter",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6204,
+    "name": "resolverOperacaoGerencialPorClassificacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6216,
+    "name": "listarOperacoesGerenciais",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6271,
+    "name": "listarOperacoesGerenciaisAtivas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6313,
+    "name": "listarOperacoesGerenciaisAtivasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6378,
+    "name": "ogDaLista",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6386,
+    "name": "listarCfopsPorOperacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6396,
+    "name": "buscarCstPorCfop",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6406,
+    "name": "salvarCfopFiscal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6412,
+    "name": "excluirCfopFiscal",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6417,
+    "name": "listarTodosCfops",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6427,
+    "name": "criarOperacaoGerencialCustom",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6439,
+    "name": "criarOperacaoGerencial",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6451,
+    "name": "atualizarOperacaoGerencial",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6456,
+    "name": "excluirOperacaoGerencial",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6467,
+    "name": "listarProgressoLearning",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6477,
+    "name": "marcarLicaoConcluida",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6485,
+    "name": "desmarcarLicao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6499,
+    "name": "listarAlertasController",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6510,
+    "name": "upsertAlertaController",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6518,
+    "name": "reconhecerAlerta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6526,
+    "name": "resolverAlerta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6538,
+    "name": "sbErr",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6542,
+    "name": "listarConversasSuporte",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6553,
+    "name": "criarConversaSuporte",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6563,
+    "name": "atualizarTituloConversa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6571,
+    "name": "excluirConversa",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6577,
+    "name": "listarMensagensSuporte",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6587,
+    "name": "salvarMensagemSuporte",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6624,
+    "name": "listarPendenciasOperacionais",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6634,
+    "name": "contarPendenciasOperacionais",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6644,
+    "name": "cancelarPendenciaOperacional",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6659,
+    "name": "listarPlanoContas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6693,
+    "name": "salvarContaContabil",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6700,
+    "name": "excluirContaContabil",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6709,
+    "name": "seedPlanoContas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6721,
+    "name": "listarPrincipiosAtivos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6728,
+    "name": "criarPrincipioAtivo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6734,
+    "name": "atualizarPrincipioAtivo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6739,
+    "name": "excluirPrincipioAtivo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6744,
+    "name": "listarNomesComerciais",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6754,
+    "name": "salvarNomeComercial",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6764,
+    "name": "excluirNomeComercial",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6774,
+    "name": "resolverNomeComercial",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6827,
+    "name": "obterOuCriarInsumoDoPA",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6869,
+    "name": "isCategoriaPA",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6873,
+    "name": "listarPASaldos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6882,
+    "name": "registrarEntradaPA",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6926,
+    "name": "registrarSaidaPA",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6958,
+    "name": "listarMovimentacoesPA",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6969,
+    "name": "estornarMovimentacoesPA",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6989,
+    "name": "listarNfsImportadas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 6996,
+    "name": "listarItensSieg",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7001,
+    "name": "classificarItemSieg",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7014,
+    "name": "ignorarNfSieg",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7019,
+    "name": "reabrirNfSieg",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7023,
+    "name": "contarPendenciasSieg",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7032,
+    "name": "listarRegrasClassificacaoNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7037,
+    "name": "criarRegraClassificacaoNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7043,
+    "name": "atualizarRegraClassificacaoNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7047,
+    "name": "excluirRegraClassificacaoNf",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7055,
+    "name": "listarConfigAutomacoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7060,
+    "name": "salvarConfigAutomacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7074,
+    "name": "buscarConfigAutomacao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7087,
+    "name": "listarAdiantamentosDisponiveis",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7101,
+    "name": "aplicarAdiantamentoEmCP",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7134,
+    "name": "listarAdiantamentosFuncionarioDisponiveis",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7152,
+    "name": "aplicarAdiantamentoFuncionarioEmCP",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7164,
+    "name": "listarAdiantamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7171,
+    "name": "listarAdiantamentosDoPedido",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7177,
+    "name": "listarAplicacoesAdiantamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7187,
+    "name": "criarAdiantamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7199,
+    "name": "reajustarPedidoDoAdiantamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7203,
+    "name": "atualizarAdiantamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7216,
+    "name": "cancelarAdiantamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7223,
+    "name": "aplicarAdiantamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7259,
+    "name": "listarImoveisUrbanos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7265,
+    "name": "criarImovelUrbano",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7271,
+    "name": "atualizarImovelUrbano",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7276,
+    "name": "excluirImovelUrbano",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7307,
+    "name": "seederProdutosAgricolas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7361,
+    "name": "listarParcerias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7371,
+    "name": "salvarParceria",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7385,
+    "name": "excluirParceria",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7392,
+    "name": "listarParticipantes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7402,
+    "name": "salvarParticipantes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7427,
+    "name": "listarAreasParcerias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7436,
+    "name": "salvarAreasParcerias",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7448,
+    "name": "listarDistribuicao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7457,
+    "name": "salvarDistribuicao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7471,
+    "name": "listarApuracoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7481,
+    "name": "salvarApuracao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7503,
+    "name": "listarCotasApuracao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7512,
+    "name": "listarGruposEconomicos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7519,
+    "name": "salvarGrupoEconomico",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7533,
+    "name": "excluirGrupoEconomico",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7538,
+    "name": "listarMembrosGrupo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7547,
+    "name": "salvarMembrosGrupo",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7560,
+    "name": "calcularCotas",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7608,
+    "name": "listarRomaneiosEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7619,
+    "name": "criarRomaneioEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7625,
+    "name": "atualizarRomaneioEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7630,
+    "name": "excluirRomaneioEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7639,
+    "name": "listarPlantiosDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7647,
+    "name": "listarPulverizacoesDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7655,
+    "name": "listarColheitasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7663,
+    "name": "listarAdubacoesDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7671,
+    "name": "listarCorrecoesDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7679,
+    "name": "listarPedidosCompraDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7697,
+    "name": "listarPedidosCompraRelDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7707,
+    "name": "buscarPedidoCompraPorId",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7713,
+    "name": "listarRomaneiosEntradaDaColheita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7723,
+    "name": "listarRomaneiosEntradaDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7731,
+    "name": "confirmarRomaneioEntrada",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7777,
+    "name": "listarEmpresasAplicadoras",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7788,
+    "name": "salvarEmpresaAplicadora",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7800,
+    "name": "excluirEmpresaAplicadora",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7805,
+    "name": "listarAplicacoesAereas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7815,
+    "name": "listarAplicacoesAereasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7831,
+    "name": "criarAplicacaoAerea",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7837,
+    "name": "atualizarAplicacaoAerea",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7842,
+    "name": "excluirAplicacaoAerea",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7847,
+    "name": "listarAplicacaoAereaTalhoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7856,
+    "name": "salvarAplicacaoAereaTalhoes",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7864,
+    "name": "listarAplicacaoAereaItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7870,
+    "name": "salvarAplicacaoAereaItens",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7887,
+    "name": "listarTratamentos",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7897,
+    "name": "criarTratamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7910,
+    "name": "atualizarTratamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7921,
+    "name": "excluirTratamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7926,
+    "name": "salvarItensTratamento",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7937,
+    "name": "listarReceitas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7947,
+    "name": "salvarReceita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7966,
+    "name": "atualizarReceita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7980,
+    "name": "excluirReceita",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 7989,
+    "name": "listarNfRemessasLogisticas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8008,
+    "name": "criarNfRemessaLogistica",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8020,
+    "name": "atualizarNfRemessaLogistica",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8038,
+    "name": "listarTransferenciasMaquinas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8051,
+    "name": "criarTransferenciaMaquina",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8059,
+    "name": "atualizarTransferenciaMaquina",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8073,
+    "name": "listarCartoesDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8086,
+    "name": "criarCartao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8097,
+    "name": "atualizarCartao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8103,
+    "name": "excluirCartao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8110,
+    "name": "competenciaFatura",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8122,
+    "name": "datasCompetencia",
+    "async": false
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8137,
+    "name": "vincularLancamentoFatura",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8186,
+    "name": "criarLancamentoNoCartao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8203,
+    "name": "pagarFaturaCartao",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8242,
+    "name": "autoFecharFaturasVencidas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8252,
+    "name": "listarFaturasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8263,
+    "name": "listarLancamentosDaFatura",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8273,
+    "name": "fecharFatura",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8278,
+    "name": "reabrirFatura",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8288,
+    "name": "listarNotasPropriasExternas",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8296,
+    "name": "listarItensNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8303,
+    "name": "criarNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8311,
+    "name": "atualizarNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8316,
+    "name": "salvarItensNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8330,
+    "name": "processarNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8364,
+    "name": "estornarNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8379,
+    "name": "excluirNotaPropriaExterna",
+    "async": true
+  },
+  {
+    "file": "lib/db.ts",
+    "line": 8385,
+    "name": "baixarAdiantamentoFornecedor",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 90,
+    "name": "GnrePage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 106,
+    "name": "carregar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 129,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 149,
+    "name": "emitir",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 155,
+    "name": "registrarPagamento",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 163,
+    "name": "cancelar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 169,
+    "name": "abrirModal",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "line": 189,
+    "name": "fecharModal",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 171,
+    "name": "imprimirDanfe",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 548,
+    "name": "TabelaNFe",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 752,
+    "name": "FiscalInner",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 944,
+    "name": "calcItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 948,
+    "name": "addItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 955,
+    "name": "opcoesCstIcms",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 961,
+    "name": "removeItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 962,
+    "name": "saveEditItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 991,
+    "name": "onProdutorChange",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1001,
+    "name": "onCfopChange",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1146,
+    "name": "divergenciaProdutorEmitente",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1168,
+    "name": "fecharCert",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1173,
+    "name": "salvarCertificado",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1351,
+    "name": "abrirRetransmit",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1413,
+    "name": "textoDadosAdicionais",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1811,
+    "name": "maniTestarNF",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1864,
+    "name": "ativarContingencia",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1879,
+    "name": "desativarContingencia",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 1987,
+    "name": "transmitirLoteContingencia",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "line": 3664,
+    "name": "Fiscal",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/entregas-futuras/page.tsx",
+    "line": 21,
+    "name": "EntregasFuturasPage",
+    "async": false
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 8,
+    "name": "adminClient",
+    "async": false
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 19,
+    "name": "getSessionUser",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 39,
+    "name": "getRequestUser",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 53,
+    "name": "requireRaccotloAdmin",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 78,
+    "name": "validateFazendaAccess",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 131,
+    "name": "exigirAcessoFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 138,
+    "name": "exigirAcessoRegistro",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 150,
+    "name": "exigirLogin",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 156,
+    "name": "exigirRaccoltoAdmin",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 164,
+    "name": "exigirAcessoConta",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 174,
+    "name": "exigirAcessoFazendas",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 195,
+    "name": "chaveInterna",
+    "async": false
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 198,
+    "name": "ehChamadaInterna",
+    "async": false
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 204,
+    "name": "exigirAcessoRegistros",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 219,
+    "name": "acessoDoUsuario",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 232,
+    "name": "fazendasDoAcesso",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 242,
+    "name": "exigirAcessoTransferencia",
+    "async": true
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 256,
+    "name": "tokenWebhookWhatsapp",
+    "async": false
+  },
+  {
+    "file": "lib/api-auth.ts",
+    "line": 260,
+    "name": "webhookWhatsappAutorizado",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "line": 478,
+    "name": "ParametrosSistemaContent",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "line": 519,
+    "name": "fazerUploadCert",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "line": 574,
+    "name": "testarConexaoSefaz",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "line": 1107,
+    "name": "autoPreencherDoCadastro",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "line": 2707,
+    "name": "ParametrosSistema",
+    "async": false
+  },
+  {
+    "file": "lib/operacoes-fiscais.ts",
+    "line": 34,
+    "name": "listarOperacoesFiscais",
+    "async": true
+  },
+  {
+    "file": "lib/operacoes-fiscais.ts",
+    "line": 58,
+    "name": "flattenParaContratos",
+    "async": false
+  },
+  {
+    "file": "lib/operacoes-fiscais.ts",
+    "line": 99,
+    "name": "grupoVisualDe",
+    "async": false
+  },
+  {
+    "file": "lib/operacoes-fiscais.ts",
+    "line": 105,
+    "name": "flattenParaFaturamento",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 56,
+    "name": "NotasPropriasExternasPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 111,
+    "name": "abrirWizard",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 117,
+    "name": "aplicarParsed",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 139,
+    "name": "parsearXmlLocal",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 147,
+    "name": "detectarRemessa",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 154,
+    "name": "consultarPorChave",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 177,
+    "name": "setItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 180,
+    "name": "addItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 181,
+    "name": "removerItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 183,
+    "name": "avancar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 196,
+    "name": "registrarNoMonitor",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 224,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 262,
+    "name": "estornar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "line": 267,
+    "name": "excluir",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "line": 107,
+    "name": "Badge",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "line": 116,
+    "name": "StatusBadge",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "line": 126,
+    "name": "fmtKg",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "line": 131,
+    "name": "fmtSc",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "line": 135,
+    "name": "fmtMoeda",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "line": 143,
+    "name": "TriangulacaoPage",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/imprimir-cce.ts",
+    "line": 23,
+    "name": "htmlCce",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/imprimir-cce.ts",
+    "line": 62,
+    "name": "imprimirCce",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/devolucao-compensacao.ts",
+    "line": 17,
+    "name": "compensarDevolucao",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/devolucao-compensacao.ts",
+    "line": 59,
+    "name": "desfazerCompensacaoDevolucao",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/devolucao-compensacao.ts",
+    "line": 85,
+    "name": "atualizarSituacaoDevolucao",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/ncm-produtos.ts",
+    "line": 23,
+    "name": "ncmPadraoDoProduto",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/ncm-produtos.ts",
+    "line": 31,
+    "name": "produtoDoContrato",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/dedup-nf.ts",
+    "line": 15,
+    "name": "planejarLimpeza",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/retorno-rateio.ts",
+    "line": 12,
+    "name": "ratearRetorno",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/retorno-rateio.ts",
+    "line": 27,
+    "name": "problemasRateio",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/retorno-rateio.ts",
+    "line": 40,
+    "name": "quantidadesPorRemessa",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/retorno-rateio.ts",
+    "line": 49,
+    "name": "chavesReferenciadas",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/servico-maquina.ts",
+    "line": 3,
+    "name": "centroServicoMaquinas",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/servico-maquina.ts",
+    "line": 14,
+    "name": "rotuloPatrimonioServico",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/sieg-monitoramento.ts",
+    "line": 14,
+    "name": "documentosMonitorados",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/sieg-monitoramento.ts",
+    "line": 37,
+    "name": "atualizarFalhas",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/sieg-monitoramento.ts",
+    "line": 50,
+    "name": "falhasParaTentar",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/sieg-monitoramento.ts",
+    "line": 56,
+    "name": "janelaDaEmissao",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/nfse-cancelamento.ts",
+    "line": 13,
+    "name": "valor",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/nfse-cancelamento.ts",
+    "line": 22,
+    "name": "decomporChaveNacional",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/nfse-cancelamento.ts",
+    "line": 31,
+    "name": "detectarCancelamentoNfse",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/documento-autorizado.ts",
+    "line": 2,
+    "name": "montarProcAutorizado",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/estornar-nf-cliente.ts",
+    "line": 6,
+    "name": "estornarNfComConfirmacao",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/nf-substituta.ts",
+    "line": 18,
+    "name": "casarSubstitutas",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/nf-substituta.ts",
+    "line": 42,
+    "name": "momentoDoCancelamento",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/estorno-vinculos.ts",
+    "line": 22,
+    "name": "bloqueioVefComRemessas",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/estorno-vinculos.ts",
+    "line": 31,
+    "name": "desfazerVinculosDaNf",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/remessa-operacoes.ts",
+    "line": 33,
+    "name": "infoFiscalRemessa",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/remessa-operacoes.ts",
+    "line": 49,
+    "name": "operacaoPorCfop",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/retorno-bem-terceiro.ts",
+    "line": 27,
+    "name": "naturezaDoRetorno",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/retorno-bem-terceiro.ts",
+    "line": 33,
+    "name": "finalidadeDoRetorno",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/municipios-ibge.ts",
+    "line": 36,
+    "name": "ibgeDoMunicipio",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/nfe-xml.ts",
+    "line": 10,
+    "name": "lerXmlNfe",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/nfse-existente.ts",
+    "line": 5,
+    "name": "buscarNfseExistente",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/cfop-cobranca.ts",
+    "line": 34,
+    "name": "cobrancaDaNf",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/cfop-cobranca.ts",
+    "line": 47,
+    "name": "motivoSemCp",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/lc116.ts",
+    "line": 291,
+    "name": "codigoLC116",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/transferencia-maquina.ts",
+    "line": 14,
+    "name": "cfopPorDestino",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/transferencia-maquina.ts",
+    "line": 22,
+    "name": "destinatarioDaInscricao",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/transferencia-maquina.ts",
+    "line": 39,
+    "name": "mesmoEstabelecimento",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/duplicar-nota.ts",
+    "line": 20,
+    "name": "podeDuplicarNota",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/duplicar-nota.ts",
+    "line": 26,
+    "name": "montarRascunhoDuplicado",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/texto-sefaz.ts",
+    "line": 3,
+    "name": "textoLivreSefaz",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/modo-faturamento.ts",
+    "line": 14,
+    "name": "lerModoFaturamento",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/modo-faturamento.ts",
+    "line": 27,
+    "name": "modoDaNota",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/sieg-sincronizacao.ts",
+    "line": 9,
+    "name": "sincronizarDocumentosSieg",
+    "async": true
+  },
+  {
+    "file": "lib/fiscal/devolucao-compra.ts",
+    "line": 20,
+    "name": "ieDaDevolucao",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/dedup-nfse.ts",
+    "line": 18,
+    "name": "mesmaNfse",
+    "async": false
+  },
+  {
+    "file": "lib/fiscal/dedup-nfse.ts",
+    "line": 31,
+    "name": "planejarLimpezaNfse",
+    "async": false
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 23,
+    "name": "getEndpoint",
+    "async": false
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 39,
+    "name": "buildSoapEnvelope",
+    "async": false
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 62,
+    "name": "carregarCertificados",
+    "async": true
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 84,
+    "name": "pfxParaPem",
+    "async": false
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 87,
+    "name": "soapRequest",
+    "async": false
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 118,
+    "name": "parseRetornoConsulta",
+    "async": false
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 189,
+    "name": "consultarNfePorChave",
+    "async": true
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 283,
+    "name": "salvarXmlStorage",
+    "async": true
+  },
+  {
+    "file": "lib/sefaz-consulta.ts",
+    "line": 307,
+    "name": "baixarXmlNfePorChaveDFe",
+    "async": true
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 27,
+    "name": "grp",
+    "async": false
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 43,
+    "name": "rec",
+    "async": false
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 61,
+    "name": "desp",
+    "async": false
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 1951,
+    "name": "seedOperacoesGerenciais",
+    "async": true
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 1985,
+    "name": "seedOperacoesGerenciaisTemplate",
+    "async": true
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 2020,
+    "name": "getOperacoesPadrao",
+    "async": false
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 2068,
+    "name": "getDreGrupo",
+    "async": false
+  },
+  {
+    "file": "lib/seedOperacoesGerenciais.ts",
+    "line": 2692,
+    "name": "seedCfopsFiscais",
+    "async": true
+  },
+  {
+    "file": "lib/antt/certificado.ts",
+    "line": 7,
+    "name": "carregarCertificadoEmitente",
+    "async": true
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 16,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 23,
+    "name": "somenteDigitos",
+    "async": false
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 27,
+    "name": "moduloFiscalPorDocumento",
+    "async": false
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 39,
+    "name": "contaIdDaFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 44,
+    "name": "idsFazendasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 51,
+    "name": "buscarConfig",
+    "async": true
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 64,
+    "name": "buscarConfigContaWide",
+    "async": true
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 92,
+    "name": "buscarPrimeiroCtePorEmitente",
+    "async": true
+  },
+  {
+    "file": "lib/cte/config.ts",
+    "line": 102,
+    "name": "resolverConfigCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 26,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 38,
+    "name": "proximoNumero",
+    "async": true
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 55,
+    "name": "buildQrCodeCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 66,
+    "name": "inserirInfCTeSupl",
+    "async": false
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 79,
+    "name": "salvarXml",
+    "async": true
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 117,
+    "name": "protocoloDoXmlAutorizado",
+    "async": true
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 129,
+    "name": "cancelarCTeEmitido",
+    "async": true
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 223,
+    "name": "emitirCartaCorrecaoCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/index.ts",
+    "line": 266,
+    "name": "emitirCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/evento.ts",
+    "line": 33,
+    "name": "montarEventoCancelamentoCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/evento.ts",
+    "line": 58,
+    "name": "tagVal",
+    "async": false
+  },
+  {
+    "file": "lib/cte/evento.ts",
+    "line": 62,
+    "name": "cancelarCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/evento.ts",
+    "line": 119,
+    "name": "montarEventoCCeCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/evento.ts",
+    "line": 153,
+    "name": "enviarCartaCorrecaoCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 134,
+    "name": "dhEmiParaUF",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 160,
+    "name": "calcCDV",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 170,
+    "name": "gerarCCT",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 178,
+    "name": "limparTextoSefaz",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 202,
+    "name": "escLimite",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 212,
+    "name": "xmlEndereco",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 235,
+    "name": "xmlParticipante",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 249,
+    "name": "xmlToma4",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 264,
+    "name": "ieXml",
+    "async": false
+  },
+  {
+    "file": "lib/cte/builder.ts",
+    "line": 273,
+    "name": "buildCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 84,
+    "name": "endpoint",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 107,
+    "name": "compactarCTeBase64",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 155,
+    "name": "envelopeCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 180,
+    "name": "soapPostViaEdge",
+    "async": true
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 239,
+    "name": "soapPost",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 278,
+    "name": "tagVal",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 295,
+    "name": "parseResposta",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 352,
+    "name": "transmitirCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 366,
+    "name": "envelopeEventoCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 375,
+    "name": "endpointConsultaCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 381,
+    "name": "envelopeConsultaCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 390,
+    "name": "parseRespostaEventoCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 406,
+    "name": "transmitirEventoCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/transmitter.ts",
+    "line": 426,
+    "name": "consultarSituacaoCTe",
+    "async": true
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 55,
+    "name": "ep",
+    "async": false
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 61,
+    "name": "buildEnvelope",
+    "async": false
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 67,
+    "name": "soapPost",
+    "async": false
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 99,
+    "name": "tagVal",
+    "async": false
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 104,
+    "name": "parseResponse",
+    "async": false
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 132,
+    "name": "extrairMetaCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/distribuicao.ts",
+    "line": 164,
+    "name": "consultarDFeInteresse",
+    "async": true
+  },
+  {
+    "file": "lib/cte/signer.ts",
+    "line": 12,
+    "name": "pemBody",
+    "async": false
+  },
+  {
+    "file": "lib/cte/signer.ts",
+    "line": 16,
+    "name": "assinarCTe",
+    "async": false
+  },
+  {
+    "file": "lib/cte/financeiro.ts",
+    "line": 16,
+    "name": "ogFretePorProduto",
+    "async": false
+  },
+  {
+    "file": "lib/cte/financeiro.ts",
+    "line": 24,
+    "name": "lancarFinanceiroCte",
+    "async": true
+  },
+  {
+    "file": "lib/cte/financeiro.ts",
+    "line": 133,
+    "name": "cancelarFinanceiroCte",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/transferencia-maquinas/page.tsx",
+    "line": 5,
+    "name": "TransferenciaMaquinasPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 12,
+    "name": "dtSped",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 19,
+    "name": "fmtValorSped",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 24,
+    "name": "limpar",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 28,
+    "name": "seq",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 58,
+    "name": "gerarSpedEcd",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 242,
+    "name": "SpedContabilPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "line": 251,
+    "name": "toggleVinculo",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 104,
+    "name": "funcToTrab",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 135,
+    "name": "EsocialPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 155,
+    "name": "carregar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 171,
+    "name": "desligarTrabalhador",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 187,
+    "name": "salvarEvt",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 203,
+    "name": "transmitir",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "line": 208,
+    "name": "gerarFolha",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "line": 53,
+    "name": "RelatorioNfsCanceladas",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "line": 73,
+    "name": "gerar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "line": 93,
+    "name": "marcarPendentes",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "line": 122,
+    "name": "pdf",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/relatorio-canceladas/page.tsx",
+    "line": 143,
+    "name": "excel",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/identidade-fiscal.ts",
+    "line": 32,
+    "name": "aplicarIdentidadeTitular",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/identidade-fiscal.ts",
+    "line": 55,
+    "name": "escolherModuloUnico",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/identidade-fiscal.ts",
+    "line": 76,
+    "name": "selecionarInscricaoFiscal",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/identidade-fiscal.ts",
+    "line": 91,
+    "name": "aplicarInscricaoFiscal",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/resolver-emitente.ts",
+    "line": 15,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/resolver-emitente.ts",
+    "line": 25,
+    "name": "resolverModuloKeyPorCpfCnpj",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/resolver-emitente.ts",
+    "line": 66,
+    "name": "resolverModuloKeyFiscal",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/resolver-emitente.ts",
+    "line": 113,
+    "name": "resolverModuloKey",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/certificado-metadados.ts",
+    "line": 5,
+    "name": "metadadosAtivos",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/certificado-metadados.ts",
+    "line": 15,
+    "name": "metaDoDocumento",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 28,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 36,
+    "name": "buscarConfEmitente",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 174,
+    "name": "carregarPfx",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 183,
+    "name": "montarNfeProc",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 196,
+    "name": "proximoNumero",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 206,
+    "name": "gravarProximoNumero",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 239,
+    "name": "saltarParaDepoisDoUltimo",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 257,
+    "name": "salvarXml",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 297,
+    "name": "emitirNFe",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 737,
+    "name": "cancelarNFeEmitida",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/index.ts",
+    "line": 786,
+    "name": "corrigirNFeEmitida",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/enviar-certificado.ts",
+    "line": 6,
+    "name": "enviarCertificadoA1",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 36,
+    "name": "escXml",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 47,
+    "name": "removerAcentos",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 54,
+    "name": "validarJustificativa",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 66,
+    "name": "minifyXml",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 71,
+    "name": "montarEnvEventoCancelamento",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 119,
+    "name": "cancelarNFe",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 158,
+    "name": "validarCorrecao",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 172,
+    "name": "montarEnvEventoCorrecao",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/evento.ts",
+    "line": 215,
+    "name": "emitirCartaCorrecao",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/certificado-a1.ts",
+    "line": 10,
+    "name": "validarCertificadoA1",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/certificado-a1.ts",
+    "line": 37,
+    "name": "candidatosParaConsulta",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/certificado-a1.ts",
+    "line": 53,
+    "name": "selecionarCertificadoA1ParaConsulta",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/identidade-certificado.ts",
+    "line": 4,
+    "name": "documentoDoCertificado",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/identidade-certificado.ts",
+    "line": 28,
+    "name": "certificadoDoTitular",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 110,
+    "name": "soDigitos",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 116,
+    "name": "ibgeDigitoValido",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 130,
+    "name": "ibgeDigitoEsperado",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 142,
+    "name": "pad",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 146,
+    "name": "fmtVal",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 155,
+    "name": "escXml",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 174,
+    "name": "minifyXml",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 180,
+    "name": "sanitizeNFeTxt",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 189,
+    "name": "calcCDV",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 199,
+    "name": "gerarCNF",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 216,
+    "name": "gerarDhEmi",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 240,
+    "name": "idDest",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 276,
+    "name": "icmsRule",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 367,
+    "name": "icmsRulePorCst",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/builder.ts",
+    "line": 382,
+    "name": "buildNFe",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/textos-automaticos.ts",
+    "line": 7,
+    "name": "cfopDeVenda",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/textos-automaticos.ts",
+    "line": 14,
+    "name": "usaTextosDeVenda",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/destinatario-transferencia.ts",
+    "line": 24,
+    "name": "montarDestinatarioTransferencia",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/titular-cadastro.ts",
+    "line": 6,
+    "name": "formatarDocumento",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/titular-cadastro.ts",
+    "line": 13,
+    "name": "produtoresDoDocumento",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/titular-cadastro.ts",
+    "line": 23,
+    "name": "buscarTitularCadastro",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/titular-cadastro.ts",
+    "line": 38,
+    "name": "completarIbgeDoMunicipio",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/titular-cadastro.ts",
+    "line": 45,
+    "name": "configComIdentidade",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/consulta-cadastro.ts",
+    "line": 50,
+    "name": "tagVal",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/consulta-cadastro.ts",
+    "line": 55,
+    "name": "blocoTag",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/consulta-cadastro.ts",
+    "line": 60,
+    "name": "envelopeConsCad",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/consulta-cadastro.ts",
+    "line": 121,
+    "name": "parseConsCad",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/consulta-cadastro.ts",
+    "line": 167,
+    "name": "consultarCadastroContribuinte",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 132,
+    "name": "endpoints",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 147,
+    "name": "soapPost",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 197,
+    "name": "envelopeAutorizacao",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 238,
+    "name": "envelopeRetAutorizacao",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 260,
+    "name": "envelopeRecepcaoEvento",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 286,
+    "name": "tagVal",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 292,
+    "name": "blocoTag",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 309,
+    "name": "parseResposta",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 373,
+    "name": "transmitirNFe",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 407,
+    "name": "parseRespostaEvento",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/transmitter.ts",
+    "line": 447,
+    "name": "transmitirEvento",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/cst-por-cfop.ts",
+    "line": 46,
+    "name": "cstExibicaoPorCfop",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/remessa.ts",
+    "line": 9,
+    "name": "ratearDescontoNf",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/remessa.ts",
+    "line": 23,
+    "name": "emissorDoProdutor",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/signer.ts",
+    "line": 17,
+    "name": "pfxParaPem",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/signer.ts",
+    "line": 59,
+    "name": "pemBody",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/signer.ts",
+    "line": 71,
+    "name": "assinarXmlPorId",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/signer.ts",
+    "line": 120,
+    "name": "assinarNFe",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/configs-emitentes.ts",
+    "line": 12,
+    "name": "indexarConfigsEmitentes",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/numero-em-uso.ts",
+    "line": 3,
+    "name": "numeroJaEmUso",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/numero-em-uso.ts",
+    "line": 11,
+    "name": "maiorNumeroDaSerie",
+    "async": false
+  },
+  {
+    "file": "lib/nfe/certificado-emitente.ts",
+    "line": 8,
+    "name": "contextoCertificados",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/certificado-emitente.ts",
+    "line": 17,
+    "name": "candidatosDoEmitente",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/certificado-emitente.ts",
+    "line": 53,
+    "name": "baixarA1Exato",
+    "async": true
+  },
+  {
+    "file": "lib/nfe/certificado-emitente.ts",
+    "line": 61,
+    "name": "carregarCertificadoEmitente",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 21,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 28,
+    "name": "somenteDigitos",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 32,
+    "name": "moduloFiscalPorDocumento",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 40,
+    "name": "contaIdDaFazenda",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 45,
+    "name": "idsFazendasDaConta",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 52,
+    "name": "buscarConfigContaWide",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 94,
+    "name": "buscarPrimeiroMdfePorEmitente",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/config.ts",
+    "line": 104,
+    "name": "resolverConfigMDFe",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 30,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 43,
+    "name": "numeroParaTentativa",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 55,
+    "name": "avancarNumero",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 68,
+    "name": "buildQrCodeMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 72,
+    "name": "inserirInfMDFeSupl",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 81,
+    "name": "salvarXml",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 102,
+    "name": "resolverMunicipiosDescarga",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/index.ts",
+    "line": 153,
+    "name": "emitirMDFe",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/encerramento.ts",
+    "line": 39,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/encerramento.ts",
+    "line": 43,
+    "name": "montarEventoEncerramento",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/encerramento.ts",
+    "line": 74,
+    "name": "encerrarMDFePorChave",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/produto.ts",
+    "line": 17,
+    "name": "validarProdutoMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/ciot-regra.ts",
+    "line": 3,
+    "name": "ciotExigido",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/builder.ts",
+    "line": 123,
+    "name": "dhEmiParaUF",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/builder.ts",
+    "line": 146,
+    "name": "calcCDV",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/builder.ts",
+    "line": 154,
+    "name": "gerarCMDF",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/builder.ts",
+    "line": 161,
+    "name": "limparTextoSefaz",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/builder.ts",
+    "line": 184,
+    "name": "escLimite",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/builder.ts",
+    "line": 190,
+    "name": "buildMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 33,
+    "name": "compactarMDFeBase64",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 42,
+    "name": "envelopeMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 50,
+    "name": "soapPost",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 82,
+    "name": "tagVal",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 99,
+    "name": "parseResposta",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 131,
+    "name": "transmitirMDFe",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 136,
+    "name": "envelopeEventoMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 145,
+    "name": "parseRespostaEvento",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/transmitter.ts",
+    "line": 155,
+    "name": "transmitirEventoMDFe",
+    "async": true
+  },
+  {
+    "file": "lib/mdfe/signer.ts",
+    "line": 12,
+    "name": "pemBody",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/signer.ts",
+    "line": 16,
+    "name": "assinarMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/cancelamento.ts",
+    "line": 23,
+    "name": "montarEventoCancelamentoMDFe",
+    "async": false
+  },
+  {
+    "file": "lib/mdfe/cancelamento.ts",
+    "line": 50,
+    "name": "cancelarMDFePorChave",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-pendentes-entrega/page.tsx",
+    "line": 21,
+    "name": "NotasPendentesEntrega",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/notas-pendentes-entrega/page.tsx",
+    "line": 56,
+    "name": "alternarItens",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-pendentes-entrega/page.tsx",
+    "line": 65,
+    "name": "confirmar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/notas-pendentes-entrega/page.tsx",
+    "line": 147,
+    "name": "NotaLinha",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/manifestacao/page.tsx",
+    "line": 5,
+    "name": "ManifestacaoRedirect",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 59,
+    "name": "fracaoRetornada",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 64,
+    "name": "volumes",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 79,
+    "name": "RemessasConteudo",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 98,
+    "name": "alternarRemessa",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 107,
+    "name": "excluirRemessa",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 117,
+    "name": "carregar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 169,
+    "name": "escolherTipoRem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 182,
+    "name": "abrirNova",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 189,
+    "name": "buscarNfsOrigem",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 198,
+    "name": "escolherNfOrigem",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 218,
+    "name": "escolherArmazem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 226,
+    "name": "criarDepositoArmazem",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 233,
+    "name": "setItem",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 234,
+    "name": "escolherInsumo",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 242,
+    "name": "lerXmlExterno",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 259,
+    "name": "vincularItensXml",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 292,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "line": 691,
+    "name": "RemessasPage",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 191,
+    "name": "sugerirNatureza",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 196,
+    "name": "tipoProdutorDeCpfCnpj",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 235,
+    "name": "classificacaoVendaPorProduto",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 270,
+    "name": "SelectPessoa",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 355,
+    "name": "normalizarProdutoIA",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 368,
+    "name": "normalizarFreteIA",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 376,
+    "name": "Contratos",
+    "async": false
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 603,
+    "name": "handlePdfContratoVenda",
+    "async": true
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 740,
+    "name": "handleAnexarPdf",
+    "async": true
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 829,
+    "name": "carregarTudo",
+    "async": true
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "line": 1809,
+    "name": "encerrarSafrasAnteriores",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/relatorio-processamento/page.tsx",
+    "line": 44,
+    "name": "todos",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/relatorio-processamento/page.tsx",
+    "line": 55,
+    "name": "RelatorioProcessamentoNf",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/relatorio-processamento/page.tsx",
+    "line": 88,
+    "name": "gerar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/relatorio-processamento/page.tsx",
+    "line": 171,
+    "name": "pdf",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/relatorio-processamento/page.tsx",
+    "line": 187,
+    "name": "excel",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 115,
+    "name": "produtosAgricolasDoCliente",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 211,
+    "name": "FaturamentoInner",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 425,
+    "name": "abrirModal",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 445,
+    "name": "abrirNova",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 453,
+    "name": "vincularCargaContrato",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 467,
+    "name": "selecionarContrato",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 482,
+    "name": "carregarPrecoKg",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 498,
+    "name": "faturarDireto",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 505,
+    "name": "preencherDeRomaneio",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 509,
+    "name": "preencherDoContrato",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 596,
+    "name": "preencherAvulsa",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 614,
+    "name": "duplicarNota",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 632,
+    "name": "abrirRascunho",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 680,
+    "name": "abrirComplemento",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 726,
+    "name": "salvarRascunhoNota",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 745,
+    "name": "excluirRascunho",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 756,
+    "name": "abrirRetornoDoGrid",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 832,
+    "name": "montarPayloadNota",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 951,
+    "name": "marcarRejeitada",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 958,
+    "name": "emitirNota",
+    "async": true
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 1177,
+    "name": "renderAba",
+    "async": false
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "line": 2363,
+    "name": "Faturamento",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 52,
+    "name": "RetornosConteudo",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 79,
+    "name": "carregar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 124,
+    "name": "abrir",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 137,
+    "name": "escolherRemessas",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 154,
+    "name": "sugerirQtd",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 161,
+    "name": "processar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 234,
+    "name": "processarRetornoMaquina",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 272,
+    "name": "abrirRetorno",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 278,
+    "name": "confirmarRetorno",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/retornos/page.tsx",
+    "line": 647,
+    "name": "RetornosPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 45,
+    "name": "PendenciasFiscaisPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 94,
+    "name": "abrirModal",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 102,
+    "name": "fecharModal",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 109,
+    "name": "handleFoto",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 122,
+    "name": "consultarPorChave",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 151,
+    "name": "consultarPorFoto",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 183,
+    "name": "excluirSelecionados",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 198,
+    "name": "excluirUma",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 205,
+    "name": "toggleSelecionado",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 213,
+    "name": "toggleTodos",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "line": 222,
+    "name": "dispensar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 168,
+    "name": "FiltroDropdown",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 218,
+    "name": "DocumentosFiscaisPage",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 253,
+    "name": "carregar",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 289,
+    "name": "sincronizarSieg",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 306,
+    "name": "reimportarNfSieg",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 364,
+    "name": "abrirReclassificarGrid",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 374,
+    "name": "salvarReclassificarGrid",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 396,
+    "name": "abrirPopover",
+    "async": false
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 421,
+    "name": "estornarNfGrid",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 449,
+    "name": "executarManifestacao",
+    "async": true
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "line": 468,
+    "name": "manifestar",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 75,
+    "name": "BadgeConta",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 86,
+    "name": "OperacoesGerenciaisContent",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 143,
+    "name": "abrirNovo",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 150,
+    "name": "abrirEditar",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 204,
+    "name": "duplicar",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 210,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 284,
+    "name": "excluir",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 292,
+    "name": "importarPadrao",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 303,
+    "name": "exportarXlsx",
+    "async": true
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 328,
+    "name": "SelectConta",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "line": 956,
+    "name": "OperacoesGerenciaisPage",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/contabilidade/page.tsx",
+    "line": 65,
+    "name": "ContabilidadePage",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/contabilidade/page.tsx",
+    "line": 99,
+    "name": "mudarAba",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/contabilidade/page.tsx",
+    "line": 113,
+    "name": "set",
+    "async": false
+  },
+  {
+    "file": "app/configuracoes/contabilidade/page.tsx",
+    "line": 118,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "line": 18,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "line": 26,
+    "name": "getAiaUrl",
+    "async": false
+  },
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "line": 38,
+    "name": "certInfo",
+    "async": false
+  },
+  {
+    "file": "app/api/debug/cert-chain/route.ts",
+    "line": 46,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/cert-meta/route.ts",
+    "line": 6,
+    "name": "adminClient",
+    "async": false
+  },
+  {
+    "file": "app/api/cert-meta/route.ts",
+    "line": 17,
+    "name": "GET",
+    "async": true
+  },
+  {
+    "file": "app/api/cert-meta/route.ts",
+    "line": 58,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/nfe/xml-por-chave/route.ts",
+    "line": 15,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/cert-upload/route.ts",
+    "line": 9,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/seed-cfops/route.ts",
+    "line": 8,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/mdfe/salvar-ciot/route.ts",
+    "line": 11,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/cancelar-cte/route.ts",
+    "line": 10,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/estoque/auditoria-fiscal/page.tsx",
+    "line": 29,
+    "name": "todas",
+    "async": true
+  },
+  {
+    "file": "app/estoque/auditoria-fiscal/page.tsx",
+    "line": 40,
+    "name": "AuditoriaFiscalEstoque",
+    "async": false
+  },
+  {
+    "file": "app/estoque/auditoria-fiscal/page.tsx",
+    "line": 54,
+    "name": "carregar",
+    "async": true
+  },
+  {
+    "file": "app/estoque/auditoria-fiscal/page.tsx",
+    "line": 133,
+    "name": "exportar",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/encerrar-mdfe/route.ts",
+    "line": 15,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/danfe-lote/route.ts",
+    "line": 11,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/cert-validar/route.ts",
+    "line": 6,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/cte/distribuicao/route.ts",
+    "line": 22,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "app/api/cte/distribuicao/route.ts",
+    "line": 30,
+    "name": "lerUltNSU",
+    "async": true
+  },
+  {
+    "file": "app/api/cte/distribuicao/route.ts",
+    "line": 40,
+    "name": "salvarUltNSU",
+    "async": true
+  },
+  {
+    "file": "app/api/cte/distribuicao/route.ts",
+    "line": 47,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "line": 37,
+    "name": "mapTipoDoc",
+    "async": false
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "line": 50,
+    "name": "tipoLancDe",
+    "async": false
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "line": 189,
+    "name": "LCDPR",
+    "async": false
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "line": 638,
+    "name": "resolverBanco",
+    "async": false
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "line": 662,
+    "name": "resolverCodConta",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 34,
+    "name": "badge",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 125,
+    "name": "EnderecoNoXml",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 195,
+    "name": "imprimirDacte",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 476,
+    "name": "CtePageInner",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 519,
+    "name": "carregarRecebidos",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 530,
+    "name": "sincronizarRecebidos",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 694,
+    "name": "preencherPelaNota",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 777,
+    "name": "abrirNovo",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 792,
+    "name": "abrirSubstituto",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 800,
+    "name": "abrirEditar",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 861,
+    "name": "buscarIesPorProdutorId",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 873,
+    "name": "buscarIesPorCpfCnpj",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 892,
+    "name": "resolverEnderecoPorCnpjIe",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 960,
+    "name": "selecionarRemetenteCombo",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1008,
+    "name": "selecionarDestinatarioCombo",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1048,
+    "name": "selecionarVeiculo",
+    "async": false
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1064,
+    "name": "salvarNovoVeiculo",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1087,
+    "name": "salvarNovoMotorista",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1111,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1241,
+    "name": "gerarCiotCte",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1319,
+    "name": "buscarIbge",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1358,
+    "name": "excluirRascunho",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1369,
+    "name": "buscarNfePelaChave",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1437,
+    "name": "autorizar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1623,
+    "name": "abrirCce",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1632,
+    "name": "enviarCce",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 1659,
+    "name": "cancelar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "line": 2728,
+    "name": "CtePage",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "line": 18,
+    "name": "fmtBRL",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "line": 21,
+    "name": "fmtData",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "line": 26,
+    "name": "fmtDoc",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "line": 32,
+    "name": "esc",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/nfse-recibo/route.ts",
+    "line": 36,
+    "name": "GET",
+    "async": true
+  },
+  {
+    "file": "app/api/integracoes/sieg-cert/route.ts",
+    "line": 14,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "app/api/integracoes/sieg-cert/route.ts",
+    "line": 21,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 38,
+    "name": "badge",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 45,
+    "name": "imprimirDamdfe",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 322,
+    "name": "buscarIbgeMdfe",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 350,
+    "name": "MdfePageInner",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 573,
+    "name": "resetCiot",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 578,
+    "name": "abrirNovo",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 586,
+    "name": "abrirEditar",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 623,
+    "name": "gerarCiot",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 723,
+    "name": "enriquecerPeloCte",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 818,
+    "name": "toggleCte",
+    "async": false
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 896,
+    "name": "salvar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1023,
+    "name": "verificarTaras",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1032,
+    "name": "salvarTarasEAutorizar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1045,
+    "name": "autorizar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1099,
+    "name": "abrirEncerramento",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1111,
+    "name": "encerrar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1138,
+    "name": "encerrarPorChave",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1157,
+    "name": "excluirRascunho",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1171,
+    "name": "cancelar",
+    "async": true
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "line": 1817,
+    "name": "MdfePage",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/status-sefaz/route.ts",
+    "line": 27,
+    "name": "buildStatusSoap",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/status-sefaz/route.ts",
+    "line": 50,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/status-sefaz/route.ts",
+    "line": 58,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/transporte/acerto-frete/page.tsx",
+    "line": 50,
+    "name": "brl",
+    "async": false
+  },
+  {
+    "file": "app/transporte/acerto-frete/page.tsx",
+    "line": 54,
+    "name": "mesAno",
+    "async": false
+  },
+  {
+    "file": "app/transporte/acerto-frete/page.tsx",
+    "line": 67,
+    "name": "AcertoFretePage",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/reclassificar-nf/route.ts",
+    "line": 12,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/emitir-mdfe/route.ts",
+    "line": 14,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/eventos/route.ts",
+    "line": 15,
+    "name": "reverterDevolucaoCompra",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/eventos/route.ts",
+    "line": 48,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/eventos/route.ts",
+    "line": 156,
+    "name": "GET",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/emitir-cte/route.ts",
+    "line": 15,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/consultar-nfe/route.ts",
+    "line": 9,
+    "name": "sb",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/consultar-nfe/route.ts",
+    "line": 17,
+    "name": "upsertFornecedor",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/consultar-nfe/route.ts",
+    "line": 105,
+    "name": "vincularPessoa",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/consultar-nfe/route.ts",
+    "line": 121,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/notas-proprias/consultar-chave/route.ts",
+    "line": 15,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/remessas/route.ts",
+    "line": 27,
+    "name": "fazendaDoDeposito",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/remessas/route.ts",
+    "line": 34,
+    "name": "custoMedio",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/remessas/route.ts",
+    "line": 43,
+    "name": "moverRetorno",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/remessas/route.ts",
+    "line": 62,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/numeracao-nfe/route.ts",
+    "line": 14,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/emitir-nfe/route.ts",
+    "line": 14,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/cancelar-mdfe/route.ts",
+    "line": 13,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/danfe/route.ts",
+    "line": 10,
+    "name": "GET",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/nfs-canceladas/route.ts",
+    "line": 46,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/carta-correcao-cte/route.ts",
+    "line": 14,
+    "name": "GET",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/carta-correcao-cte/route.ts",
+    "line": 26,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/cte-entrada/route.ts",
+    "line": 45,
+    "name": "POST",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/cte-entrada/route.ts",
+    "line": 171,
+    "name": "chaveValida",
+    "async": false
+  },
+  {
+    "file": "app/api/fiscal/cte-entrada/route.ts",
+    "line": 179,
+    "name": "criar",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/consultar-cadastro/route.ts",
+    "line": 20,
+    "name": "consultar",
+    "async": true
+  },
+  {
+    "file": "app/api/fiscal/consultar-cadastro/route.ts",
+    "line": 71,
+    "name": "POST",
+    "async": true
+  }
+]

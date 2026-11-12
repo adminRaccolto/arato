@@ -9,12 +9,14 @@ import { resolverModuloKey } from "../../../../lib/nfe/resolver-emitente";
 import type { NFeInput } from "../../../../lib/nfe/builder";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 
+export const maxDuration=60;
 export const runtime = "nodejs"; // xml-crypto e node-forge precisam de Node
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       fazenda_id: string;
+      nota_id?:string;
       modulo_key: string;   // "fiscal_pf_xxx" ou "fiscal_emp_yyy" — escolha explícita (ex: seletor de emitente na tela)
       produtor_id_hint?: string; // id do produtor titular real da operação — preferido sobre cpf_cnpj_hint:
                                  // não depende de uma busca assíncrona no cliente ter terminado a tempo (o CPF
@@ -47,8 +49,17 @@ export async function POST(req: NextRequest) {
         pRedBC?: number;
         pICMS?: number;
         cst_icms?: string;
+        csosn?: string;
+        pis_cst?: string;
+        pis_aliq?: number;
+        cofins_cst?: string;
+        cofins_aliq?: number;
       }>;
       natureza: string;
+      data_emissao?: string;
+      variaveis_fiscais?:Record<string,string>;
+      operacao_fiscal_id?: string;
+      operacao_gerencial_id?: string;
       inf_cpl?: string;
       frete?: "0" | "1" | "2" | "9";
       nfe_ref?: string | string[];
@@ -84,8 +95,11 @@ export async function POST(req: NextRequest) {
         pRedBC:        item.pRedBC,
         pICMS:         item.pICMS,
         cst_icms:      item.cst_icms,
+        csosn:item.csosn,pis_cst:item.pis_cst,pis_aliq:item.pis_aliq,cofins_cst:item.cofins_cst,cofins_aliq:item.cofins_aliq,
       })),
       natureza: body.natureza,
+      variaveis_fiscais:body.variaveis_fiscais,
+      data_emissao:body.data_emissao,operacao_fiscal_id:body.operacao_fiscal_id,operacao_gerencial_id:body.operacao_gerencial_id,
       infCpl:   body.inf_cpl,
       frete:    body.frete ?? "9",
       nfe_ref:  body.nfe_ref,
@@ -110,14 +124,17 @@ export async function POST(req: NextRequest) {
     // default da fazenda se nenhum dos dois vier preenchido.
     let moduloKey = body.modulo_key || "";
     if (body.produtor_id_hint || body.cpf_cnpj_hint) {
-      try { moduloKey = await resolverModuloKey(body.fazenda_id, body.cpf_cnpj_hint, undefined, body.produtor_id_hint) || moduloKey; } catch { /* mantém modulo_key */ }
+      const escolhido = await resolverModuloKey(body.fazenda_id, body.cpf_cnpj_hint, undefined, body.produtor_id_hint);
+      if (!escolhido) throw new Error("Não foi possível resolver a configuração do titular escolhido. Confira o emitente antes de emitir.");
+      moduloKey = escolhido;
     }
     if (!moduloKey) {
-      try { moduloKey = await resolverModuloKey(body.fazenda_id, undefined); } catch { /* buscarConfEmitente ainda tenta o fallback interno dela */ }
+      moduloKey = await resolverModuloKey(body.fazenda_id, undefined);
+      if (!moduloKey) throw new Error("Selecione e configure o emitente da NF-e.");
     }
-    const resultado = await emitirNFe(body.fazenda_id, moduloKey, input, body.emit_ie_override);
+    const resultado = await emitirNFe(body.fazenda_id, moduloKey, input, body.emit_ie_override, 0, req.headers.get("x-arato-requisicao") || undefined, body.nota_id);
 
-    return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
+    return NextResponse.json(resultado, { status: resultado.pendente || resultado.sincronizacao_pendente ? 202 : resultado.sucesso ? 200 : 422 });
   } catch (err) {
     console.error("[emitir-nfe]", err);
     // Mesmo formato do resultado da emissão: sem isso, as telas mostravam "SEFAZ undefined: undefined" no lugar do motivo

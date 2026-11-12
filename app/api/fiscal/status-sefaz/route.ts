@@ -141,17 +141,17 @@ export async function POST(req: NextRequest) {
       xMotivo,
       dhRecbto,
       elapsed_ms:    elapsed,
-      certCarregado: true,
+      certCarregado: true,modelo:"CT-e",uf:"MT",servico:"CTeStatusServicoV4",emitente:resolved.emitenteDigits,
       ambiente,
       endpoint:      endpointUrl,
       cteModulo,
       fiscalModulo,
       diagnostico: cStat === "107"
-        ? "SEFAZ em operação — mTLS e rede OK ✓"
+        ? `CT-e / MT / ${ambiente}: status em operação; mTLS validado para este titular. Este teste não consulta a emissão de NF-e ou MDF-e.`
         : cStat
           ? `SEFAZ respondeu cStat ${cStat} — mTLS OK mas serviço fora do ar`
           : "Sem cStat — resposta SOAP inesperada",
-      soapRespPreview: soapResp.slice(0, 600),
+
     });
   } catch (err) {
     const msg = String(err);

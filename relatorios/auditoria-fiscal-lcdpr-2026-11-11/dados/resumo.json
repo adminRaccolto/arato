@@ -1,0 +1,23 @@
+{
+  "gerado_em": "2026-11-11T21:44:17.681Z",
+  "head": "7cb5eb23f712d0500f57d54f1d1f347dd7024503",
+  "applicationFiles": 138,
+  "routes": 29,
+  "pages": 26,
+  "testsDiscovered": 120,
+  "testsConfigured": 120,
+  "testsOutsideCommand": [],
+  "queries": 1397,
+  "writes": 601,
+  "ignoredWriteResults": 192,
+  "unboundedReadCandidates": 403,
+  "routesWithoutAuthSignal": [],
+  "signals": {
+    "fetchWithoutAbort": 26,
+    "calendarViaUtc": 12,
+    "swallowedEmpty": 3,
+    "disabledTls": 1,
+    "modulePermission": 4
+  },
+  "note": "Os sinais são candidatos estáticos: precisam de revisão/reprodução; a ausência de sinal não prova ausência de proteção."
+}

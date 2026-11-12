@@ -1,4 +1,6 @@
 "use client";
+import OperacaoFiscalSelect from "../../components/fiscal/OperacaoFiscalSelect";
+import EmissoesConferencia from "../../components/fiscal/EmissoesConferencia";
 import OpcoesUnidade from "../../components/OpcoesUnidade";
 import { imprimirCce } from "../../lib/fiscal/imprimir-cce";
 import VerificarCertificado from "../../components/fiscal/VerificarCertificado";
@@ -456,9 +458,9 @@ ${isContingencia ? `<div class="cont">⚡ EMITIDA EM CONTINGÊNCIA — ${modoEmi
 <!-- IBS/CBS REFORMA TRIBUTÁRIA -->
 <div class="b bl br bb sec-hdr" style="background:#f5f5f5">TRIBUTOS — REFORMA TRIBUTÁRIA (LC 214/2024)</div>
 <div class="row bl br bb" style="min-height:8mm">
-  <div class="p br" style="flex:1"><span class="lbl">IBS — Imposto sobre Bens e Serviços</span><span class="val r">R$ ${Number(dados.ibs_valor ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span><span class="lbl" style="font-size:5pt;color:#888">Alíq. ${Number(dados.ibs_aliquota ?? 0).toFixed(2).replace(".",",")}% · Vigência 2029</span></div>
-  <div class="p br" style="flex:1"><span class="lbl">CBS — Contribuição sobre Bens e Serviços</span><span class="val r">R$ ${Number(dados.cbs_valor ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span><span class="lbl" style="font-size:5pt;color:#888">Alíq. ${Number(dados.cbs_aliquota ?? 0.9).toFixed(2).replace(".",",")}% · Transitório 2026</span></div>
-  <div class="p br" style="flex:1"><span class="lbl">Total Tributos Estimados (IBS + CBS)</span><span class="val r" style="font-size:9pt;font-weight:900">R$ ${(Number(dados.ibs_valor ?? 0) + Number(dados.cbs_valor ?? 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">IBS — Imposto sobre Bens e Serviços</span><span class="val r">R$ ${Number(dados.ibs_valor ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span><span class="lbl" style="font-size:5pt;color:#888">Alíq. ${Number(dados.ibs_aliquota ?? 0).toFixed(2).replace(".",",")}%</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">CBS — Contribuição sobre Bens e Serviços</span><span class="val r">R$ ${Number(dados.cbs_valor ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span><span class="lbl" style="font-size:5pt;color:#888">Alíq. ${Number(dados.cbs_aliquota ?? 0).toFixed(2).replace(".",",")}%</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">Total IBS + CBS</span><span class="val r" style="font-size:9pt;font-weight:900">R$ ${(Number(dados.ibs_valor ?? 0) + Number(dados.cbs_valor ?? 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
   <div class="p" style="flex:3"><span class="lbl">Base Legal</span><span style="font-size:6pt;line-height:1.5">Tributo estimado conforme LC 214/2024 e NT 2025.001. Produtos agropecuários podem ter alíquota zero no período de transição (2026–2028).</span></div>
 </div>
 
@@ -574,7 +576,9 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
       <tbody>
         {notas.map(nota => {
           const isRascunho = nota.status === "em_digitacao" && (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
-          const cs = isRascunho
+          const cs = (nota.dados_nf_json as Record<string,unknown>)?.autorizacao_nao_conferida
+            ? {bg:"#FFF4D6",color:"#7B4A00",label:"Externa — conferir autorização",icone:"○"}
+            : isRascunho
             ? { bg: "#E8EBF2", color: "#1A4870", label: "Rascunho", icone: "○" }
             : corStatus(nota.status);
           const exp = expandida === nota.id;
@@ -897,6 +901,9 @@ function FiscalInner() {
   const [modalComplemento, setModalComplemento] = useState<NotaFiscal | null>(null);
 
   // Formulário NF-e Saída — 8 abas
+  const [operacaoFiscalId,setOperacaoFiscalId]=useState("");
+  const [variaveisFiscais,setVariaveisFiscais]=useState<Record<string,string>>({});
+  useEffect(()=>{if(!modalVenda){setOperacaoFiscalId("");setVariaveisFiscais({});}},[modalVenda]);
   const [fVenda, setFVenda] = useState<typeof FVENDA_INICIAL>(() => {
     const hoje = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
@@ -1355,6 +1362,7 @@ function FiscalInner() {
     const dj    = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
     const moduloSalvo = dj.modulo_key as string | undefined;
 
+    setOperacaoFiscalId(String(dj.operacao_fiscal_id ?? ""));setVariaveisFiscais((dj.variaveis_fiscais ?? {}) as Record<string,string>);
     setRetransmitindoNota(nota);
     setFVenda({
       ...FVENDA_INICIAL,
@@ -1570,6 +1578,9 @@ function FiscalInner() {
         body: JSON.stringify({
           fazenda_id:        fazEmissao,
           modulo_key:        moduloKeyAtivo,
+          nota_id:retransmitindoNota?.id,
+          data_emissao: fVenda.data_emissao,
+          operacao_fiscal_id:operacaoFiscalId || undefined,variaveis_fiscais:variaveisFiscais,
           emit_ie_override:  ieEfetiva || undefined,
           destinatario: {
             nome:              fVenda.destinatario,
@@ -1605,7 +1616,7 @@ function FiscalInner() {
         }),
       });
       const resBody = await res.json() as {
-        sucesso?: boolean; chave?: string; numero?: string; protocolo?: string;
+        sucesso?:boolean;chave?:string;numero?:string;protocolo?:string;operacao_id?:string;pendente?:boolean;sincronizacao_pendente?:boolean;tributacao_itens?:unknown[];totais?:Record<string,number>;ambiente?:string;
         dhRecbto?: string; xmlUrl?: string; cStat?: string; xMotivo?: string;
         emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
         emit_endereco?: string; emit_numero?: string; emit_bairro?: string;
@@ -1622,6 +1633,7 @@ function FiscalInner() {
       }
 
       const resultado = resBody;
+      if(resultado.pendente)alert("A SEFAZ ainda não confirmou o resultado. A chave será mantida para consulta em Emissões em conferência; não é necessário emitir outra nota.");
 
       await criarNotaFiscal({
         fazenda_id:        fazEmissao,
@@ -1634,15 +1646,17 @@ function FiscalInner() {
         cnpj_destinatario: fVenda.cnpj || undefined,
         valor_total:       valorTotal,
         data_emissao:      fVenda.data_emissao || TODAY,
-        status:            modoContingencia ? "contingencia" : (resultado.sucesso ? "autorizada" : "rejeitada"),
+        status:            modoContingencia ? "contingencia" : (resultado.pendente ? "em_digitacao" : resultado.sucesso ? "autorizada" : "rejeitada"),
         chave_acesso:      resultado.chave    ?? undefined,
         xml_url:           resultado.xmlUrl   ?? undefined,
         observacao:        textoDadosAdicionais() || undefined,
         auto:              false,
         itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}), ...("cst_icms" in i && i.cst_icms ? { cst: `0${i.cst_icms}` } : {}) })),
         dados_nf_json:     {
+          ambiente:resultado.ambiente,
           modulo_key:           moduloKeyAtivo,
           protocolo_autorizacao: resultado.protocolo   || undefined,
+          fiscal_operacao_id:resultado.operacao_id,operacao_fiscal_id:operacaoFiscalId || null,variaveis_fiscais:variaveisFiscais,processamento_pendente:resultado.pendente ?? false,tributacao_itens:resultado.tributacao_itens,
           // Dados do emitente — gravados na primeira emissão e usados pelo DANFE
           emit_razao:     resultado.emit_razao    || undefined,
           emit_cnpj:      resultado.emit_cnpj     || undefined,
@@ -1664,10 +1678,7 @@ function FiscalInner() {
           dest_cep:       fVenda.dest_cep         || undefined,
           frete_conta:    fVenda.frete_conta,
           // IBS/CBS — Reforma Tributária LC 214/2024
-          ibs_valor:      ibsValor2026,
-          ibs_aliquota:   0,
-          cbs_valor:      cbsValor2026,
-          cbs_aliquota:   cbsAliq2026,
+          ...(resultado.totais ?? {}),
           ...(!resultado.sucesso && { sefaz_erro: `cStat ${resultado.cStat}: ${resultado.xMotivo}` }),
         },
         ...(modoContingencia && {
@@ -1772,7 +1783,7 @@ function FiscalInner() {
         alert(`Cancelamento não realizado.\n\nSEFAZ ${j.cStat ?? ""}: ${j.xMotivo ?? j.error ?? "erro desconhecido"}`);
         return;
       }
-      alert(`✓ NF-e ${modalCancelamento.numero} cancelada na SEFAZ.\nProtocolo do evento: ${j.protocolo ?? "—"}`);
+      alert(`NF-e ${modalCancelamento.numero} cancelada na SEFAZ.\nProtocolo do evento: ${j.protocolo ?? "—"}${j.sincronizacao_pendente?"\n\nAjustes locais pendentes: "+(j.aviso ?? "Consulte Emissões em conferência."):""}`);
       setMotivoCancelamento("");
       setModalCancelamento(null);
       await carregar();
@@ -2033,6 +2044,7 @@ function FiscalInner() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* Header */}
         <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <EmissoesConferencia />
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Painel de Notas</h1>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>Notas emitidas: acompanhar, cancelar, corrigir, complementar e reimprimir. A venda da produção sai em Documentos Fiscais → Saídas.</div>
@@ -3063,6 +3075,7 @@ function FiscalInner() {
                 {/* ── ABA: OPERAÇÕES-CFOP ── */}
                 {tabNFe === "operacoes" && (
                   <div>
+                    <OperacaoFiscalSelect cfop={fVenda.cfop} data={fVenda.data_emissao} value={operacaoFiscalId} onChange={setOperacaoFiscalId} variaveis={variaveisFiscais} onVariaveis={setVariaveisFiscais}/>
                     {row(
                       field("CFOP *",
                         remessaModo ? (

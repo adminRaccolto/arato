@@ -9,6 +9,7 @@ import https from "https";
 import { gunzipSync } from "node:zlib";
 import type { PemPair } from "../nfe/signer";
 import { ICP_BRASIL_CA_BUNDLE } from "./transmitter";
+import { CA_FISCAL } from "../fiscal/ca-icp-brasil";
 
 const SOAP_NS     = "http://www.portalfiscal.inf.br/cte/wsdl/CTeDistribuicaoDFe";
 const SOAP_ACTION = `${SOAP_NS}/cteDistDFeInteresse`;
@@ -78,8 +79,9 @@ function soapPost(url: string, body: string, pem: PemPair): Promise<string> {
       },
       cert: pem.certChain ?? pem.cert,
       key:  pem.key,
-      ca:   ICP_BRASIL_CA_BUNDLE,
+      ca:   CA_FISCAL,
       rejectUnauthorized: true,
+      signal: AbortSignal.timeout(30_000),
     }, (res) => {
       let data = "";
       res.setEncoding("utf8");
@@ -121,7 +123,7 @@ function parseResponse(soap: string): ResultadoDistribuicao {
       const xml = gunzipSync(Buffer.from(b64, "base64")).toString("utf-8");
       docs.push({ nsu, schema, xml });
     } catch {
-      console.warn(`[CT-e Dist] Falha ao descomprimir NSU ${nsu}`);
+      throw new Error(`Não foi possível ler o documento NSU ${nsu}. O cursor não será avançado; repita a sincronização.`);
     }
   }
 

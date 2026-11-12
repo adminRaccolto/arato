@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { emitirCTe } from "../../../../lib/cte/index";
 import type { CTeInput } from "../../../../lib/cte/builder";
 
+export const maxDuration=60;
 export const runtime = "nodejs";
 // SEFAZ bloqueia IPs fora do Brasil — usar região São Paulo (Vercel Pro)
 export const preferredRegion = ["gru1"];
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       uf_fim:             string;
       cfop:               string;
       natureza:           string;
+      data_emissao?:string;
       valor_prestacao:    number;
       valor_receber:      number;
       componentes:        CTeInput["componentes"];
@@ -83,6 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     const input: Omit<CTeInput, "emitente"> = {
+      data_emissao:body.data_emissao,
       remetente:          body.remetente,
       destinatario:       body.destinatario,
       expedidor:          body.expedidor?.nome ? body.expedidor : undefined,
@@ -123,11 +126,12 @@ export async function POST(req: NextRequest) {
     };
 
     const resultado = await emitirCTe(body.fazenda_id, input, {
+      requisicao_id: req.headers.get("x-arato-requisicao") || undefined,
       emitente_cnpj: body.emitente_cnpj,
       cte_id:        body.cte_id,
       cte_substituido_id: body.tp_cte === "3" ? body.cte_substituido_id : null,
     });
-    return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
+    return NextResponse.json(resultado, { status: resultado.pendente || resultado.sincronizacao_pendente ? 202 : resultado.sucesso ? 200 : 422 });
   } catch (err) {
     console.error("[emitir-cte]", err);
     return NextResponse.json({ erro: String(err) }, { status: 500 });

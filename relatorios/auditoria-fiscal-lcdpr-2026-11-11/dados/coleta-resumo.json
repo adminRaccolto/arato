@@ -1,0 +1,29 @@
+{
+  "gerado_em": "2026-11-11T21:32:39.319Z",
+  "somente_leitura": true,
+  "requests": 49,
+  "head": "1a243415a2d8fcc5f9b52218d4a4270195d1ca98",
+  "volumes": {
+    "fazendas": 25,
+    "produtores": 35,
+    "empresas": 11,
+    "pessoas": 5873,
+    "operacoes_gerenciais": 4554,
+    "operacao_cfop_fiscal": 2040,
+    "ncm_tributacoes": 21,
+    "operacoes_fiscais": 73,
+    "contas_bancarias": 107,
+    "apoio_baixas": 0,
+    "lcdpr_contador": 0,
+    "lancamentos": 20023,
+    "notas_fiscais": 232,
+    "ctes": 92,
+    "mdfes": 80,
+    "configuracoes_modulo": 113
+  },
+  "compatibilidade": {
+    "order_grupo_http": 400,
+    "code": "42703"
+  },
+  "coleta_config": "somente campos permitidos; nenhuma senha ou material de certificado"
+}

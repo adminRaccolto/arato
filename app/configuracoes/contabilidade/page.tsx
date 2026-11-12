@@ -160,7 +160,7 @@ export default function ContabilidadePage() {
           <div>
             <strong>Responsabilidade técnica:</strong> a definição do método de escrituração (G, R ou B)
             e o preenchimento dos termos de abertura e encerramento é responsabilidade do contador habilitado.
-            Consulte seu contador antes de gerar o SPED ECD.
+            Confira com o contador os dados usados na preparação contábil.
           </div>
         </div>
 
@@ -297,7 +297,7 @@ export default function ContabilidadePage() {
         <div data-arato-panel="true" style={card}>
           <div style={secTitle}>Termos do Livro</div>
           <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>
-            Os termos de abertura e encerramento são incluídos no arquivo SPED ECD.
+            Estes dados auxiliam o contador na preparação dos termos e do livro contábil completo.
             Se deixados em branco, será gerado um termo padrão com os dados acima.
           </p>
           <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 20px" }}>
@@ -338,7 +338,7 @@ export default function ContabilidadePage() {
             href="/fiscal/sped-contabil"
             style={{ padding: "10px 20px", background: "var(--bg-page)", border: "0.5px solid #2A2A2A", color: "#2A2A2A", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, textDecoration: "none" }}
           >
-            Gerar SPED ECD →
+            Preparação contábil →
           </a>
         </div>
       </div>

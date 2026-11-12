@@ -7,133 +7,7 @@ import https from "https";
 import { CA_FISCAL } from "../fiscal/ca-icp-brasil";
 import type { PemPair } from "./signer";
 
-interface UFEndpoints {
-  autorizacao: string;
-  retAutorizacao: string;
-  statusServico: string;
-  recepcaoEvento: string;
-}
-
-// ─── Endpoints por UF e ambiente ─────────────────────────────────────────────
-
-const _svrs_prod: UFEndpoints = {
-  autorizacao:    "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
-  retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
-  statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
-  recepcaoEvento: "https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx",
-};
-
-const _svrs_hom: UFEndpoints = {
-  autorizacao:    "https://homologacao.nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
-  retAutorizacao: "https://homologacao.nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
-  statusServico:  "https://homologacao.nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
-  recepcaoEvento: "https://homologacao.nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx",
-};
-
-const _svan_prod: UFEndpoints = {
-  autorizacao:    "https://www.nfe.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx",
-  retAutorizacao: "https://www.nfe.fazenda.gov.br/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
-  statusServico:  "https://www.nfe.fazenda.gov.br/NFeStatusServico4/NFeStatusServico4.asmx",
-  recepcaoEvento: "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
-};
-
-interface UFEntry { prod: UFEndpoints; hom: UFEndpoints }
-
-// MT tem autorizador próprio — não usa SVAN nem SVRS.
-// cStat 114 ("SVC não habilitado") confirma que UFs com infra própria não aceitam SVRS/SVAN.
-const UF_ENDPOINTS: Record<string, UFEntry> = {
-  MT: {
-    prod: {
-      autorizacao:    "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4",
-      retAutorizacao: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4",
-      statusServico:  "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeStatusServico4",
-      // Confirmado via WSDL (?wsdl retorna 200 só nesse path, sem prefixo "Nfe" —
-      // mesmo padrão de CadConsultaCadastro4): namespace interno continua sendo
-      // .../wsdl/NFeRecepcaoEvento4 (usado no envelope SOAP), só o path da URL difere.
-      recepcaoEvento: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/RecepcaoEvento4",
-    },
-    hom: {
-      autorizacao:    "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4",
-      retAutorizacao: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4",
-      statusServico:  "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeStatusServico4",
-      recepcaoEvento: "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/RecepcaoEvento4",
-    },
-  },
-  SP: {
-    prod: {
-      autorizacao:    "https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
-      retAutorizacao: "https://nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx",
-      statusServico:  "https://nfe.fazenda.sp.gov.br/ws/nfestatusservico4.asmx",
-      recepcaoEvento: "https://nfe.fazenda.sp.gov.br/ws/nferecepcaoevento4.asmx",
-    },
-    hom: _svrs_hom,
-  },
-  MG: {
-    prod: {
-      autorizacao:    "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
-      retAutorizacao: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRetAutorizacao4",
-      statusServico:  "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeStatusServico4",
-      recepcaoEvento: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRecepcaoEvento4",
-    },
-    hom: _svrs_hom,
-  },
-  RS: {
-    prod: {
-      autorizacao:    "https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
-      retAutorizacao: "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
-      statusServico:  "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
-      recepcaoEvento: "https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx",
-    },
-    hom: _svrs_hom,
-  },
-  PR: {
-    prod: {
-      autorizacao:    "https://nfe.encat.org/nfe/services/NFeAutorizacao4",
-      retAutorizacao: "https://nfe.encat.org/nfe/services/NFeRetAutorizacao4",
-      statusServico:  "https://nfe.encat.org/nfe/services/NFeStatusServico4",
-      recepcaoEvento: "https://nfe.encat.org/nfe/services/NFeRecepcaoEvento4",
-    },
-    hom: _svrs_hom,
-  },
-  BA: {
-    prod: {
-      autorizacao:    "https://nfe.sefaz.ba.gov.br/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx",
-      retAutorizacao: "https://nfe.sefaz.ba.gov.br/webservices/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
-      statusServico:  "https://nfe.sefaz.ba.gov.br/webservices/NFeStatusServico4/NFeStatusServico4.asmx",
-      recepcaoEvento: "https://nfe.sefaz.ba.gov.br/webservices/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx",
-    },
-    hom: _svrs_hom,
-  },
-  PE: {
-    prod: {
-      autorizacao:    "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeAutorizacao4",
-      retAutorizacao: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRetAutorizacao4",
-      statusServico:  "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeStatusServico4",
-      recepcaoEvento: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRecepcaoEvento4",
-    },
-    hom: _svrs_hom,
-  },
-  AM: {
-    prod: {
-      autorizacao:    "https://nfe.sefaz.am.gov.br/services2/services/NfeAutorizacao4",
-      retAutorizacao: "https://nfe.sefaz.am.gov.br/services2/services/NfeRetAutorizacao4",
-      statusServico:  "https://nfe.sefaz.am.gov.br/services2/services/NfeStatusServico4",
-      recepcaoEvento: "https://nfe.sefaz.am.gov.br/services2/services/NfeRecepcaoEvento4",
-    },
-    hom: _svrs_hom,
-  },
-  // SVAN — Ambiente Nacional (AC, MA, PA, PI)
-  AC: { prod: _svan_prod, hom: _svrs_hom },
-  MA: { prod: _svan_prod, hom: _svrs_hom },
-  PA: { prod: _svan_prod, hom: _svrs_hom },
-  PI: { prod: _svan_prod, hom: _svrs_hom },
-};
-
-function endpoints(uf: string, ambiente: "producao" | "homologacao"): UFEndpoints {
-  const entry = UF_ENDPOINTS[uf];
-  if (ambiente === "producao") return entry?.prod ?? _svrs_prod;
-  return entry?.hom ?? _svrs_hom;
-}
+import { endpoints } from "./endpoints";
 
 // ─── SOAP request com mTLS ────────────────────────────────────────────────────
 //
@@ -144,7 +18,7 @@ function endpoints(uf: string, ambiente: "producao" | "homologacao"): UFEndpoint
 // 1.2 essa Action vai como parâmetro do Content-Type, não como header separado
 // (isso é coisa de SOAP 1.1). Omitido, o comportamento é idêntico ao anterior
 // — NFeAutorizacao4/NFeRetAutorizacao4 nunca precisaram disso.
-export function soapPost(url: string, body: string, pem: PemPair, soapAction?: string): Promise<string> {
+export function soapPost(url: string, body: string, pem:PemPair,soapAction?:string,timeoutMs=45_000): Promise<string> {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const contentType = soapAction
@@ -164,7 +38,7 @@ export function soapPost(url: string, body: string, pem: PemPair, soapAction?: s
         key:  pem.key,
         ca: CA_FISCAL,
         rejectUnauthorized: true,
-        signal: AbortSignal.timeout(45_000),
+        signal: AbortSignal.timeout(timeoutMs),
       },
       (res) => {
         let data = "";
@@ -382,20 +256,28 @@ export async function transmitirNFe(
 
   const soapBody = envelopeAutorizacao(nfeXmlAssinado, cuf, tpAmb as "1" | "2");
 
-  console.log("[NF-e SOAP] corpo enviado (primeiros 5000 chars):", soapBody.slice(0, 5000));
+  const limiteConsulta=Date.now()+45_000;
 
   // soapPost agora rejeita (throw) em HTTP não-2xx ou resposta vazia —
   // o chamador em index.ts captura e converte em cStat 504.
   const resp = await soapPost(ep.autorizacao, soapBody, pem);
-  console.log("[NF-e SOAP] resposta SEFAZ (primeiros 3000 chars):", resp.slice(0, 3000));
+
   const result = parseResposta(resp);
 
   // Resposta assíncrona (cStat 103 = lote recebido) — consulta retAutorizacao
   if (result.cStat === "103" && result.recibo) {
-    await new Promise((r) => setTimeout(r, 2000));
     const soapRet = envelopeRetAutorizacao(result.recibo, cuf, tpAmb as "1" | "2");
-    const resp2   = await soapPost(ep.retAutorizacao, soapRet, pem);
-    return parseResposta(resp2);
+    for(let tentativa=0;tentativa<3;tentativa++) {
+      if(Date.now()+2000>=limiteConsulta)break;
+      await new Promise((r) => setTimeout(r,1500));
+      try {
+        const resposta = parseResposta(await soapPost(ep.retAutorizacao,soapRet,pem,undefined,Math.max(500,limiteConsulta-Date.now())));
+        if(resposta.cStat!=="105") return {...resposta,recibo:result.recibo};
+      } catch(e) {
+        return {cStat:"105",xMotivo:"Lote recebido; consulta pendente: "+(e as Error).message,recibo:result.recibo};
+      }
+    }
+    return {cStat:"105",xMotivo:"Lote recebido e ainda em processamento. Consulte a mesma operação antes de reenviar.",recibo:result.recibo};
   }
 
   return result;

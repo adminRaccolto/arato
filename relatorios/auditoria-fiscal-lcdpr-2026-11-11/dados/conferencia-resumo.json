@@ -1,0 +1,90 @@
+{
+  "data_utc": "2026-11-11T21:44:17.848Z",
+  "exercicio": "2026",
+  "escopo_contas": 11,
+  "somente_leitura": true,
+  "lcdpr": {
+    "pagamentos_base": 6689,
+    "elegiveis": 5282,
+    "contas_com_mais_de_um_titular_elegivel": 5,
+    "compensacoes_elegiveis": 6,
+    "previsoes_pagas_elegiveis": 0,
+    "pagos_sem_data": 323,
+    "elegiveis_sem_data": 146,
+    "excluidos_so_nome": 20,
+    "candidatos_venda_servico_excluidos_so_nome": 0,
+    "sem_titular": 14,
+    "conta_inativa": 0,
+    "conta_desconhecida": 759
+  },
+  "imoveis": {
+    "total": 25,
+    "coletivos": 0,
+    "sem_caepf": 25,
+    "sem_cafir": 25
+  },
+  "ecd": {
+    "selecionaveis": 60,
+    "cancelados_selecionaveis": 0,
+    "nao_pagos_selecionaveis": 0,
+    "og_fora_escopo_fazenda": 60,
+    "sem_contas_contabeis": 54
+  },
+  "cadastros": {
+    "og_total": 4554,
+    "og_ids_referenciados": 547,
+    "og_referenciadas_sem_debito_ou_credito": 413,
+    "og_referenciadas_escopo_conta": 523,
+    "og_referenciadas_escopo_global": 24,
+    "configs_linhas": 71,
+    "grupos_config_duplicados": 9,
+    "grupos_config_divergentes": 2,
+    "ncm_total": 21,
+    "ncm_grupos_divergentes": 2,
+    "contador_lcdpr": 0
+  },
+  "certificados": {
+    "versoes": 0,
+    "ativos": 0,
+    "ativos_vencidos": 0
+  },
+  "documentos": {
+    "notas_fiscais": {
+      "total": 232,
+      "status": {
+        "rejeitada": 62,
+        "autorizada": 142,
+        "cancelada": 27,
+        "em_digitacao": 1
+      },
+      "autorizados": 142,
+      "autorizados_sem_xml_url": 39,
+      "autorizados_sem_protocolo": 37,
+      "autorizados_sem_chave": 5
+    },
+    "ctes": {
+      "total": 92,
+      "status": {
+        "autorizado": 80,
+        "cancelado": 12
+      },
+      "autorizados": 80,
+      "autorizados_sem_xml_url": 0,
+      "autorizados_sem_protocolo": 0,
+      "autorizados_sem_chave": 0
+    },
+    "mdfes": {
+      "total": 80,
+      "status": {
+        "encerrado": 58,
+        "autorizado": 17,
+        "cancelado": 5
+      },
+      "autorizados": 17,
+      "autorizados_sem_xml_url": 0,
+      "autorizados_sem_protocolo": 0,
+      "autorizados_sem_chave": 0
+    }
+  },
+  "nota": "Os contadores reproduzem os critérios do código; candidatos não equivalem automaticamente a erro fiscal, imposto devido ou perda. Ausência de URL no cadastro não prova ausência de XML no Storage."
+}

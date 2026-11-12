@@ -86,7 +86,7 @@ interface NfServico {
   created_at?: string;
 }
 
-interface OpGerencial { id: string; classificacao: string; descricao: string; }
+interface OpGerencial { ids_equivalentes?:string[]; id: string; classificacao: string; descricao: string; }
 interface PedidoMin   { id: string; nr_pedido?: string; status: string; }
 
 type Etapa = "prestador" | "servico" | "tributacao";
@@ -911,7 +911,7 @@ export default function ModalNfServico({
                     <SelectBusca
                       value={cab.operacao_gerencial_id}
                       onChange={idSel => setCab(p => ({ ...p, operacao_gerencial_id: idSel }))}
-                      options={opsGer.map(o => ({ value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                      options={opsGer.map(o => ({ aliases:o.ids_equivalentes,value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
                       placeholder="Selecionar operação…"
                       style={inp}
                     />

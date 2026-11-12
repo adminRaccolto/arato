@@ -585,38 +585,18 @@ export default function ParceriasPage() {
     return linhas.join("\n");
   };
 
-  // ── Geração SPED ECD — apuração parceria ─────────────────
-  const gerarSpedParceria = (
-    p: Parceria,
-    pts: ParceriaParticipante[],
-    apuracoes: ParceriaApuracao[],
-  ): string => {
-    const linhas: string[] = [];
-    const d = new Date();
-    const dtHoje = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
-
-    linhas.push(`|I001|1|`);
-    let seq = 1;
-    for (const apr of apuracoes) {
-      const dataApr = apr.data_apuracao ? apr.data_apuracao.split("-").reverse().join("") : dtHoje.replace(/\//g,"");
-      // I100 — Identificação da parceria como centro de resultado
-      linhas.push(`|I100|${String(seq++).padStart(9,"0")}|${dataApr}|Apuração Parceria ${p.nome}|${apr.resultado_liquido.toFixed(2)}|`);
-      // I155 — Lançamentos de rateio por participante
-      for (const pt of pts) {
-        const nome = (pt.produtor as { nome?: string })?.nome ?? pt.nome_override ?? "Participante";
-        const recCota = apr.receita_total * (pt.percentual / 100);
-        const cstCota = apr.custo_total   * (pt.percentual / 100);
-        const res     = recCota - cstCota;
-        // Rateio de receita
-        linhas.push(`|I155|${String(seq++).padStart(9,"0")}|${dataApr}|Cota-parte receita ${pt.percentual}% - ${nome}|3.3.01|2.1.99|${recCota.toFixed(2)}|D|`);
-        // Rateio de custo
-        linhas.push(`|I155|${String(seq++).padStart(9,"0")}|${dataApr}|Cota-parte custo ${pt.percentual}% - ${nome}|2.1.99|3.3.02|${cstCota.toFixed(2)}|C|`);
-        // Resultado da cota
-        linhas.push(`|I155|${String(seq++).padStart(9,"0")}|${dataApr}|Resultado cota-parte ${nome} (${pt.percentual}%)|3.3.03|2.1.${String(seq).padStart(2,"0")}|${Math.abs(res).toFixed(2)}|${res >= 0 ? "C" : "D"}|`);
-      }
+  // Exporta as cotas gravadas, sem inventar contas ou apresentar o rateio como uma ECD.
+  const gerarAuxiliarParceria=async(p:Parceria,pts:ParceriaParticipante[],apuracoes:ParceriaApuracao[])=>{
+    const {data:cotas,error}=await supabase.from("parceria_apuracao_cotas").select("*").in("apuracao_id",apuracoes.map(a=>a.id)).order("id");
+    if(error)throw error;
+    if(!cotas?.length)throw new Error("A apuração não possui cotas gravadas para exportar.");
+    const cel=(v:unknown)=>'"'+String(v ?? "").replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
+    const linhas:unknown[][]=[["Apuração ID","Data","Parceria","Participante ID","Nome","Receita BRL","Custo BRL","Resultado BRL","Débito cadastrado","Crédito cadastrado","Conferência"]];
+    for(const c of cotas){
+      const pt=pts.find(t=>t.id===c.participante_id);const ap=apuracoes.find(a=>a.id===c.apuracao_id);
+      linhas.push([c.apuracao_id,ap?.data_apuracao,p.nome,c.participante_id,(pt?.produtor as {nome?:string})?.nome ?? pt?.nome_override ?? "",Number(c.receita_cota).toFixed(2).replace(".",","),Number(c.custo_cota).toFixed(2).replace(".",","),Number(c.resultado_cota).toFixed(2).replace(".",","),c.conta_debito,c.conta_credito,"Auxiliar para conferência do contador; não transmissível como ECD"]);
     }
-    linhas.push(`|I990|${seq}|`);
-    return linhas.join("\n");
+    return "\uFEFF"+linhas.map(l=>l.map(cel).join(";")).join("\r\n")+"\r\n";
   };
 
   // ─── Render ───────────────────────────────────────────────
@@ -778,21 +758,21 @@ export default function ParceriasPage() {
                                     <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 700,
                                       background: a.status === "aprovada" ? C.verdeClr : a.status === "lancada_sped" ? C.infClr : C.mostrClr,
                                       color: a.status === "aprovada" ? C.verde : a.status === "lancada_sped" ? C.inf : C.mostr }}>
-                                      {a.status === "rascunho" ? "Rascunho" : a.status === "aprovada" ? "Aprovada" : "Lançada SPED"}
+                                      {a.status === "rascunho" ? "Rascunho" : a.status === "aprovada" ? "Aprovada" : "Lançamento histórico"}
                                     </span>
                                   </td>
                                   <td style={{ padding: "8px 10px" }}>
                                     <OperationalButton data-arato-button="secondary"
                                       onClick={async () => {
-                                        const txt = gerarSpedParceria(p, ptcMap[p.id] ?? [], [a]);
+                                        const txt=await gerarAuxiliarParceria(p,ptcMap[p.id] ?? [],[a]);
                                         const blob = new Blob([txt], { type: "text/plain" });
                                         const url = URL.createObjectURL(blob);
                                         const a2 = document.createElement("a");
-                                        a2.href = url; a2.download = `SPED_Parceria_${p.nome.replace(/\s+/g,"_")}.txt`;
+                                        a2.href = url; a2.download = `AUXILIAR_Parceria_${p.nome.replace(/\s+/g,"_")}.csv`;
                                         a2.click(); URL.revokeObjectURL(url);
                                       }}
                                       style={btn(C.infClr, C.inf, { fontSize: 11, padding: "3px 8px" })}>
-                                      ⬇ SPED
+                                      ⬇ Auxiliar contábil
                                     </OperationalButton>
                                   </td>
                                 </tr>
@@ -918,15 +898,15 @@ export default function ParceriasPage() {
         {/* ── ABA APURAÇÃO & SPED ───────────────────────── */}
         {aba === "apuracao" && (
           <div style={{ background: C.branco, borderRadius: 12, padding: 28 }}>
-            <h3 data-arato-h3="true" style={{ margin: "0 0 6px", fontSize: 16, color: C.txt }}>Apuração de Resultado e Integração SPED</h3>
+            <h3 data-arato-h3="true" style={{ margin: "0 0 6px", fontSize: 16, color: C.txt }}>Apuração de resultado e preparação contábil</h3>
             <p style={{ fontSize: 13, color: C.ter, marginTop: 0, marginBottom: 24 }}>
               Selecione uma parceria na aba "Parcerias Agrícolas" e clique em "Apurar" para registrar os resultados por safra.
-              Após a apuração, os arquivos SPED ECD e LCDPR são gerados automaticamente.
+              Após a apuração, exporte as cotas gravadas para o contador. O LCDPR oficial é gerado na rotina própria, por CPF e eventos de caixa.
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
               {[
-                { titulo: "SPED ECD — Leiaute 10", descr: "Bloco I: lançamentos de rateio de parceria (I155). Cada apuração gera partidas dobradas por participante.", tipo: "contabil", cor: C.azul },
+                { titulo:"Auxiliar contábil",descr:"CSV com as cotas gravadas e contas informadas, para conferência do contador.", tipo: "contabil", cor: C.azul },
                 { titulo: "LCDPR", descr: "Livro Caixa do Produtor Rural (IN RFB 1.848/2018). Art. 6° §2°: participante PF declara cota-parte da receita e custo.", tipo: "lcdpr", cor: C.verde },
               ].map(item => (
                 <div key={item.tipo} style={{ padding: 20, border: `1px solid ${C.borda}`, borderRadius: 10, background: C.fundo }}>
@@ -1307,7 +1287,7 @@ export default function ParceriasPage() {
                   </tbody>
                 </OperationalGrid>
                 <div style={{ marginTop: 10, fontSize: 12, color: C.ter }}>
-                  Contas contábeis opcionais para geração dos lançamentos SPED ECD (Bloco I, registro I155).
+                  Contas contábeis informadas para a conferência e exportação auxiliar das cotas.
                 </div>
               </div>
             )}

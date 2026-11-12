@@ -1,0 +1,102 @@
+{
+  "gerado_em": "2026-11-11T21:56:16.492Z",
+  "head_inicial": "1a243415a2d8fcc5f9b52218d4a4270195d1ca98",
+  "head_final": "7cb5eb23f712d0500f57d54f1d1f347dd7024503",
+  "codigo": {
+    "inventario": 138,
+    "rotas": 29,
+    "paginas": 26,
+    "fontes_com_hash": 141,
+    "alteracoes_de_head_observadas": [
+      "app/atualizacoes/page.tsx",
+      "app/financeiro/pagar/page.tsx",
+      "app/financeiro/receber/page.tsx"
+    ],
+    "nota": "A mudança de HEAD observada atingiu três arquivos fora do núcleo fiscal auditado; foi preservada. Nenhuma fonte da aplicação foi editada nesta auditoria."
+  },
+  "execucoes": [
+    {
+      "comando": "npm test",
+      "resultado": {
+        "tests": 768,
+        "pass": 768,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exit_code": 0,
+      "nota": "Suíte existente; não inclui os novos cenários da auditoria."
+    },
+    {
+      "comando": "node --import ./scripts/test-loader.mjs --test relatorios/auditoria-fiscal-lcdpr-2026-11-11/ferramentas/reproducoes.test.mjs",
+      "resultado": {
+        "tests": 41,
+        "pass": 41,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exit_code": 0,
+      "ids": [
+        "LC-01",
+        "LC-02",
+        "LC-03",
+        "LC-04",
+        "LC-05",
+        "LC-06",
+        "LC-07",
+        "LC-08",
+        "LC-09",
+        "LC-10",
+        "LC-11",
+        "CFG-01",
+        "CFG-02",
+        "CFG-03",
+        "CFG-04",
+        "SEF-01",
+        "SEF-02",
+        "SEF-03",
+        "TRI-01",
+        "TRI-02",
+        "TRI-03",
+        "TRI-04",
+        "OG-01",
+        "OG-02",
+        "SEF-04",
+        "SEG-01",
+        "SEG-02",
+        "SEF-05",
+        "SEF-06",
+        "OG-03",
+        "ECD-01",
+        "TRI-05",
+        "TRI-06",
+        "SEF-07",
+        "SEF-08",
+        "TRI-07",
+        "OG-04",
+        "SEG-03",
+        "OG-05",
+        "SEF-09",
+        "SEF-10"
+      ],
+      "nota": "Asserts reproduzem falhas da versão auditada; passar não significa aceitabilidade fiscal."
+    },
+    {
+      "comando": "npx tsc --noEmit --incremental false",
+      "exit_code": 0,
+      "diagnosticos": [],
+      "nota": "Sem escrita de cache incremental."
+    }
+  ],
+  "acesso_producao": {
+    "metodo": "Somente GET, projeção explícita e paginação; dados privados em pasta ignorada.",
+    "alteracoes": 0,
+    "certificados_baixados": 0,
+    "senhas_exportadas": 0,
+    "transmissoes_fiscais": 0,
+    "limite": "Sem prova de exploração em produção, sem teste de RLS com perfis reais, sem validação oficial de entrega ou cálculo de imposto devido."
+  },
+  "build": {
+    "executado": false,
+    "motivo": "O prebuild gera arquivos de tema; preservado o caráter de auditoria sem alteração de fontes. TypeScript e suíte executados separadamente."
+  }
+}

@@ -1,5 +1,9 @@
 "use client";
 import { useClienteRelatorio } from "../../components/useClienteRelatorio";
+import { gerarArquivoLCDPR } from "../../lib/lcdpr/arquivo";
+import { htmlLCDPR, selecionarMovimentos, motivosMovimento, valorCaixa, textoLCDPR, numeroContaLCDPR, validarParticipantes, type MotivoLCDPR, type ParticipanteLCDPR } from "../../lib/lcdpr/modelo";
+import { lerPaginas } from "../../lib/paginar";
+import { fetchFinanceiro } from "../../lib/financeiro/requisicao";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -35,6 +39,7 @@ const TIPO_DOC_LABEL: Record<string, string> = {
   "4": "Contrato", "5": "Folha de Pagamento", "6": "Outros",
 };
 function mapTipoDoc(s?: string): string {
+  if (["1","2","3","4","5","6"].includes(s ?? "")) return s!;
   const l = (s ?? "").toUpperCase();
   if (l === "NF" || l.includes("NOTA FISCAL")) return "1";
   if (l === "FATURA" || l === "DUPLICATA") return "2";
@@ -71,6 +76,8 @@ interface ConfigLCDPR {
 const CONFIG_VAZIA: ConfigLCDPR = { participacoes: {}, saldos_iniciais: {} };
 
 interface EntradaLCDPR {
+  atualizadoEm?:string;tipoDocOriginal?:string|null;
+  importacao_ref?:string;
   id: string;
   data: string;
   historico: string;
@@ -85,12 +92,14 @@ interface EntradaLCDPR {
   origem: "auto" | "manual" | "importado";
   lancId?: string;
   produtorId?: string | null;   // dono do lançamento — do próprio lançamento, senão herda da fazenda
+  produtorCpf?: string;
+  compartilhada?: boolean;
   produtorNome?: string;        // resolvido pra exibir no relatório "Todos os Produtores"
   ogClassificacao?: string;     // Operação Gerencial vinculada — só usado na coluna "O.G." do PDF/XLSX
   ogDescricao?: string;
 }
 
-interface ProdutorLcdpr { id: string; nome: string; cpf: string; }
+interface ProdutorLcdpr { id: string; nome: string; cpf: string; logradouro?:string; numero_end?:string; complemento?:string; bairro?:string; estado?:string; municipio_ibge?:string; cep?:string; }
 
 interface FazLcdpr {
   id: string; nome: string;
@@ -101,6 +110,8 @@ interface FazLcdpr {
   caepf: string | null;
   tipo_exploracao: number | null;
   participacao_lcdpr: number | null;
+  lcdpr_participantes?: ParticipanteLCDPR[];
+  lcdpr_responsavel?: boolean;
   municipio_ibge: string | null;
   arrendada?: boolean | null;
   cep: string | null; logradouro: string | null; numero_end: string | null;
@@ -127,6 +138,7 @@ interface ContadorInfo {
 const CONTADOR_VAZIO: ContadorInfo = { nome: "", cpf_cnpj: "", crc: "", email: "", telefone: "" };
 
 interface ImportRow {
+  importacaoRef?:string;
   data: string; historico: string; tipoDoc: string;
   cpfCnpj: string; tipo: "receber" | "pagar"; valor: number;
   _status: "ok" | "erro"; _msg: string;
@@ -160,13 +172,7 @@ type Aba = "livro" | "participacoes" | "cadastro" | "importacao" | "exportacao" 
 // Motivo pelo qual um lançamento pago (baixado/parcial), de uma fazenda PF,
 // não entra no Livro Caixa do LCDPR — cada um corresponde a uma regra real do
 // filtro de elegibilidade abaixo. Um item pode ter mais de um motivo.
-type MotivoExclusaoLcdpr =
-  | "apoio_baixa"        // baixa de apoio (ex: bordero de terceiro) — não é caixa próprio do titular
-  | "entidade_pj"        // entidade_contabil do próprio lançamento foi sobrescrita pra "pj"
-  | "titular_pj"         // titular (produtor_id do lançamento ou da fazenda) é uma empresa (CNPJ)
-  | "categoria_interna"  // Mútuo entre Empresas / Transferência entre Contas
-  | "nome_interno"       // descrição menciona outro produtor/empresa da mesma conta (PIX sem categoria)
-  | "vinculo_nao_rural";  // vinculo_atividade explicitamente diferente de "rural"
+type MotivoExclusaoLcdpr = MotivoLCDPR;
 
 interface ItemAuditoriaLcdpr {
   lancamento: Lancamento;
@@ -181,7 +187,12 @@ const MOTIVO_LABEL: Record<MotivoExclusaoLcdpr, string> = {
   entidade_pj:       "Entidade Contábil do lançamento = PJ",
   titular_pj:        "Titular do lançamento é PJ (CNPJ)",
   categoria_interna: "Categoria interna (Mútuo/Transferência)",
-  nome_interno:      "Descrição cita outro produtor/empresa da conta",
+  previsao: "Previsão não efetivada",
+  data_ausente: "Data da baixa não informada — confira no financeiro",
+  compensacao: "Compensação de crédito — confira o tratamento da origem",
+  titular_ausente:"Sem titular identificado — corrigir produtor ou cadastro do imóvel",
+  parcial_legado: "Parcial histórico acumulado — conferir eventos de pagamento",
+  valor_invalido: "Valor de caixa ausente ou inválido",
   vinculo_nao_rural: "Vínculo de Atividade ≠ Rural",
 };
 
@@ -198,6 +209,11 @@ export default function LCDPR() {
 
   const [aba, setAba]         = useState<Aba>("livro");
   const [anoSel, setAnoSel]   = useState(anoAtual);
+  const [erroCarga,setErroCarga] = useState("");
+  const [novoProdutorId,setNovoProdutorId] = useState("");
+  const [novoImovelId,setNovoImovelId] = useState("");
+  const [gravandoMovimento,setGravandoMovimento] = useState(false);
+  const [versaoMovimentos,setVersaoMovimentos] = useState(0);
   const [loading, setLoading] = useState(true);
   const [entradas, setEntradas] = useState<EntradaLCDPR[]>([]);
   const [auditoriaLcdpr, setAuditoriaLcdpr] = useState<ItemAuditoriaLcdpr[]>([]);
@@ -236,44 +252,51 @@ export default function LCDPR() {
   const [mesExport, setMesExport]           = useState(new Date().getMonth() + 1);
   const [formatoExport, setFormatoExport]   = useState<"txt" | "xlsx" | "pdf">("txt");
 
+  useEffect(()=>{setProdutorFiltro("todos");setNovoProdutorId("");setNovoImovelId("");setImportRows([]);setModalManual(false);},[contaId,fazendaIds?.join(",")]);
+
   // ── Carga principal ────────────────────────────────────────────────────────
   useEffect(() => {
+    let ativo = true;
+    setEntradas([]); setAuditoriaLcdpr([]); setFazDados([]); setProdutoresDados([]); setContasDados([]); setContador(CONTADOR_VAZIO); setErroCarga("");
     const ids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-    if (!ids.length) return;
+    if (!ids.length) {setLoading(false);return;}
     setLoading(true);
     const sb = supabase;
 
     Promise.all([
       Promise.all(ids.map(fid => listarLancamentos(fid))).then(all => all.flat()),
-      sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids),
-      sb.from("fazendas").select("id,nome,produtor_id,cpf_cnpj_fiscal,nirf,itr,municipio,estado,area_total_ha,arrendada,cep,logradouro,numero_end,complemento,bairro,caepf,tipo_exploracao,participacao_lcdpr,municipio_ibge,entidade_contabil").in("id", ids),
+      sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", ids).throwOnError(),
+      sb.from("fazendas").select("id,nome,produtor_id,cpf_cnpj_fiscal,nirf,itr,municipio,estado,area_total_ha,arrendada,cep,logradouro,numero_end,complemento,bairro,caepf,tipo_exploracao,participacao_lcdpr,municipio_ibge,entidade_contabil,lcdpr_participantes,lcdpr_responsavel").in("id", ids).throwOnError(),
       contaId ? listarProdutoresDaConta(contaId) : Promise.resolve([]),
       // Configuração do LCDPR é do cliente: lê a cópia de qualquer fazenda dele.
-      sb.from("configuracoes_modulo").select("config, fazenda_id").in("fazenda_id", ids).eq("modulo", "lcdpr").order("fazenda_id").limit(1).maybeSingle(),
-      sb.from("contas_bancarias").select("id,nome,banco,banco_id,codigo_bacen,agencia,conta,conta_dv,tipo_conta,produtor_id,fazenda_id").in("fazenda_id", ids).eq("ativa", true),
-      sb.from("bancos").select("nome,nome_curto,codigo_compe"),
-      sb.from("pessoas").select("id,cpf_cnpj").in("fazenda_id", ids),
-      contaId ? sb.from("lcdpr_contador").select("*").eq("conta_id", contaId).maybeSingle() : Promise.resolve({ data: null }),
+      sb.from("configuracoes_modulo").select("config, fazenda_id").in("fazenda_id", ids).eq("modulo", "lcdpr").order("fazenda_id").limit(1).maybeSingle().throwOnError(),
+      lerPaginas((a,b)=>sb.from("contas_bancarias").select("id,nome,banco,banco_id,codigo_bacen,agencia,conta,conta_dv,tipo_conta,produtor_id,cotitulares,fazenda_id").in("fazenda_id", ids).order("id").range(a,b)).then(data=>({data})),
+      sb.from("bancos").select("nome,nome_curto,codigo_compe").throwOnError(),
+      lerPaginas((a,b)=>sb.from("pessoas").select("id,cpf_cnpj").in("fazenda_id", ids).order("id").range(a,b)).then(data=>({data})),
+      contaId ? sb.from("lcdpr_contador").select("*").eq("conta_id", contaId).maybeSingle().throwOnError() : Promise.resolve({ data: null }),
       listarEmpresasDaConta(ids),
-      contaId ? sb.from("contas").select("nome").eq("id", contaId).maybeSingle() : Promise.resolve({ data: null }),
+      contaId ? sb.from("contas").select("nome").eq("id", contaId).maybeSingle().throwOnError() : Promise.resolve({ data: null }),
       // OGs ficam gravadas por fazenda_id (conta_id nulo) — filtrar só por conta_id/globais
       // deixava a coluna O.G. em branco. Paginado: passa de 1.000 linhas.
       (async () => {
         const filtro = [`fazenda_id.in.(${ids.join(",")})`, "and(fazenda_id.is.null,conta_id.is.null)", ...(contaId ? [`conta_id.eq.${contaId}`] : [])].join(",");
         const rows: { id: string; classificacao: string; descricao: string }[] = [];
         for (let from = 0; ; from += 1000) {
-          const { data } = await sb.from("operacoes_gerenciais").select("id,classificacao,descricao").or(filtro).order("id").range(from, from + 999);
+          const { data, error } = await sb.from("operacoes_gerenciais").select("id,classificacao,descricao").or(filtro).order("id").range(from, from + 999);
+          if(error) throw error;
           rows.push(...((data ?? []) as typeof rows));
           if (!data || data.length < 1000) break;
         }
         return { data: rows };
       })(),
-    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows, { data: contaRow }, { data: ogRows }]) => {
+      lerPaginas((a,b)=>sb.from("lcdpr_movimentos").select("id,dados,updated_at").in("fazenda_id",ids).eq("excluido",false).gte("data",String(anoSel)+"-01-01").lte("data",String(anoSel)+"-12-31").order("id").range(a,b)).then(data=>({data})),
+    ]).then(([lans, { data: apoioBaixas }, { data: fazRows }, prodRows, { data: cfgRow }, { data: contasRows }, { data: bancosRows }, { data: pessoasRows }, { data: contadorRow }, empresasRows, { data: contaRow }, { data: ogRows }, { data: manuais }]) => {
+      if(!ativo) return;
       setFazDados((fazRows ?? []) as FazLcdpr[]);
       setContaNomeFetch((contaRow as { nome?: string } | null)?.nome ?? null);
       setProdutoresDados(
         (prodRows ?? [])
-          .map((p: { id: string; nome: string; cpf_cnpj?: string }) => ({ id: p.id, nome: p.nome, cpf: cpfNum(p.cpf_cnpj ?? "") }))
+          .map((p: { id: string; nome: string; cpf_cnpj?: string }) => ({...p, id: p.id, nome: p.nome, cpf: cpfNum(p.cpf_cnpj ?? ""), numero_end:(p as {numero?:string}).numero}))
           .filter((p: ProdutorLcdpr) => p.cpf.length === 11)
       );
       setConfig((cfgRow as { config?: ConfigLCDPR } | null)?.config ?? CONFIG_VAZIA);
@@ -305,22 +328,6 @@ export default function LCDPR() {
 
       const apoioIds = new Set((apoioBaixas ?? []).map((b: { lancamento_id: string }) => b.lancamento_id));
 
-      // Nomes dos produtores e empresas da própria conta — pra pegar
-      // transferência entre eles quando o lançamento não tem categoria
-      // "Mútuo entre Empresas" (ex: PIX importado do extrato bancário, cujo
-      // histórico só traz o nome de quem pagou/recebeu em texto livre, sem
-      // pessoa_id vinculado a nenhum cadastro). Achado real: "RECEBIMENTO
-      // PIX-PIX_CRED ... EDINEIA OGLIARI PINHATA" não tinha categoria de
-      // mútuo nem CPF/CNPJ resolvido, mas o nome da outra produtora da
-      // mesma conta aparece cru na descrição.
-      const nomesInternosConta = new Set<string>();
-      for (const p of (prodRows ?? []) as { nome?: string }[]) if (p.nome && p.nome.trim().length >= 5) nomesInternosConta.add(normTxt(p.nome.trim()));
-      for (const e of (empresasRows ?? []) as { nome?: string; razao_social?: string }[]) {
-        if (e.nome && e.nome.trim().length >= 5) nomesInternosConta.add(normTxt(e.nome.trim()));
-        if (e.razao_social && e.razao_social.trim().length >= 5) nomesInternosConta.add(normTxt(e.razao_social.trim()));
-      }
-      const listaNomesInternos = [...nomesInternosConta];
-
       // Titular (produtor) de cada lançamento — mesma resolução usada mais abaixo
       // pra montar os itens (produtor_id direto, senão o titular da fazenda) — mas
       // precisa vir antes do filtro de elegibilidade: LCDPR é exclusivo de PF, e um
@@ -330,40 +337,19 @@ export default function LCDPR() {
       // não pega esse caso: ele reflete a entidade padrão da FAZENDA (herdada via
       // trigger), não a do titular específico marcado no lançamento.
       const fazProdutorMapPreFiltro = new Map<string, string>();
-      for (const f of (fazRows ?? []) as { id: string; produtor_id?: string | null }[]) if (f.produtor_id) fazProdutorMapPreFiltro.set(f.id, f.produtor_id);
+      for (const f of (fazRows ?? []) as {id:string;produtor_id?:string|null;cpf_cnpj_fiscal?:string}[]) {
+        const titular=f.produtor_id || (prodRows ?? []).find(p=>cpfNum(p.cpf_cnpj ?? "")===cpfNum(f.cpf_cnpj_fiscal ?? "")&&!!cpfNum(f.cpf_cnpj_fiscal ?? ""))?.id;
+        if(titular)fazProdutorMapPreFiltro.set(f.id,titular);
+      }
       const produtoresPJIds = new Set(
         (prodRows ?? [])
           .filter((p: { cpf_cnpj?: string }) => cpfNum(p.cpf_cnpj ?? "").length !== 11)
           .map((p: { id: string }) => p.id)
       );
 
-      const filtrados = lans.filter((l: Lancamento) => {
-        // LCDPR é regime de caixa — só o que realmente teve movimento de caixa
-        // entra. "Previsão" é rascunho de planejamento, pode ter valor/data
-        // ainda alterados antes de confirmar — nunca entra. "Parcial" TEM
-        // movimento de caixa de verdade (valor_pago, na data_baixa) mesmo
-        // sem o título estar 100% liquidado — excluir "parcial" (como era
-        // antes) fazia esse valor pago simplesmente desaparecer do Livro
-        // Caixa. O valor usado abaixo já é valor_pago (não valor cheio), e a
-        // data já é data_baixa — então incluir "parcial" aqui não precisa de
-        // mais nenhuma mudança na montagem do item.
-        if (l.status !== "baixado" && l.status !== "parcial") return false;
-        if (apoioIds.has(l.id)) return false;
-        if (l.entidade_contabil && l.entidade_contabil !== "pf") return false;
-        const titularId = l.produtor_id ?? fazProdutorMapPreFiltro.get(l.fazenda_id) ?? null;
-        if (titularId && produtoresPJIds.has(titularId)) return false;
-        if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) return false;
-        if (l.descricao) {
-          const descNorm = normTxt(l.descricao);
-          if (listaNomesInternos.some(n => descNorm.includes(n))) return false;
-        }
-        // vinculo_atividade nulo é tratado como rural (comportamento atual da imensa
-        // maioria dos lançamentos) — só exclui quando está explicitamente marcado como
-        // outra coisa (investimento, pessoa física, não tributável).
-        if (l.vinculo_atividade && l.vinculo_atividade !== "rural") return false;
-        const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
-        return dt.slice(0, 4) === String(anoSel);
-      });
+      const filtrados = lans.filter((l:Lancamento)=>
+        ["baixado","pago","parcial"].includes(l.status) && l.data_baixa?.slice(0,4)===String(anoSel) &&
+        motivosMovimento(l,apoioIds,fazProdutorMapPreFiltro,produtoresPJIds).length===0);
 
       // ── Auditoria: todo pagamento (baixado/parcial) de fazenda PF no
       // período, mostrando pra cada um se entrou no LCDPR e, se não entrou,
@@ -379,10 +365,9 @@ export default function LCDPR() {
           .map((f: { id: string }) => f.id)
       );
       const basePagosPF = lans.filter((l: Lancamento) => {
-        if (l.status !== "baixado" && l.status !== "parcial") return false;
-        if (!fazendasPF.has(l.fazenda_id)) return false;
-        const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
-        return dt.slice(0, 4) === String(anoSel);
+        if (!["baixado","pago","parcial"].includes(l.status)) return false;
+        if (!fazendasPF.has(l.fazenda_id)&&l.entidade_contabil!=="pf") return false;
+        return !l.data_baixa || l.data_baixa.slice(0,4)===String(anoSel);
       });
       // Produtor "dono" de cada lançamento: usa lancamentos.produtor_id quando
       // preenchido; senão herda da fazenda (fazendas.produtor_id — a maioria
@@ -395,17 +380,8 @@ export default function LCDPR() {
         produtorNomeMap.set(p.id, p.nome);
       }
       const auditoria: ItemAuditoriaLcdpr[] = basePagosPF.map((l: Lancamento) => {
-        const motivos: MotivoExclusaoLcdpr[] = [];
-        if (apoioIds.has(l.id)) motivos.push("apoio_baixa");
-        if (l.entidade_contabil && l.entidade_contabil !== "pf") motivos.push("entidade_pj");
+        const motivos = motivosMovimento(l,apoioIds,fazProdutorMapPreFiltro,produtoresPJIds);
         const titularId = l.produtor_id ?? fazProdutorMapPreFiltro.get(l.fazenda_id) ?? null;
-        if (titularId && produtoresPJIds.has(titularId)) motivos.push("titular_pj");
-        if (l.categoria && CATEGORIAS_INTERNAS.has(l.categoria)) motivos.push("categoria_interna");
-        if (l.descricao) {
-          const descNorm = normTxt(l.descricao);
-          if (listaNomesInternos.some(n => descNorm.includes(n))) motivos.push("nome_interno");
-        }
-        if (l.vinculo_atividade && l.vinculo_atividade !== "rural") motivos.push("vinculo_nao_rural");
         const dt = l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "";
         return {
           lancamento: l, motivos, incluido: motivos.length === 0,
@@ -419,41 +395,46 @@ export default function LCDPR() {
         const produtorId = l.produtor_id ?? fazProdutorMap.get(l.fazenda_id) ?? null;
         return {
           id: l.id,
-          data: l.data_baixa ?? l.data_vencimento ?? l.data_lancamento ?? "",
+          data: l.data_baixa!,
           historico: l.descricao ?? l.categoria ?? "",
-          tipoDoc: mapTipoDoc(l.tipo_documento_lcdpr),
+          tipoDocOriginal:l.tipo_documento_lcdpr ?? null,
+          tipoDoc: mapTipoDoc(l.tipo_documento_lcdpr || (l.origem_lancamento==="folha"?"FOLHA":undefined)),
           numDoc: l.numero_documento ?? l.nfe_numero ?? "",
-          cpfCnpj: l.pessoa_id ? (pMap.get(l.pessoa_id) ?? "") : "",
+          cpfCnpj: (l.pessoa_id ? pMap.get(l.pessoa_id) : undefined) || (l.origem_lancamento==="folha"?cpfNum((prodRows ?? []).find(p=>p.id===produtorId)?.cpf_cnpj ?? ""):""),
           tipoLanc: tipoLancDe(l),
           fazendaId: l.fazenda_id,
           contaBancariaRef: l.conta_bancaria ?? "",
-          receita: l.tipo === "receber" ? (l.valor_pago ?? l.valor ?? 0) : 0,
-          despesa: l.tipo === "pagar"   ? (l.valor_pago ?? l.valor ?? 0) : 0,
+          receita: l.tipo === "receber" ? valorCaixa(l) : 0,
+          despesa: l.tipo === "pagar"   ? valorCaixa(l) : 0,
           origem: "auto" as const, lancId: l.id,
           produtorId,
+          produtorCpf: cpfNum((prodRows ?? []).find(p=>p.id===produtorId)?.cpf_cnpj ?? (fazRows ?? []).find(f=>f.id===l.fazenda_id)?.cpf_cnpj_fiscal ?? ""),
+          compartilhada: !l.produtor_id && (((fazRows ?? []).find(f=>f.id===l.fazenda_id)?.tipo_exploracao ?? 1)!==1),
           produtorNome: produtorId ? (produtorNomeMap.get(produtorId) ?? "—") : "—",
           ogClassificacao: l.operacao_gerencial_id ? ogMapLocal.get(l.operacao_gerencial_id)?.classificacao : undefined,
           ogDescricao:     l.operacao_gerencial_id ? ogMapLocal.get(l.operacao_gerencial_id)?.descricao : undefined,
         };
       });
       items.sort((a, b) => a.data.localeCompare(b.data));
-      setEntradas(items);
-    }).finally(() => setLoading(false));
-  }, [fazendaId, fazendaIds?.join(","), contaId, anoSel]);
+      setEntradas([...items,...(manuais ?? []).map(m=>({...m.dados,id:m.id,atualizadoEm:m.updated_at} as EntradaLCDPR))].sort((a,b)=>a.data.localeCompare(b.data)||a.id.localeCompare(b.id)));
+    }).catch(e=>{if(ativo)setErroCarga((e as {message?:string}).message ?? String(e));}).finally(() => {if(ativo)setLoading(false);});
+    return ()=>{ativo=false;};
+  }, [fazendaId, fazendaIds?.join(","), contaId, anoSel, versaoMovimentos]);
 
   // ── Persistência da configuração ──────────────────────────────────────────
   const salvarConfig = async (nova: ConfigLCDPR) => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar config)", perigo: false }))) return;
-    setConfig(nova); // optimistic
     const fazCfg = configFazendaId ?? fazendaIds?.[0] ?? fazendaId;
     if (!fazCfg) return;
     setSavingCfg(true);
     try {
-      await supabase.from("configuracoes_modulo").upsert(
+      const {error} = await supabase.from("configuracoes_modulo").upsert(
         { fazenda_id: fazCfg, modulo: "lcdpr", config: nova },
         { onConflict: "fazenda_id,modulo" }
       );
-    } finally {
+      if(error)throw error;
+      setConfig(nova);
+    } catch(e){alert((e as {message?:string}).message ?? String(e));} finally {
       setSavingCfg(false);
     }
   };
@@ -463,11 +444,12 @@ export default function LCDPR() {
     if (!contaId) return;
     setSavingContador(true);
     try {
-      await supabase.from("lcdpr_contador").upsert(
+      const {error} = await supabase.from("lcdpr_contador").upsert(
         { conta_id: contaId, ...contador, updated_at: new Date().toISOString() },
         { onConflict: "conta_id" }
       );
-    } finally {
+      if(error)throw error;
+    } catch(e){alert((e as {message?:string}).message ?? String(e));} finally {
       setSavingContador(false);
     }
   };
@@ -481,16 +463,17 @@ export default function LCDPR() {
     if (!patch) return;
     setSavingFazIds(prev => new Set(prev).add(id));
     try {
-      await supabase.from("fazendas").update(patch).eq("id", id);
+      const {data,error} = await supabase.from("fazendas").update(patch).eq("id", id).select("id").maybeSingle();
+      if(error)throw error;if(!data)throw new Error("O imóvel não foi atualizado.");
       setFazDados(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
       setFazEdit(prev => { const n = new Map(prev); n.delete(id); return n; });
-    } finally {
+    } catch(e){alert((e as {message?:string}).message ?? String(e));} finally {
       setSavingFazIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     }
   };
 
   // ── Computados ────────────────────────────────────────────────────────────
-  const saldoInicial  = config.saldos_iniciais[String(anoSel)] ?? 0;
+  const saldoInicial = 0;
   const totalReceitas = entradas.reduce((s, e) => s + e.receita, 0);
   const totalDespesas = entradas.reduce((s, e) => s + e.despesa, 0);
   const saldoFinal    = saldoInicial + totalReceitas - totalDespesas;
@@ -505,33 +488,15 @@ export default function LCDPR() {
     return Array.from(m.entries()).map(([cpf, nome]) => ({ id: cpf, cpf, nome }));
   }, [produtoresDados, fazDados]);
 
-  const participacaoSel = produtorFiltro !== "todos"
-    ? (config.participacoes[produtorFiltro] ?? 100)
-    : 100;
-  const fator = participacaoSel / 100;
-
-  const entradasExport = useMemo(() => {
-    let e = entradas;
-    if (modoExport === "mensal") {
-      const mm = String(mesExport).padStart(2, "0");
-      e = e.filter(x => x.data.slice(0, 7) === `${anoSel}-${mm}`);
-    }
-    if (produtorFiltro !== "todos" && fator !== 1)
-      e = e.map(x => ({ ...x, receita: x.receita * fator, despesa: x.despesa * fator }));
-    return e;
-  }, [entradas, modoExport, mesExport, anoSel, produtorFiltro, fator]);
-
-  const saldoInicialExport = saldoInicial * fator;
-
-  // Fazendas (imóveis rurais) filtradas pelo produtor selecionado na
-  // exportação — mesma lógica usada dentro de gerarLCDPR() (0040), agora
-  // compartilhada com o relatório PDF pra não duplicar o critério.
-  const fazsExport = useMemo(() => {
-    if (produtorFiltro === "todos") return fazDados;
-    const idsComCpf = new Set(produtoresDados.filter(p => p.cpf === produtorFiltro).map(p => p.id));
-    const f = fazDados.filter(fz => cpfNum(fz.cpf_cnpj_fiscal ?? "") === produtorFiltro || (fz.produtor_id && idsComCpf.has(fz.produtor_id)));
-    return f.length > 0 ? f : fazDados;
-  }, [fazDados, produtoresDados, produtorFiltro]);
+  const entradasDoTitular = useMemo(()=>selecionarMovimentos(entradas,produtorFiltro,produtoresDados,fazDados,anoSel),[entradas,produtorFiltro,produtoresDados,fazDados,anoSel]);
+  const entradasExport = useMemo(()=>selecionarMovimentos(entradas,produtorFiltro,produtoresDados,fazDados,anoSel,modoExport==="mensal"?mesExport:undefined),[entradas,produtorFiltro,produtoresDados,fazDados,anoSel,modoExport,mesExport]);
+  const saldoInicialExport = modoExport==="mensal" ? entradasDoTitular.filter(e=>Number(e.data.slice(5,7))<mesExport).reduce((s,e)=>s+e.receita-e.despesa,0) : 0;
+  const fazsExport = useMemo(()=>{
+    if(produtorFiltro==="todos")return fazDados;
+    const ids = new Set(produtoresDados.filter(p=>p.cpf===produtorFiltro).map(p=>p.id));
+    const usadas = new Set(entradasDoTitular.map(e=>e.fazendaId));
+    return fazDados.filter(f=>usadas.has(f.id)||cpfNum(f.cpf_cnpj_fiscal ?? "")===produtorFiltro||ids.has(f.produtor_id ?? "")||f.lcdpr_participantes?.some(p=>cpfNum(p.cpf)===produtorFiltro));
+  },[fazDados,produtoresDados,produtorFiltro,entradasDoTitular]);
 
   // Fazendas com dados incompletos pro registro 0040 (CAEPF é condicionalmente
   // obrigatório — sinalizado, mas não bloqueia a geração)
@@ -549,53 +514,90 @@ export default function LCDPR() {
   });
 
   // ── Ações ─────────────────────────────────────────────────────────────────
-  const adicionarManual = () => {
-    if (!fManual.valor || !fManual.historico) return;
-    const nova: EntradaLCDPR = {
-      id: `manual-${Date.now()}`, data: fManual.data, historico: fManual.historico,
-      tipoDoc: fManual.tipoDoc, numDoc: "", cpfCnpj: fManual.cpfCnpj,
-      tipoLanc: fManual.tipo === "receita" ? "1" : "2",
-      fazendaId: fazendaId ?? "", contaBancariaRef: "",
-      receita: fManual.tipo === "receita" ? fManual.valor : 0,
-      despesa: fManual.tipo === "despesa" ? fManual.valor : 0,
-      origem: "manual",
-    };
-    setEntradas(prev => [...prev, nova].sort((a, b) => a.data.localeCompare(b.data)));
-    setModalManual(false);
-    setFManual({ data: hoje(), historico: "", tipoDoc: "6", cpfCnpj: "", valor: 0, tipo: "receita" });
+  const gravarMovimentos = async (linhas:EntradaLCDPR[]) => {
+    if(!fazendaId)throw new Error("Fazenda não identificada.");
+    const {data:{session}}=await supabase.auth.getSession();
+    const response=await fetchFinanceiro("/api/lcdpr/movimentos",{method:"POST",headers:{"Content-Type":"application/json",...(session?{Authorization:"Bearer "+session.access_token}:{})},body:JSON.stringify({acao:"incluir",fazenda_id:fazendaId,linhas})});
+    const json=await response.json();if(!response.ok||!json.ok)throw new Error(json.error ?? "Os movimentos não foram gravados.");
+    setVersaoMovimentos(v=>v+1);return json;
   };
-
-  const removerLancamento = (id: string) => setEntradas(prev => prev.filter(e => e.id !== id));
-  const atualizarTipoDoc  = (id: string, tipoDoc: string) =>
-    setEntradas(prev => prev.map(e => e.id === id ? { ...e, tipoDoc } : e));
+  const adicionarManual = async () => {
+    if(gravandoMovimento)return;
+    const produtor=produtoresDados.find(p=>p.id===novoProdutorId);
+    if(!produtor||!novoImovelId){alert("Escolha o produtor e o imóvel do movimento.");return;}
+    setGravandoMovimento(true);
+    try {
+      await gravarMovimentos([{id:"",data:fManual.data,historico:fManual.historico,tipoDoc:fManual.tipoDoc,numDoc:"",cpfCnpj:fManual.cpfCnpj,
+        tipoLanc:fManual.tipo==="receita"?"1":"2",fazendaId:novoImovelId,contaBancariaRef:"",receita:fManual.tipo==="receita"?fManual.valor:0,
+        despesa:fManual.tipo==="despesa"?fManual.valor:0,origem:"manual",produtorId:produtor.id,produtorCpf:produtor.cpf,produtorNome:produtor.nome}]);
+      setModalManual(false);setFManual({data:hoje(),historico:"",tipoDoc:"6",cpfCnpj:"",valor:0,tipo:"receita"});
+    } catch(e){alert((e as Error).message);}finally{setGravandoMovimento(false);}
+  };
+  const alterarMovimento = async (id:string,acao:string,tipoDoc?:string,motivo?:string) => {
+    const {data:{session}}=await supabase.auth.getSession();
+    const response=await fetch("/api/lcdpr/movimentos",{method:"POST",headers:{"Content-Type":"application/json",...(session?{Authorization:"Bearer "+session.access_token}:{})},body:JSON.stringify({id,acao,tipoDoc,motivo,atualizado_em:entradas.find(e=>e.id===id)?.atualizadoEm})});
+    const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error ?? "Movimento não atualizado.");
+    setEntradas(prev=>prev.map(e=>e.id===id?{...e,atualizadoEm:result.updated_at}:e));
+  };
+  const removerLancamento = async (id:string) => {
+    const motivo=prompt("Motivo da exclusão deste movimento do LCDPR:");if(motivo===null)return;
+    if(motivo.trim().length<3){alert("Informe um motivo com pelo menos três caracteres.");return;}
+    try{await alterarMovimento(id,"excluir",undefined,motivo);setEntradas(prev=>prev.filter(e=>e.id!==id));}catch(e){alert((e as Error).message);}
+  };
+  const gravandoDocumento=useRef(false);
+  const [documentoOcupado,setDocumentoOcupado]=useState("");
+  const atualizarTipoDoc=async(id:string,tipoDoc:string)=>{
+    if(gravandoDocumento.current)return;
+    const entrada=entradas.find(e=>e.id===id);if(!entrada)return;
+    gravandoDocumento.current=true;setDocumentoOcupado(id);
+    try {
+      if(entrada.origem==="auto"){
+        let q=supabase.from("lancamentos").update({tipo_documento_lcdpr:TIPO_DOC_LABEL[tipoDoc]}).eq("id",id);
+        q=entrada.tipoDocOriginal==null?q.is("tipo_documento_lcdpr",null):q.eq("tipo_documento_lcdpr",entrada.tipoDocOriginal);
+        const {data,error}=await q.select("id").maybeSingle();
+        if(error)throw error;if(!data)throw new Error("O documento foi alterado. Recarregue o livro antes de salvar.");
+      }else await alterarMovimento(id,"documento",tipoDoc);
+      setEntradas(prev=>prev.map(e=>e.id===id?{...e,tipoDoc,tipoDocOriginal:TIPO_DOC_LABEL[tipoDoc]}:e));
+    }catch(e){alert((e as {message?:string}).message ?? String(e));}
+    finally{gravandoDocumento.current=false;setDocumentoOcupado("");}
+  };
 
   // ── Importação XLS/CSV ────────────────────────────────────────────────────
   const handleImportFile = async (file: File) => {
     setImportLoading(true); setImportFeedback("");
     try {
       const XLSX = await import("xlsx");
-      const wb   = XLSX.read(await file.arrayBuffer());
+      const buffer=await file.arrayBuffer();
+      const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer))).map(v=>v.toString(16).padStart(2,"0")).join("");
+      const wb=XLSX.read(buffer);
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]], { defval: "" });
-      const parsed: ImportRow[] = rows.map(r => {
+      const parsed: ImportRow[] = rows.map((r,indice) => {
         const g = (...keys: string[]) => keys.reduce<string>((a, k) => a || String(r[k] ?? ""), "").trim();
         const dataRaw = g("Data", "data");
         const hist    = g("Histórico", "Historico", "historico", "Descrição", "descricao");
         const docRaw  = g("Documento", "documento");
         const cpf     = g("CPF/CNPJ", "cpf_cnpj");
         const tipoRaw = g("Tipo", "tipo").toLowerCase();
-        const valRaw  = parseFloat(g("Valor", "valor").replace(/\./g, "").replace(",", ".")) || 0;
+        const bruto=r["Valor"] ?? r["valor"];
+        const valRaw=typeof bruto==="number"?bruto:Number(String(bruto ?? "").includes(",")?String(bruto).replace(/\./g,"").replace(",","."):bruto);
         const erros: string[] = [];
         if (!hist) erros.push("Histórico obrigatório");
-        let dataIso = dataRaw;
+        if(!Number.isFinite(valRaw)||valRaw<=0)erros.push("Valor positivo obrigatório");
+        let dataIso=dataRaw;
+        const dataBruta=r["Data"] ?? r["data"];
+        if(typeof dataBruta==="number"){
+          const d=XLSX.SSF.parse_date_code(dataBruta,{date1904:wb.Workbook?.WBProps?.date1904===true});
+          if(d)dataIso=`${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
+        }
         if (dataRaw.includes("/")) {
           const p = dataRaw.split("/");
           if (p.length === 3) dataIso = `${p[2].length === 4 ? p[2] : `20${p[2]}`}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
         }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dataIso)) erros.push("Data inválida (DD/MM/AAAA)");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dataIso)||!Number.isFinite(Date.parse(dataIso+"T12:00:00Z"))||new Date(dataIso+"T12:00:00Z").toISOString().slice(0,10)!==dataIso) erros.push("Data inválida (DD/MM/AAAA)");
         const isR = tipoRaw.startsWith("r");
         if (!isR && !tipoRaw.startsWith("d")) erros.push('Tipo deve ser "Receita" ou "Despesa"');
         return {
-          data: dataIso, historico: hist, tipoDoc: mapTipoDoc(docRaw), cpfCnpj: cpf,
+          importacaoRef:hash+":"+(indice+2),data: dataIso, historico: hist, tipoDoc: mapTipoDoc(docRaw), cpfCnpj: cpf,
           tipo: isR ? "receber" : "pagar" as "receber" | "pagar", valor: valRaw,
           _status: erros.length ? "erro" : "ok" as "ok" | "erro", _msg: erros.join("; "),
         };
@@ -605,21 +607,18 @@ export default function LCDPR() {
     finally { setImportLoading(false); }
   };
 
-  const confirmarImport = () => {
-    const validas = importRows.filter(r => r._status === "ok");
-    const novas: EntradaLCDPR[] = validas.map((r, i) => ({
-      id: `imp-${Date.now()}-${i}`, data: r.data, historico: r.historico,
-      tipoDoc: r.tipoDoc, numDoc: "", cpfCnpj: r.cpfCnpj,
-      tipoLanc: r.tipo === "receber" ? "1" : "2",
-      fazendaId: fazendaId ?? "", contaBancariaRef: "",
-      receita: r.tipo === "receber" ? r.valor : 0,
-      despesa: r.tipo === "pagar" ? r.valor : 0,
-      origem: "importado",
-    }));
-    setEntradas(prev => [...prev, ...novas].sort((a, b) => a.data.localeCompare(b.data)));
-    setImportRows([]);
-    setImportFeedback(`✓ ${validas.length} lançamento${validas.length !== 1 ? "s" : ""} adicionados.`);
-    setAba("livro");
+  const confirmarImport = async () => {
+    if(gravandoMovimento)return;
+    const produtor=produtoresDados.find(p=>p.id===novoProdutorId);
+    if(!produtor||!novoImovelId){setImportFeedback("Escolha o produtor e o imóvel dos movimentos importados.");return;}
+    const validas=importRows.filter(r=>r._status==="ok");if(!validas.length)return;
+    setGravandoMovimento(true);
+    try {
+      const gravacao=await gravarMovimentos(validas.map(r=>({id:"",importacao_ref:r.importacaoRef,data:r.data,historico:r.historico,tipoDoc:r.tipoDoc,numDoc:"",cpfCnpj:r.cpfCnpj,tipoLanc:r.tipo==="receber"?"1":"2",
+        fazendaId:novoImovelId,contaBancariaRef:"",receita:r.tipo==="receber"?r.valor:0,despesa:r.tipo==="pagar"?r.valor:0,
+        origem:"importado",produtorId:produtor.id,produtorCpf:produtor.cpf,produtorNome:produtor.nome})));
+      setImportRows([]);setImportFeedback(gravacao.criados+" movimentos gravados; "+gravacao.reutilizados+" já importados.");setAba("livro");
+    } catch(e){setImportFeedback((e as Error).message);}finally{setGravandoMovimento(false);}
   };
 
   const baixarModelo = async () => {
@@ -643,137 +642,25 @@ export default function LCDPR() {
 
   // ── Geração do arquivo .txt (Leiaute 1.3 — ADE COPES nº 1/2020) ───────────
   const gerarLCDPR = () => {
-    const cpfSel   = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
-    const nomeProd = (produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "PRODUTOR RURAL").toUpperCase();
-
-    const fazsLC = fazsExport;
-
-    // Código sequencial de imóvel (0040) — 1 fazenda = 1 imóvel rural
-    const codImovelMap = new Map<string, string>();
-    fazsLC.forEach((f, i) => codImovelMap.set(f.id, String(i + 1).padStart(3, "0")));
-
-    // Código sequencial de conta bancária (0050) — só contas reais (não
-    // espécie/trânsito, que usam os códigos especiais 000/999 direto no Q100)
-    const contasReais = contasDados.filter(c => c.tipo_conta !== "caixa" && c.tipo_conta !== "transitoria");
-    const codContaMap = new Map<string, string>();
-    contasReais.forEach((c, i) => codContaMap.set(c.id, String(i + 1).padStart(3, "0")));
-    const contaPorRef = new Map(contasDados.map(c => [c.id, c]));
-
-    function resolverCodConta(ref: string): string {
-      if (!ref) return "999"; // sem conta identificada — numerário em trânsito
-      const conta = contaPorRef.get(ref);
-      if (!conta) return "999"; // texto livre não cadastrado (ex: "Conta Transitoria" digitado à mão)
-      if (conta.tipo_conta === "caixa") return "000";
-      if (conta.tipo_conta === "transitoria") return "999";
-      return codContaMap.get(conta.id) ?? "999";
-    }
-
-    const dtFmt = fmtDataLC;
-    const linhas: string[] = [];
-
-    // ── Bloco 0 ──
-    const mm    = String(mesExport).padStart(2, "0");
-    const last  = new Date(anoSel, mesExport, 0).getDate();
-    const dtInicial = modoExport === "anual" ? `0101${anoSel}` : `01${mm}${anoSel}`;
-    const dtFinal    = modoExport === "anual" ? `3112${anoSel}` : `${String(last).padStart(2,"0")}${mm}${anoSel}`;
-
-    // 0000 — Abertura do Arquivo Digital e Identificação da PF
-    linhas.push(["0000", "LCDPR", COD_VERSAO, cpfSel, nomeProd, "0", "0", "", dtInicial, dtFinal].join("|"));
-
-    // 0010 — Parâmetro de Tributação (1 = Livro Caixa — único regime que este
-    // sistema apura, já que ele é o próprio livro-caixa)
-    linhas.push(["0010", "1"].join("|"));
-
-    // 0030 — Dados Cadastrais do declarante (usa o endereço da 1ª fazenda como
-    // referência — o registro é do declarante, não por imóvel)
-    const fRef = fazsLC[0];
-    linhas.push([
-      "0030",
-      fRef?.logradouro ?? "", fRef?.numero_end ?? "", fRef?.complemento ?? "", fRef?.bairro ?? "",
-      (fRef?.estado ?? "").toUpperCase(), fRef?.municipio_ibge ?? "", cpfNum(fRef?.cep ?? ""),
-      "", "",
-    ].join("|"));
-
-    // 0040 — Cadastro dos Imóveis Rurais (1 por fazenda)
-    for (const f of fazsLC) {
-      const tipoExp = f.tipo_exploracao ?? (f.arrendada ? 3 : 1);
-      const participacao = (f.participacao_lcdpr ?? 100).toFixed(2).replace(".", "");
-      linhas.push([
-        "0040",
-        codImovelMap.get(f.id), "BR", "BRL",
-        f.itr ?? "", f.caepf ?? "", "",
-        f.nome.toUpperCase(), f.logradouro ?? "", f.numero_end ?? "", f.complemento ?? "", f.bairro ?? "",
-        (f.estado ?? "").toUpperCase(), f.municipio_ibge ?? "", cpfNum(f.cep ?? ""),
-        String(tipoExp), participacao,
-      ].join("|"));
-    }
-
-    // 0050 — Contas Bancárias (só contas reais; caixa/trânsito usam 000/999 no Q100)
-    for (const c of contasReais) {
-      const codBanco = c.codigo_bacen || resolverBanco(c.banco);
-      const numContaComDv = `${(c.conta ?? "").replace(/\D/g, "")}${c.conta_dv ? `-${c.conta_dv}` : ""}`;
-      linhas.push([
-        "0050", codContaMap.get(c.id), "BR", codBanco, c.banco ?? "",
-        (c.agencia ?? "").replace(/\D/g, ""), numContaComDv,
-      ].join("|"));
-    }
-
-    // ── Bloco Q ──
-    // Q100 — Demonstrativo do Resultado da Atividade Rural (1 por lançamento)
-    let saldoAcum = saldoInicialExport;
-    const porMes = new Map<string, { entrada: number; saida: number }>();
-    for (const e of entradasExport) {
-      const codImovel = codImovelMap.get(e.fazendaId) ?? codImovelMap.get(fazsLC[0]?.id ?? "") ?? "001";
-      const codConta  = resolverCodConta(e.contaBancariaRef);
-      const vEntrada = e.receita;
-      const vSaida   = e.despesa;
-      saldoAcum += vEntrada - vSaida;
-      linhas.push([
-        "Q100", dtFmt(e.data), codImovel, codConta, e.numDoc, e.tipoDoc,
-        e.historico.replace(/\|/g, " "), cpfNum(e.cpfCnpj), e.tipoLanc,
-        fmtValorLC(vEntrada), fmtValorLC(vSaida), fmtValorLC(Math.abs(saldoAcum)),
-        saldoAcum >= 0 ? "P" : "N",
-      ].join("|"));
-
-      const chaveMes = e.data.slice(0, 7).replace("-", "");
-      const mesInvertido = `${chaveMes.slice(4,6)}${chaveMes.slice(0,4)}`;
-      const acc = porMes.get(mesInvertido) ?? { entrada: 0, saida: 0 };
-      acc.entrada += vEntrada; acc.saida += vSaida;
-      porMes.set(mesInvertido, acc);
-    }
-
-    // Q200 — Resumo Mensal (ordem cronológica, saldo cumulativo)
-    let saldoMensal = saldoInicialExport;
-    const mesesOrdenados = [...porMes.keys()].sort((a, b) => {
-      const [ma, aa] = [a.slice(0,2), a.slice(2)]; const [mb, ab] = [b.slice(0,2), b.slice(2)];
-      return aa === ab ? ma.localeCompare(mb) : aa.localeCompare(ab);
-    });
-    for (const chave of mesesOrdenados) {
-      const { entrada, saida } = porMes.get(chave)!;
-      saldoMensal += entrada - saida;
-      linhas.push(["Q200", chave, fmtValorLC(entrada), fmtValorLC(saida), fmtValorLC(Math.abs(saldoMensal)), saldoMensal >= 0 ? "P" : "N"].join("|"));
-    }
-
-    // ── Bloco 9 ──
-    // 9999 é adicionado por último, com a contagem total de linhas incluindo
-    // ele mesmo (todos os registros contam, mesmo repetidos).
-    const totalLinhas = linhas.length + 1;
-    linhas.push(["9999", contador.nome, cpfNum(contador.cpf_cnpj), contador.crc, contador.email, contador.telefone.replace(/\D/g, ""), String(totalLinhas)].join("|"));
-
-    const content = linhas.join("\r\n");
-    const blob = new Blob(["﻿" + content], { type: "text/plain;charset=utf-8" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    const nomeArq = nomeProd.replace(/[^A-Z0-9 ]/g, "").trim();
-    const comp    = modoExport === "mensal" ? `COMP ${mm}-${anoSel}` : `COMP ${anoSel}`;
-    a.href = url; a.download = `LCDPR_${nomeArq}_${cpfSel || "TODOS"}_${comp}.txt`;
-    a.click(); URL.revokeObjectURL(url);
+    if(produtorFiltro==="todos")throw new Error("Escolha um CPF para gerar o TXT oficial. A visão Todos é gerencial.");
+    if(modoExport!=="anual")throw new Error("O TXT oficial reúne o ano do declarante. Use Excel ou PDF para conferir um mês.");
+    const pendentes=auditoriaLcdpr.filter(a=>a.motivos.some(m=>["data_ausente","parcial_legado","valor_invalido","compensacao","titular_ausente"].includes(m)) &&
+      (a.motivos.includes("titular_ausente") || produtoresDados.some(p=>p.cpf===produtorFiltro&&p.id===(a.lancamento.produtor_id ?? fazDados.find(f=>f.id===a.lancamento.fazenda_id)?.produtor_id)) ||
+       cpfNum(fazDados.find(f=>f.id===a.lancamento.fazenda_id)?.cpf_cnpj_fiscal ?? "")===produtorFiltro));
+    if(pendentes.length)throw new Error("Há "+pendentes.length+" movimentos pendentes de conferência na aba Auditoria. Regularize a origem antes de gerar o TXT.");
+    const cpfSel   = produtorFiltro !== "todos" ? produtorFiltro : "";
+    const produtor=produtoresDados.find(p=>p.cpf===cpfSel);
+    if(!produtor)throw new Error("Complete o cadastro do declarante em Cadastros → Produtores.");
+    const conteudo=gerarArquivoLCDPR({cpf:cpfSel,nome:produtor.nome,ano:anoSel,declarante:produtor,imoveis:fazsExport,contas:contasDados,produtores:produtoresDados,
+      movimentos:entradasExport,contador,codigoBanco:resolverBanco});
+    const blob=new Blob([conteudo],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);const link=document.createElement("a");
+    link.href=url;link.download="LCDPR_"+cpfSel+"_"+anoSel+".txt";link.click();URL.revokeObjectURL(url);
   };
 
   const gerarXLSX = async () => {
     const XLSX = await import("xlsx");
-    const cpfSel = produtorFiltro !== "todos" ? produtorFiltro : (produtoresLcdpr[0]?.cpf ?? "");
-    const nomeProd = produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? "PRODUTOR RURAL";
+    const cpfSel = produtorFiltro !== "todos" ? produtorFiltro : "";
+    const nomeProd = produtoresLcdpr.find(p => p.cpf === cpfSel)?.nome ?? (produtorFiltro==="todos"?"TODOS OS PRODUTORES":"PRODUTOR RURAL");
     const nomeArq  = nomeProd.toUpperCase().replace(/[^A-Z0-9 ]/g, "").trim();
     const mm       = String(mesExport).padStart(2, "0");
     const comp     = modoExport === "mensal" ? `COMP ${mm}-${anoSel}` : `COMP ${anoSel}`;
@@ -855,12 +742,12 @@ export default function LCDPR() {
       const bg = i % 2 === 0 ? "#fff" : "#F7F9FA";
       return `<tr style="background:${bg}">
         <td style="${td}">${fmtData(e.data)}</td>
-        ${mostrarColunaProdutor ? `<td style="${td}">${e.produtorNome || "—"}</td>` : ""}
+        ${mostrarColunaProdutor ? `<td style="${td}">${htmlLCDPR(e.produtorNome || "—")}</td>` : ""}
         <td style="${td}"><span style="font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:3px;background:${e.tipoLanc === "2" ? "#FCEBEB" : "#EAF3DE"};color:${e.tipoLanc === "2" ? "#791F1F" : "#1A5C38"};">${TIPO_LANC_LABEL[e.tipoLanc] ?? e.tipoLanc}</span></td>
-        <td style="${td}">${e.historico || "—"}</td>
-        <td style="${td}">${e.ogClassificacao ? `${e.ogClassificacao} — ${e.ogDescricao ?? ""}` : "—"}</td>
+        <td style="${td}">${htmlLCDPR(e.historico || "—")}</td>
+        <td style="${td}">${e.ogClassificacao ? `${htmlLCDPR(e.ogClassificacao)} — ${htmlLCDPR(e.ogDescricao ?? "")}` : "—"}</td>
         <td style="${td}">${TIPO_DOC_LABEL[e.tipoDoc] ?? e.tipoDoc}</td>
-        <td style="${td}">${e.cpfCnpj || "—"}</td>
+        <td style="${td}">${htmlLCDPR(e.cpfCnpj || "—")}</td>
         <td style="${tdNum};color:#1A5C38;">${e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
         <td style="${tdNum};color:#E24B4A;">${e.despesa > 0 ? fmtBRL(e.despesa) : "—"}</td>
         <td style="${tdNum};font-weight:700;color:${saldoCorr >= 0 ? "#1a1a1a" : "#E24B4A"};">${fmtBRL(saldoCorr)}</td>
@@ -871,67 +758,59 @@ export default function LCDPR() {
     // mesmo com "Todos os Produtores" selecionado (antes o cabeçalho só dizia
     // "Todos os Produtores" e CPF "—", sem dizer quem são nem a quota de cada um).
     const produtoresHeader = produtoresLcdpr.map(p => ({
-      nome: p.nome,
+      nome:htmlLCDPR(p.nome),
       cpf:  fmtCPF(p.cpf) || "—",
-      pct:  config.participacoes[p.cpf] ?? 100,
     }));
-    const somaParticipacoes = produtoresHeader.reduce((s, p) => s + p.pct, 0);
     const thProd = `padding:4px 7px;text-align:left;font-size:8.5px;font-weight:700;color:#1A4870;border-bottom:0.5px solid #DDE2EE;white-space:nowrap;`;
     const tdProd = `padding:3px 7px;font-size:9px;color:#1a1a1a;border-bottom:0.5px solid #F0F3F7;`;
     // Com um produtor específico selecionado o cabeçalho já traz nome, CPF e
     // quota-parte dele — listar todos de novo só confundiria de quem é o livro.
     const blocoProdutores = (produtoresHeader.length === 0 || produtorFiltro !== "todos") ? "" : `
       <div style="margin-bottom:16px;">
-        <div style="font-size:9.5px;font-weight:700;color:#666;margin-bottom:4px;">Produtores e Participações</div>
+        <div style="font-size:9.5px;font-weight:700;color:#666;margin-bottom:4px;">Produtores abrangidos</div>
         <table style="border-collapse:collapse;min-width:340px;">
           <thead><tr>
             <th style="${thProd}">Nome</th><th style="${thProd}">CPF</th>
-            <th style="${thProd};text-align:right;">% Distribuição</th>
           </tr></thead>
           <tbody>
             ${produtoresHeader.map(p => `<tr>
               <td style="${tdProd}">${p.nome}</td>
               <td style="${tdProd};font-variant-numeric:tabular-nums;">${p.cpf}</td>
-              <td style="${tdProd};text-align:right;font-variant-numeric:tabular-nums;font-weight:700;">${p.pct.toFixed(2)}%</td>
             </tr>`).join("")}
-            ${produtoresHeader.length > 1 ? `<tr>
-              <td style="${tdProd};font-weight:700;color:#666;" colspan="2">Soma</td>
-              <td style="${tdProd};text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:${Math.abs(somaParticipacoes - 100) < 0.01 ? "#1A5C38" : "#E24B4A"};">${somaParticipacoes.toFixed(2)}%</td>
-            </tr>` : ""}
           </tbody>
         </table>
       </div>`;
 
     const linhasImoveis = fazsExport.map(f => `<tr>
-      <td style="${td}">${f.nome}</td>
-      <td style="${td}">${[f.municipio, f.estado].filter(Boolean).join(" / ") || "—"}</td>
-      <td style="${td}">${f.caepf || "—"}</td>
-      <td style="${td}">${f.itr || "—"}</td>
+      <td style="${td}">${htmlLCDPR(f.nome)}</td>
+      <td style="${td}">${htmlLCDPR([f.municipio,f.estado].filter(Boolean).join(" / ") || "—")}</td>
+      <td style="${td}">${htmlLCDPR(f.caepf || "—")}</td>
+      <td style="${td}">${htmlLCDPR(f.itr || "—")}</td>
       <td style="${td}">${TIPO_EXPLORACAO_LABEL[f.tipo_exploracao ?? 1] ?? "—"}</td>
       <td style="${tdNum}">${(f.participacao_lcdpr ?? 100).toFixed(2)}%</td>
       <td style="${tdNum}">${f.area_total_ha ? `${f.area_total_ha.toLocaleString("pt-BR")} ha` : "—"}</td>
     </tr>`).join("");
 
     const linhasContas = contasReaisExport.length > 0 ? contasReaisExport.map(c => `<tr>
-      <td style="${td}">${c.nome}</td>
-      <td style="${td}">${c.banco || "—"}</td>
-      <td style="${td}">${c.agencia || "—"}</td>
-      <td style="${td}">${c.conta || "—"}${c.conta_dv ? `-${c.conta_dv}` : ""}</td>
+      <td style="${td}">${htmlLCDPR(c.nome)}</td>
+      <td style="${td}">${htmlLCDPR(c.banco || "—")}</td>
+      <td style="${td}">${htmlLCDPR(c.agencia || "—")}</td>
+      <td style="${td}">${htmlLCDPR(c.conta || "—")}${c.conta_dv ? `-${htmlLCDPR(c.conta_dv)}` : ""}</td>
       <td style="${td}">${c.tipo_conta === "corrente" ? "Corrente" : c.tipo_conta === "poupanca" ? "Poupança" : c.tipo_conta}</td>
     </tr>`).join("") : `<tr><td colspan="5" style="${td};text-align:center;color:#999;">Nenhuma conta bancária cadastrada</td></tr>`;
 
     const html = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #DDE2EE;font-size:11px;">
         <table style="border-collapse:collapse;">
-          ${contaNome ? `<tr><td style="padding:2px 10px 2px 0;color:#666;">Cliente</td><td style="font-weight:700;">${contaNome}</td></tr>` : ""}
-          <tr><td style="padding:2px 10px 2px 0;color:#666;">Produtor</td><td style="font-weight:700;">${nomeProd}</td></tr>
+          ${contaNome ? `<tr><td style="padding:2px 10px 2px 0;color:#666;">Cliente</td><td style="font-weight:700;">${htmlLCDPR(contaNome)}</td></tr>` : ""}
+          <tr><td style="padding:2px 10px 2px 0;color:#666;">Produtor</td><td style="font-weight:700;">${htmlLCDPR(nomeProd)}</td></tr>
           <tr><td style="padding:2px 10px 2px 0;color:#666;">CPF</td><td>${fmtCPF(cpfCnpjSel) || "—"}</td></tr>
           <tr><td style="padding:2px 10px 2px 0;color:#666;">Período</td><td style="text-transform:capitalize;">${periodo}</td></tr>
         </table>
         <table style="border-collapse:collapse;text-align:right;">
           <tr><td style="padding:2px 0;color:#666;">Regime</td><td style="padding-left:10px;">Caixa — ${entidadeLabel}</td></tr>
           <tr><td style="padding:2px 0;color:#666;">Leiaute</td><td style="padding-left:10px;">1.3 — Anexo ADE COPES nº 1/2020</td></tr>
-          ${produtorFiltro !== "todos" ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">${(fator * 100).toFixed(2)}%</td></tr>` : ""}
+          ${produtorFiltro !== "todos" ? `<tr><td style="padding:2px 0;color:#666;">Quota-parte aplicada</td><td style="padding-left:10px;">Por imóvel (apenas movimentos compartilhados)</td></tr>` : ""}
         </table>
       </div>
 
@@ -983,12 +862,12 @@ export default function LCDPR() {
       <div style="display:flex;justify-content:space-between;margin-top:30px;padding-top:14px;border-top:0.5px solid #DDE2EE;font-size:10px;">
         <div>
           <div style="color:#666;margin-bottom:2px;">Responsável Técnico</div>
-          <div style="font-weight:700;">${contador.nome || "—"}</div>
-          <div style="color:#666;">${contador.cpf_cnpj ? `CPF/CNPJ: ${contador.cpf_cnpj}` : ""}${contador.crc ? ` · CRC: ${contador.crc}` : ""}</div>
+          <div style="font-weight:700;">${htmlLCDPR(contador.nome || "—")}</div>
+          <div style="color:#666;">${contador.cpf_cnpj ? `CPF/CNPJ: ${htmlLCDPR(contador.cpf_cnpj)}` : ""}${contador.crc ? ` · CRC: ${htmlLCDPR(contador.crc)}` : ""}</div>
         </div>
         <div style="text-align:right;">
-          <div style="color:#666;margin-bottom:2px;">Prazo de entrega (junto com a DIRPF)</div>
-          <div style="font-weight:700;">30/04/${anoSel + 1}</div>
+          <div style="color:#666;margin-bottom:2px;">Prazo de entrega</div>
+          <div style="font-weight:700;">Conforme o calendário da DIRPF do exercício</div>
         </div>
       </div>
     `;
@@ -996,14 +875,17 @@ export default function LCDPR() {
     abrirPreviewImpressao(
       "LCDPR — Livro Caixa Digital do Produtor Rural",
       html,
-      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: contaNome ?? nomeProd, nomeArquivo: nomeRelatorio("LCDPR", clienteRelatorio ?? nomeProd, `${anoSel}-01-01`, `${anoSel}-12-31`) },
+      { orientation: "landscape", subtitulo: `${htmlLCDPR(nomeProd)} · ${periodo}`, fazenda: contaNome ?? nomeProd, nomeArquivo: nomeRelatorio("LCDPR", clienteRelatorio ?? nomeProd, `${anoSel}-01-01`, `${anoSel}-12-31`) },
     );
   };
 
   const exportar = async () => {
+    try {
+    if(loading||erroCarga)throw new Error(erroCarga || "Aguarde o carregamento do livro.");
     if (formatoExport === "txt")  gerarLCDPR();
     else if (formatoExport === "xlsx") await gerarXLSX();
     else await gerarPDF();
+    } catch(e){alert((e as Error).message);}
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1036,6 +918,7 @@ export default function LCDPR() {
         </OperationalHeading>
 
         <div style={{ padding: "16px 22px", flex: 1 }}>
+          {erroCarga && <p role="alert" style={{color:"#a00"}}>Não foi possível carregar o LCDPR: {erroCarga}</p>}
 
           {/* ── KPI cards ── */}
           <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 12 }}>
@@ -1058,13 +941,13 @@ export default function LCDPR() {
             <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 8, padding: "8px 14px", marginBottom: 10, display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
               {fazendasSemCaepf.length > 0 && (
                 <span style={{ color: "#7A5A12" }}>
-                  ⚠ <strong>{fazendasSemCaepf.length}</strong> fazenda{fazendasSemCaepf.length !== 1 ? "s" : ""} sem CAEPF cadastrado — o registro 0040 sairá com esse campo em branco. Configure em{" "}
+                  ⚠ <strong>{fazendasSemCaepf.length}</strong> fazenda{fazendasSemCaepf.length !== 1 ? "s" : ""} sem CAEPF cadastrado — complete o cadastro antes de gerar o TXT oficial. Configure em{" "}
                   <OperationalButton data-arato-button="toggle" onClick={() => setAba("cadastro")} style={{ background: "none", border: "none", color: "#C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12, padding: 0, textDecoration: "underline" }}>Cadastro LCDPR</OperationalButton>.
                 </span>
               )}
               {fazendasColetivas.length > 0 && (
                 <span style={{ color: "#7A5A12" }}>
-                  ⚠ <strong>{fazendasColetivas.length}</strong> fazenda{fazendasColetivas.length !== 1 ? "s têm" : " tem"} exploração coletiva ou participação abaixo de 100% — o registro 0045 (dados dos parceiros/condôminos) ainda não é gerado automaticamente por este sistema. Se aplicável, adicione manualmente após exportar.
+                  ⚠ <strong>{fazendasColetivas.length}</strong> fazenda{fazendasColetivas.length !== 1 ? "s têm" : " tem"} exploração coletiva ou participação abaixo de 100% — confira os terceiros e percentuais no Cadastro LCDPR para gerar o registro 0045.
                 </span>
               )}
             </div>
@@ -1079,11 +962,7 @@ export default function LCDPR() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "var(--text-2)" }}>Saldo em 01/01/{anoSel}:</span>
-              <InputNumerico
-                value={saldoInicial}
-                onChange={v => salvarConfig({ ...config, saldos_iniciais: { ...config.saldos_iniciais, [String(anoSel)]: Number(v) } })}
-                style={{ padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, width: 130, color: "var(--text-1)" }}
-              />
+              <strong>R$ 0,00 (resultado anual da atividade)</strong>
               {savingCfg && <span style={{ fontSize: 10, color: "#aaa" }}>salvando…</span>}
             </div>
           </div>
@@ -1166,7 +1045,7 @@ export default function LCDPR() {
                                 </td>
                                 <td style={{ padding: "4px 8px" }}>
                                   <SelectField
-                                    value={e.tipoDoc}
+                                    value={e.tipoDoc} disabled={!!documentoOcupado}
                                     onChange={ev => atualizarTipoDoc(e.id, ev.target.value)}
                                     style={{ fontSize: 11, padding: "3px 5px", border: "0.5px solid var(--border-table)", borderRadius: 5, color: "var(--text-1)", background: "var(--bg-card)", maxWidth: 150 }}
                                   >
@@ -1212,92 +1091,10 @@ export default function LCDPR() {
 
             {/* ═══ ABA: PRODUTORES E PARTICIPAÇÕES ═══ */}
             {aba === "participacoes" && (
-              <div style={{ padding: 24 }}>
-                <div style={{ maxWidth: 760 }}>
-                  <div style={{ background: "#EEF4FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "14px 18px", marginBottom: 20, fontSize: 12, color: "#1e40af", lineHeight: 1.75 }}>
-                    <strong>Condomínio / Parceria Rural — IN RFB nº 1.848/2018, art. 4º</strong><br />
-                    Quando o imóvel rural pertence a mais de um titular (condomínio, parceria, meação), cada co-titular
-                    deve entregar seu próprio LCDPR com os valores <em>proporcionais à sua quota-parte</em>.
-                    Configure abaixo o percentual de participação de cada CPF. Ao exportar para um produtor específico,
-                    receitas, despesas e saldo inicial serão multiplicados pela sua participação.
-                  </div>
-
-                  {produtoresLcdpr.length === 0 ? (
-                    <div data-arato-statistic="display" style={{ textAlign: "center", padding: 40, color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 10 }}>
-                      <div style={{ fontSize: 32, marginBottom: 10 }}>👤</div>
-                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum produtor (CPF) encontrado na conta</div>
-                      <div style={{ fontSize: 12 }}>Cadastre produtores em <strong>Cadastros → Produtores</strong>.</div>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
-                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
-                          <thead>
-                            <tr style={{ background: "var(--bg-page)" }}>
-                              {["CPF", "Nome do Produtor", "Quota-parte (%)", "Situação"].map((h, i) => (
-                                <th key={i} style={{ padding: "9px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {produtoresLcdpr.map(p => {
-                              const pct = config.participacoes[p.cpf] ?? 100;
-                              return (
-                                <tr key={p.cpf} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
-                                  <td style={{ padding: "10px 14px", fontSize: 12, fontFamily: "monospace", color: "var(--text-2)" }}>{fmtCPF(p.cpf)}</td>
-                                  <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 500 }}>{p.nome}</td>
-                                  <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                      <input type="number" min={0} max={100} step={0.01} value={pct}
-                                        onChange={e => {
-                                          const v = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0));
-                                          salvarConfig({ ...config, participacoes: { ...config.participacoes, [p.cpf]: v } });
-                                        }}
-                                        style={{ width: 80, padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 13, textAlign: "right", color: "var(--text-1)", background: "var(--bg-input)" }}
-                                      />
-                                      <span style={{ fontSize: 12, color: "var(--text-2)" }}>%</span>
-                                    </div>
-                                  </td>
-                                  <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                    <span style={{
-                                      fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6,
-                                      background: pct === 100 ? "#EAF3DE" : "#FBF3E0",
-                                      color: pct === 100 ? "#1A5C38" : "#7A5A12",
-                                    }}>
-                                      {pct === 100 ? "Titular único" : `${pct.toFixed(2)}% da operação`}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </OperationalGrid>
-                      </div>
-
-                      {produtoresLcdpr.length > 1 && (() => {
-                        const soma = produtoresLcdpr.reduce((s, p) => s + (config.participacoes[p.cpf] ?? 100), 0);
-                        if (Math.abs(soma - 100) < 0.01) return (
-                          <div style={{ background: "#EAF3DE", border: "0.5px solid #1A5C3840", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#1A5C38" }}>
-                            ✓ Soma das participações: <strong>100,00%</strong> — consistente.
-                          </div>
-                        );
-                        return (
-                          <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#791F1F" }}>
-                            ⚠ Soma das participações: <strong>{soma.toFixed(2)}%</strong> — esperado 100,00%. Corrija antes de gerar o arquivo.
-                          </div>
-                        );
-                      })()}
-                    </>
-                  )}
-
-                  <div style={{ marginTop: 18, padding: "14px 18px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, fontSize: 12, color: "var(--text-2)", lineHeight: 1.7 }}>
-                    <strong style={{ color: "var(--text-1)" }}>Como funciona na exportação</strong><br />
-                    Na aba <em>Exportação</em>, selecione o CPF desejado. Os valores de receitas, despesas e saldo inicial
-                    serão multiplicados automaticamente pela quota-parte configurada aqui, gerando o arquivo individual
-                    correto para entrega na Receita Federal.
-                  </div>
-                  {savingCfg && <div style={{ marginTop: 8, fontSize: 11, color: "#aaa", textAlign: "right" }}>Salvando…</div>}
-                </div>
+              <div style={{padding:24}}>
+                <p>Cada CPF exporta seus movimentos exclusivos. A participação nos movimentos compartilhados é definida por imóvel, junto aos terceiros da exploração.</p>
+                <OperationalButton data-arato-button="primary" onClick={()=>setAba("cadastro")}>Configurar imóveis e participantes</OperationalButton>
+                {produtoresLcdpr.map(p=><div key={p.cpf} style={{padding:12,borderBottom:"1px solid var(--border-table)"}}>{fmtCPF(p.cpf)} — {p.nome}</div>)}
               </div>
             )}
 
@@ -1425,7 +1222,7 @@ export default function LCDPR() {
                   <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
-                        {["Fazenda", "CAEPF", "Tipo de Exploração", "Participação (%)", ""].map((h, i) => (
+                        {["Fazenda", "CAEPF", "Tipo de Exploração", "Participação (%)", "Terceiros (0045)", ""].map((h, i) => (
                           <th key={i} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                         ))}
                       </tr>
@@ -1454,6 +1251,17 @@ export default function LCDPR() {
                               <input type="number" min={0} max={100} step={0.01} value={participacao}
                                 onChange={e => editarFaz(f.id, { participacao_lcdpr: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
                                 style={inpS} />
+                            </td>
+                            <td style={{padding:8,minWidth:330}}>
+                              {(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []).map((p,i)=><div key={i} style={{display:"flex",gap:4,marginBottom:6}}>
+                                <input aria-label="CPF/CNPJ do terceiro" placeholder="CPF/CNPJ" value={p.cpf} onChange={e=>editarFaz(f.id,{lcdpr_participantes:(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []).map((v,n)=>n===i?{...v,cpf:e.target.value.replace(/\D/g,"")}:v)})} style={{...inpS,width:125}}/>
+                                <input aria-label="Nome do terceiro" placeholder="Nome" value={p.nome} onChange={e=>editarFaz(f.id,{lcdpr_participantes:(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []).map((v,n)=>n===i?{...v,nome:e.target.value}:v)})} style={inpS}/>
+                                <SelectField aria-label="Tipo de terceiro" value={p.tipo} onChange={e=>editarFaz(f.id,{lcdpr_participantes:(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []).map((v,n)=>n===i?{...v,tipo:Number(e.target.value)}:v)})}><option value={1}>Condômino</option><option value={2}>Arrendador</option><option value={3}>Parceiro</option><option value={4}>Comodante</option><option value={5}>Outros</option></SelectField>
+                                <input aria-label="Participação do terceiro" type="number" min={0} max={100} value={p.participacao} onChange={e=>editarFaz(f.id,{lcdpr_participantes:(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []).map((v,n)=>n===i?{...v,participacao:Number(e.target.value)}:v)})} style={{...inpS,width:70}}/>
+                                <OperationalButton data-arato-button="danger" onClick={()=>editarFaz(f.id,{lcdpr_participantes:(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []).filter((_,n)=>n!==i)})}>×</OperationalButton>
+                              </div>)}
+                              <OperationalButton data-arato-button="secondary" onClick={()=>editarFaz(f.id,{lcdpr_participantes:[...(edit?.lcdpr_participantes ?? f.lcdpr_participantes ?? []),{cpf:"",nome:"",tipo:1,participacao:0}]})}>+ Terceiro</OperationalButton>
+                              <label style={{display:"block",marginTop:8}}><input type="checkbox" checked={edit?.lcdpr_responsavel ?? f.lcdpr_responsavel ?? true} onChange={e=>editarFaz(f.id,{lcdpr_responsavel:e.target.checked})}/> Declarante é o responsável pelo CAEPF</label>
                             </td>
                             <td style={{ padding: "6px 10px", textAlign: "center" }}>
                               {mudou && (
@@ -1540,10 +1348,12 @@ export default function LCDPR() {
               <div style={{ padding: 24 }}>
                 <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>Importar lançamentos via planilha</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>Importar lançamentos via planilha</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <label>Produtor<SelectField value={novoProdutorId} onChange={e=>setNovoProdutorId(e.target.value)} style={inpS}><option value="">Selecione</option>{produtoresDados.map(p=><option key={p.id} value={p.id}>{p.nome} — {fmtCPF(p.cpf)}</option>)}</SelectField></label>
+              <label>Imóvel<SelectField value={novoImovelId} onChange={e=>setNovoImovelId(e.target.value)} style={inpS}><option value="">Selecione</option>{fazDados.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}</SelectField></label>
+            </div>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 16 }}>
-                      Para lançamentos históricos ou oriundos de outro sistema. Os dados importados ficam na sessão atual
-                      e são incluídos no arquivo exportado junto com os lançamentos automáticos do Financeiro.
+                      Para lançamentos históricos ou oriundos de outro sistema. Os movimentos são gravados no LCDPR do produtor e imóvel escolhidos, sem gerar uma nova conta no financeiro.
                     </div>
                     <OperationalButton data-arato-button="secondary" onClick={baixarModelo}
                       style={{ padding: "7px 14px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
@@ -1590,7 +1400,7 @@ export default function LCDPR() {
                         Preview — {importRows.length} linha{importRows.length !== 1 ? "s" : ""}
                         {" "}({importRows.filter(r => r._status === "ok").length} válidas, {importRows.filter(r => r._status === "erro").length} com erro)
                       </div>
-                      <OperationalButton data-arato-button="primary" onClick={confirmarImport} disabled={!importRows.some(r => r._status === "ok")}
+                      <OperationalButton data-arato-button="primary" onClick={confirmarImport} disabled={gravandoMovimento || !importRows.some(r => r._status === "ok")}
                         style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, opacity: importRows.some(r => r._status === "ok") ? 1 : 0.5 }}>
                         Confirmar importação
                       </OperationalButton>
@@ -1633,7 +1443,7 @@ export default function LCDPR() {
                     <div style={{ marginBottom: 16 }}>
                       <label data-arato-label="true" style={lblS}>Produtor</label>
                       <SelectField value={produtorFiltro} onChange={e => setProdutorFiltro(e.target.value)} style={inpS}>
-                        <option value="todos">Todos os produtores (sem aplicar quota-parte)</option>
+                        <option value="todos">Todos os produtores (visão gerencial)</option>
                         {produtoresLcdpr.map(p => <option key={p.cpf} value={p.cpf}>{fmtCPF(p.cpf)} — {p.nome}</option>)}
                       </SelectField>
                     </div>
@@ -1700,6 +1510,10 @@ export default function LCDPR() {
                 <OperationalButton data-arato-button="toggle" onClick={() => setFManual(p => ({ ...p, tipo: "receita" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "receita" ? "#1A5C38" : "var(--border-table)"}`, background: fManual.tipo === "receita" ? "#EAF3DE" : "var(--bg-card)", color: fManual.tipo === "receita" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Receita</OperationalButton>
                 <OperationalButton data-arato-button="toggle" onClick={() => setFManual(p => ({ ...p, tipo: "despesa" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "despesa" ? "#E24B4A" : "var(--border-table)"}`, background: fManual.tipo === "despesa" ? "#FCEBEB" : "var(--bg-card)", color: fManual.tipo === "despesa" ? "#E24B4A" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Despesa</OperationalButton>
               </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <label>Produtor<SelectField value={novoProdutorId} onChange={e=>setNovoProdutorId(e.target.value)} style={inpS}><option value="">Selecione</option>{produtoresDados.map(p=><option key={p.id} value={p.id}>{p.nome} — {fmtCPF(p.cpf)}</option>)}</SelectField></label>
+              <label>Imóvel<SelectField value={novoImovelId} onChange={e=>setNovoImovelId(e.target.value)} style={inpS}><option value="">Selecione</option>{fazDados.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}</SelectField></label>
+            </div>
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={lblS}>Data</label><InputData type="date" value={fManual.data} onChange={e => setFManual(p => ({ ...p, data: e.target.value }))} style={inpS} /></div>
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={lblS}>Histórico</label><input value={fManual.historico} onChange={e => setFManual(p => ({ ...p, historico: e.target.value }))} style={inpS} placeholder="Ex: Venda de 100 sacas de milho" /></div>
               <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1718,7 +1532,7 @@ export default function LCDPR() {
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <OperationalButton data-arato-button="secondary" onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="primary" onClick={adicionarManual} style={{ padding: "8px 20px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Adicionar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={adicionarManual} disabled={gravandoMovimento} style={{ padding: "8px 20px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Adicionar</OperationalButton>
             </div>
           </div>
         </div>

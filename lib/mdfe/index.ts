@@ -1,3 +1,6 @@
+import { validarReferenciasCliente } from "../api-referencias";
+import { abrirOperacaoFiscal, prepararEnvioFiscal, registrarRetornoFiscal, retornoOperacaoExistente } from "../fiscal/operacao";
+import { sincronizarDocumentoFiscal } from "../fiscal/persistencia";
 /**
  * lib/mdfe/index.ts
  * Ponto central da emissão de MDF-e:
@@ -35,31 +38,7 @@ function sb() {
 }
 
 
-// Número do MDF-e SEM queimar numeração em rejeição (achado 24/09/2026: o 3287 virou 3288 numa
-// tentativa rejeitada). Só LÊ o contador; ele avança (avancarNumero) apenas quando a SEFAZ
-// autoriza. Um rascunho que já tentou transmitir reaproveita o próprio número — a SEFAZ não
-// consome número de documento rejeitado —, salvo se esse número já ficou para trás do contador
-// (foi usado por outro MDF-e autorizado).
-function numeroParaTentativa(confg: Record<string, string>, m: { numero_mdfe?: unknown; chave_acesso?: unknown }): number {
-  const contador = parseInt(String(confg.numero_inicial ?? "1")) || 1;
-  const anterior = parseInt(String(m.numero_mdfe ?? ""));
-  const jaTentou = !!m.chave_acesso && Number.isFinite(anterior) && anterior > 0;
-  return jaTentou && anterior >= contador ? anterior : contador;
-}
-
-// Achado real 28/09/2026: os parâmetros de MDF-e são do CLIENTE, mas a tabela grava por
-// fazenda_id, e um emitente pode ter mais de uma cópia da config (uma por fazenda em que já foi
-// salva). Gravar só numa fazenda deixava o contador parado quando a leitura seguinte olhava outra
-// cópia. Agora grava em TODAS as cópias do mesmo conta_id+módulo — ficam sempre idênticas entre
-// si, e a leitura (que já pega o MAIOR número entre as cópias) nunca mais vê uma desatualizada.
-async function avancarNumero(contaId: string | null, fazendaId: string, modulo: string, confg: Record<string, string>, usado: number): Promise<void> {
-  const contador = parseInt(String(confg.numero_inicial ?? "1")) || 1;
-  if (usado < contador) return;
-  const novaConfig = { ...confg, numero_inicial: String(usado + 1) };
-  const query = sb().from("configuracoes_modulo").update({ config: novaConfig });
-  await (contaId ? query.eq("conta_id", contaId) : query.eq("fazenda_id", fazendaId)).eq("modulo", modulo);
-}
-
+// Numeração reservada em transação antes da assinatura/transmissão.
 const QR_BASE: Record<string, string> = {
   producao:    "https://dfe-portal.svrs.rs.gov.br/mdfe/qrCode",
   homologacao: "https://dfe-portal.svrs.rs.gov.br/mdfe/qrCode",
@@ -87,6 +66,7 @@ async function salvarXml(fazendaId: string, chave: string, xml: string): Promise
 }
 
 export interface ResultadoEmissaoMDFe {
+  operacao_id?:string;pendente?:boolean;sincronizacao_pendente?:boolean;
   sucesso:      boolean;
   chave?:       string;
   numero?:      string;
@@ -101,6 +81,7 @@ export interface ResultadoEmissaoMDFe {
 /** Resolve município + IBGE de destino a partir dos CT-e/NF-e vinculados ao MDF-e. */
 async function resolverMunicipiosDescarga(
   documentos: { tipo: string; chave: string }[],
+  fazendaIds:string[],
 ): Promise<{ municipios: MunicipioDescarga[]; ctesCanceladas: string[]; contratanteCnpjCpf?: string; valorFrete: number }> {
   const ctesChaves = documentos.filter(d => d.tipo === "cte").map(d => d.chave.replace(/\D/g, ""));
   const nfeChaves  = documentos.filter(d => d.tipo === "nfe").map(d => d.chave.replace(/\D/g, ""));
@@ -111,9 +92,11 @@ async function resolverMunicipiosDescarga(
   let valorFrete = 0;
 
   if (ctesChaves.length > 0) {
-    const { data: ctes } = await sb().from("ctes")
+    const { data: ctes, error: erroCtes } = await sb().from("ctes")
       .select("chave_acesso, valor_frete, municipio_destino, ibge_destino, status, tomador_tipo, remetente_cnpj, destinatario_cnpj, expedidor_cnpj, recebedor_cnpj")
-      .in("chave_acesso", ctesChaves);
+      .in("chave_acesso", ctesChaves).in("fazenda_id",fazendaIds);
+    if(erroCtes)throw erroCtes;
+    if(new Set((ctes ?? []).map(c=>c.chave_acesso)).size!==new Set(ctesChaves).size)throw new Error("Há CT-e vinculado não localizado neste cliente.");
     for (const c of ctes ?? []) {
       // CT-e cancelado não pode sustentar um MDF-e — referenciar ele provavelmente também seria
       // rejeitado pela SEFAZ (ou pior, aceito indevidamente referenciando um documento inválido).
@@ -153,9 +136,14 @@ async function resolverMunicipiosDescarga(
 export async function emitirMDFe(
   fazendaId: string,
   mdfeId: string,
+  requisicaoId?:string,
 ): Promise<ResultadoEmissaoMDFe> {
-  const { data: m } = await sb().from("mdfes").select("*").eq("id", mdfeId).maybeSingle();
+  const { data: m, error: erroDocumento } = await sb().from("mdfes").select("*").eq("id", mdfeId).maybeSingle();
+  if (erroDocumento) throw erroDocumento;
   if (!m) return { sucesso: false, cStat: "500", xMotivo: "MDF-e não encontrado." };
+  if (m.fazenda_id !== fazendaId) return { sucesso: false, cStat: "ACESSO", xMotivo: "O MDF-e não pertence à fazenda informada." };
+
+  if(["cancelado","encerrado"].includes(m.status))return {sucesso:false,cStat:"ESTADO_FINAL",xMotivo:"MDF-e cancelado/encerrado não pode ser reemitido."};
 
   // 1. Empresa emitente — resolvida do CT-e vinculado quando existir (é ele quem sabe de
   //    verdade qual transportadora está fazendo o frete). SEM isso, achado real 23/09/2026: uma
@@ -165,13 +153,19 @@ export async function emitirMDFe(
   //    Própria) nunca era lida — a emissão silenciosamente usava outra empresa da conta,
   //    cuja config de Seguro da Carga continuava incompleta. Só cai no fallback "primeira
   //    empresa da conta" quando o MDF-e não tem CT-e nenhum vinculado (NF-e avulsas puras).
-  const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const { data: faz, error: erroFaz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if(erroFaz)throw erroFaz;
+  const listaFazendas=faz?.conta_id?await sb().from("fazendas").select("id").eq("conta_id",faz.conta_id):{data:[{id:fazendaId}],error:null};
+  if(listaFazendas.error)throw listaFazendas.error;
+  const fazendaIds=(listaFazendas.data ?? []).map(f=>f.id);
+  await validarReferenciasCliente(sb(),fazendaId,[{tabela:"veiculos",id:m.veiculo_id},{tabela:"motoristas",id:m.motorista_id},
+    ...((m.implemento_ids ?? []) as string[]).map(id=>({tabela:"veiculos",id}))]);
   // Emitente escolhido no próprio MDF-e (seletor) tem prioridade sobre o do CT-e vinculado
   let empresaCnpj: string | undefined = (m.emitente_cnpj as string | null)?.replace(/\D/g, "") || undefined;
   const docs = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[] | null;
   const primeiraCteChave = (docs ?? []).find(d => d.tipo === "cte")?.chave?.replace(/\D/g, "");
   if (primeiraCteChave) {
-    const { data: cteRow } = await sb().from("ctes").select("emitente_cnpj, ciot").eq("chave_acesso", primeiraCteChave).maybeSingle();
+    const { data: cteRow } = await sb().from("ctes").select("emitente_cnpj, ciot").eq("chave_acesso", primeiraCteChave).in("fazenda_id",fazendaIds).maybeSingle().throwOnError();
     if (!empresaCnpj) empresaCnpj = (cteRow?.emitente_cnpj as string | undefined) ?? undefined;
     // CIOT emitido no CT-e (Seção 296) vale para o MDF-e vinculado quando o MDF-e não tem o seu
     if (!m.ciot && cteRow?.ciot) m.ciot = cteRow.ciot as string;
@@ -254,7 +248,7 @@ export async function emitirMDFe(
 
   // 5. Municípios de descarga — resolvidos a partir dos CT-e/NF-e vinculados
   const documentos = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[];
-  const { municipios: municipiosDescarga, ctesCanceladas, contratanteCnpjCpf, valorFrete } = await resolverMunicipiosDescarga(documentos ?? []);
+  const { municipios: municipiosDescarga, ctesCanceladas, contratanteCnpjCpf, valorFrete } = await resolverMunicipiosDescarga(documentos ?? [],fazendaIds);
   if (ctesCanceladas.length > 0) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
@@ -390,7 +384,7 @@ export async function emitirMDFe(
     return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Informe o Peso Total (kg) da carga em Dados da Carga — o MDF-e não pode ser transmitido com peso zero ou vazio." };
   }
 
-  const numero = numeroParaTentativa(confg, m);
+  const numero = 1;
   emitente.numero_mdfe = numero;
 
   const input: MDFeInput = {
@@ -416,50 +410,43 @@ export async function emitirMDFe(
     pagamento,
   };
 
+  buildMDFe(input);
+  const dadosOperacao={mdfe_id:mdfeId};
+  const operacao=await abrirOperacaoFiscal(sb(),{id:requisicaoId,fazenda:fazendaId,modelo:58,documento:emitente.cpf_cnpj,serie:emitente.serie,ambiente:emitente.ambiente,
+    dados:dadosOperacao,modulo:resolved.mdfeModulo,proximo:confg.numero_inicial,registro:mdfeId});
+  if(!operacao.executar)return retornoOperacaoExistente(operacao) as ResultadoEmissaoMDFe;
+  emitente.numero_mdfe=operacao.numero;
   const built = buildMDFe(input);
 
   let xmlAssinado: string;
   try { xmlAssinado = assinarMDFe(built.xml, pem); }
-  catch (e) { return { sucesso: false, cStat: "503", xMotivo: `Erro na assinatura: ${e}` }; }
+  catch (e) { const r={sucesso:false,cStat:"ASSINATURA",xMotivo:`Erro na assinatura: ${e}`,operacao_id:operacao.id};await registrarRetornoFiscal(sb(),operacao,"cancelada_pre_envio",null,r);return r; }
 
   const tpAmb = emitente.ambiente === "producao" ? "1" : "2";
   xmlAssinado = inserirInfMDFeSupl(xmlAssinado, buildQrCodeMDFe(built.chave, tpAmb));
 
+  await prepararEnvioFiscal(sb(),operacao,xmlAssinado,built.chave);
   let resposta;
-  try { resposta = await transmitirMDFe(xmlAssinado, pem, emitente.ambiente); }
-  catch (e) { return { sucesso: false, cStat: "504", xMotivo: `Falha na comunicação SEFAZ: ${e}` }; }
-
-  let xmlUrl: string | undefined;
-  if (resposta.sucesso && resposta.xmlProt) {
-    try { xmlUrl = await salvarXml(fazendaId, built.chave, montarProcAutorizado("mdfe", xmlAssinado, resposta.xmlProt, "3.00")); }
-    catch (e) { console.error("[emissão mdfe] autorizado, mas o XML não foi guardado:", built.chave, e); }
+  try{resposta=await transmitirMDFe(xmlAssinado,pem,emitente.ambiente);}
+  catch(e){
+    const pendente={sucesso:false,cStat:"PROCESSAMENTO_PENDENTE",xMotivo:"Resultado da SEFAZ ainda não confirmado. Consulte Emissões em conferência antes de reenviar. "+String(e),operacao_id:operacao.id,pendente:true,chave:built.chave,numero:built.numero};
+    try{await registrarRetornoFiscal(sb(),operacao,"pendente",null,pendente);}catch{}
+    return pendente;
   }
-
-  // Achado real 28/09/2026: gravava em `fazendaId` (a fazenda ativa na emissão), mas o config MDF-e
-  // é da CONTA — a linha lida (e cujo numero_inicial virou a base do contador acima) mora em
-  // `resolved.mdfeFazendaId`, que pode ser outra fazenda do mesmo cliente. Quando a fazenda ativa
-  // não tinha linha própria pra esse módulo, o UPDATE não encontrava nenhuma linha pra atualizar —
-  // o contador nunca avançava e o próximo MDF-e reservava o MESMO número outra vez.
-  if (resposta.sucesso) await avancarNumero(resolved.mdfeContaId, resolved.mdfeFazendaId, resolved.mdfeModulo, confg, Number(built.numero));
-
-  const { error: updErr } = await sb().from("mdfes").update({
-    status:       resposta.sucesso ? "autorizado" : "rascunho",
-    chave_acesso: built.chave,
-    numero_mdfe:  String(built.numero),
-    xml_url:      xmlUrl ?? null,
-    protocolo_autorizacao: resposta.protocolo ?? null,
-  }).eq("id", mdfeId);
-  if (updErr) console.error("[emitirMDFe] falha ao gravar status autorizado:", updErr);
-
-  return {
-    sucesso: resposta.sucesso,
-    chave: built.chave,
-    numero: built.numero,
-    protocolo: resposta.protocolo,
-    dhRecbto: resposta.dhRecbto,
-    xmlUrl,
-    cStat: resposta.cStat ?? "ERR",
-    xMotivo: resposta.xMotivo,
-    respostaSefaz: resposta.cStat !== null,
-  };
+  const autorizada=resposta.sucesso&&!!resposta.xmlProt&&!!resposta.protocolo;
+  const pendente=!resposta.cStat || ["103","104","105","106","999","108","109","204","539"].includes(resposta.cStat) || (resposta.sucesso&&!autorizada);
+  const proc=autorizada?montarProcAutorizado("mdfe",xmlAssinado,resposta.xmlProt!,"3.00"):undefined;
+  const resultado:ResultadoEmissaoMDFe={sucesso:autorizada,chave:built.chave,numero:built.numero,protocolo:resposta.protocolo,dhRecbto:resposta.dhRecbto,
+    cStat:resposta.cStat ?? "ERR",xMotivo:resposta.xMotivo,respostaSefaz:resposta.cStat!==null,
+    operacao_id:operacao.id,pendente,sincronizacao_pendente:autorizada};
+  const estado=autorizada?"autorizada":pendente?"pendente":"rejeitada";
+  try{
+    await registrarRetornoFiscal(sb(),operacao,estado,resposta,resultado,proc);
+    if(proc){
+      const sync=await sincronizarDocumentoFiscal(sb(),{...operacao,chave:built.chave,xml_assinado:xmlAssinado},resultado as unknown as Record<string,unknown>,proc);
+      resultado.xmlUrl=sync.xmlUrl;resultado.sincronizacao_pendente=false;
+      await registrarRetornoFiscal(sb(),operacao,"sincronizada",resposta,resultado,proc);
+    }
+  }catch(e){resultado.sincronizacao_pendente=true;resultado.xMotivo="Resultado fiscal recebido; sincronização local pendente: "+(e as Error).message;}
+  return resultado;
 }

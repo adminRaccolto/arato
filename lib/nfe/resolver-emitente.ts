@@ -11,6 +11,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../supabase-servidor";
 import { escolherModuloUnico } from "./identidade-fiscal";
+import { validarReferenciasCliente } from "../api-referencias";
 
 function sb(): SupabaseClient {
   return createClient(
@@ -28,24 +29,28 @@ export async function resolverModuloKeyPorCpfCnpj(
   adm: SupabaseClient = sb(),
 ): Promise<string | null> {
   const digits = cpfCnpj.replace(/\D/g, "");
-  if (!digits) return null;
+  if (![11,14].includes(digits.length)) throw new Error("CPF/CNPJ do emitente inválido.");
   const key = `${digits.length === 14 ? "fiscal_emp_" : "fiscal_pf_"}${digits}`;
   // Config fiscal é do titular (CPF/CNPJ), não da fazenda — existindo em QUALQUER fazenda do
   // mesmo cliente já é suficiente pra usar essa chave (buscarConfEmitente resolve o resto,
   // inclusive puxando o certificado de onde ele estiver dentro da mesma conta).
-  const { data: fazAtual } = await adm.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const { data: fazAtual, error: erroFazAtual } = await adm.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if(erroFazAtual)throw erroFazAtual;
+  if(!fazAtual)throw new Error("Fazenda fiscal não encontrada.");
   let fazendaIdsConta = [fazendaId];
   if (fazAtual?.conta_id) {
-    const { data: fzsConta } = await adm.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
+    const { data: fzsConta, error: erroFazendas } = await adm.from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
+    if(erroFazendas)throw erroFazendas;
     if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
   }
-  const { data: cfg } = await adm
+  const { data: cfg, error: erroConfig } = await adm
     .from("configuracoes_modulo")
     .select("modulo")
     .in("fazenda_id", fazendaIdsConta)
     .eq("modulo", key)
     .limit(1)
     .maybeSingle();
+  if(erroConfig)throw erroConfig;
   return cfg ? key : null;
 }
 
@@ -71,11 +76,11 @@ export async function resolverModuloKeyFiscal(
     .from("fazendas")
     .select("cpf_cnpj_fiscal, entidade_contabil, conta_id")
     .eq("id", fazendaId)
-    .maybeSingle();
+    .maybeSingle().throwOnError();
 
   let fazendaIdsConta = [fazendaId];
   if (faz?.conta_id) {
-    const { data: fzsConta } = await adm.from("fazendas").select("id").eq("conta_id", faz.conta_id);
+    const { data: fzsConta } = await adm.from("fazendas").select("id").eq("conta_id", faz.conta_id).throwOnError();
     if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
   }
 
@@ -86,10 +91,10 @@ export async function resolverModuloKeyFiscal(
     // Fazenda certa primeiro (config local pode ter dados específicos dela); senão qualquer
     // fazenda da conta que já tenha esse emitente configurado.
     const { data: cfgLocal } = await adm
-      .from("configuracoes_modulo").select("modulo").eq("fazenda_id", fazendaId).eq("modulo", key).maybeSingle();
+      .from("configuracoes_modulo").select("modulo").eq("fazenda_id", fazendaId).eq("modulo", key).maybeSingle().throwOnError();
     if (cfgLocal) return key;
     const { data: cfgConta } = await adm
-      .from("configuracoes_modulo").select("modulo").in("fazenda_id", fazendaIdsConta).eq("modulo", key).limit(1).maybeSingle();
+      .from("configuracoes_modulo").select("modulo").in("fazenda_id", fazendaIdsConta).eq("modulo", key).limit(1).maybeSingle().throwOnError();
     if (cfgConta) return key;
   }
 
@@ -101,7 +106,7 @@ export async function resolverModuloKeyFiscal(
     .select("modulo, fazenda_id")
     .in("fazenda_id", fazendaIdsConta)
     .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal")
-    .not("modulo", "like", "%__ie_%");
+    .not("modulo", "like", "%__ie_%").throwOnError();
   // Vários titulares: devolver "o primeiro" dependia da ordem do banco. Sem um único possível, quem chama precisa indicar.
   return escolherModuloUnico((cfgs ?? []) as { modulo: string; fazenda_id: string }[], fazendaId);
 }
@@ -117,15 +122,28 @@ export async function resolverModuloKey(
   produtorIdHint?: string | null,
 ): Promise<string> {
   if (produtorIdHint) {
-    const { data: prod } = await adm.from("produtores").select("cpf_cnpj").eq("id", produtorIdHint).maybeSingle();
-    if (prod?.cpf_cnpj) {
-      const porId = await resolverModuloKeyPorCpfCnpj(fazendaId, prod.cpf_cnpj, adm);
-      if (porId) return porId;
-    }
+    await validarReferenciasCliente(adm, fazendaId, [{ tabela: "produtores", id: produtorIdHint }]);
+    const { data: prod, error } = await adm.from("produtores").select("cpf_cnpj").eq("id", produtorIdHint).maybeSingle();
+    if (error) throw error;
+    if (!prod?.cpf_cnpj) throw new Error("O produtor escolhido não possui CPF/CNPJ fiscal cadastrado.");
+    const porId = await resolverModuloKeyPorCpfCnpj(fazendaId, prod.cpf_cnpj, adm);
+    if (!porId) throw new Error("Configuração fiscal não encontrada para o produtor escolhido.");
+    return porId;
   }
   if (cpfCnpjHint) {
     const porCpf = await resolverModuloKeyPorCpfCnpj(fazendaId, cpfCnpjHint, adm);
-    if (porCpf) return porCpf;
+    if (!porCpf) throw new Error("Configuração fiscal não encontrada para o CPF/CNPJ escolhido.");
+    return porCpf;
   }
   return resolverModuloKeyFiscal(fazendaId, adm);
+}
+
+/** Resolve o titular da chave no catálogo do mesmo cliente, sem adivinhar CPF pelo prefixo 000. */
+export async function resolverModuloPorChave(fazendaId:string,chave:string,adm:SupabaseClient=sb()):Promise<string>{
+ if(!/^\d{44}$/.test(chave))throw new Error("Chave fiscal inválida.");
+ const {data:f,error}=await adm.from("fazendas").select("conta_id").eq("id",fazendaId).single();if(error)throw error;
+ const fazendas=f.conta_id?await adm.from("fazendas").select("id").eq("conta_id",f.conta_id):{data:[{id:fazendaId}],error:null};if(fazendas.error)throw fazendas.error;
+ const {data:rows,error:erro}=await adm.from("configuracoes_modulo").select("modulo").in("fazenda_id",(fazendas.data ?? []).map(v=>v.id)).like("modulo","fiscal_%");if(erro)throw erro;
+ const keys=[...new Set((rows ?? []).map(r=>r.modulo as string).filter(m=>{const d=m.match(/^fiscal_(?:pf|emp)_(\d{11}|\d{14})$/)?.[1];return !!d&&d.padStart(14,"0")===chave.slice(6,20);}))];
+ if(keys.length!==1)throw new Error("Não há configuração única do titular desta chave no cliente.");return keys[0];
 }

@@ -11,7 +11,7 @@ export interface OperacaoFiscalRow {
   codigo: string | null;
   nome: string;
   descricao?: string | null;
-  grupo: string; // "Vendas" | "Exportação" | "Venda à Ordem" | "Remessas" | "Devolução"
+  grupo?: string; // "Vendas" | "Exportação" | "Venda à Ordem" | "Remessas" | "Devolução"
   tipo_pessoa: "pf" | "pj" | null; // null = aplica a PF e PJ igualmente
   cfop_interno: string;
   cfop_externo: string;
@@ -37,7 +37,6 @@ export async function listarOperacoesFiscais(fazenda_id: string): Promise<Operac
     .select("*")
     .eq("fazenda_id", fazenda_id)
     .eq("ativa", true)
-    .order("grupo")
     .order("nome");
   if (error) throw error;
   return (data ?? []) as OperacaoFiscalRow[];
@@ -61,7 +60,7 @@ export function flattenParaContratos(rows: OperacaoFiscalRow[]): NaturezaContrat
     const sufixoPessoa = r.tipo_pessoa ? ` — ${r.tipo_pessoa.toUpperCase()}` : "";
     out.push({
       codigo: r.codigo ?? r.id,
-      grupo: r.grupo,
+      grupo: r.grupo ?? "Operações fiscais",
       descricao: `${r.descricao ?? r.nome}${sufixoPessoa}`.trim(),
       cfop: r.cfop_externo,
       cst_icms: r.icms_cst_externo,
@@ -70,7 +69,7 @@ export function flattenParaContratos(rows: OperacaoFiscalRow[]): NaturezaContrat
     if (r.cfop_interno && r.cfop_interno !== r.cfop_externo) {
       out.push({
         codigo: `${r.codigo ?? r.id}-INTRA`,
-        grupo: r.grupo,
+        grupo: r.grupo ?? "Operações fiscais",
         descricao: `${r.descricao ?? r.nome}${sufixoPessoa} (mesmo estado)`.trim(),
         cfop: r.cfop_interno,
         cst_icms: r.icms_cst_interno,
@@ -106,7 +105,7 @@ export function flattenParaFaturamento(rows: OperacaoFiscalRow[]): NaturezaFatur
   const out: NaturezaFaturamento[] = [];
   const sufixo = (tp: "pf" | "pj" | null) => tp === "pj" ? ".PJ" : "";
   for (const r of rows) {
-    const grupoVisual = grupoVisualDe(r.grupo);
+    const grupoVisual = grupoVisualDe(r.grupo ?? "");
     out.push({
       codigo: `${cfopDotted(r.cfop_externo)}${sufixo(r.tipo_pessoa)}`,
       cfop_tipo: r.cfop_tipo_externo,

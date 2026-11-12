@@ -1,3 +1,7 @@
+import { totaisDoXmlNFe } from "./totais";
+import { abrirOperacaoFiscal, prepararEnvioFiscal, registrarRetornoFiscal, retornoOperacaoExistente, type OperacaoFiscal } from "../fiscal/operacao";
+import { resolverTributacaoNFe } from "../fiscal/tributacao-nfe";
+import { contextoEventoNFe } from "../fiscal/evento-consulta";
 /**
  * lib/nfe/index.ts
  * Ponto central da emissão de NF-e:
@@ -51,7 +55,9 @@ export async function buscarConfEmitente(
   // o certificado existia (duplicado, inclusive), só nunca na fazenda exata
   // que estava emitindo. Mesma classe de bug já corrigida em Transportadoras,
   // Parâmetros Fiscais por IE e Ano Safra/Ciclo do DRE.
-  const { data: fazRow } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const { data: fazRow, error: erroFaz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if(erroFaz)throw erroFaz;
+  if(!fazRow)throw new Error("Fazenda da emissão não encontrada.");
   let fazendaIdsConta = [fazendaId];
   if (fazRow?.conta_id) {
     const { data: fzsConta } = await sb().from("fazendas").select("id").eq("conta_id", fazRow.conta_id);
@@ -61,7 +67,7 @@ export async function buscarConfEmitente(
   // Carrega em paralelo: config do emitente + ambiente global + todos os certs cadastrados
   // Config base do emitente: primeiro tenta na fazenda exata (pode ter dados específicos dela,
   // ex: endereço); moduloKey em si é o titular (CPF/CNPJ), não a fazenda.
-  const [emitLocalResult, { data: globalRows }] = await Promise.all([
+  const [emitLocalResult, globalResult] = await Promise.all([
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).maybeSingle(),
     // "fiscal_global" (o botão Ambiente SEFAZ — master switch) é do CLIENTE, não da fazenda ativa:
     // achado real 27/09/2026 — cliente com várias fazendas trocava pra Produção vendo a tela conta-wide
@@ -70,7 +76,8 @@ export async function buscarConfEmitente(
     // busca em todas as fazendas da conta e fica com a mais recente (updated_at), igual à tela.
     sb().from("configuracoes_modulo").select("config, updated_at").in("fazenda_id", fazendaIdsConta).eq("modulo", "fiscal_global").order("updated_at", { ascending: false }).limit(1),
   ]);
-  const globalData = globalRows?.[0] ?? null;
+  if(emitLocalResult.error)throw emitLocalResult.error;if(globalResult.error)throw globalResult.error;
+  const globalData=globalResult.data?.[0] ?? null;
 
   let emitData: { config: unknown } | null = emitLocalResult.data;
 
@@ -192,84 +199,21 @@ function montarNfeProc(xmlAssinado: string, protNFe: string): string {
   );
 }
 
-// ─── Próximo número da NF-e (atômico via update) ─────────────────────────────
-async function proximoNumero(
-  fazendaId: string,
-  moduloKey: string,
-  confg: Record<string, string>
-): Promise<number> {
-  const atual = parseInt(String(confg.numero_inicial ?? "1"));
-  await gravarProximoNumero(fazendaId, moduloKey, confg, atual + 1);
-  return atual;
-}
-
-async function gravarProximoNumero(fazendaId: string, moduloKey: string, confg: Record<string, string>, valor: number): Promise<void> {
-  const proximo = String(valor);
-  // Incrementa no banco antes de emitir. Grava SÓ o contador, em cada linha que o guarda (base e, se
-  // existir, a config por-IE que sobrepõe a base na leitura) — sem regravar a config mesclada inteira.
-  //
-  // Correção 23/09/2026 (achado real — rejeição SEFAZ 539 "Duplicidade de NF-e, com diferença na
-  // Chave de Acesso"): a linha de configuração é lida (em buscarConfEmitente) de QUALQUER fazenda
-  // da conta, não só da fazenda ativa — mas aqui o incremento sempre gravava com
-  // `.eq("fazenda_id", fazendaId)` usando a fazenda ativa. Quando a config vive em outra fazenda da
-  // mesma conta, a query não achava a linha (`if (!linha) continue`) e o contador NUNCA avançava —
-  // o sistema oferecia sempre o mesmo "próximo número" (ex.: número 1), que a SEFAZ já tinha
-  // autorizado de verdade numa tentativa anterior, e toda emissão seguinte era rejeitada por
-  // duplicidade. Corrigido: busca/grava em qualquer fazenda da conta, igual buscarConfEmitente.
-  const modulos = [moduloKey, ...(confg.__ie_modulo ? [confg.__ie_modulo] : [])];
-  let fazendaIdsConta = [fazendaId];
-  const { data: fzAtual } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  if (fzAtual?.conta_id) {
-    const { data: fzsConta } = await sb().from("fazendas").select("id").eq("conta_id", fzAtual.conta_id);
-    if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
-  }
-  for (const m of modulos) {
-    const { data: linhas } = await sb().from("configuracoes_modulo").select("fazenda_id, config")
-      .in("fazenda_id", fazendaIdsConta).eq("modulo", m);
-    for (const linha of linhas ?? []) {
-      await sb().from("configuracoes_modulo")
-        .update({ config: { ...(linha.config as Record<string, string>), numero_inicial: proximo } })
-        .eq("fazenda_id", linha.fazenda_id).eq("modulo", m);
-    }
-  }
-}
-
-// Depois da 1ª recusa por número em uso: se a série já foi além disso, o próximo número passa para depois do último.
-// Nota rejeitada não consome número, por isso só contam as autorizadas e canceladas.
-async function saltarParaDepoisDoUltimo(fazendaId: string, moduloKey: string, confg: Record<string, string>, documento: string, serie: string, numero: number): Promise<void> {
-  const { data: fz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  const { data: fzs } = fz?.conta_id ? await sb().from("fazendas").select("id").eq("conta_id", fz.conta_id) : { data: [{ id: fazendaId }] };
-  const doc = documento.replace(/\D/g, "").padStart(14, "0");
-  const chaves: string[] = [];
-  for (let de = 0; ; de += 1000) {
-    const { data, error } = await sb().from("notas_fiscais").select("id, chave_acesso")
-      .in("fazenda_id", (fzs ?? []).map(f => f.id as string)).in("status", ["autorizada", "cancelada"])
-      .like("chave_acesso", `______${doc}55${serie.padStart(3, "0")}%`).order("id").range(de, de + 999);
-    if (error) return; // sem o salto, segue tentando o número seguinte
-    chaves.push(...(data ?? []).map(r => r.chave_acesso as string));
-    if (!data || data.length < 1000) break;
-  }
-  const maior = maiorNumeroDaSerie(chaves, doc, serie);
-  if (maior >= numero) await gravarProximoNumero(fazendaId, moduloKey, confg, maior + 1);
-}
-
-// ─── Salva XML no Storage e retorna URL pública ───────────────────────────────
-async function salvarXml(
-  fazendaId: string,
-  chave: string,
-  xml: string
-): Promise<string> {
-  const path = `${fazendaId}/nfe_emitidas/${chave}.xml`;
-  await sb()
-    .storage
-    .from("arquivos")
-    .upload(path, new Blob([xml], { type: "application/xml" }), { upsert: true });
-  const { data } = sb().storage.from("arquivos").getPublicUrl(path);
-  return data.publicUrl;
+async function salvarXml(fazendaId:string,chave:string,xml:string):Promise<string> {
+  const path=fazendaId+"/nfe_emitidas/"+chave+".xml";
+  const {error}=await sb().storage.from("arquivos").upload(path,new Blob([xml],{type:"application/xml"}),{upsert:true});
+  if(error)throw error;
+  return sb().storage.from("arquivos").getPublicUrl(path).data.publicUrl;
 }
 
 // ─── Resultado completo ───────────────────────────────────────────────────────
 export interface ResultadoEmissao {
+  ambiente?:"producao"|"homologacao";
+  operacao_id?:string;
+  pendente?:boolean;
+  sincronizacao_pendente?:boolean;
+  totais?:ReturnType<typeof totaisDoXmlNFe>;
+  tributacao_itens?:unknown[];
   sucesso: boolean;
   chave?: string;
   numero?: string;
@@ -299,8 +243,12 @@ export async function emitirNFe(
   moduloKey: string,
   input: Omit<NFeInput, "emitente">,  // emitente vem do banco
   emitIeOverride?: string,            // IE específica do produtor (multi-IE)
-  tentativa = 0                       // interno: repetições após SEFAZ 539
+  tentativa = 0,
+  requisicaoId?:string,
+  registroId?:string
 ): Promise<ResultadoEmissao> {
+  const dadosOperacao=structuredClone(input);
+  let operacao:OperacaoFiscal;
 
   // 1. Configuração do emitente
   const confg = await buscarConfEmitente(fazendaId, moduloKey, emitIeOverride);
@@ -547,9 +495,10 @@ export async function emitirNFe(
     };
   }
 
-  numero = await proximoNumero(fazendaId, moduloKey, confg);
-  emitente.numero_nfe = numero;
 
+  let itensComIBSCBS;
+  try { itensComIBSCBS=await resolverTributacaoNFe(sb(),fazendaId,input,confg,emitente.crt); }
+  catch(e){return {sucesso:false,cStat:"TRIBUTACAO",xMotivo:(e as Error).message};}
   // Auto-compõe infCpl a partir das configurações do emitente (Funrural, ICMS diferido, etc.)
   const cfopPrimario = (input.itens[0]?.cfop ?? "").replace(/\D/g, "");
   const cfopInterno = cfopPrimario.startsWith("5");
@@ -557,7 +506,7 @@ export async function emitirNFe(
   const partesInfCpl: string[] = [];
   if (confg.inf_cpl_padrao) partesInfCpl.push(String(confg.inf_cpl_padrao).trim());
   const textosDeVenda = usaTextosDeVenda(input.itens.map(i => i.cfop), input.finNFe);
-  if (textosDeVenda && cfopInterno && confg.icms_diferido_ativo === "true") {
+  if (textosDeVenda && cfopInterno && itensComIBSCBS.every(i=>!i.cst_icms||i.cst_icms.slice(-2)==="51") && confg.icms_diferido_ativo === "true") {
     const txt = confg.inf_cpl_icms_diferido?.trim() || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.";
     partesInfCpl.push(txt);
   } else if (textosDeVenda && cfopInterestadual && confg.inf_cpl_base_reduzida) {
@@ -568,73 +517,39 @@ export async function emitirNFe(
     partesInfCpl.push(txt);
   }
   if (input.infCpl?.trim()) partesInfCpl.push(input.infCpl.trim());
-  const infCplFinal = partesInfCpl.filter(Boolean).join(" ") || undefined;
-
-  // IBS/CBS (Reforma Tributária) — só destaca quando "Destacar IBS/CBS na NF-e"
-  // está ativo pro emitente (confg já traz o valor certo, resolvido por CNPJ ou
-  // por IE do produtor conforme o caso — ver buscarConfEmitente acima) E existe
-  // configuração de alíquotas pro NCM do item em Parâmetros → Fiscal → Tabela
-  // NCM. Sem isso configurado, o item simplesmente não leva o grupo (como já
-  // era antes) — nunca bloqueia a emissão por falta de config de IBS/CBS.
-  let itensComIBSCBS = input.itens;
-  if (confg.ibs_cbs_ativo === "sim") {
-    const ncmsDosItens = Array.from(new Set(input.itens.map(i => i.ncm.replace(/\D/g, ""))));
-    // Tabela NCM é da CONTA (o cliente cadastra uma vez): antes buscava só na fazenda emissora,
-    // então NF-e de qualquer outra fazenda da conta saía sem IBS/CBS (achado 24/09/2026 — só a
-    // Frei Galvão tinha NCMs cadastrados). Prefere a linha da fazenda emissora, senão qualquer da conta.
-    const { data: fzIbs } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-    let fazIdsIbs = [fazendaId];
-    if (fzIbs?.conta_id) {
-      const { data: fzsIbs } = await sb().from("fazendas").select("id").eq("conta_id", fzIbs.conta_id);
-      if (fzsIbs?.length) fazIdsIbs = fzsIbs.map(f => f.id as string);
+  try {
+    const variaveis={...(input.variaveis_fiscais ?? {}),...(input.nfe_ref?{NF_ORIGEM:(Array.isArray(input.nfe_ref)?input.nfe_ref:[input.nfe_ref]).map(c=>c.replace(/\D/g,"").slice(25,34).replace(/^0+/,"")).join(", ")}: {})};
+    for(const item of itensComIBSCBS){
+      const texto=item.regra_fiscal?.texto_legal;
+      if(typeof texto!=="string"||!texto.trim())continue;
+      partesInfCpl.push(texto.replace(/\[([A-Z_]+)\]/g,(_,nome:string)=>{
+        const valor=(variaveis as Record<string,string>)[nome];
+        if(!valor?.trim())throw new Error("Preencha "+nome+" nos dados da operação fiscal antes de emitir.");return valor.trim();
+      }));
     }
-    const { data: ncmRows } = await sb()
-      .from("ncm_tributacoes")
-      .select("fazenda_id, ncm, ibs_estadual_aliq, ibs_municipal_aliq, cbs_aliq, ibs_cbs_reducao_pct, ibs_cbs_cst, ibs_cbs_cclasstrib")
-      .in("fazenda_id", fazIdsIbs)
-      .in("ncm", ncmsDosItens);
-    const ncmMap = new Map<string, NonNullable<typeof ncmRows>[number]>();
-    for (const r of (ncmRows ?? [])) {
-      const k = String(r.ncm).replace(/\D/g, "");
-      if (!ncmMap.has(k) || r.fazenda_id === fazendaId) ncmMap.set(k, r);
-    }
-    itensComIBSCBS = input.itens.map(item => {
-      const ncmCfg = ncmMap.get(item.ncm.replace(/\D/g, ""));
-      // Sem linha na Tabela NCM: usa o padrão definido pelo contador (CST 410 / cClassTrib 410999,
-      // sem valores) em vez de omitir o grupo em silêncio.
-      if (!ncmCfg) return { ...item, ibsCbs: { cst: "410", cclasstrib: "410999", ibsEstadualAliq: 0, ibsMunicipalAliq: 0, cbsAliq: 0, reducaoPct: 0 } };
-      return {
-        ...item,
-        ibsCbs: {
-          cst:              ncmCfg.ibs_cbs_cst || "410",
-          cclasstrib:       ncmCfg.ibs_cbs_cclasstrib || "410999",
-          // 2026 = ano de teste (LC 214/2025 art. 343): a SEFAZ valida alíquotas FIXAS — IBS UF 0,10%,
-          // IBS Município 0,00%, CBS 0,90% — e rejeita qualquer outro valor (rejeição 1026 "IBS da
-          // UF inválido" com as alíquotas antigas de 9,0%/1,0%/9,1% gravadas na Tabela NCM).
-          // Em 2026 ignora as alíquotas da tabela; a redução (ex.: 60%) continua vindo dela.
-          ibsEstadualAliq:  new Date().getFullYear() === 2026 ? 0.10 : Number(ncmCfg.ibs_estadual_aliq ?? 0),
-          ibsMunicipalAliq: new Date().getFullYear() === 2026 ? 0    : Number(ncmCfg.ibs_municipal_aliq ?? 0),
-          cbsAliq:          new Date().getFullYear() === 2026 ? 0.90 : Number(ncmCfg.cbs_aliq ?? 0),
-          reducaoPct:       Number(ncmCfg.ibs_cbs_reducao_pct ?? 0),
-        },
-      };
-    });
-  }
+  }catch(e){return {sucesso:false,cStat:"TRIBUTACAO",xMotivo:(e as Error).message};}
+  const infCplFinal=[...new Set(partesInfCpl.filter(Boolean))].join(" ") || undefined;
 
-  // Constrói XML — qualquer exceção aqui se tornava 500; agora vira cStat 505
+
   let built: ReturnType<typeof buildNFe>;
   try {
-    built = buildNFe({ ...input, itens: itensComIBSCBS, emitente, infCpl: infCplFinal });
-  } catch (e) {
-    return { sucesso: false, cStat: "505", xMotivo: `Erro na construção do XML: ${e}` };
-  }
+    // Valida o documento completo antes de reservar a numeração.
+    buildNFe({...input,itens:itensComIBSCBS,emitente:{...emitente,numero_nfe:1},infCpl:infCplFinal});
+    operacao=await abrirOperacaoFiscal(sb(),{id:requisicaoId,fazenda:fazendaId,modelo:55,documento:emitente.cpf_cnpj,serie:emitente.serie,ambiente:emitente.ambiente,
+      dados:dadosOperacao,modulo:confg.__ie_modulo || moduloKey,proximo:confg.numero_inicial,registro:registroId});
+    if(!operacao.executar)return retornoOperacaoExistente(operacao) as ResultadoEmissao;
+    numero=operacao.numero;emitente.numero_nfe=numero;
+    built=buildNFe({...input,itens:itensComIBSCBS,emitente,infCpl:infCplFinal});
+  }catch(e){return {sucesso:false,cStat:"VALIDACAO_LOCAL",xMotivo:(e as Error).message};}
 
   // 5. Assinar
   let xmlAssinado: string;
   try {
     xmlAssinado = assinarNFe(built.xml, pem);
   } catch (e) {
-    return { sucesso: false, cStat: "503", xMotivo: `Erro na assinatura: ${e}`, xmlAssinado: built.xml };
+    const falha={sucesso:false,cStat:"ASSINATURA",xMotivo:"Erro na assinatura: "+String(e),operacao_id:operacao.id};
+    await registrarRetornoFiscal(sb(),operacao,"cancelada_pre_envio",null,falha);
+    return falha;
   }
 
   // Garante que Id="NFe..." (I maiúsculo) sobrevive ao re-serializador do xml-crypto.
@@ -642,60 +557,30 @@ export async function emitirNFe(
   // xml-crypto pode re-serializar atributos com case diferente; garante Id="NFe..." com I maiúsculo
   xmlAssinado = xmlAssinado.replace(/\bid="(NFe\d{44})"/gi, 'Id="$1"');
 
-  // Debug: verifica se o Id da NF-e sobreviveu ao processo de assinatura intacto
-  {
-    const idNoAssinado = xmlAssinado.match(/Id="(NFe\d{44})"/)?.[1];
-    const idEsperado   = "NFe" + built.chave;
-    const ok = idNoAssinado === idEsperado;
-    console.log("[NF-e debug] serie usada:", emitente.serie);
-    console.log("[NF-e debug] chave do builder:", built.chave);
-    console.log("[NF-e debug] Id no XML assinado:", idNoAssinado ?? "NÃO ENCONTRADO");
-    console.log("[NF-e debug] match?", ok ? "SIM ✓" : "NÃO — MISMATCH ← CAUSA DO cStat 502");
-    if (!ok) {
-      console.error("[NF-e CRÍTICO] Id no XML assinado != chave do builder. O signing alterou o Id.");
-    }
-    // Log dos campos do <ide> e <emit> — permite recalcular chave manualmente
-    const ideSection  = xmlAssinado.match(/<ide>[\s\S]*?<\/ide>/)?.[0]   ?? "ide não encontrado";
-    const emitSection = xmlAssinado.match(/<emit>[\s\S]*?<\/emit>/)?.[0] ?? "emit não encontrado";
-    console.log("[NF-e debug] <ide>:", ideSection.slice(0, 600));
-    console.log("[NF-e debug] <emit>:", emitSection.slice(0, 800));
-    console.log("[NF-e debug] XML assinado (primeiros 3000 chars):", xmlAssinado.slice(0, 3000));
-  }
-
-  // 6. Transmitir
+  const tributacao=itensComIBSCBS.map(i=>({codigo:i.codigo,cfop:i.cfop,ncm:i.ncm,cst_icms:i.cst_icms,pICMS:i.pICMS,pRedBC:i.pRedBC,pis_cst:i.pis_cst,pis_aliq:i.pis_aliq,cofins_cst:i.cofins_cst,cofins_aliq:i.cofins_aliq,ibsCbs:i.ibsCbs,regra:i.regra_fiscal}));
+  await prepararEnvioFiscal(sb(),operacao,xmlAssinado,built.chave,tributacao);
   let resposta;
-  try {
-    resposta = await transmitirNFe(xmlAssinado, pem, emitente.uf, emitente.ambiente);
-  } catch (e) {
-    return { sucesso: false, cStat: "504", xMotivo: `Falha na comunicação SEFAZ: ${e}`, xmlAssinado };
+  try {resposta=await transmitirNFe(xmlAssinado,pem,emitente.uf,emitente.ambiente);}
+  catch(e){
+    const pendente={sucesso:false,cStat:"PROCESSAMENTO_PENDENTE",xMotivo:"Não foi possível confirmar o resultado da SEFAZ. Consulte a operação antes de reenviar. "+String(e),
+      operacao_id:operacao.id,pendente:true,chave:built.chave,numero:built.numero};
+    try{await registrarRetornoFiscal(sb(),operacao,"pendente",null,pendente);}catch{ /* XML/chave já estão guardados antes do envio. */ }
+    return pendente;
   }
-
-  // Esse número/série já existe autorizado com OUTRA chave (ex.: nota emitida por outro sistema ou por contador antes do
-  // Arato). Rejeição não consome o número: na 1ª recusa salta para depois do último número conhecido da série e tenta de
-  // novo, até 5 vezes. Eram 30 tentativas, número a número, e a tela ficava minutos em "Emitindo" (série trocada de IE).
-  // Ao esgotar, a mensagem diz que nada foi emitido: a chave citada pela SEFAZ é da nota antiga.
-  if (numeroJaEmUso(resposta.cStat, resposta.xMotivo, built.chave)) {
-    if (tentativa < 5) {
-      console.warn(`[NF-e] ${resposta.cStat} no número ${numero} (série ${serie}) — tentando o próximo (tentativa ${tentativa + 1})`);
-      if (tentativa === 0) await saltarParaDepoisDoUltimo(fazendaId, moduloKey, confg, cpfCnpjEmit, serie, numero);
-      return emitirNFe(fazendaId, moduloKey, input, emitIeOverride, tentativa + 1);
-    }
-    return { sucesso: false, cStat: resposta.cStat, xMotivo: mensagemNumeroEmUso(serie, numero, resposta.xMotivo) };
-  }
-
-  const autorizada = resposta.cStat === "100";
-
-  // 7. Salvar nfeProc no Storage se autorizada
-  // Formato correto: XML assinado + protNFe dentro de <nfeProc> — padrão SEFAZ para arquivamento
-  let xmlUrl: string | undefined;
-  if (autorizada && resposta.xmlProt) {
-    try {
-      const nfeProcXml = montarNfeProc(xmlAssinado, resposta.xmlProt);
-      xmlUrl = await salvarXml(fazendaId, built.chave, nfeProcXml);
-    } catch { /* não bloqueia — salvar é best-effort */ }
-  }
-
-  return {
+  const autorizada=resposta.cStat==="100" && !!resposta.protocolo && !!resposta.xmlProt;
+  const pendente=["103","104","105","106","999","108","109","204","539"].includes(resposta.cStat)|| (resposta.cStat==="100"&&!autorizada);
+  const estado=autorizada?"autorizada":pendente?"pendente":"rejeitada";
+  const proc=autorizada?montarNfeProc(xmlAssinado,resposta.xmlProt!):undefined;
+  const provisoria={ambiente:emitente.ambiente,tributacao_itens:tributacao,totais:totaisDoXmlNFe(xmlAssinado),sucesso:autorizada,cStat:resposta.cStat,xMotivo:resposta.xMotivo,chave:built.chave,numero:built.numero,
+    serie:String(serieConfg),protocolo:resposta.protocolo,dhRecbto:resposta.dhRecbto,operacao_id:operacao.id,pendente,sincronizacao_pendente:autorizada};
+  try{await registrarRetornoFiscal(sb(),operacao,estado,resposta,provisoria,proc);}
+  catch(e){return {...provisoria,sincronizacao_pendente:true,xMotivo:"Resultado recebido; recuperação local pendente. "+(e as Error).message};}
+  let xmlUrl:string|undefined;
+  let sincronizacaoPendente=false;
+  if(proc){try{xmlUrl=await salvarXml(fazendaId,built.chave,proc);}catch{sincronizacaoPendente=true;}}
+  const retorno:ResultadoEmissao={
+    ambiente:emitente.ambiente,operacao_id:operacao.id,pendente,sincronizacao_pendente:sincronizacaoPendente,
+    tributacao_itens:tributacao,totais:totaisDoXmlNFe(xmlAssinado),
     sucesso: autorizada,
     chave:     built.chave,
     numero:    built.numero,
@@ -718,6 +603,8 @@ export async function emitirNFe(
     emit_cep:        emitente.cep,
     emit_fone:       emitente.fone,
   };
+  try{await registrarRetornoFiscal(sb(),operacao,estado,resposta,retorno,proc);}catch{retorno.sincronizacao_pendente=true;}
+  return retorno;
 }
 
 // ─── Resultado do cancelamento ────────────────────────────────────────────────
@@ -740,9 +627,11 @@ export async function cancelarNFeEmitida(
   chave: string,
   protocoloAutorizacao: string,
   justificativa: string,
+  ambienteDocumento?: "producao" | "homologacao",
 ): Promise<ResultadoCancelamento> {
   const confg = await buscarConfEmitente(fazendaId, moduloKey, undefined, { eventoDeNotaEmitida: true });
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada para cancelamento` };
+  const contexto=contextoEventoNFe(chave,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || "",ambienteDocumento,confg.ambiente ?? "homologacao");
 
   let pem: PemPair;
   try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
@@ -752,9 +641,7 @@ export async function cancelarNFeEmitida(
     const resultado = await cancelarNFe(pem, {
       chave,
       protocolo: protocoloAutorizacao,
-      cpfCnpjEmit: confg.cpf_cnpj_emitente ?? "",
-      uf: confg.uf_emitente ?? "MT",
-      ambiente: (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
+      ...contexto,
       justificativa,
     });
     return {
@@ -789,9 +676,11 @@ export async function corrigirNFeEmitida(
   chave: string,
   textoCorrecao: string,
   nSeqEvento: number,
+  ambienteDocumento?: "producao" | "homologacao",
 ): Promise<ResultadoCorrecao> {
   const confg = await buscarConfEmitente(fazendaId, moduloKey, undefined, { eventoDeNotaEmitida: true });
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal '${moduloKey}' não encontrada`, nSeqEvento };
+  const contexto=contextoEventoNFe(chave,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || "",ambienteDocumento,confg.ambiente ?? "homologacao");
 
   let pem: PemPair;
   try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
@@ -800,9 +689,7 @@ export async function corrigirNFeEmitida(
   try {
     const resultado = await emitirCartaCorrecao(pem, {
       chave,
-      cpfCnpjEmit: confg.cpf_cnpj_emitente ?? "",
-      uf: confg.uf_emitente ?? "MT",
-      ambiente: (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
+      ...contexto,
       correcao: textoCorrecao,
       nSeqEvento,
     });

@@ -1,4 +1,5 @@
 "use client";
+import EmissoesConferencia from "../../../components/fiscal/EmissoesConferencia";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
@@ -1055,7 +1056,8 @@ function MdfePageInner() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: (m as { fazenda_id?: string }).fazenda_id || fazendaId, mdfe_id: m.id }),
       });
-      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; respostaSefaz?: boolean };
+      const data = await res.json() as { sucesso: boolean; pendente?:boolean;sincronizacao_pendente?:boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; respostaSefaz?: boolean };
+      if(data.pendente||data.sincronizacao_pendente){alert((data.sucesso?"Documento autorizado; sincronização local pendente. ":"Resultado ainda não confirmado. ")+"Use Emissões em conferência para consultar e recuperar a mesma chave.\n\n"+data.xMotivo);await carregar();return;}
       if (data.sucesso) {
         alert(`✓ MDF-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
         // Se este MDF-e carrega a chave de NF-e de uma carga da Expedição de Grãos,
@@ -1205,6 +1207,7 @@ function MdfePageInner() {
         {/* Cabeçalho */}
         <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>MDF-e — Manifesto de Documentos Fiscais Eletrônico</h1>
+          <EmissoesConferencia />
         </div>
 
         {/* KPI cards */}

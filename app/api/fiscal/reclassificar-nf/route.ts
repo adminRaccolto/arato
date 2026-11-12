@@ -1,4 +1,4 @@
-import { exigirAcessoRegistro } from "../../../../lib/api-auth";
+import { exigirAcessoRegistro,getRequestUser } from "../../../../lib/api-auth";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -42,30 +42,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Só NF processada pode ser reclassificada" }, { status: 422 });
     }
 
-    const patch = {
-      operacao_gerencial_id: body.operacao_gerencial_id || null,
-      centro_custo_id:       body.centro_custo_id || null,
-    };
-
-    const { error: updNf } = await adm.from("nf_entradas").update(patch).eq("id", body.nf_id);
-    if (updNf) return NextResponse.json({ ok: false, error: updNf.message }, { status: 500 });
-
-    const { data: lancs, error: updLanc } = await adm
-      .from("lancamentos")
-      .update(patch)
-      .eq("nf_entrada_id", body.nf_id)
-      .select("id");
-    if (updLanc) return NextResponse.json({ ok: false, error: updLanc.message }, { status: 500 });
-
-    // Títulos de EMPRESA gerados pela mesma NF também recebem a nova OG / centro de custo
-    const { data: empLancs, error: updEmp } = await adm
-      .from("empresa_lancamentos")
-      .update(patch)
-      .eq("nf_entrada_id", body.nf_id)
-      .select("id");
-    if (updEmp) return NextResponse.json({ ok: false, error: updEmp.message }, { status: 500 });
-
-    return NextResponse.json({ ok: true, lancamentos_atualizados: lancs?.length ?? 0, empresa_lancamentos_atualizados: empLancs?.length ?? 0 });
+    const usuario=await getRequestUser(request.headers.get("authorization"));if(!usuario)return NextResponse.json({ok:false,error:"Não autenticado"},{status:401});
+    const { data, error } = await adm.rpc("fiscal_reclassificar_nf", {
+      p_usuario:usuario.id,p_nf: body.nf_id, p_fazenda: nf.fazenda_id,
+      p_og: body.operacao_gerencial_id || null, p_centro: body.centro_custo_id || null,
+    });
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 422 });
+    return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

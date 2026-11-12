@@ -1,3 +1,5 @@
+import { abrirOperacaoFiscal, prepararEnvioFiscal, registrarRetornoFiscal, retornoOperacaoExistente } from "../fiscal/operacao";
+import { sincronizarDocumentoFiscal } from "../fiscal/persistencia";
 /**
  * lib/cte/index.ts
  * Ponto central da emissão de CT-e:
@@ -35,13 +37,6 @@ function sb() {
 // e podem existir em mais de uma cópia (uma por fazenda em que já foram salvos). Gravar em TODAS
 // as cópias do mesmo conta_id+módulo mantém elas sempre idênticas, então a leitura (que já pega
 // a MAIOR entre as cópias) nunca vê uma desatualizada.
-async function proximoNumero(contaId: string | null, fazendaId: string, modulo: string, confg: Record<string, string>): Promise<number> {
-  const atual = parseInt(String(confg.numero_inicial ?? "1"));
-  const query = sb().from("configuracoes_modulo").update({ config: { ...confg, numero_inicial: String(atual + 1) } });
-  await (contaId ? query.eq("conta_id", contaId) : query.eq("fazenda_id", fazendaId)).eq("modulo", modulo);
-  return atual;
-}
-
 // ─── QR Code CT-e 4.00 ───────────────────────────────────────────────────────
 // infCTeSupl deve aparecer entre </infCte> e <Signature> no XML final.
 // A assinatura só cobre infCte, então inserir infCTeSupl depois não quebra o digest.
@@ -87,6 +82,7 @@ async function salvarXml(fazendaId: string, chave: string, xml: string): Promise
 
 // ─── Resultado ───────────────────────────────────────────────────────────────
 export interface ResultadoEmissaoCTe {
+  operacao_id?:string;pendente?:boolean;sincronizacao_pendente?:boolean;
   sucesso:    boolean;
   chave?:     string;
   numero?:    string;
@@ -100,6 +96,7 @@ export interface ResultadoEmissaoCTe {
 }
 
 export interface EmitirCTeOptions {
+  requisicao_id?:string;
   emitente_cnpj?: string | null;
   cte_id?:        string | null; // ID do registro em `ctes` — atualizado com service_role após autorização
   /** CT-e substituto: ID do registro original em `ctes` (precisa estar autorizado). */
@@ -268,6 +265,16 @@ export async function emitirCTe(
   inputBase: Omit<CTeInput, "emitente">,
   options: EmitirCTeOptions = {},
 ): Promise<ResultadoEmissaoCTe> {
+  const dadosOperacao={input:structuredClone(inputBase),substituido_id:options.cte_substituido_id ?? null};
+
+  if (options.cte_id) {
+    const { data: documento, error } = await sb().from("ctes").select("id,fazenda_id,status,data_emissao").eq("id", options.cte_id).maybeSingle();
+    if (error) throw error;
+    if (!documento || documento.fazenda_id !== fazendaId)
+      return { sucesso: false, cStat: "ACESSO", xMotivo: "O CT-e não pertence à fazenda autorizada." };
+    if(["cancelado","substituido"].includes(documento.status))return {sucesso:false,cStat:"ESTADO_FINAL",xMotivo:"CT-e cancelado/substituído não pode ser reemitido."};
+    inputBase={...inputBase,data_emissao:inputBase.data_emissao || documento.data_emissao};
+  }
 
   if (!["5352", "5353", "6932"].includes(String((inputBase as { cfop?: string }).cfop ?? "")))
     return { sucesso: false, cStat: "503", xMotivo: "CFOP inválido para CT-e — use 5352, 5353 ou 6932." };
@@ -322,7 +329,7 @@ export async function emitirCTe(
   // Incrementa o número sequencial na fazenda onde o registro cte_emp_* REALMENTE está gravado
   // (resolved.cteFazendaId) — pode ser diferente da fazenda que está emitindo agora, já que os
   // parâmetros do emitente são compartilhados pela conta inteira, não duplicados por fazenda.
-  const numero = await proximoNumero(resolved.cteContaId, resolved.cteFazendaId, resolved.cteModulo, confg);
+  const numero = 1;
 
   const emitente: EmitenteCTe = {
     cpf_cnpj:       fc.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits,
@@ -403,9 +410,9 @@ export async function emitirCTe(
     const cst = (confg.ibs_cbs_cst === "410" ? "410" : "000") as "000" | "410";
     const cclass = String(confg.ibs_cbs_cclasstrib || (cst === "410" ? "410999" : "000001")).replace(/\D/g, "");
     const num = (v: unknown) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
-    const ano2026 = new Date().getFullYear() === 2026;
+    const ano2026=(inputBase.data_emissao || new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Cuiaba"}).format(new Date())).startsWith("2026-");
     const ibsUf = ano2026 ? 0.10 : num(confg.ibs_uf_aliq), ibsMun = ano2026 ? 0 : num(confg.ibs_mun_aliq), cbs = ano2026 ? 0.90 : num(confg.cbs_aliq);
-    if (cclass.length !== 6 || (cst === "000" && (Number.isNaN(ibsUf) || Number.isNaN(ibsMun) || Number.isNaN(cbs)))) {
+    if ((cclass.length !== 6 || !cclass.startsWith(cst)) || (cst === "000" && [ibsUf,ibsMun,cbs].some(v=>!Number.isFinite(v)||v<0||v>100))) {
       return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "IBS/CBS ativo em Parâmetros → CT-e, mas faltam dados: informe cClassTrib (6 dígitos) e as alíquotas de IBS (UF e Município) e CBS — ou desative o destaque. Confirme os valores com o contador." };
     }
     ibscbs = { cst, cclasstrib: cclass, ibsUfAliq: cst === "000" ? ibsUf : 0, ibsMunAliq: cst === "000" ? ibsMun : 0, cbsAliq: cst === "000" ? cbs : 0 };
@@ -416,6 +423,11 @@ export async function emitirCTe(
   const avisoIbsCbs = (!ibscbs && !["1", "2", "4"].includes(String(emitente.crt)))
     ? "IBS/CBS NÃO foi destacado neste CT-e. Emitente Lucro Presumido/Real é obrigado desde 05/01/2026 (LC 214/2025, NT 2025.001). Configure em Parâmetros → CT-e → \"Destacar IBS/CBS no CT-e\" (confirme as alíquotas com o contador)."
     : undefined;
+  buildCTe({...inputBase,emitente,ibscbs});
+  const operacao=await abrirOperacaoFiscal(sb(),{id:options.requisicao_id,fazenda:fazendaId,modelo:57,documento:emitente.cpf_cnpj,serie:emitente.serie,ambiente:emitente.ambiente,
+    dados:dadosOperacao,modulo:resolved.cteModulo,proximo:confg.numero_inicial,registro:options.cte_id});
+  if(!operacao.executar)return retornoOperacaoExistente(operacao) as ResultadoEmissaoCTe;
+  emitente.numero_cte=operacao.numero;
   const built = buildCTe({ ...inputBase, emitente, ibscbs });
 
   // 6. Assinar
@@ -429,91 +441,28 @@ export async function emitirCTe(
   const qrUrl  = buildQrCodeCTe(built.chave, tpAmb, emitente.uf);
   xmlAssinado  = inserirInfCTeSupl(xmlAssinado, qrUrl);
 
-  // 7. Transmitir
+  await prepararEnvioFiscal(sb(),operacao,xmlAssinado,built.chave);
   let resposta;
-  try { resposta = await transmitirCTe(xmlAssinado, pem, emitente.uf, emitente.ambiente); }
-  catch (e) { return { sucesso: false, cStat: "504", xMotivo: `Falha na comunicação SEFAZ: ${e}`, xmlAssinado }; }
-
-  // 8. Salvar XML se autorizado
-  let xmlUrl: string | undefined;
-  if (resposta.sucesso && resposta.xmlProt) {
-    try { xmlUrl = await salvarXml(fazendaId, built.chave, montarProcAutorizado("cte", xmlAssinado, resposta.xmlProt, "4.00")); }
-    catch (e) { console.error("[emissão cte] autorizado, mas o XML não foi guardado:", built.chave, e); }
+  try{resposta=await transmitirCTe(xmlAssinado,pem,emitente.uf,emitente.ambiente);}
+  catch(e){
+    const pendente={sucesso:false,cStat:"PROCESSAMENTO_PENDENTE",xMotivo:"Resultado da SEFAZ ainda não confirmado. Consulte Emissões em conferência antes de reenviar. "+String(e),operacao_id:operacao.id,pendente:true,chave:built.chave,numero:built.numero};
+    try{await registrarRetornoFiscal(sb(),operacao,"pendente",null,pendente);}catch{}
+    return pendente;
   }
-
-  // 9. Atualizar registro `ctes` com service_role_key (evita falha silenciosa por JWT expirado no cliente)
-  // Achado real 23/09/2026: a coluna xml_url nunca existiu em `ctes` (só em `notas_fiscais`) — o
-  // update falhava com PGRST204 SEMPRE, em SILÊNCIO (catch vazio), então TODO CT-e autorizado de
-  // verdade na SEFAZ (chave real gerada) nunca gravava "autorizado" aqui — a tela piscava
-  // "Autorizado" (update otimista local) e voltava pra "Rascunho" assim que recarregava do banco.
-  // Corrigido: tenta com xml_url; se a coluna não existir (schema sem a migration ainda), reenvia
-  // sem ela; e loga se mesmo assim falhar, em vez de engolir o erro — um CT-e autorizado na SEFAZ
-  // que não vira "autorizado" no banco é risco real de reemissão duplicada.
-  if (options.cte_id) {
-    const payloadUpdate = {
-      status:       resposta.sucesso ? "autorizado" : "rascunho",
-      chave_acesso: built.chave,
-      protocolo_autorizacao: resposta.protocolo ?? null,
-      xml_url:      xmlUrl ?? null,
-      numero_cte:   String(built.numero),
-    };
-    const { error: updErr } = await sb().from("ctes").update(payloadUpdate).eq("id", options.cte_id);
-    if (updErr?.code === "PGRST204") {
-      const { xml_url: _xu, protocolo_autorizacao: _pa, ...semColunasNovas } = payloadUpdate;
-      const retry = await sb().from("ctes").update(semColunasNovas).eq("id", options.cte_id);
-      if (retry.error) console.error("[emitirCTe] falha ao gravar status autorizado (retry sem xml_url):", retry.error);
-    } else if (updErr) {
-      console.error("[emitirCTe] falha ao gravar status autorizado:", updErr);
+  const autorizada=resposta.sucesso&&!!resposta.xmlProt&&!!resposta.protocolo;
+  const pendente=!resposta.cStat || ["103","104","105","106","999","108","109","204","539"].includes(resposta.cStat) || (resposta.sucesso&&!autorizada);
+  const proc=autorizada?montarProcAutorizado("cte",xmlAssinado,resposta.xmlProt!,"4.00"):undefined;
+  const resultado:ResultadoEmissaoCTe={sucesso:autorizada,chave:built.chave,numero:built.numero,protocolo:resposta.protocolo,dhRecbto:resposta.dhRecbto,
+    cStat:resposta.cStat ?? resposta.errorCode ?? "ERR",xMotivo:resposta.xMotivo,xmlAssinado,aviso:autorizada?avisoIbsCbs:undefined,
+    operacao_id:operacao.id,pendente,sincronizacao_pendente:autorizada};
+  const estado=autorizada?"autorizada":pendente?"pendente":"rejeitada";
+  try{
+    await registrarRetornoFiscal(sb(),operacao,estado,resposta,resultado,proc);
+    if(proc){
+      const sync=await sincronizarDocumentoFiscal(sb(),{...operacao,chave:built.chave,xml_assinado:xmlAssinado},resultado as unknown as Record<string,unknown>,proc);
+      resultado.xmlUrl=sync.xmlUrl;resultado.sincronizacao_pendente=false;
+      await registrarRetornoFiscal(sb(),operacao,"sincronizada",resposta,resultado,proc);
     }
-  }
-
-  // Financeiro automático (a receber da transportadora + a pagar do tomador da conta) — nunca
-  // derruba a emissão; o resultado vai só pro log do servidor.
-  if (resposta.sucesso && options.cte_id) {
-    try { console.log("[emitirCTe] financeiro:", (await lancarFinanceiroCte(options.cte_id)).join(" | ")); }
-    catch (e) { console.error("[emitirCTe] financeiro falhou:", e); }
-  }
-
-  // CT-e substituto autorizado: o original vira "substituído" (liga as duas pontas) e o financeiro
-  // dele é cancelado — o do substituto já foi lançado acima.
-  if (resposta.sucesso && inputBase.tp_cte === "3" && !options.cte_substituido_id && options.cte_id) {
-    await sb().from("ctes").update({
-      tipo_cte: "substituto", cte_substituido_chave: inputBase.cte_substituido_chave ?? null,
-      ind_altera_toma: !!inputBase.ind_altera_toma,
-    }).eq("id", options.cte_id);
-  }
-  if (resposta.sucesso && inputBase.tp_cte === "3" && options.cte_substituido_id) {
-    try {
-      const { data: orig } = await sb().from("ctes").select("chave_acesso").eq("id", options.cte_substituido_id).maybeSingle();
-      if (options.cte_id) {
-        await sb().from("ctes").update({
-          tipo_cte: "substituto",
-          cte_substituido_id: options.cte_substituido_id,
-          cte_substituido_chave: orig?.chave_acesso ?? inputBase.cte_substituido_chave ?? null,
-          ind_altera_toma: !!inputBase.ind_altera_toma,
-        }).eq("id", options.cte_id);
-      }
-      const { error: e2 } = await sb().from("ctes").update({
-        status: "substituido",
-        cte_substituto_id: options.cte_id ?? null,
-        cte_substituto_chave: built.chave,
-      }).eq("id", options.cte_substituido_id);
-      if (e2) console.error("[emitirCTe] não marcou o original como substituído:", e2);
-      const fin = await cancelarFinanceiroCte(options.cte_substituido_id);
-      console.log("[emitirCTe] financeiro do original:", fin.log.join(" | "));
-    } catch (e) { console.error("[emitirCTe] pós-substituição falhou:", e); }
-  }
-
-  return {
-    sucesso:    resposta.sucesso,
-    chave:      built.chave,
-    numero:     built.numero,
-    protocolo:  resposta.protocolo,
-    dhRecbto:   resposta.dhRecbto,
-    xmlUrl,
-    cStat:      resposta.cStat ?? resposta.errorCode ?? "ERR",
-    xMotivo:    resposta.xMotivo,
-    xmlAssinado,
-    aviso:      resposta.sucesso ? avisoIbsCbs : undefined,
-  };
+  }catch(e){resultado.sincronizacao_pendente=true;resultado.xMotivo="Resultado fiscal recebido; sincronização local pendente: "+(e as Error).message;}
+  return resultado;
 }

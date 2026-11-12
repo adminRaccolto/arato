@@ -1,0 +1,712 @@
+{
+  "gerado_em": "2026-11-11T21:56:16.492Z",
+  "head": "7cb5eb23f712d0500f57d54f1d1f347dd7024503",
+  "algoritmo": "SHA-256",
+  "arquivos": [
+    {
+      "arquivo": "app/api/cert-meta/route.ts",
+      "bytes": 4730,
+      "sha256": "7e5c6f9448dcb8699126af452cec54acdbcb77a842edf48f8f17f9b5fa1645e2"
+    },
+    {
+      "arquivo": "app/api/cert-upload/route.ts",
+      "bytes": 1971,
+      "sha256": "680d836219e9cfd5beb1819ce312127feb2b2c1f700958cb5fdd92c3b1a10548"
+    },
+    {
+      "arquivo": "app/api/cert-validar/route.ts",
+      "bytes": 1346,
+      "sha256": "d8f395bdfed6cd6bcae70eddc269383d1c8a86551f98d05e142ba9d6f0e0427d"
+    },
+    {
+      "arquivo": "app/api/cte/distribuicao/route.ts",
+      "bytes": 6361,
+      "sha256": "dad0d3758e122c53fbb7f9ce0051f605972eef0353d67abae45dc1565de5d703"
+    },
+    {
+      "arquivo": "app/api/debug/cert-chain/route.ts",
+      "bytes": 4429,
+      "sha256": "b959c95e2046396e83ece6d6757504d5a1a6d2c432f252c2e97f67d086b3103e"
+    },
+    {
+      "arquivo": "app/api/fiscal/cancelar-cte/route.ts",
+      "bytes": 1555,
+      "sha256": "227a848cbe527366665125d5aa442e85066db5da8156455c47d951293ad9ab44"
+    },
+    {
+      "arquivo": "app/api/fiscal/cancelar-mdfe/route.ts",
+      "bytes": 2347,
+      "sha256": "4345474a3434e844466d45a6a11c981ca077019631358e627824f1406f62bbac"
+    },
+    {
+      "arquivo": "app/api/fiscal/carta-correcao-cte/route.ts",
+      "bytes": 2740,
+      "sha256": "8526b65b2ef84dcd37e8f76d10760f392b9a23b9b423cceba1e8a6d3a611ed69"
+    },
+    {
+      "arquivo": "app/api/fiscal/consultar-cadastro/route.ts",
+      "bytes": 3452,
+      "sha256": "4db054075a1cbb7270aa1f85da94054aab5b03654235aa9ad9dcc25028087cc3"
+    },
+    {
+      "arquivo": "app/api/fiscal/consultar-nfe/route.ts",
+      "bytes": 10410,
+      "sha256": "894a1218a769fc4522d9b7360e31862ec929408b50df17a5f34cf02e0542d984"
+    },
+    {
+      "arquivo": "app/api/fiscal/cte-entrada/route.ts",
+      "bytes": 17501,
+      "sha256": "ca3ad67880cae48f66f6e30e0e5c0c14dae6bd576a3e58b4fb56f9c30913f3c1"
+    },
+    {
+      "arquivo": "app/api/fiscal/danfe-lote/route.ts",
+      "bytes": 2561,
+      "sha256": "63dc82032a61af9cb16ba35ddca6c6d0741eab540a706f4e01dbdac064d6bcfa"
+    },
+    {
+      "arquivo": "app/api/fiscal/danfe/route.ts",
+      "bytes": 8511,
+      "sha256": "9ba0fda5f64b4bf12797dc04b9049e336691ca07c746ebefe48a946134713706"
+    },
+    {
+      "arquivo": "app/api/fiscal/emitir-cte/route.ts",
+      "bytes": 5784,
+      "sha256": "8e58845c2be777856c42d913ea2cc689650484108178a1732518876f53a4cc4f"
+    },
+    {
+      "arquivo": "app/api/fiscal/emitir-mdfe/route.ts",
+      "bytes": 1237,
+      "sha256": "63c9dfa6fe1663c494c554fb25be9305df0672c5a0923b6e90ff34419b3f40e4"
+    },
+    {
+      "arquivo": "app/api/fiscal/emitir-nfe/route.ts",
+      "bytes": 6137,
+      "sha256": "7be114dc7cdd030d102d2627221dd633df56fd4d6186304396d316fd62e7d577"
+    },
+    {
+      "arquivo": "app/api/fiscal/encerrar-mdfe/route.ts",
+      "bytes": 2404,
+      "sha256": "682a90253eeab0acd39cd9b3f1902f4596499add3b1c89e2fffe43d97f6858c6"
+    },
+    {
+      "arquivo": "app/api/fiscal/eventos/route.ts",
+      "bytes": 10869,
+      "sha256": "e907a97389ae449c6e3231c166bdd51ef7ad3694b53327a327c263f205c0c573"
+    },
+    {
+      "arquivo": "app/api/fiscal/nfs-canceladas/route.ts",
+      "bytes": 12438,
+      "sha256": "802d1c6015853bcd07c642ce1948324f14745b8e63c75b3d7e3d8cddf607da7e"
+    },
+    {
+      "arquivo": "app/api/fiscal/nfse-recibo/route.ts",
+      "bytes": 9220,
+      "sha256": "ebbc3435fa82ace41a5717a139fc9b7fe0a35be6d77b74cd2fd88bd8344b9f23"
+    },
+    {
+      "arquivo": "app/api/fiscal/notas-proprias/consultar-chave/route.ts",
+      "bytes": 3754,
+      "sha256": "940d8d84d6d4f9577086e90b5972e25ce3de0abef59762372d93748dc5038236"
+    },
+    {
+      "arquivo": "app/api/fiscal/numeracao-nfe/route.ts",
+      "bytes": 2217,
+      "sha256": "c55dbe5d71e3e5023d8f3e7773d410d839cf4e84e459580f9c4e5a40cbb707b3"
+    },
+    {
+      "arquivo": "app/api/fiscal/reclassificar-nf/route.ts",
+      "bytes": 3223,
+      "sha256": "045d40abd3bca1c0853da6b320322c55ece38b7e334d881303bb1af3f3f99988"
+    },
+    {
+      "arquivo": "app/api/fiscal/remessas/route.ts",
+      "bytes": 20343,
+      "sha256": "e44f829575b65a890f4aca14cb04d3752d11737b4f850d59cc78d020559a61eb"
+    },
+    {
+      "arquivo": "app/api/fiscal/status-sefaz/route.ts",
+      "bytes": 7213,
+      "sha256": "bf1c0002be240a470bf21c407efa24b5c1cda6d5420ada700d1fe4345ac62aaf"
+    },
+    {
+      "arquivo": "app/api/integracoes/sieg-cert/route.ts",
+      "bytes": 3295,
+      "sha256": "4dde98ef8cce039f187cce63a9866a7651a94f143f35b2b10b73e6fd17972b4a"
+    },
+    {
+      "arquivo": "app/api/mdfe/salvar-ciot/route.ts",
+      "bytes": 1408,
+      "sha256": "d59430826f9d96f56c7f943cb815bd54d95c2266434a9cdf2ee814d603b7032c"
+    },
+    {
+      "arquivo": "app/api/nfe/xml-por-chave/route.ts",
+      "bytes": 6255,
+      "sha256": "67ddf84d5e95cff77c75eed9bcc68af88d1d5498e5d77b0a9d21ecf9560bd650"
+    },
+    {
+      "arquivo": "app/api/seed-cfops/route.ts",
+      "bytes": 2103,
+      "sha256": "8273cccbc307d1d5744947a1b11b5618d859df85d2f5c9e48247388bdb5d1d24"
+    },
+    {
+      "arquivo": "app/comercial/faturamento/page.tsx",
+      "bytes": 162408,
+      "sha256": "55698436dafad92285f67654700267c9eeeec177d5a8417692aeefb8fbb43dcf"
+    },
+    {
+      "arquivo": "app/configuracoes/contabilidade/page.tsx",
+      "bytes": 17189,
+      "sha256": "a8a86423929c08359dd1b7a9bdcbdb0a434b9af375be3cd14e862c51df512f62"
+    },
+    {
+      "arquivo": "app/configuracoes/modulos/page.tsx",
+      "bytes": 196657,
+      "sha256": "0291d8ae16059e0de1b3b85ba096707685c1a2ded46a2139c63f64ead0ebdcf5"
+    },
+    {
+      "arquivo": "app/configuracoes/operacoes-gerenciais/page.tsx",
+      "bytes": 61939,
+      "sha256": "0a93fa532cc34d51b77c4f14b9c6c5c77f9de962d389af1bfa2bca3184b2811e"
+    },
+    {
+      "arquivo": "app/contratos/page.tsx",
+      "bytes": 266230,
+      "sha256": "1c8a37af17f75d64347716d940932809ec90de9270285be3e7a62a6518ab2f66"
+    },
+    {
+      "arquivo": "app/estoque/auditoria-fiscal/page.tsx",
+      "bytes": 16599,
+      "sha256": "5dcaff1522a1f5f9cef03ee1e0f8b1edc53282a29b7b901914ca65854e8455c2"
+    },
+    {
+      "arquivo": "app/fiscal/documentos/page.tsx",
+      "bytes": 78972,
+      "sha256": "8aa64cf644c67ca03a986e5182932debfc17a63b07613893d7021a3ccc109b5a"
+    },
+    {
+      "arquivo": "app/fiscal/entregas-futuras/page.tsx",
+      "bytes": 11733,
+      "sha256": "bbb64bdf33f0e92e578bc3d706a9b2d54bdd70a069829dac8fc18eba4042dc85"
+    },
+    {
+      "arquivo": "app/fiscal/esocial/page.tsx",
+      "bytes": 38380,
+      "sha256": "27692b2ddcaca6ca7eafe758b8a57fbbdd850cbb2f65a0cae80ae08d3d097d69"
+    },
+    {
+      "arquivo": "app/fiscal/gnre/page.tsx",
+      "bytes": 27761,
+      "sha256": "414b139619b49b8ea875e62f2f0455d682076c115aea19f1a7ff7b62deb10230"
+    },
+    {
+      "arquivo": "app/fiscal/manifestacao/page.tsx",
+      "bytes": 271,
+      "sha256": "5be296dee4c321c17329e5a624b87d5f06cf600455c88a4b17d1a078059d0497"
+    },
+    {
+      "arquivo": "app/fiscal/notas-pendentes-entrega/page.tsx",
+      "bytes": 11695,
+      "sha256": "d2ef3f9fe276fca054c7e82a97fcadf92fa35d554ccd27fc4562b22cd6a3f0a0"
+    },
+    {
+      "arquivo": "app/fiscal/notas-proprias/page.tsx",
+      "bytes": 35994,
+      "sha256": "d5080bf74d3183e27f9b7d9f8ebbf6dbce82f30e003422d568ccfd2af18cfe0d"
+    },
+    {
+      "arquivo": "app/fiscal/page.tsx",
+      "bytes": 259929,
+      "sha256": "119c0c1a2abed15c84fc8871e48b82b8520acb12c4f798b6768d8398db34a9a5"
+    },
+    {
+      "arquivo": "app/fiscal/pendencias/page.tsx",
+      "bytes": 29331,
+      "sha256": "cf7c8cf9a5ff1e051feddb763e8b61a0589d4bb815927bec2109318e81d28204"
+    },
+    {
+      "arquivo": "app/fiscal/relatorio-canceladas/page.tsx",
+      "bytes": 19501,
+      "sha256": "404b7dcb8b770a4e30c3167d29fe66d1f28115100637364dbe5c1d1a8d9a73dc"
+    },
+    {
+      "arquivo": "app/fiscal/relatorio-processamento/page.tsx",
+      "bytes": 21234,
+      "sha256": "c4d42a54a0774c132d63915c29458b337db68b1fa34ece216c5a86b8cb83f3b0"
+    },
+    {
+      "arquivo": "app/fiscal/remessas/page.tsx",
+      "bytes": 56759,
+      "sha256": "3217f06c989be2ff5c386bcb8a809749df9e4dcc791150787bd03a9f14597c9e"
+    },
+    {
+      "arquivo": "app/fiscal/retornos/page.tsx",
+      "bytes": 53115,
+      "sha256": "90f77d7ecdd3fd213c2a92c24f0a6dc039e5a1d5f3fcff4db7d645b04aa49caa"
+    },
+    {
+      "arquivo": "app/fiscal/sped-contabil/page.tsx",
+      "bytes": 24659,
+      "sha256": "141df2c44d0263446ff668225071da43a32db121fed2e33fc933bc605fc50d4a"
+    },
+    {
+      "arquivo": "app/fiscal/transferencia-maquinas/page.tsx",
+      "bytes": 340,
+      "sha256": "843a3b17d474163debe2a449d8b57af133e896e3149b351d663da811c6e763d3"
+    },
+    {
+      "arquivo": "app/fiscal/triangulacao/page.tsx",
+      "bytes": 64407,
+      "sha256": "d6f502891d582f97bb37425c4b4133f9561b0d39c0740c7bb34110411289e437"
+    },
+    {
+      "arquivo": "app/lcdpr/page.tsx",
+      "bytes": 114070,
+      "sha256": "4bc12cbd1f9f9a14d852b8b1526af8cacdb114dad13ec7fa55ce0f2c87a672ab"
+    },
+    {
+      "arquivo": "app/transporte/acerto-frete/page.tsx",
+      "bytes": 36178,
+      "sha256": "adf397d3b5b549f0ceb5accc9290b6b7066f6a9910dd8024928d5a2508190558"
+    },
+    {
+      "arquivo": "app/transporte/cte/page.tsx",
+      "bytes": 187371,
+      "sha256": "10106a07b36a6d6300f5e3aed2b031c084d7960cf23a5634b10f374d62fd45e7"
+    },
+    {
+      "arquivo": "app/transporte/mdfe/page.tsx",
+      "bytes": 130448,
+      "sha256": "89015f6e243da51536553ddc05b87b6bd0954fd7d48e7c13e3ffc39c947e038f"
+    },
+    {
+      "arquivo": "components/fiscal/EmissaoNfe.tsx",
+      "bytes": 13604,
+      "sha256": "6800b78d16922529cdca3735d31c7c954c4a1cf3de10d46fa2bfbcc45672bc98"
+    },
+    {
+      "arquivo": "components/fiscal/ModalCadastroFornecedor.tsx",
+      "bytes": 9915,
+      "sha256": "83e449c932ae2cddc6a35c675b1699361de9f6485cd9e9219c7adb5ca37650d7"
+    },
+    {
+      "arquivo": "components/fiscal/ModalCteEntrada.tsx",
+      "bytes": 16705,
+      "sha256": "a265a1d5792419682e681e44b8973917e6587634e64f0de12dfc685af3cd58c1"
+    },
+    {
+      "arquivo": "components/fiscal/ModalCteEntradaNovo.tsx",
+      "bytes": 13288,
+      "sha256": "1f4a67a852da34f236452f40d1a4820e4830ac9ba21271b1e7c3e47a798ad77f"
+    },
+    {
+      "arquivo": "components/fiscal/ModalNf.tsx",
+      "bytes": 336008,
+      "sha256": "9b8a993d6abdcd0abb9630e7eec7bd76a6c00d4060febfd7b36adc7f59e0781b"
+    },
+    {
+      "arquivo": "components/fiscal/ModalNfServico.tsx",
+      "bytes": 70277,
+      "sha256": "00f38094e0b392fb40eface9a65573dce3bd5bf745fa7346d6859d9dcc83cc75"
+    },
+    {
+      "arquivo": "components/fiscal/ModalProcessarLote.tsx",
+      "bytes": 38525,
+      "sha256": "0aaea2cf26df4a6b6889b6687b4f5cb74f4f29b9780486218b86e218a6ac3662"
+    },
+    {
+      "arquivo": "components/fiscal/PatrimonioServico.tsx",
+      "bytes": 2208,
+      "sha256": "bae9a3c5090721266a0153855ccbb44fe9136cffa2c48991653f468cf659ff74"
+    },
+    {
+      "arquivo": "components/fiscal/RemessasMaquinas.tsx",
+      "bytes": 60340,
+      "sha256": "3903fef57c511c8a2f92176ae8d7a963217825109d456475d7c4abf9437507ad"
+    },
+    {
+      "arquivo": "components/fiscal/VerificarCertificado.tsx",
+      "bytes": 1750,
+      "sha256": "5b46185f7c63db1bec11ef1add0e73aa313055aa96580197afc91fec5a329878"
+    },
+    {
+      "arquivo": "lib/antt/certificado.ts",
+      "bytes": 1187,
+      "sha256": "8f03de4cad5ebed1288c9ddb497ccc4fc64432bb89a23ac1c6b987b6b8406bf5"
+    },
+    {
+      "arquivo": "lib/api-auth.ts",
+      "bytes": 14086,
+      "sha256": "226f42d85d25664adbcb4f342adb3c2b24fc2014333cdfee03a05090dade45d6"
+    },
+    {
+      "arquivo": "lib/cte/builder.ts",
+      "bytes": 21254,
+      "sha256": "1fde9c2fe4804411001431d9222c94c55d8852102281e8c5f218c566760b77de"
+    },
+    {
+      "arquivo": "lib/cte/config.ts",
+      "bytes": 6843,
+      "sha256": "f334f3179796417d31fb7adf0ffe1592b837e7e35b819bc0d0b05b20214f8338"
+    },
+    {
+      "arquivo": "lib/cte/distribuicao.ts",
+      "bytes": 7655,
+      "sha256": "bf05d32e76b083ba1111318e779b3249fcfc35c97bebf099d23a9050ef16eec3"
+    },
+    {
+      "arquivo": "lib/cte/evento.ts",
+      "bytes": 9006,
+      "sha256": "ff13424d2167047504dad5a613af46fd30166bde08999c4a416401a25598ac4f"
+    },
+    {
+      "arquivo": "lib/cte/financeiro.ts",
+      "bytes": 11704,
+      "sha256": "a0003b33554c27d683772c5cc365e6d5b45aba56b2b8e871bdc9f361fdd5064d"
+    },
+    {
+      "arquivo": "lib/cte/index.ts",
+      "bytes": 29100,
+      "sha256": "0e647d3191670f0fa6a3834f13aacfa7524faff3118d46c95d4c8218cf759aec"
+    },
+    {
+      "arquivo": "lib/cte/signer.ts",
+      "bytes": 1778,
+      "sha256": "db4c8a21370eff889609aca1f3a7490a7e0120e868365bd5af10dce4b58954c6"
+    },
+    {
+      "arquivo": "lib/cte/transmitter.ts",
+      "bytes": 19606,
+      "sha256": "9c7205c173f5b29fbfe81578f01629777a77633c1d650fabd817b092827b6032"
+    },
+    {
+      "arquivo": "lib/db.ts",
+      "bytes": 411932,
+      "sha256": "6e6d868aa838b3995d0a7cf6f9bdb012a65cb35d5ea11ab4b9ca23a24ff3fdf2"
+    },
+    {
+      "arquivo": "lib/estoque/auditoria-fiscal.ts",
+      "bytes": 7821,
+      "sha256": "e8955ee1eceece399a407f58a062d3005b13292efb2e66af9aba1c5aecbaa01f"
+    },
+    {
+      "arquivo": "lib/fiscal/cfop-cobranca.ts",
+      "bytes": 3546,
+      "sha256": "1892a6f7048ec74c78dd3adbb5fabf1708137ec9818b0a1da0522e5a6f7a7a31"
+    },
+    {
+      "arquivo": "lib/fiscal/dedup-nf.ts",
+      "bytes": 3240,
+      "sha256": "ec0ebaa705d73f39c4dbafa0b838be8d9f7e69e8a963b5c1d0edf95b817fe999"
+    },
+    {
+      "arquivo": "lib/fiscal/dedup-nfse.ts",
+      "bytes": 4029,
+      "sha256": "a6b6d5f4a75cf5f6dbb5a7ada18fe526193dd1be9244680aaf3a19cb90b9a889"
+    },
+    {
+      "arquivo": "lib/fiscal/devolucao-compensacao.ts",
+      "bytes": 7550,
+      "sha256": "40de00213f1464166b18157e667013b205b4558240508da75a6ed67b7106c325"
+    },
+    {
+      "arquivo": "lib/fiscal/devolucao-compra.ts",
+      "bytes": 2264,
+      "sha256": "ba6353a8dfe7b26be5d6e1a7a798605eadc71ee6f6eac6190dbf3cea958c7ddc"
+    },
+    {
+      "arquivo": "lib/fiscal/documento-autorizado.ts",
+      "bytes": 618,
+      "sha256": "5074d39769309342429aa3741e244260fa168f771a215de3e6bbaa5ab9de7499"
+    },
+    {
+      "arquivo": "lib/fiscal/duplicar-nota.ts",
+      "bytes": 2625,
+      "sha256": "90cfd219a56f9eef90764fb85ae5b317d8d6c28e4b2530c38225ad0750f46e6c"
+    },
+    {
+      "arquivo": "lib/fiscal/estornar-nf-cliente.ts",
+      "bytes": 1870,
+      "sha256": "49dd1dd159691e7a6c3c9f0a36a9185ede4525af50d73b54a674acfda7a883c8"
+    },
+    {
+      "arquivo": "lib/fiscal/estorno-vinculos.ts",
+      "bytes": 5783,
+      "sha256": "64869e0cfec3ffffd4919ecd07256029dd4601e13a7d482ca4a19621baa5653f"
+    },
+    {
+      "arquivo": "lib/fiscal/imprimir-cce.ts",
+      "bytes": 4777,
+      "sha256": "f15740c85991693dc94a32c3c8343ec569ac40936b2e11fd419e9c1d01fb8616"
+    },
+    {
+      "arquivo": "lib/fiscal/lc116.ts",
+      "bytes": 21798,
+      "sha256": "15f1eef2bd82be16964a53bd66e217f0b2875b24a7d75f1b3a333dcca384f39a"
+    },
+    {
+      "arquivo": "lib/fiscal/modo-faturamento.ts",
+      "bytes": 2610,
+      "sha256": "3e9580f3e3d62b1653adde8ed260a22b51c6e446188e4ac5c61d89fed77def73"
+    },
+    {
+      "arquivo": "lib/fiscal/municipios-ibge.ts",
+      "bytes": 138080,
+      "sha256": "30c2b8cad8fba64bfba5c37005ed7b70decf203a8f633ea83f0a11d7831bc4e9"
+    },
+    {
+      "arquivo": "lib/fiscal/ncm-produtos.ts",
+      "bytes": 3003,
+      "sha256": "dd06e6915f849d6ad80ae4c3a44c0f20020cf74996040d793d9ae5688d7b78eb"
+    },
+    {
+      "arquivo": "lib/fiscal/nf-substituta.ts",
+      "bytes": 2780,
+      "sha256": "b6ae738349ac91ee6200cc753a0ad9771e060c02860e81bc4e6524cd390a14c7"
+    },
+    {
+      "arquivo": "lib/fiscal/nfe-xml.ts",
+      "bytes": 2786,
+      "sha256": "9b80ee0c12ca177c5b9e99c68963d84594dbcc0938f9fa18c5db3ac1c0bf7002"
+    },
+    {
+      "arquivo": "lib/fiscal/nfse-cancelamento.ts",
+      "bytes": 2788,
+      "sha256": "5a57062e37ef5b20bc9d5349d9c4d354d5a930e4d4d505bc2c9a89c2d635542f"
+    },
+    {
+      "arquivo": "lib/fiscal/nfse-existente.ts",
+      "bytes": 1144,
+      "sha256": "0d128866f798b5dc72ca8dfd93924a4ec15d74bd36fba80fc925c9818dd69475"
+    },
+    {
+      "arquivo": "lib/fiscal/remessa-operacoes.ts",
+      "bytes": 3882,
+      "sha256": "53ffc26182fdf0fafc9e5f87401c9541d745575b15c30cd6d9a2853fc228d3f2"
+    },
+    {
+      "arquivo": "lib/fiscal/retorno-bem-terceiro.ts",
+      "bytes": 2324,
+      "sha256": "47f72367af4cdf769ad060f3352bfbb30cfaed478aca5bb4c6060499c09fec06"
+    },
+    {
+      "arquivo": "lib/fiscal/retorno-rateio.ts",
+      "bytes": 3002,
+      "sha256": "776054931fbe272e9b8425b70112caaf45f91246eacf5cfb61e33d6bbd5d47ae"
+    },
+    {
+      "arquivo": "lib/fiscal/servico-maquina.ts",
+      "bytes": 987,
+      "sha256": "bd6b3bab52356f6480303ab7aacf8d060f2fe322b307078ab1f6310691cb4672"
+    },
+    {
+      "arquivo": "lib/fiscal/sieg-monitoramento.ts",
+      "bytes": 3407,
+      "sha256": "c48b045cbc66353159e08832b0e24000f726aeff7fd806922dfafb6ae6ecd4e9"
+    },
+    {
+      "arquivo": "lib/fiscal/sieg-sincronizacao.ts",
+      "bytes": 2706,
+      "sha256": "0a1f82934c825d6703b7c7e510dbc21cb438cbefb9d601d92fd7c82c0d096700"
+    },
+    {
+      "arquivo": "lib/fiscal/texto-sefaz.ts",
+      "bytes": 425,
+      "sha256": "70aa464982f0bf9beb1f6b2cd1df37f98b42e2321edfd65b6e2b25853ffa3eaa"
+    },
+    {
+      "arquivo": "lib/fiscal/transferencia-maquina.ts",
+      "bytes": 2313,
+      "sha256": "a40a56a88597fae0cd360964e131624b547afb141ccb45b06e01790098df346e"
+    },
+    {
+      "arquivo": "lib/mdfe/builder.ts",
+      "bytes": 16914,
+      "sha256": "cae5ff0abed4f89f7015ca730e0b8af62498c4e10359a808e3842dbb17caad10"
+    },
+    {
+      "arquivo": "lib/mdfe/cancelamento.ts",
+      "bytes": 4581,
+      "sha256": "287ba88cd33b49a4d5ce04e01520804136f226efd3f55fb4b3175ec8058ccefd"
+    },
+    {
+      "arquivo": "lib/mdfe/ciot-regra.ts",
+      "bytes": 1073,
+      "sha256": "ac7c8bd74e0ee3feeffd8989433853be60ab99fb262e69604e1e0936e4e6ee83"
+    },
+    {
+      "arquivo": "lib/mdfe/config.ts",
+      "bytes": 6534,
+      "sha256": "8efbc305e47a37ec7a44862de2cd9b2286496e1edb9802e4acf4919534e96ab3"
+    },
+    {
+      "arquivo": "lib/mdfe/encerramento.ts",
+      "bytes": 5468,
+      "sha256": "8a21748fa793d2fc8d051e6dd919d7617d778fe911719bec531401a560083ae8"
+    },
+    {
+      "arquivo": "lib/mdfe/index.ts",
+      "bytes": 29876,
+      "sha256": "bf26064c7bb80da32f9424b3d0f3cd8ba00411c6cfe0414c88ce8ced3fd40ed5"
+    },
+    {
+      "arquivo": "lib/mdfe/produto.ts",
+      "bytes": 1629,
+      "sha256": "001ab86c6da0de4b6ff6a8ac0394fdafeae0cd92b39d69eff9a2b038306cc23d"
+    },
+    {
+      "arquivo": "lib/mdfe/signer.ts",
+      "bytes": 1638,
+      "sha256": "1d25639132ff87540827bfad7e77f2fbecf202a858303f9d805cbc0404e4365f"
+    },
+    {
+      "arquivo": "lib/mdfe/transmitter.ts",
+      "bytes": 8005,
+      "sha256": "577150fd96e8203b363230123bedb96e7189d195d93c6d03eac49ab2bf754ac8"
+    },
+    {
+      "arquivo": "lib/nfe/builder.ts",
+      "bytes": 36438,
+      "sha256": "498049ce45af8dfcc88b305dcc56494f75e18db2fdf5f180013cbea6d994349c"
+    },
+    {
+      "arquivo": "lib/nfe/certificado-a1.ts",
+      "bytes": 3894,
+      "sha256": "eb8311731a302eb397c74886a43fdd21e31d36ce22d7ffc610c8c55cb7d95e7f"
+    },
+    {
+      "arquivo": "lib/nfe/certificado-emitente.ts",
+      "bytes": 5828,
+      "sha256": "cb253bb2f39947ac20e2f7c472ff2ec2467c03c10ca21c44095223d8b45f0fd4"
+    },
+    {
+      "arquivo": "lib/nfe/certificado-metadados.ts",
+      "bytes": 1240,
+      "sha256": "11809bf8b8fa64d4d02c95b1fcf7c4a0894399d19b79bd13e239943c3d7ae094"
+    },
+    {
+      "arquivo": "lib/nfe/configs-emitentes.ts",
+      "bytes": 1615,
+      "sha256": "5054a229921200f51f0a1171e2d5c8aa4b9297fdc297d3f0aacc7b20c100dbf6"
+    },
+    {
+      "arquivo": "lib/nfe/consulta-cadastro.ts",
+      "bytes": 7864,
+      "sha256": "058b77cabf7517e91933a8f6bf36b21b3a64d3359807901bed4b97b38bbb391d"
+    },
+    {
+      "arquivo": "lib/nfe/cst-por-cfop.ts",
+      "bytes": 3945,
+      "sha256": "89e69379f11987c7eebbe4c7f1cae959f5a112cb1da7179e7fe3401fba84743b"
+    },
+    {
+      "arquivo": "lib/nfe/destinatario-transferencia.ts",
+      "bytes": 2650,
+      "sha256": "9d8c84c7ffe1aa4534e174d83eb2ab0919dbe2bb77b596cfe98e716b43ad6d49"
+    },
+    {
+      "arquivo": "lib/nfe/enviar-certificado.ts",
+      "bytes": 3282,
+      "sha256": "b3b3c2b209b73ec0107cddcc21e1d0d38d56da4967da5a8d5cb95d41e5afe235"
+    },
+    {
+      "arquivo": "lib/nfe/evento.ts",
+      "bytes": 9779,
+      "sha256": "45e283f276e3eac375b09122d2282c9866e6d245de089637336f70a2df7d2ae3"
+    },
+    {
+      "arquivo": "lib/nfe/identidade-certificado.ts",
+      "bytes": 1742,
+      "sha256": "8a1c60d1b924a7719b7eaf09226f97dc3a6f7d7be00c1dbb9218e349f9211b97"
+    },
+    {
+      "arquivo": "lib/nfe/identidade-fiscal.ts",
+      "bytes": 6800,
+      "sha256": "658a9d2d5577cd3faf805488e2b85ed665b6e86d5edae2016bb8a0ba5855969a"
+    },
+    {
+      "arquivo": "lib/nfe/index.ts",
+      "bytes": 45553,
+      "sha256": "f49e29ff095c718b0120adc06bd6ed0c409d51029942fdf5b852d6d3247cbc95"
+    },
+    {
+      "arquivo": "lib/nfe/numero-em-uso.ts",
+      "bytes": 1556,
+      "sha256": "181085df09ad78ed54633759b0a7f5b24682482038d5aa27e80321b14016af08"
+    },
+    {
+      "arquivo": "lib/nfe/remessa.ts",
+      "bytes": 1653,
+      "sha256": "03a79114acc7797f65ef8b4b306000861feb49a65fec5c3d989c1ca1078e3726"
+    },
+    {
+      "arquivo": "lib/nfe/resolver-emitente.ts",
+      "bytes": 6969,
+      "sha256": "93b5d12ee64e3695ac3edde3f24536b5b761062eea06b5af0e440d4f1f877387"
+    },
+    {
+      "arquivo": "lib/nfe/signer.ts",
+      "bytes": 5733,
+      "sha256": "80145388d4ae18e505704be1aa6b76f16e3628aa2a40436cc3aca12560fddbf4"
+    },
+    {
+      "arquivo": "lib/nfe/textos-automaticos.ts",
+      "bytes": 980,
+      "sha256": "bce25ce1f088993687aceda5916046252c4df8f5770aed72db9d624fbd8eedf4"
+    },
+    {
+      "arquivo": "lib/nfe/titular-cadastro.ts",
+      "bytes": 3525,
+      "sha256": "168e813b19f1d42438030bcd31b95a5423211c3cf7f36cb34b06732e2a28cca7"
+    },
+    {
+      "arquivo": "lib/nfe/transmitter.ts",
+      "bytes": 20177,
+      "sha256": "884fd18a555515fa3ecf71406b93670582168a4824777617108568c06c1cf68e"
+    },
+    {
+      "arquivo": "lib/operacoes-fiscais.ts",
+      "bytes": 4953,
+      "sha256": "d076cc9987daa5cf776dbeb43349b3450d4c2c2ca7dc554d9a6e51ea6842a742"
+    },
+    {
+      "arquivo": "lib/seedOperacoesGerenciais.ts",
+      "bytes": 181971,
+      "sha256": "b03487d2ebc28287c4b22de77711e634f23937f4916ba8ffdc30b5836841630e"
+    },
+    {
+      "arquivo": "lib/sefaz-consulta.ts",
+      "bytes": 16527,
+      "sha256": "c449e7cfff095620d587c243c25ca9ab8906b9b4d82cfc81ead9772b92371f4b"
+    },
+    {
+      "arquivo": "package.json",
+      "bytes": 5540,
+      "sha256": "5a5df66e9afad014d380a7d4d0b504ecbd6f6f1d37e4637a75b7f1d8b9dd3c5d"
+    },
+    {
+      "arquivo": "relatorios/auditoria-fiscal-lcdpr-2026-11-11/ferramentas/inventario.mjs",
+      "bytes": 6143,
+      "sha256": "177330e2a04c607e729c78cb4e3b99eacd40f6ef3862c096f01c3059914bdc55"
+    },
+    {
+      "arquivo": "relatorios/auditoria-fiscal-lcdpr-2026-11-11/ferramentas/reproducoes.test.mjs",
+      "bytes": 31836,
+      "sha256": "9f88805065ef83fc64ce20d806aefda7ed419c5ec628bee8bd22389b2a1e1f3c"
+    },
+    {
+      "arquivo": "scripts/test-loader.mjs",
+      "bytes": 1293,
+      "sha256": "6ede14cc8953a917033f6448b9a93bf39342851cd65226f8d4310e9e5a560495"
+    },
+    {
+      "arquivo": "scripts/teste-funcoes.mjs",
+      "bytes": 4793,
+      "sha256": "e477ac8c80887e95b3d08f14426b0946aff913e367b53df3f1c6ac4a1bd3a122"
+    },
+    {
+      "arquivo": "supabase_migrations.sql",
+      "bytes": 1251461,
+      "sha256": "d14f56df660d76512214f2412528787f9852f35d8c14e759a15f359fb1ebb86c"
+    }
+  ]
+}

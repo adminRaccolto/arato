@@ -1,4 +1,6 @@
 "use client";
+import OperacaoFiscalSelect from "../../../components/fiscal/OperacaoFiscalSelect";
+import EmissoesConferencia from "../../../components/fiscal/EmissoesConferencia";
 import { ehRetornoBemTerceiro, finalidadeDoRetorno } from "../../../lib/fiscal/retorno-bem-terceiro";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../../lib/nfe/cst-por-cfop";
 import { MODOS_FATURAMENTO, lerModoFaturamento, modoDaNota } from "../../../lib/fiscal/modo-faturamento";
@@ -232,6 +234,9 @@ function FaturamentoInner() {
   const [contratoSelecionado,  setContratoSelecionado] = useState<Contrato | null>(null);
   const [romaneios,            setRomaneios]           = useState<Romaneio[]>([]);
   const [tabNFe,       setTabNFe]      = useState<TabNFe>("produtor");
+  const [operacaoFiscalId,setOperacaoFiscalId]=useState("");
+  const [variaveisFiscais,setVariaveisFiscais]=useState<Record<string,string>>({});
+  useEffect(()=>{if(!modalAberto){setOperacaoFiscalId("");setVariaveisFiscais({});}},[modalAberto]);
   const [fVenda,       setFVenda]      = useState(() => ({
     ...FVENDA_INICIAL,
     data_emissao: hojeLocal(),
@@ -643,6 +648,7 @@ function FaturamentoInner() {
     setFazNFe(nota.fazenda_id);
     setTipoAvulsa("venda");
     setRetornoOrigemId(null);
+    setOperacaoFiscalId(txt("operacao_fiscal_id"));setVariaveisFiscais((dj.variaveis_fiscais ?? {}) as Record<string,string>);
     setRascunhoId(nota.id);
     setRascunhoOrigem(txt("duplicada_de_numero"));
     setFVenda({
@@ -842,9 +848,8 @@ function FaturamentoInner() {
     const moduloValido = (m: {modulo:string; config: Record<string,string>}) =>
       !!(m.config?.cpf_cnpj_emitente && m.config?.cert_a1_path);
     const moduloFiscal =
-      fiscalModulos.find(m => cpfCnpjDigits && m.modulo.endsWith(cpfCnpjDigits)) ??
-      fiscalModulos.find(moduloValido) ??
-      fiscalModulos[0];
+      cpfCnpjDigits ? fiscalModulos.find(m => m.modulo.endsWith(cpfCnpjDigits)) : fiscalModulos.length===1?fiscalModulos[0]:undefined;
+    if(!moduloFiscal)throw new Error("Escolha um emitente com configuração fiscal correspondente ao CPF/CNPJ.");
     const emit = moduloFiscal?.config ?? {};
 
     // Numeração prévia: série e próximo número vêm de Parâmetros → Fiscal do emitente/IE que vai
@@ -890,6 +895,7 @@ function FaturamentoInner() {
         valor_total:    i.valor_total,
       })),
       dados_nf_json: {
+        operacao_fiscal_id:operacaoFiscalId || null,variaveis_fiscais:variaveisFiscais,
         modulo_key:      moduloFiscal?.modulo ?? "",
         emit_razao:      emit.razao_social ?? "",
         emit_cnpj:       emit.cpf_cnpj_emitente ?? "",
@@ -997,7 +1003,10 @@ function FaturamentoInner() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               fazenda_id:      fazEmissao,
+              nota_id:nova.id,
               modulo_key:      moduloFiscal.modulo,
+              data_emissao: fVenda.data_emissao,
+              operacao_fiscal_id:operacaoFiscalId || undefined,variaveis_fiscais:variaveisFiscais,
               emit_ie_override: fVenda.ie_id
                 ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual
                 : undefined,
@@ -1050,7 +1059,7 @@ function FaturamentoInner() {
           if (resp.ok || resp.status === 422) {
             const res = await resp.json() as {
               sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string;
-              cStat: string; xMotivo: string;
+              cStat:string;xMotivo:string;xmlUrl?:string;operacao_id?:string;pendente?:boolean;sincronizacao_pendente?:boolean;tributacao_itens?:unknown[];totais?:Record<string,number>;ambiente?:string;
               emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
               emit_endereco?: string; emit_bairro?: string; emit_municipio?: string; emit_uf?: string; emit_cep?: string;
             };
@@ -1061,6 +1070,7 @@ function FaturamentoInner() {
               const djAtualizado = {
                 ...djAtual,
                 protocolo_autorizacao: res.protocolo ?? djAtual.protocolo_autorizacao,
+                ambiente:res.ambiente,fiscal_operacao_id:res.operacao_id,tributacao_itens:res.tributacao_itens,...(res.totais ?? {}),
                 emit_razao:      res.emit_razao ?? djAtual.emit_razao,
                 emit_cnpj:       res.emit_cnpj  ?? djAtual.emit_cnpj,
                 emit_ie:         res.emit_ie    ?? djAtual.emit_ie,
@@ -1070,11 +1080,14 @@ function FaturamentoInner() {
                 emit_uf:         res.emit_uf    ?? djAtual.emit_uf,
                 emit_cep:        res.emit_cep   ?? djAtual.emit_cep,
               };
-              await supabase.from("notas_fiscais").update({
-                status: "autorizada", chave_acesso: res.chave, numero: novoNumero,
+              const gravada=await supabase.from("notas_fiscais").update({
+                status: "autorizada", chave_acesso: res.chave, numero: novoNumero,xml_url:res.xmlUrl,
                 ...(res.serie ? { serie: res.serie } : {}),
                 dados_nf_json: djAtualizado,
-              }).eq("id", nova.id);
+              }).eq("id", nova.id).select("id").single();
+              if(gravada.error)throw new Error("NF autorizada; gravação local pendente. Consulte Emissões em conferência. "+gravada.error.message);
+              const vinculo=await fetch("/api/fiscal/vincular-nota",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nota_id:nova.id})});
+              if(!vinculo.ok)erroSefaz="NF autorizada; conclua o vínculo em Emissões em conferência.";
               // Grava chave de volta no romaneio para que Expedição reconheça como faturado
               if (fVenda.romaneio_id) {
                 await supabase.from("romaneios").update({
@@ -1088,6 +1101,12 @@ function FaturamentoInner() {
               nova.chave_acesso = res.chave;
               nova.numero = novoNumero;
               if (res.serie) nova.serie = res.serie;
+            } else if(res.pendente) {
+              setRascunhoId(nova.id);
+              const r=await supabase.from("notas_fiscais").update({status:"em_digitacao",chave_acesso:res.chave,numero:res.numero ?? nova.numero,dados_nf_json:{...(nova.dados_nf_json ?? {}),fiscal_operacao_id:res.operacao_id,processamento_pendente:true}}).eq("id",nova.id).select("id").single();
+              if(r.error)throw r.error;
+              if(res.chave)await fetch("/api/fiscal/vincular-nota",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nota_id:nova.id})});
+              erroSefaz="Resultado ainda não confirmado. Consulte Emissões em conferência antes de emitir novamente.";
             } else {
               await marcarRejeitada(nova, `SEFAZ [${res.cStat}]: ${res.xMotivo}`);
               erroSefaz = `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
@@ -1098,8 +1117,8 @@ function FaturamentoInner() {
           }
         } catch (errSefaz) {
           // Erro interno (ex: IBGE ausente, certificado inválido) — mostra para o usuário e marca como rejeitada
-          await marcarRejeitada(nova, String(errSefaz));
-          erroSefaz = String(errSefaz);
+          setRascunhoId(nova.id);
+          erroSefaz = "Resultado/gravação não confirmado. Consulte Emissões em conferência antes de emitir novamente. "+String(errSefaz);
         }
       }
 
@@ -1338,6 +1357,7 @@ function FaturamentoInner() {
 
       case "operacoes": return (
         <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 100px 80px 80px 120px 120px", gap:12 }}>
+          <OperacaoFiscalSelect cfop={fVenda.cfop} data={fVenda.data_emissao} value={operacaoFiscalId} onChange={setOperacaoFiscalId} variaveis={variaveisFiscais} onVariaveis={setVariaveisFiscais} nfReferencia={fVenda.nf_ref_chave}/>
           <div style={{ gridColumn:"1/3" }}>
             <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
             <SelectField style={inp} value={fVenda.cfop}
@@ -1631,6 +1651,7 @@ function FaturamentoInner() {
         <OperationalHeading data-arato-page-heading="true" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>{modo ? MODOS_FATURAMENTO[modo].titulo : "Faturamento — NF-e de Saída"}</h1>
+          <EmissoesConferencia />
             {modo && <div style={{ fontSize:12, color:"var(--text-2)", marginTop:2 }}>{MODOS_FATURAMENTO[modo].subtitulo}</div>}
           </div>
           <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNova}>{modo ? MODOS_FATURAMENTO[modo].botao : "+ Nova NF-e"}</OperationalButton>

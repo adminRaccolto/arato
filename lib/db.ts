@@ -1,3 +1,5 @@
+import { lerPaginas } from "./paginar";
+import { confirmarEmissaoPersistida } from "./fiscal/requisicao";
 import { fetchFinanceiro } from "./financeiro/requisicao";
 import { carregarPagamentosAdiantamentos, geraMovimentoBancario } from "./financeiro/adiantamentos-fornecedor";
 /**
@@ -1511,16 +1513,24 @@ export async function salvarCessaoDebitos(contrato_id: string, fazenda_id: strin
 // NOTAS FISCAIS
 // ————————————————————————————————————————
 
-export async function listarNotasFiscais(fazenda_id: string): Promise<NotaFiscal[]> {
-  const { data, error } = await supabase.from("notas_fiscais").select("*").eq("fazenda_id", fazenda_id).order("data_emissao", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+export async function listarNotasFiscais(fazenda_id:string):Promise<NotaFiscal[]> {
+ return lerPaginas<NotaFiscal>((a,b)=>supabase.from("notas_fiscais").select("*").eq("fazenda_id",fazenda_id).order("data_emissao",{ascending:false}).order("id").range(a,b));
 }
 
 export async function criarNotaFiscal(n: Omit<NotaFiscal, "id" | "created_at">): Promise<NotaFiscal> {
-  const { data, error } = await supabase.from("notas_fiscais").insert(n).select().single();
+  const { data, error } = await supabase.rpc("fiscal_gravar_nota",{p_dados:n});
   if (error) throw error;
-  return data;
+  if(!data?.id)throw new Error("A NF não foi confirmada no banco.");
+  if(data.chave_acesso) {
+    if(data.status==="autorizada")confirmarEmissaoPersistida(data.chave_acesso);
+    if(typeof window!=="undefined") {
+      try {
+        const r=await fetch("/api/fiscal/vincular-nota",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nota_id:data.id})});
+        if(!r.ok)console.warn("NF gravada; confirmação do vínculo fiscal pendente.");
+      }catch{console.warn("NF gravada; confirmação do vínculo fiscal pendente.");}
+    }
+  }
+  return data as NotaFiscal;
 }
 
 export async function atualizarStatusNFe(id: string, status: NotaFiscal["status"], chave_acesso?: string): Promise<void> {
@@ -6272,41 +6282,7 @@ export async function listarOperacoesGerenciaisAtivas(
   fazenda_id: string,
   filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" }
 ): Promise<OperacaoGerencial[]> {
-  return cached(`operacoesGerenciais:ativas:${fazenda_id}:${JSON.stringify(filtro ?? {})}`, async () => {
-    const conta_id = await resolverContaIdDaFazenda(fazenda_id);
-    const orFilter = ogOrFilter(conta_id, fazenda_id);
-    const PAGE = 1000;
-    let data: OperacaoGerencial[] = [];
-    let from = 0;
-    while (true) {
-      let q = supabase.from("operacoes_gerenciais").select("*")
-        .or(orFilter)
-        .eq("inativo", false)
-        .order("classificacao")
-        .order("id")
-        .range(from, from + PAGE - 1);
-      if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
-      if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
-      if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
-      if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
-      if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
-      const { data: page, error } = await q;
-      if (error) throw error;
-      data = data.concat(page ?? []);
-      if (!page || page.length < PAGE) break;
-      from += PAGE;
-    }
-    // Exclui nós de grupo; deduplicar por classificação
-    const seen = new Set<string>();
-    return data.filter(op => {
-      if (!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
-            op.permite_adiantamentos || op.permite_baixas || op.permite_estoque)) return false;
-      const key = op.classificacao ?? op.id;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  });
+  return listarOperacoesGerenciaisAtivasDaConta(filtro, fazenda_id);
 }
 
 // Carrega operações gerenciais ativas: global + conta + TODAS as fazendas (Option A)
@@ -6449,13 +6425,19 @@ export async function criarOperacaoGerencial(o: Omit<OperacaoGerencial, "id" | "
   return data;
 }
 export async function atualizarOperacaoGerencial(id: string, o: Partial<OperacaoGerencial>): Promise<void> {
-  const { error } = await supabase.from("operacoes_gerenciais").update(o).eq("id", id);
+  const patch = { ...o } as Record<string, unknown>;
+  for (const key of ["parent_id", "tipo_lcdpr", "operacao_estoque", "obs_legal", "natureza_receita", "tipo_formula", "modelo_contabil", "conta_debito", "conta_credito", "historico_tesouraria_id", "historico_tesouraria_nome"]) {
+    if (key in patch && (patch[key] === undefined || patch[key] === "")) patch[key] = null;
+  }
+  const { data, error } = await supabase.from("operacoes_gerenciais").update(patch).eq("id", id).select("id").maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error("A operação gerencial não foi atualizada. Recarregue a lista e confira seu acesso.");
   invalidateCache("operacoesGerenciais");
 }
 export async function excluirOperacaoGerencial(id: string): Promise<void> {
-  const { error } = await supabase.from("operacoes_gerenciais").delete().eq("id", id);
+  const { data, error } = await supabase.from("operacoes_gerenciais").delete().eq("id", id).select("id").maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error("A operação gerencial não foi excluída. Recarregue a lista.");
   invalidateCache("operacoesGerenciais");
 }
 

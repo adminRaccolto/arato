@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef, useCallback, useId } from "react";
 
 export interface SelectBuscaOption {
-  value: string;
+  value:string;
+  aliases?:string[];
   label: string;
   group?: string;
 }
@@ -68,7 +69,7 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
   }
   const hasGroups = Object.keys(grupos).length > 0;
 
-  const selectedLabel = options.find(o => o.value === value)?.label;
+  const selectedLabel = options.find(o => o.value === value || o.aliases?.includes(value))?.label;
 
   const selectOption = (v: string) => { onChange(v); fechar(); };
 
@@ -165,10 +166,10 @@ export default function SelectBusca({ value, onChange, options, placeholder = "â
                     <div style={{ padding: "5px 12px 3px", fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.07em", background: "#F3F7FC", borderTop: "0.5px solid #E0EAF6" }}>
                       {grupo}
                     </div>
-                    {items.map(o => <OptionRow key={o.value} o={o} selected={o.value === value} onSelect={selectOption} />)}
+                    {items.map(o => <OptionRow key={o.value} o={o} selected={o.value === value || !!o.aliases?.includes(value)} onSelect={selectOption} />)}
                   </div>
                 ))
-              : semGrupo.map(o => <OptionRow key={o.value} o={o} selected={o.value === value} onSelect={selectOption} />)
+              : semGrupo.map(o => <OptionRow key={o.value} o={o} selected={o.value === value || !!o.aliases?.includes(value)} onSelect={selectOption} />)
             }
           </div>
         </div>

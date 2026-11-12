@@ -1,32 +1,16 @@
+import { endpoints,ufPorCodigo } from "./nfe/endpoints";
+import { interpretarConsultaEvento } from "./fiscal/evento-consulta";
 import { candidatosDoEmitente, baixarA1Exato } from "./nfe/certificado-emitente";
 import { validarCertificadoA1 } from "./nfe/certificado-a1";
 // Consulta NF-e na SEFAZ por chave de acesso usando certificado A1 (mTLS)
 import https from "https";
+import { CA_FISCAL } from "./fiscal/ca-icp-brasil";
+import type { PemPair } from "./nfe/signer";
 import { gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 
-// ── Endpoints por cUF ──────────────────────────────────────────────────────
-// Produção — SVRS atende MT, GO, MS e outros; SP e RS têm próprios
-const ENDPOINTS_PROD: Record<string, string> = {
-  "35": "https://nfe.fazenda.sp.gov.br/ws/nfeconsultaprotocolo4.asmx",      // SP
-  "43": "https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx",      // RS
-  "31": "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeConsultaProtocolo4", // MG
-  "29": "https://nfe.sefaz.ba.gov.br/webservices/NFeConsultaProtocolo4/NFeConsultaProtocolo4.asmx", // BA
-  "26": "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeConsultaProtocolo4", // PE
-  // SVRS (demais UFs incluindo MT=51, GO=52, MS=50)
-  // MT (51): a autorização normal é da própria SEFAZ-MT. O SVRS recusa a consulta dessas chaves
-  // com "tpEmis incompatível com a SVC-[AN/RS]" — mesmo endereço já usado em lib/nfe/transmitter.ts.
-  "51": "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeConsulta4",
-  "_svrs": "https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx",
-};
-
-function getEndpoint(cuf: string, ambiente: "1" | "2"): string {
-  if (ambiente === "2") {
-    // Homologação — MT tem endereço próprio; demais UFs usam o SVRS
-    if (cuf === "51") return "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeConsulta4";
-    return "https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx";
-  }
-  return ENDPOINTS_PROD[cuf] ?? ENDPOINTS_PROD["_svrs"];
+export function getEndpoint(cuf:string,ambiente:"1"|"2"):string {
+ return endpoints(ufPorCodigo[cuf] ?? "",ambiente==="1"?"producao":"homologacao").consulta;
 }
 
 // ── SOAP envelope de consulta ──────────────────────────────────────────────
@@ -59,7 +43,7 @@ function buildSoapEnvelope(chave: string, cuf: string, ambiente: "1" | "2"): str
 // mesmo padrão usado por buscarConfEmitente (lib/nfe/index.ts) na emissão.
 // Sem saber de antemão qual emitente da conta consultar essa chave específica,
 // tenta cada par válido da conta até um decodificar com sucesso.
-async function carregarCertificados(fazendaId: string): Promise<{ pfxBuffer: Buffer; senha: string }[]> {
+async function carregarCertificados(fazendaId:string,documentoChave?:string,somenteTitular=false):Promise<{pfxBuffer:Buffer;senha:string;documento:string}[]> {
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -67,13 +51,18 @@ async function carregarCertificados(fazendaId: string): Promise<{ pfxBuffer: Buf
 
   const {ids,candidatos}=await candidatosDoEmitente(sb,fazendaId);
   const vistos=new Set<string>();
-  const resultado:{pfxBuffer:Buffer;senha:string}[]=[];
-  for(const c of candidatos) {
+  const resultado:{pfxBuffer:Buffer;senha:string;documento:string}[]=[];
+  const titular=candidatos.filter(c=>c.documento?.padStart(14,"0")===documentoChave);
+  const elegiveis=titular.length?[...titular,...candidatos.filter(c=>!c.documento)]:somenteTitular?candidatos.filter(c=>!c.documento):candidatos;
+  for(const c of elegiveis) {
     const chave=JSON.stringify([c.caminho,c.senha]);if(vistos.has(chave)) continue;vistos.add(chave);
     try {
       const buffer=await baixarA1Exato(sb,c.caminho,ids);
-      validarCertificadoA1(buffer,c.senha,{documento:c.documento});
-      resultado.push({pfxBuffer:buffer,senha:c.senha});
+      const validado=validarCertificadoA1(buffer,c.senha,{documento:c.documento});
+      const documento=c.documento || validado.documento;
+      if(!documento || (somenteTitular && documento.padStart(14,"0")!==documentoChave))continue;
+      resultado.push({pfxBuffer:buffer,senha:c.senha,documento});
+      break;
     } catch { /* A consulta pode usar outro titular válido da mesma conta. */ }
   }
 
@@ -98,14 +87,18 @@ function soapRequest(url: string, body: string, cert: string, key: string): Prom
       },
       cert,
       key,
-      // ICP-Brasil CAs não estão no bundle padrão do Node.js — comportamento padrão de todas as libs fiscais brasileiras (ACBr, node-nfe, etc.)
-      rejectUnauthorized: false,
+      ca: CA_FISCAL,
+      rejectUnauthorized: true,
+      signal: AbortSignal.timeout(15_000),
     };
 
     const req = https.request(options, (res) => {
       let data = "";
       res.on("data", (chunk) => { data += chunk; });
-      res.on("end", () => resolve(data));
+      res.on("end", () => {
+        if(!res.statusCode || res.statusCode<200 || res.statusCode>=300 || !data.trim()) reject(new Error("SEFAZ retornou resposta HTTP inválida: "+res.statusCode));
+        else resolve(data);
+      });
     });
 
     req.on("error", reject);
@@ -186,6 +179,21 @@ function parseRetornoConsulta(xml: string): {
 }
 
 // ── Função principal exportada ─────────────────────────────────────────────
+export async function consultarSituacaoNFe(chave:string,pem:PemPair,ambiente:"producao"|"homologacao") {
+  if(!/^\d{44}$/.test(chave))throw new Error("Chave NF-e inválida.");
+  const tpAmb=ambiente==="producao"?"1":"2";
+  const xml=await soapRequest(getEndpoint(chave.slice(0,2),tpAmb),buildSoapEnvelope(chave,chave.slice(0,2),tpAmb),pem.certChain ?? pem.cert,pem.key);
+  const r=parseRetornoConsulta(xml);
+  return {sucesso:r.cStat==="100",cStat:r.cStat,xMotivo:r.xMotivo,protocolo:r.protNFe?.match(/<nProt>([^<]+)/)?.[1],xmlProt:r.protNFe};
+}
+
+export async function consultarEventoNFe(chave:string,pem:PemPair,ambiente:"producao"|"homologacao",acao:"cancelar"|"carta_correcao",sequencia:number){
+  if(!/^\d{44}$/.test(chave))throw new Error("Chave NF-e inválida.");
+  const tpAmb=ambiente==="producao"?"1":"2";
+  const xml=await soapRequest(getEndpoint(chave.slice(0,2),tpAmb),buildSoapEnvelope(chave,chave.slice(0,2),tpAmb),pem.certChain ?? pem.cert,pem.key);
+  return interpretarConsultaEvento(xml,chave,acao,sequencia);
+}
+
 export async function consultarNfePorChave(
   chaveAcesso: string,
   fazendaId: string,
@@ -224,26 +232,20 @@ export async function consultarNfePorChave(
   // antemão qual emitente é o dono da chave sendo consultada (ver comentário em
   // carregarCertificados). Qualquer um decodificando com sucesso já basta pra autenticar
   // a consulta via mTLS junto à SEFAZ.
-  const certs = await carregarCertificados(fazendaId);
+  const certs = await carregarCertificados(fazendaId,chave.slice(6,20));
   if (!certs.length) return { ok: false, erro: "Nenhum certificado A1 com senha cadastrada encontrado nesta conta. Configure em Parâmetros do Sistema → Fiscal." };
 
-  let pem: { cert: string; key: string; certChain?: string } | null = null;
+  const soap = buildSoapEnvelope(chave, cuf, tpAmb);
+  let responseXml: string | undefined;
+  let ultimoErro="Não foi possível autenticar a consulta com os certificados disponíveis.";
   for (const cert of certs) {
     try {
-      pem = pfxParaPem(cert.pfxBuffer, cert.senha);
+      const pem = pfxParaPem(cert.pfxBuffer, cert.senha);
+      responseXml = await soapRequest(endpoint, soap, pem.certChain ?? pem.cert, pem.key);
       break;
-    } catch { /* tenta o próximo certificado da conta */ }
+    } catch(e) { ultimoErro=(e as Error).message; }
   }
-  if (!pem) return { ok: false, erro: `Nenhum dos ${certs.length} certificado(s) A1 desta conta abriu com a senha cadastrada. Confira em Parâmetros do Sistema → Fiscal.` };
-
-  // Montar e enviar SOAP
-  const soap = buildSoapEnvelope(chave, cuf, tpAmb);
-  let responseXml: string;
-  try {
-    responseXml = await soapRequest(endpoint, soap, pem.certChain ?? pem.cert, pem.key);
-  } catch (e) {
-    return { ok: false, erro: `Erro ao conectar à SEFAZ: ${(e as Error).message}` };
-  }
+  if(!responseXml) return {ok:false,erro:"Falha na consulta à SEFAZ: "+ultimoErro};
 
   // Parsear resposta
   const resultado = parseRetornoConsulta(responseXml);
@@ -312,13 +314,15 @@ export async function baixarXmlNfePorChaveDFe(
   const chave = chaveAcesso.replace(/\D/g, "");
   if (chave.length !== 44) return { ok: false, erro: "Chave de acesso inválida (deve ter 44 dígitos)" };
   const doc14 = chave.substring(6, 20);
-  const tagDoc = doc14.startsWith("000") ? `<CPF>${doc14.slice(3)}</CPF>` : `<CNPJ>${doc14}</CNPJ>`;
+
   const tpAmb = ambiente === "producao" ? "1" : "2";
   const url = ambiente === "producao"
     ? "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx"
     : "https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx";
-  const certs = await carregarCertificados(fazendaId);
+  const certs=await carregarCertificados(fazendaId,doc14,true);
   if (!certs.length) return { ok: false, erro: "Nenhum certificado A1 com senha cadastrada encontrado nesta conta." };
+  const documento=certs[0].documento;
+  const tagDoc=documento.length===11?`<CPF>${documento}</CPF>`:`<CNPJ>${documento}</CNPJ>`;
   const dados = `<distDFeInt versao="1.01" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${tpAmb}</tpAmb><cUFAutor>${chave.substring(0, 2)}</cUFAutor>${tagDoc}<consChNFe><chNFe>${chave}</chNFe></consChNFe></distDFeInt>`;
   const envelope = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDistDFeInteresse xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe"><nfeDadosMsg>${dados}</nfeDadosMsg></nfeDistDFeInteresse></soap12:Body></soap12:Envelope>`;
   let ultimo: { cStat?: string; xMotivo?: string } = {};

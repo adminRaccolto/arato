@@ -30,6 +30,15 @@ const SOAP_ACTION = `${SOAP_NS}/mdfeRecepcao`;
 const EVENT_SOAP_NS     = "http://www.portalfiscal.inf.br/mdfe/wsdl/MDFeRecepcaoEvento";
 const EVENT_SOAP_ACTION = `${EVENT_SOAP_NS}/mdfeRecepcaoEvento`;
 
+/** Consulta a mesma chave após resultado desconhecido; nunca transmite outro MDF-e. */
+export async function consultarSituacaoMDFe(chave:string,pem:PemPair,ambiente:Ambiente):Promise<RespostaMDFe> {
+  if(!/^\d{44}$/.test(chave))throw new Error("Chave MDF-e inválida.");
+  const ns="http://www.portalfiscal.inf.br/mdfe/wsdl/MDFeConsulta";
+  const host=ambiente==="producao"?"mdfe.svrs.rs.gov.br":"mdfe-homologacao.svrs.rs.gov.br";
+  const xml=`<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><mdfeDadosMsg xmlns="${ns}"><consSitMDFe xmlns="http://www.portalfiscal.inf.br/mdfe" versao="3.00"><tpAmb>${ambiente==="producao"?"1":"2"}</tpAmb><xServ>CONSULTAR</xServ><chMDFe>${chave}</chMDFe></consSitMDFe></mdfeDadosMsg></soap12:Body></soap12:Envelope>`;
+  return parseResposta(await soapPost("https://"+host+"/ws/MDFeConsulta/MDFeConsulta.asmx",xml,pem,ns+"/mdfeConsultaMDF"));
+}
+
 function compactarMDFeBase64(xmlAssinado: string): string {
   const raiz = xmlAssinado.replace(/^﻿/, "").replace(/^<\?xml[^?]*\?>\s*/i, "").trim();
   if (!raiz.startsWith("<MDFe")) {
