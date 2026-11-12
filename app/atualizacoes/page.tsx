@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.12-a",
+    data: "12/11/2026",
+    titulo: "Devolução de compra com desconto destacado",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "NF-e de devolução de compra: produto com desconto na NF de origem sai com o valor cheio, o desconto destacado e o valor líquido, como na nota do fornecedor (antes, o líquido ia como valor do produto e o desconto não aparecia). O desconto de cada item vem do XML da nota de origem; sem XML, o desconto da nota é rateado pelos itens. Na tela de devolução, abaixo do valor devolvido aparecem o valor cheio e o desconto." },
+    ],
+  },
+  {
     versao: "2026.11.11-a",
     data: "11/11/2026",
     titulo: "Folha: relatório único e 13º em percentual",

@@ -54,7 +54,7 @@ import {
   
   processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
-import { ieDaDevolucao, ieDoDestinatarioNoXml, itemDevolvivel, municipioDoDestinatarioNoXml, podeDevolverNf } from "../../lib/fiscal/devolucao-compra";
+import { ieDaDevolucao, ieDoDestinatarioNoXml, itemDevolvivel, itensDoXmlNfe, municipioDoDestinatarioNoXml, podeDevolverNf, precoEDescontoDoItem, valoresDaDevolucao, type ValoresDevolucao } from "../../lib/fiscal/devolucao-compra";
 import { SeletorIE, useDadosEmissao } from "./EmissaoNfe";
 import { useAuth } from "../AuthProvider";
 import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
@@ -596,6 +596,7 @@ export default function ModalNf({
     pRedBC: string;  // CST 20 (CFOP 5556/6556): % de redução da base de cálculo do ICMS
     pICMS: string;   // CST 20: alíquota do ICMS (vazio = padrão: 17% interno, 12% interestadual)
     cstIcms: string; // CST do ICMS escolhido à mão (vazio = automático pelo CFOP; ex.: 5411 → 060)
+    valor_unitario_bruto: number; // valor cheio por unidade, como na NF de origem (valor_unitario é o líquido, após o desconto)
   }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
@@ -604,7 +605,7 @@ export default function ModalNf({
   const [devIeOrigem, setDevIeOrigem] = useState<string | null>(null);
   const [devMunicipioOrigem, setDevMunicipioOrigem] = useState<string | null>(null);
   const [devIeId, setDevIeId] = useState("");
-  const [devFatorDesconto, setDevFatorDesconto] = useState(1);
+  const [devValores, setDevValores] = useState<Pick<ValoresDevolucao, "fonte" | "descontoNf" | "fatorAcrescimo">>({ fonte: "nenhum", descontoNf: 0, fatorAcrescimo: 1 });
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
   const [devCfop,    setDevCfop]    = useState("5201");
   const [devData,    setDevData]    = useState(hojeLocal());
@@ -1998,15 +1999,18 @@ export default function ModalNf({
     setDevIeOrigem(nf.ie_produtor ?? null);
     setDevMunicipioOrigem(null);
     setDevIeId("");
-    if (!nf.ie_produtor && nf.xml_storage_path) {
-      supabase.storage.from("arquivos").download(nf.xml_storage_path)
-        .then(async ({ data }) => {
-          if (!data) return;
-          const xml = await data.text();
-          setDevIeOrigem(ieDoDestinatarioNoXml(xml));
-          setDevMunicipioOrigem(municipioDoDestinatarioNoXml(xml));
-        })
-        .catch(() => {});
+    // XML da NF de origem: IE de quem comprou e o desconto de cada produto
+    const xmlOrigem: Promise<string | null> = nf.xml_content
+      ? Promise.resolve(nf.xml_content)
+      : nf.xml_storage_path
+        ? supabase.storage.from("arquivos").download(nf.xml_storage_path).then(({ data }) => data?.text() ?? null).catch(() => null)
+        : Promise.resolve(null);
+    if (!nf.ie_produtor) {
+      xmlOrigem.then(xml => {
+        if (!xml) return;
+        setDevIeOrigem(ieDoDestinatarioNoXml(xml));
+        setDevMunicipioOrigem(municipioDoDestinatarioNoXml(xml));
+      });
     }
     setDevErr("");
     setDevObs("");
@@ -2045,13 +2049,11 @@ export default function ModalNf({
     // Carrega os itens da NF original
     try {
       const itensDB = await listarNfEntradaItens(nf.id);
-      // O valor de cada item na NF é o BRUTO (o que o fornecedor cobrou por aquele produto); o que
-      // deve ser devolvido/ressarcido é o LÍQUIDO — mesmo princípio já aplicado ao custo de estoque.
-      // Reconstrói o fator pela soma dos itens (sempre bruta) contra o valor líquido da NF — não
-      // confia em valor_produtos do cabeçalho, que pode estar desatualizado em NFs antigas/importadas.
-      const somaItensGross = itensDB.reduce((s, i) => s + (i.valor_total || 0), 0);
-      const fatorDesconto = somaItensGross > 0 && nf.valor_total > 0 ? nf.valor_total / somaItensGross : 1;
-      setDevFatorDesconto(fatorDesconto);
+      // O valor de cada item na NF é o BRUTO; o que volta ao produtor é o LÍQUIDO. A NF-e de devolução repete a de
+      // origem: valor cheio do produto, desconto destacado e líquido (desconto do XML por item; sem ele, o do cabeçalho
+      // rateado; sem nenhum, a diferença entre a soma dos itens e o total da NF). Ver lib/fiscal/devolucao-compra.ts.
+      const valores = valoresDaDevolucao(itensDB, nf, itensDoXmlNfe(await xmlOrigem));
+      setDevValores({ fonte: valores.fonte, descontoNf: valores.descontoNf, fatorAcrescimo: valores.fatorAcrescimo });
       // Estoque (com insumo) e Apropriação Direta entram; o que já foi devolvido antes sai do disponível
       const elegiveis = itensDB.filter(itemDevolvivel);
       const jaDevolvido = await devolvidoPorItem(elegiveis.map(i => i.id));
@@ -2075,7 +2077,8 @@ export default function ModalNf({
           unidadeOriginalNF:   i.unidade_nf ?? undefined,
           ncm:                 i.ncm ?? undefined,
           quantidade_devolver: 0,
-          valor_unitario:      i.valor_unitario * fatorDesconto,
+          valor_unitario:      valores.porItem[i.id]?.unitLiquido ?? 0,
+          valor_unitario_bruto: valores.porItem[i.id]?.unitBruto ?? 0,
           valor_total:         0,
         }));
       setDevItens(devs);
@@ -2143,7 +2146,7 @@ export default function ModalNf({
             valor_total: itensParaDevolver.reduce((t, i) => t + i.valor_total, 0), data_emissao: devData,
             status: "autorizada", chave_acesso: chave || undefined, auto: false, tipo_emissao: 1,
             observacao: `Devolução da NF ${devNfOrig.numero}/${devNfOrig.serie} — emitida em outro sistema${devObs ? ` — ${devObs}` : ""}`,
-            itens_json: itensParaDevolver.map(i => ({ item: i.descricao_produto, ncm: i.ncm ?? "", cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade_devolver, valor_unitario: i.quantidade_devolver ? Math.round(i.valor_total / i.quantidade_devolver * 1e6) / 1e6 : 0 })),
+            itens_json: itensParaDevolver.map(i => ({ item: i.descricao_produto, ncm: i.ncm ?? "", cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade_devolver, ...precoEDescontoDoItem(i.quantidade_devolver, i.valor_unitario_bruto, i.valor_total) })),
             dados_nf_json: { origem_externa: true, devolucao_nf_entrada_id: nfDevolucao.id, nf_origem_id: devNfOrig.id },
           } as never);
         } catch (e) { console.error("[devolucao externa] não registrou no Monitor de NF-e:", e); }
@@ -2171,7 +2174,8 @@ export default function ModalNf({
         ...(i.cstIcms && !["5556", "6556"].includes(i.cfop) ? { cst_icms: i.cstIcms.slice(-2) } : {}),
         unidade:         i.unidade.toUpperCase(),
         quantidade:      i.quantidade_devolver,
-        valor_unitario:  i.valor_unitario,
+        // valor cheio + desconto destacado, como na NF de origem (vProd − vDesc = líquido devolvido)
+        ...precoEDescontoDoItem(i.quantidade_devolver, i.valor_unitario_bruto, i.valor_total),
       }));
       // A devolução enviava só nome+CPF/CNPJ do destinatário (o fornecedor da NF
       // original) — sem endereço/IBGE nenhum, sempre, pra toda devolução, não só
@@ -2267,7 +2271,7 @@ export default function ModalNf({
           valor_total: itensParaDevolver.reduce((s, i) => s + i.valor_total, 0), data_emissao: devData,
           status: "autorizada", chave_acesso: res.chave, xml_url: res.xmlUrl, auto: false, tipo_emissao: 1,
           observacao: `Devolução da NF ${devNfOrig.numero}/${devNfOrig.serie}${devObs ? ` — ${devObs}` : ""}`,
-          itens_json: itensNfe.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario })),
+          itens_json: itensNfe.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_desconto: i.valor_desconto })),
           dados_nf_json: {
             modulo_key: fiscalModulos[0].modulo, protocolo_autorizacao: res.protocolo || undefined,
             emit_razao: res.emit_razao, emit_cnpj: res.emit_cnpj, emit_ie: res.emit_ie, emit_endereco: res.emit_endereco,
@@ -4585,9 +4589,15 @@ export default function ModalNf({
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                   NF de origem: <strong>{devNfOrig.numero}/{devNfOrig.serie}</strong> · {devNfOrig.emitente_nome} · {fmtBRL(devNfOrig.valor_total)}
                 </div>
-                {Math.abs(devFatorDesconto - 1) > 0.001 && (
-                  <div style={{ fontSize: 11, color: "#7A4300", marginTop: 4 }} title="A NF original teve desconto/acréscimo no total em relação à soma dos itens — o valor devolvido por item já sai ajustado nessa mesma proporção.">
-                    Valor por item ajustado em {((devFatorDesconto - 1) * 100).toFixed(1)}% pro rata do {devFatorDesconto < 1 ? "desconto" : "acréscimo"} da NF original
+                {devValores.descontoNf > 0.004 && (
+                  <div style={{ fontSize: 11, color: "#7A4300", marginTop: 4 }}>
+                    NF de origem com desconto de {fmtBRL(devValores.descontoNf)}: a devolução sai com o valor cheio de cada produto, o desconto destacado e o valor líquido
+                    {devValores.fonte === "xml" ? " (desconto de cada item lido do XML)" : devValores.fonte === "cabecalho" ? " (desconto da nota rateado pelo valor dos itens)" : " (diferença entre a soma dos itens e o total da nota)"}
+                  </div>
+                )}
+                {devValores.fatorAcrescimo > 1.001 && (
+                  <div style={{ fontSize: 11, color: "#7A4300", marginTop: 4 }} title="O total da NF original fica acima da soma dos produtos (IPI, frete, ST): o valor devolvido por item sai ajustado nessa mesma proporção.">
+                    Valor por item ajustado em {((devValores.fatorAcrescimo - 1) * 100).toFixed(1)}% pro rata do acréscimo da NF original
                   </div>
                 )}
               </div>
@@ -4687,6 +4697,14 @@ export default function ModalNf({
                       </div>
                       <div style={{ padding: "8px 12px", fontSize: 13, fontWeight: 600, color: it.quantidade_devolver > 0 ? "#E24B4A" : "var(--text-muted)", textAlign: "right" }}>
                         {it.quantidade_devolver > 0 ? fmtBRL(it.valor_total) : "—"}
+                        {it.quantidade_devolver > 0 && (() => {
+                          const pd = precoEDescontoDoItem(it.quantidade_devolver, it.valor_unitario_bruto, it.valor_total);
+                          return pd.valor_desconto > 0 ? (
+                            <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-3)", marginTop: 2 }} title="Na NF-e: valor cheio do produto, desconto e líquido, como na NF de origem">
+                              cheio {fmtBRL(Math.round(it.quantidade_devolver * pd.valor_unitario * 100) / 100)} · desc. {fmtBRL(pd.valor_desconto)}
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                       <div style={{ padding: "6px 8px" }}>
                         <select value={it.cfop} onChange={e => setDevItens(prev => prev.map(x => x.key === it.key ? { ...x, cfop: e.target.value } : x))} style={{ ...inp, padding: "5px 6px", fontSize: 12 }}>
