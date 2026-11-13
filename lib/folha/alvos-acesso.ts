@@ -46,6 +46,9 @@ export function alvosFolha(operacao: string, p: P): AlvosFolha | null {
     case "corrigir_adiantamento":
       a.adiantamentos = ids(p.id); a.funcionarios = ids(p.funcionario_id); break;
     case "cancelar_adiantamento":
+    case "titulos_uso_adiantamento":
+    case "usar_adiantamento":
+    case "desfazer_uso_adiantamento":
       a.adiantamentos = ids(p.id); break;
     case "editar_premiacao":
       a.premiacoes = ids(p.id); a.funcionarios = ids(p.funcionario_id); break;

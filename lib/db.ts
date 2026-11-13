@@ -7117,39 +7117,6 @@ export async function aplicarAdiantamentoEmCP(
   };
 }
 
-// Adiantamentos de FUNCIONÁRIO com saldo para quitar CP do produtor (exceção à regra do mesmo fornecedor — Seção 374):
-// dinheiro que já saiu do caixa; o desconto na folha/gratificação continua na rotina da folha.
-export type AdiantamentoFuncionarioDisp = { id: string; funcionario_nome: string; data: string; valor: number; saldo: number; descricao: string | null; tipo: string | null };
-export async function listarAdiantamentosFuncionarioDisponiveis(fazenda_ids: string[]): Promise<AdiantamentoFuncionarioDisp[]> {
-  if (!fazenda_ids.length) return [];
-  // Pelo servidor (mesma leitura da tela de Folha): a regra de acesso da tabela só libera quem tem o perfil ligado à
-  // conta, e a equipe Raccolto/BPO recebia a lista vazia — a opção nem aparecia na baixa do CP.
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch("/api/folha/salvar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-    body: JSON.stringify({ operacao: "listar_adi_prem", fazenda_ids }),
-  });
-  const json = await res.json().catch(() => null) as { adis?: unknown[] } | null;
-  if (!res.ok || !json?.adis) return [];
-  return ((json.adis ?? []) as { id: string; data: string; valor: number; valor_aplicado_cp?: number | null; descricao: string | null; tipo: string | null; status: string; funcionarios: { nome: string } | null }[])
-    .filter(a => a.status !== "cancelado" && a.tipo !== "devolucao" && a.valor_aplicado_cp !== undefined)
-    .map(a => ({ id: a.id, funcionario_nome: a.funcionarios?.nome ?? "—", data: a.data, valor: Number(a.valor), saldo: Math.round((Number(a.valor) - Number(a.valor_aplicado_cp ?? 0)) * 100) / 100, descricao: a.descricao, tipo: a.tipo }))
-    .filter(a => a.saldo > 0.01);
-}
-
-export async function aplicarAdiantamentoFuncionarioEmCP(
-  adiantamento_salario_id: string, lancamento_cp_id: string, valor_aplicado: number, data_aplicacao: string, descricao?: string,
-): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number }> {
-  const res = await fetchFinanceiro("/api/financeiro/baixar", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ acao: "aplicar_adiantamento_funcionario", adiantamento_salario_id, lancamento_id: lancamento_cp_id, valor_aplicado, data_aplicacao, descricao }),
-  });
-  const json = await res.json() as { ok: boolean; error?: string; novo_status_cp?: string; novo_total_cp?: number; novo_saldo_adiantamento?: number };
-  if (!json.ok) throw new Error(json.error ?? "Erro ao aplicar adiantamento de funcionário");
-  return { novoStatusCp: json.novo_status_cp!, novoTotalCp: json.novo_total_cp!, novoSaldoAdiantamento: json.novo_saldo_adiantamento! };
-}
-
 export async function listarAdiantamentos(fazenda_id: string): Promise<AdiantamentoFornecedor[]> {
   const { data, error } = await supabase.rpc("listar_creditos_fornecedor", { p_fazenda: fazenda_id });
   if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);

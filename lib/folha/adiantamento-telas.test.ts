@@ -33,14 +33,14 @@ const resposta={ok:true,baixado:true,adiantamento:{id:"adi",funcionario_nome:"An
   folhas_atualizadas:[{id:"folha",valor_liquido:1600}],linhas_atualizadas:[{id:"linha",folha_id:"folha",adiantamento:300,cp_lancamento_id:"cp"}]};
 
 for(const caminho of ["app/financeiro/folha/page.tsx","app/empresas/folha/page.tsx"]) {
-  test(`${caminho}: uma operação, banco e chave enviados; sem baixa adicional ou recarga geral`,async()=>{
+  test(`${caminho}: uma operação, sem conta bancária (CP em aberto) e com chave; sem baixa adicional ou recarga geral`,async()=>{
     const chamadas: any[]=[];
     const {executar,estado}=tela(caminho,async body=>{chamadas.push(body);return resposta;});
     await executar();
-    assert.equal(chamadas.length,1);assert.equal(chamadas[0].conta_bancaria,"banco");
+    assert.equal(chamadas.length,1);assert.equal(chamadas[0].conta_bancaria,null);
     assert.match(chamadas[0].requisicao_id,/^[0-9a-f-]{36}$/i);
     assert.equal(estado.adis[0].id,"adi");assert.equal(estado.folhas[0].valor_liquido,1600);
-    assert.equal(estado.recargas,0);assert.equal(estado.modal,false);assert.match(estado.mensagem,/baixado/);
+    assert.equal(estado.recargas,0);assert.equal(estado.modal,false);assert.match(estado.mensagem,/em aberto/);
   });
   test(`${caminho}: erro de rede preserva chave para repetir sem duplicar`,async()=>{
     const chamadas: any[]=[];

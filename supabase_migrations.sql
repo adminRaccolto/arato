@@ -22935,3 +22935,174 @@ BEGIN
   RETURN NEW;
 END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 NOTIFY pgrst, 'reload schema';
+
+
+-- =============================================================================
+-- Seção 451 — Adiantamento de funcionário: usar como pagamento de outra conta do CP, pela Folha (13/11/2026)
+-- =============================================================================
+-- O adiantamento passa a entrar no Contas a Pagar EM ABERTO (baixa normal depois). Na Folha → Adiantamentos, o
+-- adiantamento pode ser usado como pagamento de outra conta do CP do mesmo cliente (ex.: compra que o produtor fez
+-- para o funcionário). A conta escolhida passa para a OG Adiantamento para funcionário e o adiantamento continua a
+-- ser descontado na folha. Dois modos, decididos pelo título do adiantamento:
+--   • 'abate_adiantamento' — título do adiantamento ainda em aberto: ele diminui no valor usado (sem saída de caixa;
+--     zerado = cancelado) e a conta escolhida continua em aberto, para ser paga normalmente pelo banco.
+--   • 'quita_conta' — adiantamento antigo, já pago: a conta escolhida é quitada sem conta bancária (como fazia a
+--     opção "Pagar com adiantamento de funcionário" da baixa do CP, que sai da tela).
+-- A conta escolhida é usada inteira (sem pagamento, borderô, cartão, contrato ou conciliação) e tem de caber no saldo
+-- do adiantamento; o que sobra do adiantamento fica para outra conta ou para o pagamento normal.
+-- Cada uso fica em adiantamentos_aplicacoes com a fotografia dos títulos; "Desfazer" só volta se nada mudou depois.
+BEGIN;
+ALTER TABLE adiantamentos_aplicacoes
+  ADD COLUMN IF NOT EXISTS modo text,
+  ADD COLUMN IF NOT EXISTS titulo_adiantamento_id uuid,
+  ADD COLUMN IF NOT EXISTS requisicao_id uuid,
+  ADD COLUMN IF NOT EXISTS requisicao_dados jsonb,
+  ADD COLUMN IF NOT EXISTS antes jsonb,
+  ADD COLUMN IF NOT EXISTS depois jsonb,
+  ADD COLUMN IF NOT EXISTS usuario_id uuid,
+  ADD COLUMN IF NOT EXISTS desfeito_em timestamptz,
+  ADD COLUMN IF NOT EXISTS desfeito_por uuid;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_adiant_aplic_requisicao ON adiantamentos_aplicacoes(requisicao_id) WHERE requisicao_id IS NOT NULL;
+
+-- Campos do título que o uso altera (fotografia para conferir e desfazer).
+CREATE OR REPLACE FUNCTION public.folha_estado_titulo_uso(p_id uuid) RETURNS jsonb
+LANGUAGE sql STABLE SET search_path=public AS $$
+ SELECT jsonb_build_object('status',t.status,'valor',t.valor,'valor_pago',t.valor_pago,'data_baixa',t.data_baixa,
+   'conta_bancaria',t.conta_bancaria,'operacao_gerencial_id',t.operacao_gerencial_id,'observacao',t.observacao,
+   'lote_id',t.lote_id,'conciliado',coalesce(t.conciliado,false))
+ FROM lancamentos t WHERE t.id=p_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.folha_usar_adiantamento(p_acao text,p_dados jsonb,p_requisicao uuid,p_usuario uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE
+ a adiantamentos_salario%ROWTYPE; ta lancamentos%ROWTYPE; ts lancamentos%ROWTYPE; ap adiantamentos_aplicacoes%ROWTYPE;
+ v_func text; v_data date; v_saldo_adi numeric; v_aberto_ta numeric; v_valor numeric; v_modo text; v_og uuid;
+ v_marca_ts text; v_marca_ta text; v_novo_valor numeric; v_pedido jsonb; v_antes jsonb; v_depois jsonb; v_id uuid;
+ v_hoje date:=(now() AT TIME ZONE 'America/Cuiaba')::date;
+BEGIN
+ IF p_usuario IS NULL OR p_acao NOT IN ('usar','desfazer') THEN RAISE EXCEPTION 'Ação inválida.'; END IF;
+
+ IF p_acao='usar' THEN
+   IF p_requisicao IS NULL THEN RAISE EXCEPTION 'Identificação da operação obrigatória. Atualize a tela.'; END IF;
+   v_data:=coalesce(nullif(p_dados->>'data','')::date,v_hoje);
+   v_pedido:=jsonb_build_object('adiantamento_id',p_dados->>'adiantamento_id','lancamento_id',p_dados->>'lancamento_id','data',v_data);
+   PERFORM pg_advisory_xact_lock(hashtextextended('folha_uso_adi:'||p_requisicao::text,0));
+   SELECT * INTO ap FROM adiantamentos_aplicacoes WHERE requisicao_id=p_requisicao;
+   IF FOUND THEN
+     IF ap.requisicao_dados IS DISTINCT FROM v_pedido THEN RAISE EXCEPTION 'Identificação já utilizada com outros dados. Atualize a tela.'; END IF;
+     RETURN jsonb_build_object('ok',true,'repetido',true,'aplicacao_id',ap.id,'modo',ap.modo);
+   END IF;
+
+   SELECT * INTO a FROM adiantamentos_salario WHERE id=(p_dados->>'adiantamento_id')::uuid FOR UPDATE;
+   IF NOT FOUND OR a.status='cancelado' OR a.tipo='devolucao' THEN RAISE EXCEPTION 'Adiantamento não disponível.'; END IF;
+   SELECT nome INTO v_func FROM funcionarios WHERE id=a.funcionario_id;
+   v_saldo_adi:=round(a.valor-coalesce(a.valor_aplicado_cp,0),2);
+   IF a.lancamento_id IS NOT NULL THEN
+     SELECT * INTO ta FROM lancamentos WHERE id=a.lancamento_id FOR UPDATE;
+   END IF;
+   v_aberto_ta:=CASE WHEN ta.id IS NOT NULL AND ta.status IN ('em_aberto','vencido','parcial')
+     THEN round(coalesce(ta.valor,0)-coalesce(ta.valor_pago,0),2) ELSE 0 END;
+   IF v_aberto_ta>0 THEN
+     IF ta.lote_id IS NOT NULL THEN RAISE EXCEPTION 'O título do adiantamento está num borderô. Tire do borderô ou pague o borderô antes de usar.'; END IF;
+     v_modo:='abate_adiantamento'; v_saldo_adi:=least(v_saldo_adi,v_aberto_ta);
+   ELSE
+     v_modo:='quita_conta';
+   END IF;
+   IF v_saldo_adi<=0 THEN RAISE EXCEPTION 'O adiantamento não tem saldo para usar.'; END IF;
+
+   SELECT * INTO ts FROM lancamentos WHERE id=(p_dados->>'lancamento_id')::uuid FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Conta do CP não encontrada.'; END IF;
+   IF ts.id=ta.id OR EXISTS(SELECT 1 FROM adiantamentos_salario x WHERE x.lancamento_id=ts.id) THEN
+     RAISE EXCEPTION 'Escolha uma conta do CP que não seja um adiantamento de funcionário.';
+   END IF;
+   IF ts.tipo<>'pagar' OR coalesce(ts.natureza,'real')='previsao' OR coalesce(ts.moeda,'BRL')<>'BRL'
+     OR ts.status NOT IN ('em_aberto','vencido') OR coalesce(ts.valor_pago,0)<>0 OR ts.lote_id IS NOT NULL
+     OR coalesce(ts.conciliado,false) OR ts.fatura_cartao_id IS NOT NULL OR ts.contrato_financeiro_id IS NOT NULL
+     OR ts.origem_lancamento='folha' THEN
+     RAISE EXCEPTION 'A conta precisa estar em aberto, em reais, sem pagamento, borderô, cartão, contrato ou conciliação, e não pode ser da folha.';
+   END IF;
+   IF NOT EXISTS(SELECT 1 FROM fazendas f1 JOIN fazendas f2 ON f2.id=ts.fazenda_id
+     WHERE f1.id=a.fazenda_id AND (f1.id=f2.id OR (f1.conta_id IS NOT NULL AND f1.conta_id=f2.conta_id))) THEN
+     RAISE EXCEPTION 'A conta é de outro cliente.';
+   END IF;
+   v_valor:=round(ts.valor,2);
+   IF v_valor<=0 THEN RAISE EXCEPTION 'Conta sem valor.'; END IF;
+   IF v_valor>v_saldo_adi+0.005 THEN
+     RAISE EXCEPTION 'A conta (R$ %) é maior que o saldo disponível do adiantamento (R$ %).',
+       to_char(v_valor,'FM999G999G990D00'),to_char(v_saldo_adi,'FM999G999G990D00');
+   END IF;
+   v_og:=public.folha_og_por_classificacao(ts.fazenda_id,'2.01.01.09.002');
+   IF v_og IS NULL THEN RAISE EXCEPTION 'Operação Gerencial 2.01.01.09.002 (Adiantamento para funcionário) não encontrada no cliente.'; END IF;
+
+   v_antes:=jsonb_build_object('conta',public.folha_estado_titulo_uso(ts.id),
+     'adiantamento',CASE WHEN ta.id IS NOT NULL THEN public.folha_estado_titulo_uso(ta.id) END);
+   v_marca_ts:='Compra para '||coalesce(v_func,'funcionário')||' — usado o adiantamento de '||to_char(a.data,'DD/MM/YYYY')||' (descontado na folha)';
+   IF v_modo='abate_adiantamento' THEN
+     v_marca_ta:='Usado R$ '||to_char(v_valor,'FM999G999G990D00')||' como pagamento de: '||coalesce(ts.descricao,'conta do CP');
+     v_novo_valor:=round(ta.valor-v_valor,2);
+     UPDATE lancamentos SET valor=v_novo_valor,
+       status=CASE WHEN v_novo_valor<=0.005 AND coalesce(valor_pago,0)=0 THEN 'cancelado'
+                   WHEN coalesce(valor_pago,0)>=v_novo_valor-0.005 THEN 'baixado' ELSE status END,
+       observacao=concat_ws(' | ',nullif(observacao,''),v_marca_ta)
+       WHERE id=ta.id;
+     UPDATE lancamentos SET operacao_gerencial_id=v_og,observacao=concat_ws(' | ',nullif(observacao,''),v_marca_ts) WHERE id=ts.id;
+   ELSE
+     UPDATE lancamentos SET status='baixado',valor_pago=v_valor,data_baixa=v_data,conta_bancaria=NULL,operacao_gerencial_id=v_og,
+       observacao=concat_ws(' | ',nullif(observacao,''),v_marca_ts) WHERE id=ts.id;
+     UPDATE parcelas_pagamento SET status='pago',data_pagamento=v_data WHERE lancamento_id=ts.id;
+   END IF;
+   UPDATE adiantamentos_salario SET valor_aplicado_cp=round(coalesce(valor_aplicado_cp,0)+v_valor,2) WHERE id=a.id;
+   v_depois:=jsonb_build_object('conta',public.folha_estado_titulo_uso(ts.id),
+     'adiantamento',CASE WHEN ta.id IS NOT NULL THEN public.folha_estado_titulo_uso(ta.id) END);
+   INSERT INTO adiantamentos_aplicacoes(adiantamento_id,adiantamento_salario_id,fazenda_id,descricao,valor_aplicado,data_aplicacao,
+     lancamento_id,og_anterior,modo,titulo_adiantamento_id,requisicao_id,requisicao_dados,antes,depois,usuario_id)
+   VALUES(NULL,a.id,a.fazenda_id,'Adiantamento de '||coalesce(v_func,'funcionário')||' usado em: '||coalesce(ts.descricao,'conta do CP'),
+     v_valor,v_data,ts.id,ts.operacao_gerencial_id,v_modo,ta.id,p_requisicao,v_pedido,v_antes,v_depois,p_usuario)
+   RETURNING id INTO v_id;
+   RETURN jsonb_build_object('ok',true,'aplicacao_id',v_id,'modo',v_modo,'valor',v_valor,
+     'saldo_adiantamento',round(a.valor-coalesce(a.valor_aplicado_cp,0)-v_valor,2));
+ END IF;
+
+ -- desfazer
+ SELECT * INTO ap FROM adiantamentos_aplicacoes WHERE id=(p_dados->>'aplicacao_id')::uuid FOR UPDATE;
+ IF NOT FOUND OR ap.adiantamento_salario_id IS NULL OR ap.adiantamento_salario_id IS DISTINCT FROM (p_dados->>'adiantamento_id')::uuid THEN
+   RAISE EXCEPTION 'Uso do adiantamento não encontrado.';
+ END IF;
+ IF ap.desfeito_em IS NOT NULL THEN RETURN jsonb_build_object('ok',true,'repetido',true); END IF;
+ IF ap.modo IS NULL THEN RAISE EXCEPTION 'Uso antigo, feito pela baixa do CP: estorne pela conta no Contas a Pagar.'; END IF;
+ SELECT * INTO a FROM adiantamentos_salario WHERE id=ap.adiantamento_salario_id FOR UPDATE;
+ SELECT * INTO ts FROM lancamentos WHERE id=ap.lancamento_id FOR UPDATE;
+ IF ap.titulo_adiantamento_id IS NOT NULL THEN SELECT * INTO ta FROM lancamentos WHERE id=ap.titulo_adiantamento_id FOR UPDATE; END IF;
+ IF ts.id IS NULL OR public.folha_estado_titulo_uso(ts.id) IS DISTINCT FROM ap.depois->'conta' THEN
+   RAISE EXCEPTION 'A conta foi alterada ou paga depois do uso. Estorne o pagamento dela antes de desfazer.';
+ END IF;
+ IF ap.modo='abate_adiantamento' THEN
+   IF ta.id IS NULL OR ta.lote_id IS NOT NULL OR (ta.valor IS DISTINCT FROM (ap.depois->'adiantamento'->>'valor')::numeric) THEN
+     RAISE EXCEPTION 'O título do adiantamento mudou depois do uso (valor ou borderô). Confira no CP antes de desfazer.';
+   END IF;
+   v_novo_valor:=round(ta.valor+ap.valor_aplicado,2);
+   UPDATE lancamentos SET valor=v_novo_valor,
+     status=CASE WHEN coalesce(valor_pago,0)=0 THEN CASE WHEN data_vencimento<v_hoje THEN 'vencido' ELSE 'em_aberto' END
+                 WHEN valor_pago<v_novo_valor-0.005 THEN 'parcial' ELSE 'baixado' END,
+     observacao=CASE WHEN observacao=(ap.depois->'adiantamento'->>'observacao') THEN ap.antes->'adiantamento'->>'observacao' ELSE observacao END
+     WHERE id=ta.id;
+   UPDATE lancamentos SET operacao_gerencial_id=(ap.antes->'conta'->>'operacao_gerencial_id')::uuid,
+     observacao=ap.antes->'conta'->>'observacao' WHERE id=ts.id;
+ ELSE
+   UPDATE lancamentos SET status=ap.antes->'conta'->>'status',valor_pago=(ap.antes->'conta'->>'valor_pago')::numeric,
+     data_baixa=(ap.antes->'conta'->>'data_baixa')::date,conta_bancaria=(ap.antes->'conta'->>'conta_bancaria')::uuid,
+     operacao_gerencial_id=(ap.antes->'conta'->>'operacao_gerencial_id')::uuid,observacao=ap.antes->'conta'->>'observacao'
+     WHERE id=ts.id;
+   UPDATE parcelas_pagamento SET status=CASE WHEN data_vencimento<v_hoje THEN 'vencido' ELSE 'em_aberto' END,data_pagamento=NULL
+     WHERE lancamento_id=ts.id;
+ END IF;
+ UPDATE adiantamentos_salario SET valor_aplicado_cp=greatest(0,round(coalesce(valor_aplicado_cp,0)-ap.valor_aplicado,2)) WHERE id=a.id;
+ UPDATE adiantamentos_aplicacoes SET desfeito_em=clock_timestamp(),desfeito_por=p_usuario WHERE id=ap.id;
+ RETURN jsonb_build_object('ok',true,'modo',ap.modo);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.folha_estado_titulo_uso(uuid),public.folha_usar_adiantamento(text,jsonb,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.folha_estado_titulo_uso(uuid),public.folha_usar_adiantamento(text,jsonb,uuid,uuid) TO service_role;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

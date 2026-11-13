@@ -16,11 +16,10 @@ import { calcINSS, calcIRRF, vencimentoSalario } from "../../../lib/folha-calcul
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarContasProdutorDaConta, listarContasPorEmpresa } from "../../../lib/db";
-import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { calcularHorasExtras } from "../../../lib/folha/horas-extras";
 import DecimoTerceiro from "../../../components/folha/DecimoTerceiro";
+import ModalUsarAdiantamento from "../../../components/folha/ModalUsarAdiantamento";
 import Rescisoes from "../../../components/folha/Rescisoes";
 import RelatoriosFolha from "../../../components/folha/RelatoriosFolha";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
@@ -261,6 +260,7 @@ export default function FolhaPagamentoPage() {
   // Nova folha: empregador escolhido ("" = ainda não escolheu; "*" = todos)
   const [empNova, setEmpNova] = useState("");
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
+  const [adiUso, setAdiUso] = useState<Adiantamento | null>(null);
   const [premiacoes,   setPremiacoes]   = useState<Premiacao[]>([]);
 
   const [decisoesDivergencias, setDecisoesDivergencias] = useState<DecisaoDivergencia[]>([]);
@@ -304,24 +304,6 @@ export default function FolhaPagamentoPage() {
   // Padrão: o mesmo dia do mês usado na última folha (ou dia 5), no mês seguinte à competência.
   const [dataPgto, setDataPgto] = useState("");
   const dataPgtoManual = useRef(false);
-  const [adiConta,   setAdiConta]   = useState("");
-  const [contasAdi,  setContasAdi]  = useState<ContaBancaria[]>([]);
-
-  // Contas bancárias do empregador do funcionário escolhido (empresa → contas da empresa; senão contas do produtor da conta)
-  useEffect(() => {
-    if (!modalAdi) return;
-    const func = funcionarios.find(f => f.id === adiEdit.funcionario_id);
-    let ativo = true;
-    (async () => {
-      try {
-        const lista = func?.empresa_id
-          ? await listarContasPorEmpresa(func.empresa_id)
-          : contaId ? await listarContasProdutorDaConta(contaId) : [];
-        if (ativo) { setContasAdi(lista); setAdiConta(c => lista.some(x => x.id === c) ? c : ""); }
-      } catch { if (ativo) setContasAdi([]); }
-    })();
-    return () => { ativo = false; };
-  }, [modalAdi, adiEdit.funcionario_id, funcionarios, contaId]);
 
   // modal premiação
   const [modalPrem,  setModalPrem]  = useState(false);
@@ -920,7 +902,6 @@ export default function FolhaPagamentoPage() {
       if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
         setMsg("Preencha funcionário, data e valor."); return;
       }
-      if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
       if (adiEdit.tipo === "gratificacao") {
         if (!adiEdit.competencia_ref) { setMsg("Adiantamento de gratificação: informe a competência da gratificação."); return; }
         if (adiGratInfo.lancada <= 0) { setMsg("Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações."); return; }
@@ -939,14 +920,14 @@ export default function FolhaPagamentoPage() {
       } else {
         const dados = { fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
           valor: adiEdit.valor, competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null,
-          tipo: adiEdit.tipo === "gratificacao" ? "gratificacao" as const : "salario" as const, conta_bancaria: adiConta };
+          tipo: adiEdit.tipo === "gratificacao" ? "gratificacao" as const : "salario" as const, conta_bancaria: null };
         adiRequisicao.current = requisicaoAdiantamento(adiRequisicao.current, dados);
         const r = await apiFolha({ operacao: "salvar_adiantamento", ...dados, requisicao_id: adiRequisicao.current.id }) as {
           adiantamento: Adiantamento;
           folhas_atualizadas: { id: string; valor_liquido: number }[];
           linhas_atualizadas: { id: string; folha_id: string; adiantamento: number; cp_lancamento_id: string | null }[];
         };
-        // O servidor devolve o CP já baixado. Atualiza somente o movimento e os resumos afetados.
+        // O CP do adiantamento nasce em aberto (baixa normal depois). Atualiza somente o movimento e os resumos afetados.
         setAdiantamentos(antes => [r.adiantamento, ...antes.filter(a => a.id !== r.adiantamento.id)]
           .sort((a, b) => b.data.localeCompare(a.data)));
         setFolhas(antes => antes.map(f => ({ ...f, ...r.folhas_atualizadas?.find(x => x.id === f.id) })));
@@ -956,7 +937,7 @@ export default function FolhaPagamentoPage() {
             cp_lancamento_id: atualizada.cp_lancamento_id ?? undefined } : it;
         }) }));
         adiRequisicao.current = null;
-        setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
+        setMsg("Adiantamento registrado. O título entrou em aberto no Contas a Pagar: dê a baixa quando pagar, ou use-o como pagamento de outra conta.");
       }
       setModalAdi(false);
       setAdiEdit({});
@@ -1484,6 +1465,9 @@ export default function FolhaPagamentoPage() {
                             <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ id: a.id, tipo: a.tipo ?? "salario", funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</OperationalButton>
                             <OperationalButton data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</OperationalButton>
                           </>)}
+                          {a.status !== "cancelado" && a.tipo !== "devolucao" && (
+                            <OperationalButton data-arato-button="secondary" onClick={()=>setAdiUso(a)} title="Pagar outra conta do Contas a Pagar com este adiantamento (ex.: compra para o funcionário)" style={{ background:"none", border:"none", color:"#C9921B", cursor:"pointer", fontSize:12, marginRight:8 }}>Usar como pagamento</OperationalButton>
+                          )}
                           {a.status === "descontado" && a.tipo !== "devolucao" && podeReprocessar && (
                             <OperationalButton data-arato-button="secondary" onClick={()=>abrirCorrecaoAdi(a)} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12 }}>Corrigir</OperationalButton>
                           )}
@@ -1495,6 +1479,10 @@ export default function FolhaPagamentoPage() {
               </div>
             )}
           </>
+        )}
+
+        {adiUso && (
+          <ModalUsarAdiantamento adiantamento={adiUso} api={apiFolha} onFechar={()=>setAdiUso(null)} onAlterado={()=>{ carregar(); }} />
         )}
 
         {/* ══════════════════ ABA GRATIFICAÇÕES ══════════════════ */}
@@ -2228,13 +2216,8 @@ export default function FolhaPagamentoPage() {
                 </select>
               </div>
               {!adiEdit.id && (
-                <div className={folhaStyles.fullWidth}>
-                  <label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
-                  <SelectField value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
-                    <option value="">{adiEdit.funcionario_id ? "Selecionar..." : "Escolha o funcionário primeiro"}</option>
-                    {contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </SelectField>
-                  <span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span>
+                <div className={folhaStyles.fullWidth} style={{ fontSize:11, color:"#555", background:"#F4F6FA", borderRadius:8, padding:"8px 10px" }}>
+                  O adiantamento entra <b>em aberto</b> no Contas a Pagar e é baixado normalmente quando for pago. Se foi uma compra para o funcionário, use depois <b>Usar como pagamento</b> nesta lista.
                 </div>
               )}
               <div className={folhaStyles.fullWidth}>

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { criarAdiantamentoFuncionario } from "../../../../lib/folha/adiantamento";
+import { situacaoUsoAdiantamento } from "../../../../lib/folha/usar-adiantamento";
 import { preservarTituloDaFolha } from "../../../../lib/folha/inativacao";
 import { randomUUID } from "node:crypto";
 import { assinaturaAusencia, validarDecisaoAusencia } from "../../../../lib/folha/divergencias";
@@ -1128,8 +1129,18 @@ export async function POST(req: Request) {
         if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
       }
       const { data: anterior, error: erroAnterior } = await sb.from("adiantamentos_salario")
-        .select("funcionario_id,competencia_ref").eq("id", id).single();
+        .select("funcionario_id,competencia_ref,valor,valor_aplicado_cp,lancamento_id").eq("id", id).single();
       if (erroAnterior) throw erroAnterior;
+      const mudaDinheiro = Number(valor) !== Number(anterior.valor) || funcionario_id !== anterior.funcionario_id;
+      if (mudaDinheiro && Number(anterior.valor_aplicado_cp ?? 0) > 0) {
+        return NextResponse.json({ error: "Este adiantamento já foi usado como pagamento de outra conta do CP. Desfaça o uso (botão Usar como pagamento) antes de mudar valor ou funcionário." }, { status: 422 });
+      }
+      if (mudaDinheiro && anterior.lancamento_id) {
+        const { data: tAdi } = await sb.from("lancamentos").select("status, valor_pago, lote_id, conciliado").eq("id", anterior.lancamento_id).maybeSingle();
+        if (tAdi && (["baixado", "parcial"].includes(tAdi.status) || Number(tAdi.valor_pago ?? 0) > 0 || tAdi.lote_id || tAdi.conciliado)) {
+          return NextResponse.json({ error: "O título do adiantamento no CP já tem pagamento, borderô ou conciliação. Estorne no Contas a Pagar antes de mudar valor ou funcionário." }, { status: 422 });
+        }
+      }
       // Atualiza o registro de adiantamento
       const { error: adiErr } = await sb.from("adiantamentos_salario").update({
         funcionario_id, data, valor,
@@ -1313,21 +1324,26 @@ export async function POST(req: Request) {
         .select("lancamento_id, funcionario_id, tipo, competencia_ref")
         .eq("id", id)
         .single();
+      // Usado como pagamento de outra conta: desfazer antes (senão a conta ficaria como adiantamento de um cancelado)
+      const { data: usoAtivo, error: eUso } = await sb.from("adiantamentos_aplicacoes").select("id").eq("adiantamento_salario_id", id).not("modo", "is", null).is("desfeito_em", null).limit(1);
+      if (!eUso && (usoAtivo ?? []).length > 0) {
+        return NextResponse.json({ error: "Este adiantamento foi usado como pagamento de outra conta do CP. Desfaça o uso antes de cancelar." }, { status: 422 });
+      }
       if (adi?.tipo === "gratificacao") {
         const { error } = await sb.rpc("fn_cancelar_adiantamento_gratificacao_cp", { p_id: id });
         if (error) throw error;
         await ressincronizarFolhasDoFuncionario(sb, adi.funcionario_id, [adi.competencia_ref]);
         return NextResponse.json({ ok: true });
       }
-      // Exclui o CP se não estiver baixado
+      // Exclui o CP se não tiver pagamento
       if (adi?.lancamento_id) {
         const { data: lanc } = await sb
           .from("lancamentos")
-          .select("status")
+          .select("status, valor_pago, lote_id, conciliado")
           .eq("id", adi.lancamento_id)
           .single();
-        if (lanc?.status === "baixado") {
-          throw new Error("Não é possível cancelar: o CP do adiantamento já foi baixado em borderô. Estorne o borderô primeiro.");
+        if (lanc && (["baixado", "parcial"].includes(lanc.status) || Number(lanc.valor_pago ?? 0) > 0 || lanc.lote_id || lanc.conciliado)) {
+          throw new Error("Não é possível cancelar: o CP do adiantamento já tem pagamento, borderô ou conciliação. Estorne no Contas a Pagar primeiro.");
         }
         await falharSeErro(sb.from("lancamentos").delete().eq("id", adi.lancamento_id), "excluir lancamentos");
       }
@@ -1335,6 +1351,74 @@ export async function POST(req: Request) {
       if (error) throw error;
       await ressincronizarFolhasDoFuncionario(sb, adi?.funcionario_id, [adi?.competencia_ref ?? null]);
       return NextResponse.json({ ok: true });
+    }
+
+    // ─── usar adiantamento como pagamento de outra conta do CP (Seção 451) ─────
+    // titulos_uso_adiantamento: situação do adiantamento, usos já feitos e contas em aberto do cliente que cabem no saldo.
+    if (operacao === "titulos_uso_adiantamento") {
+      const { id, busca } = payload as { id: string; busca?: string };
+      const { data: adi, error: eAdi } = await sb.from("adiantamentos_salario")
+        .select("id, fazenda_id, valor, valor_aplicado_cp, status, tipo, lancamento_id, funcionarios(nome)").eq("id", id).maybeSingle();
+      if (eAdi) throw eAdi;
+      if (!adi) return NextResponse.json({ error: "Adiantamento não encontrado." }, { status: 404 });
+      const { data: titulo } = adi.lancamento_id
+        ? await sb.from("lancamentos").select("id, status, valor, valor_pago, lote_id").eq("id", adi.lancamento_id).maybeSingle()
+        : { data: null };
+      const situacao = situacaoUsoAdiantamento(adi, titulo);
+      const { data: usosRaw, error: eUsos } = await sb.from("adiantamentos_aplicacoes")
+        .select("id, valor_aplicado, data_aplicacao, modo, lancamento_id, descricao, desfeito_em")
+        .eq("adiantamento_salario_id", id).is("desfeito_em", null).order("created_at", { ascending: false });
+      if (eUsos) throw new Error(eUsos.code === "42703" ? "Execute a Seção 451 do supabase_migrations.sql para usar adiantamentos como pagamento." : eUsos.message);
+      const idsUso = (usosRaw ?? []).map(u => u.lancamento_id).filter(Boolean) as string[];
+      const { data: contasUso } = idsUso.length
+        ? await sb.from("lancamentos").select("id, descricao, valor, status, data_vencimento, pessoas(nome)").in("id", idsUso)
+        : { data: [] };
+      const usos = (usosRaw ?? []).map(u => ({ ...u, conta: (contasUso ?? []).find(c => c.id === u.lancamento_id) ?? null }));
+      let titulos: unknown[] = [];
+      if (!situacao.bloqueio) {
+        const { data: faz } = await sb.from("fazendas").select("conta_id").eq("id", adi.fazenda_id).maybeSingle();
+        const { data: fazCliente } = faz?.conta_id
+          ? await sb.from("fazendas").select("id, nome").eq("conta_id", faz.conta_id)
+          : await sb.from("fazendas").select("id, nome").eq("id", adi.fazenda_id);
+        const fids = (fazCliente ?? []).map(f => f.id);
+        const { data: adisCp } = await sb.from("adiantamentos_salario").select("lancamento_id").in("fazenda_id", fids).not("lancamento_id", "is", null);
+        const titulosAdi = new Set((adisCp ?? []).map(x => x.lancamento_id as string));
+        let q = sb.from("lancamentos")
+          .select("id, fazenda_id, descricao, valor, data_vencimento, status, origem_lancamento, natureza, pessoas(nome)")
+          .in("fazenda_id", fids).eq("tipo", "pagar").in("status", ["em_aberto", "vencido"])
+          .is("lote_id", null).is("fatura_cartao_id", null).is("contrato_financeiro_id", null)
+          .or("valor_pago.is.null,valor_pago.eq.0").or("conciliado.is.null,conciliado.eq.false")
+          .or("moeda.is.null,moeda.eq.BRL").or("natureza.is.null,natureza.neq.previsao")
+          .or("origem_lancamento.is.null,origem_lancamento.neq.folha")
+          .gt("valor", 0).lte("valor", situacao.disponivel + 0.005)
+          .order("data_vencimento", { ascending: true }).order("id").limit(300);
+        const termo = String(busca ?? "").trim();
+        if (termo) q = q.ilike("descricao", `%${termo.replace(/[%_,()]/g, " ")}%`);
+        const { data: lista, error: eLista } = await q;
+        if (eLista) throw eLista;
+        const nomeFaz = new Map((fazCliente ?? []).map(f => [f.id, f.nome]));
+        titulos = (lista ?? []).filter(l => !titulosAdi.has(l.id)).map(l => ({ ...l, fazenda_nome: nomeFaz.get(l.fazenda_id) ?? null }));
+      }
+      return NextResponse.json({ ok: true, situacao, usos, titulos,
+        funcionario_nome: (adi.funcionarios as { nome?: string } | null)?.nome ?? null });
+    }
+
+    if (operacao === "usar_adiantamento" || operacao === "desfazer_uso_adiantamento") {
+      const { id, lancamento_id, aplicacao_id, data, requisicao_id } = payload as { id: string; lancamento_id?: string; aplicacao_id?: string; data?: string; requisicao_id?: string };
+      const usar = operacao === "usar_adiantamento";
+      if (usar && (!lancamento_id || !requisicao_id || !/^[0-9a-f-]{36}$/i.test(requisicao_id))) {
+        return NextResponse.json({ error: "Escolha a conta do CP." }, { status: 422 });
+      }
+      const { data: r, error } = await sb.rpc("folha_usar_adiantamento", {
+        p_acao: usar ? "usar" : "desfazer",
+        p_dados: usar ? { adiantamento_id: id, lancamento_id, data: data || hojeLocal() } : { adiantamento_id: id, aplicacao_id },
+        p_requisicao: usar ? requisicao_id : null, p_usuario: user.id,
+      });
+      if (error) {
+        if (["PGRST202", "42883"].includes(error.code)) throw new Error("Execute a Seção 451 do supabase_migrations.sql para usar adiantamentos como pagamento.");
+        return NextResponse.json({ error: error.message }, { status: 422 });
+      }
+      return NextResponse.json(r);
     }
 
     if (["salvar_premiacao", "editar_premiacao", "lancar_premiacao_cp"].includes(operacao)) {

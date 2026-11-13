@@ -13,6 +13,9 @@ test("operação por id confere o registro, não só a fazenda informada", () =>
   assert.deepEqual(alvosFolha("excluir_premiacao", { id: "p" })!.premiacoes, ["p"]);
   assert.deepEqual(alvosFolha("lancar_premiacao_cp", { id: "p" })!.premiacoes, ["p"]);
   assert.deepEqual(alvosFolha("cancelar_adiantamento", { id: "a" })!.adiantamentos, ["a"]);
+  for (const op of ["titulos_uso_adiantamento", "usar_adiantamento", "desfazer_uso_adiantamento"]) {
+    assert.deepEqual(alvosFolha(op, { id: "a", lancamento_id: "c" })!.adiantamentos, ["a"]);
+  }
 });
 
 test("linhas da folha: confere folhas e funcionários, sem repetir nem aceitar vazio", () => {

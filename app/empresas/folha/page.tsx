@@ -1,5 +1,6 @@
 "use client";
 import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
+import ModalUsarAdiantamento from "../../../components/folha/ModalUsarAdiantamento";
 import { requisicaoAdiantamento, type RequisicaoAdiantamento } from "../../../lib/folha/adiantamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDaEmpresa } from "../../../lib/fazenda-de";
@@ -10,9 +11,9 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao, listarContasPorEmpresa } from "../../../lib/db";
+import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
 import { vencimentoSalario } from "../../../lib/folha-calculo";
-import type { Empresa, ContaBancaria } from "../../../lib/supabase";
+import type { Empresa } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -123,6 +124,7 @@ export default function FolhaEmpresaPage() {
   const [funcionarios,  setFuncionarios]  = useState<Funcionario[]>([]);
   const [folhas,        setFolhas]        = useState<Folha[]>([]);
   const [adiantamentos, setAdiantamentos] = useState<Adiantamento[]>([]);
+  const [adiUso, setAdiUso] = useState<Adiantamento | null>(null);
   const [premiacoes,    setPremiacoes]    = useState<Premiacao[]>([]);
   const [fComp,         setFComp]         = useState(compAtual());
 
@@ -132,21 +134,14 @@ export default function FolhaEmpresaPage() {
   const [funcExpand,  setFuncExpand]  = useState<Set<number>>(new Set());
   const [modalAdi,    setModalAdi]    = useState(false);
   const [adiEdit,     setAdiEdit]     = useState<Partial<Adiantamento>>({});
-  const [adiConta,    setAdiConta]    = useState("");
   const adiRequisicao = useRef<RequisicaoAdiantamento | null>(null);
   const adiEmEnvio = useRef(false);
-  const [contasAdi,   setContasAdi]   = useState<ContaBancaria[]>([]);
   const [modalPrem,   setModalPrem]   = useState(false);
   const [premEdit,    setPremEdit]    = useState<Partial<Premiacao>>({});
   const [modalRep,    setModalRep]    = useState(false);
   const [repFolha,    setRepFolha]    = useState<Folha | null>(null);
   const [repNMeses,   setRepNMeses]   = useState(1);
 
-  // Contas bancárias da empresa selecionada (para baixar o adiantamento na hora)
-  useEffect(() => {
-    if (!empresaSel) { setContasAdi([]); return; }
-    listarContasPorEmpresa(empresaSel).then(setContasAdi).catch(() => setContasAdi([]));
-  }, [empresaSel]);
 
   // Carregar empresas
   useEffect(() => {
@@ -299,10 +294,9 @@ export default function FolhaEmpresaPage() {
     try {
       if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
       if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
-      if (!adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
       setSaving(true);
       const dados = { fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data, valor: adiEdit.valor,
-        competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null, conta_bancaria: adiConta };
+        competencia_ref: adiEdit.competencia_ref || null, descricao: adiEdit.descricao || null, conta_bancaria: null };
       adiRequisicao.current = requisicaoAdiantamento(adiRequisicao.current, dados);
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetchFinanceiro("/api/folha/salvar", { method: "POST",
@@ -314,15 +308,27 @@ export default function FolhaEmpresaPage() {
         .sort((a, b) => b.data.localeCompare(a.data)));
       setFolhas(antes => antes.map(f => ({ ...f, ...r.folhas_atualizadas?.find((x: { id: string }) => x.id === f.id) })));
       adiRequisicao.current = null;
-      setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
+      setMsg("Adiantamento registrado. O título entrou em aberto no Contas a Pagar: dê a baixa quando pagar, ou use-o como pagamento de outra conta.");
       setModalAdi(false); setAdiEdit({});
     } catch (e: any) { setMsg("Erro: " + e.message); }
     finally { adiEmEnvio.current = false; setSaving(false); }
   }
 
+  async function apiFolhaEmpresa(body: Record<string, unknown>) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetchFinanceiro("/api/folha/salvar", { method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+      body: JSON.stringify(body) });
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.error ?? "Erro na API de folha");
+    return json;
+  }
+
   async function cancelarAdiantamento(id: string) {
-    if (!confirm("Cancelar este adiantamento?")) return;
-    await supabase.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
+    if (!confirm("Cancelar este adiantamento? O título dele no Contas a Pagar é excluído junto.")) return;
+    // Pela rotina da folha: exclui também o título em aberto do CP (antes ficava no CP mesmo com o adiantamento cancelado)
+    try { await apiFolhaEmpresa({ operacao: "cancelar_adiantamento", id }); setMsg("Adiantamento cancelado."); }
+    catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : String(e))); }
     carregar();
   }
 
@@ -507,7 +513,10 @@ export default function FolhaEmpresaPage() {
                             <td style={S.td}>{a.competencia_ref ? nomeMes(a.competencia_ref) : "—"}</td>
                             <td style={{ ...S.td, color:"#888" }}>{a.descricao || "—"}</td>
                             <td style={S.td}><span style={{ fontSize:11, fontWeight:700, color:ADI_COLOR[a.status], background:ADI_COLOR[a.status]+"18", borderRadius:4, padding:"2px 8px" }}>{ADI_LABEL[a.status]}</span></td>
-                            <td style={S.td}>{a.status==="pendente" && <OperationalButton data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</OperationalButton>}</td>
+                            <td style={{ ...S.td, whiteSpace:"nowrap" }}>
+                              {a.status!=="cancelado" && <OperationalButton data-arato-button="secondary" onClick={()=>setAdiUso(a)} title="Pagar outra conta do Contas a Pagar com este adiantamento (ex.: compra para o funcionário)" style={{ background:"none", border:"none", color:"#C9921B", cursor:"pointer", fontSize:12, marginRight:8 }}>Usar como pagamento</OperationalButton>}
+                              {a.status==="pendente" && <OperationalButton data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</OperationalButton>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -515,6 +524,10 @@ export default function FolhaEmpresaPage() {
                   </div>
                 )}
               </>
+            )}
+
+            {adiUso && (
+              <ModalUsarAdiantamento adiantamento={adiUso} api={apiFolhaEmpresa} onFechar={()=>setAdiUso(null)} onAlterado={()=>{ carregar(); }} />
             )}
 
             {/* ══ ABA GRATIFICAÇÕES ══ */}
@@ -693,7 +706,7 @@ export default function FolhaEmpresaPage() {
                 <label data-arato-label="true" style={S.label}>Descontar na competência</label>
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
               </div>
-              <div><label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label><SelectField value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}><option value="">Selecionar...</option>{contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField><span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span></div>
+              <div style={{ fontSize:11, color:"#555", background:"#F4F6FA", borderRadius:8, padding:"8px 10px" }}>O adiantamento entra <b>em aberto</b> no Contas a Pagar e é baixado normalmente quando for pago. Se foi uma compra para o funcionário, use depois <b>Usar como pagamento</b> na lista de adiantamentos.</div>
               <div><label data-arato-label="true" style={S.label}>Descrição / Motivo</label><input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" /></div>
             </div>
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>

@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-f",
+    data: "13/11/2026",
+    titulo: "Adiantamento de funcionário entra em aberto no CP e pode pagar outra conta pela Folha",
+    modulos: ["Folha", "Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo adiantamento não pede mais conta bancária: o título entra em aberto no Contas a Pagar e é baixado normalmente quando for pago (baixa, borderô ou conciliação)." },
+      { tipo: "novidade", texto: "Folha → Adiantamentos → Usar como pagamento: escolha a conta do CP que o adiantamento paga (ex.: compra para o funcionário). A conta passa para a OG Adiantamento para funcionário e o título do adiantamento diminui nesse valor, sem saída de caixa; a conta segue em aberto para o banco. Mostra as contas já pagas com o adiantamento, com opção de desfazer." },
+      { tipo: "melhoria", texto: "A opção Pagar com adiantamento de funcionário saiu da janela de baixa do Contas a Pagar: o uso agora é feito pela Folha." },
+      { tipo: "correcao", texto: "Folha da Empresa: cancelar um adiantamento agora exclui também o título dele no Contas a Pagar." },
+    ],
+    onde: "Financeiro → Folha de Pagamento (e Folha da Empresa) → aba Adiantamentos",
+  },
+  {
     versao: "2026.11.13-e",
     data: "13/11/2026",
     titulo: "Pagamento parcial de borderô volta a funcionar",
