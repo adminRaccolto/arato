@@ -2847,7 +2847,9 @@ export async function criarNfEntradaItem(i: Omit<NfEntradaItem, "id" | "created_
   // retido (cst_icms/icms_retido/valor_icms_st) não roda em todo ambiente, insere sem elas em vez
   // de bloquear o processamento da NF inteira (mesmo padrão de criarAnoSafra acima).
   if (error?.code === "PGRST204") {
-    const { cst_icms: _a, icms_retido: _b, valor_icms_st: _c, ...semIcmsSt } = i;
+    // produtor_id (abastecimento em posto, Seção 449) também sai: sem a seção, a NF processa sem ele
+    const { cst_icms: _a, icms_retido: _b, valor_icms_st: _c, produtor_id: _d, ...semIcmsSt } = i;
+    void _d;
     const retry = await supabase.from("nf_entrada_itens").insert(semIcmsSt).select().single();
     if (retry.error) throw retry.error;
     return retry.data;
@@ -3220,10 +3222,13 @@ async function lancarItensDaNf(
     // maquinas.horimetro_atual, igual ao abastecimento pela bomba faz.
     if (item.tipo_apropiacao === "direto" && item.e_combustivel && (item.maquina_id || item.veiculo_id)) {
       // Veículo do cadastro de Transporte (Seção 426) ou máquina; o motorista vai em funcionario_id. Veículo grava km.
+      // Produtor que abasteceu (Seção 449): produtor_id + o nome em "operador", que as telas de abastecimento já mostram.
       const { data: veic } = item.veiculo_id ? await supabase.from("veiculos").select("placa, tipo").eq("id", item.veiculo_id).maybeSingle() : { data: null };
+      const { data: prodAbast } = item.produtor_id ? await supabase.from("produtores").select("nome").eq("id", item.produtor_id).maybeSingle() : { data: null };
       const extra: Record<string, unknown> = {
         ...(item.veiculo_id ? { veiculo_id: item.veiculo_id, maquina_descricao: [veic?.placa, veic?.tipo].filter(Boolean).join(" — ") || null, km: item.horimetro ?? null } : {}),
         ...(item.funcionario_id ? { funcionario_id: item.funcionario_id } : {}),
+        ...(item.produtor_id ? { produtor_id: item.produtor_id, operador: prodAbast?.nome ?? null } : {}),
       };
       const base = {
         fazenda_id,
@@ -3238,6 +3243,7 @@ async function lancarItensDaNf(
         nf_entrada_item_id:  item.id,
       };
       let ab = await supabase.from("abastecimentos").insert({ ...base, ...extra, ...(item.veiculo_id ? { horimetro: null } : {}) });
+      if (ab.error && /produtor_id/.test(ab.error.message ?? "")) { delete extra.produtor_id; ab = await supabase.from("abastecimentos").insert({ ...base, ...extra, ...(item.veiculo_id ? { horimetro: null } : {}) }); }
       if (ab.error && /veiculo_id/.test(ab.error.message ?? "")) { const { veiculo_id: _v, ...semVeiculo } = extra; void _v; ab = await supabase.from("abastecimentos").insert({ ...base, ...semVeiculo, horimetro: null }); }
       if (ab.error) throw ab.error;
       if (item.horimetro && item.maquina_id) {

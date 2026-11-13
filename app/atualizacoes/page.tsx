@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-d",
+    data: "13/11/2026",
+    titulo: "Imprimir CT-e e NFS de fornecedor; produtor no abastecimento em posto",
+    modulos: ["Fiscal", "Máquinas"],
+    itens: [
+      { tipo: "novidade", texto: "Notas de Fornecedores: CT-e e NFS passam a ter impressão na própria linha. O CT-e imprime o DACTE a partir do XML recebido; a NFS imprime um espelho para conferência com prestador, tomador, serviço, ISS, retenções e valor líquido." },
+      { tipo: "melhoria", texto: "NF de abastecimento em posto: a lista de quem abasteceu traz também os produtores do cliente, além dos funcionários. O nome aparece no histórico de abastecimentos." },
+    ],
+    onde: "Documentos Fiscais → Notas de Fornecedores; NF com Apropriação Direta de combustível",
+  },
+  {
     versao: "2026.11.13-c",
     data: "13/11/2026",
     titulo: "Devolução de compra recusada pelo fornecedor",

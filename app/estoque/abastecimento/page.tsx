@@ -145,7 +145,8 @@ export default function AbastecimentoPage() {
         ...r,
         bomba_nome:       (r.bombas_combustivel as Record<string, string> | null)?.nome,
         maquina_nome:     (r.maquinas as Record<string, string> | null)?.nome,
-        funcionario_nome: (r.funcionarios as Record<string, string> | null)?.nome,
+        // Sem funcionário: quem abasteceu em "operador" (produtor no abastecimento em posto, Seção 449, ou App Campo)
+        funcionario_nome: (r.funcionarios as Record<string, string> | null)?.nome ?? ((r.operador as string | null) || undefined),
         ciclo_nome:       ciclo ? [ciclo.cultura, ciclo.descricao].filter(Boolean).join(" · ") : undefined,
       };
     }) as Abastecimento[];

@@ -22857,3 +22857,14 @@ ALTER TABLE avisos_sistema ENABLE ROW LEVEL SECURITY;
 ALTER TABLE avisos_ciencia ENABLE ROW LEVEL SECURITY;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- =============================================================================
+-- Seção 449 — Abastecimento em posto: produtor como quem abasteceu (13/11/2026)
+-- =============================================================================
+-- Na NF de entrada com Apropriação Direta de combustível, o campo "quem abasteceu" aceitava só funcionário.
+-- Produtores também abastecem em posto: o item da NF e o abastecimento passam a guardar o produtor. O nome dele
+-- vai também em abastecimentos.operador (já existente), que as telas de abastecimento mostram.
+ALTER TABLE nf_entrada_itens ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+ALTER TABLE abastecimentos   ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+NOTIFY pgrst, 'reload schema';

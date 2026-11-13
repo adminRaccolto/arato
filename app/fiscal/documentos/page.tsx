@@ -50,6 +50,9 @@ import SelectBusca from "../../../components/SelectBusca";
 import { listarOperacoesGerenciaisAtivasDaConta, listarCentrosCustoGeralDaConta } from "../../../lib/db";
 import type { OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
 import { estornarNfComConfirmacao } from "../../../lib/fiscal/estornar-nf-cliente";
+import { htmlDacte, type DadosDacte } from "../../../lib/fiscal/dacte";
+import { dacteDoRegistro, dacteDoXml } from "../../../lib/fiscal/dacte-xml";
+import { htmlEspelhosNfs } from "../../../lib/fiscal/espelho-nfs";
 
 type RelDocFiscal = {
   id: string;
@@ -217,7 +220,7 @@ function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto
 
 export default function DocumentosFiscaisPage() {
   const router = useRouter();
-  const { fazendaId, fazendaIds, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, logoCliente } = useAuth();
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -435,6 +438,36 @@ export default function DocumentosFiscaisPage() {
       carregar();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Erro ao estornar NF");
+    }
+  }
+
+  // ── Impressão de CT-e (DACTE) e NFS (espelho) — a NF de produtos imprime pelo DANFE ──
+  // A janela abre já no clique (depois de um await o navegador bloqueia o pop-up) e recebe o documento quando ele chega.
+  async function imprimirDocumento(d: RelDocFiscal) {
+    const tabela = d.origem_tabela;
+    if (!["cte_entradas", "ctes", "nf_servicos"].includes(tabela)) { alert("Impressão não disponível para este documento."); return; }
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) { alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este site."); return; }
+    win.document.write("<p style=\"font-family:Arial;font-size:13px;margin:24px\">Preparando a impressão…</p>");
+    try {
+      const r = await fetch(`/api/fiscal/impressao-documento?tabela=${tabela}&id=${d.id}`, { cache: "no-store" });
+      const j = await r.json() as { ok?: boolean; error?: string; registro?: Record<string, unknown>; xml?: string | null; prestador?: Parameters<typeof htmlEspelhosNfs>[0][number]["prest"] };
+      if (!j.ok || !j.registro) throw new Error(j.error ?? "Não foi possível preparar a impressão.");
+      let html: string;
+      if (tabela === "nf_servicos") {
+        html = htmlEspelhosNfs([{ r: j.registro, prest: j.prestador }]);
+      } else if (tabela === "ctes") {
+        // CT-e emitido pela própria fazenda: mesmo DACTE da tela de CT-e (dados gravados + logo do cliente)
+        html = htmlDacte(j.registro as unknown as DadosDacte, logoCliente, j.xml ? dacteDoXml(j.xml)?.rntrc : null);
+      } else {
+        const status = /^cancelad/.test(String(j.registro.status ?? "")) ? "cancelado" : "autorizado";
+        const x = (j.xml ? dacteDoXml(j.xml, status) : null) ?? dacteDoRegistro(j.registro);
+        html = htmlDacte(x.dados, null, x.rntrc);
+      }
+      win.document.open(); win.document.write(html); win.document.close();
+    } catch (e) {
+      win.close();
+      alert(e instanceof Error ? e.message : "Não foi possível preparar a impressão.");
     }
   }
 
@@ -660,7 +693,7 @@ export default function DocumentosFiscaisPage() {
                   // Imprime os DANFEs das NFs selecionadas (um PDF único, um diálogo de impressão).
                   // A janela é aberta já no clique, senão o navegador bloqueia o pop-up.
                   const comDanfe = sel.filter(n => n.tipo_doc === "NF" && n.chave);
-                  if (comDanfe.length === 0) { alert("Nenhuma NF selecionada tem DANFE (NFS e CT-e não têm DANFE)."); return; }
+                  if (comDanfe.length === 0) { alert("Nenhuma NF selecionada tem DANFE. CT-e e NFS são impressos um a um: clique na linha e use Imprimir DACTE / Imprimir NFS."); return; }
                   const semDanfe = sel.length - comDanfe.length;
                   const win = window.open("", "_blank");
                   if (!win) { alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este site."); return; }
@@ -1052,6 +1085,13 @@ export default function DocumentosFiscaisPage() {
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F0FDF4", color: "#15803D", border: "0.5px solid #86EFAC", cursor: "pointer", fontWeight: 700, fontSize: 11, textDecoration: "none", textAlign: "center" }}>
                     ↗ DANFE
                   </a>
+                )}
+                {/* CT-e: DACTE (do XML; sem XML, dos dados lançados). NFS: espelho dos dados lançados (a NFS-e oficial é da prefeitura). */}
+                {(d.tipo_doc === "CTE" || d.tipo_doc === "NFS") && (
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); imprimirDocumento(d); }}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F0FDF4", color: "#15803D", border: "0.5px solid #86EFAC", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>
+                    🖨 {d.tipo_doc === "CTE" ? "Imprimir DACTE" : "Imprimir NFS"}
+                  </OperationalButton>
                 )}
                 {d.tipo_doc === "NF" && processada && podeDevolverNf(nf?.tipo_entrada) && (
                   <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}

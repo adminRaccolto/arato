@@ -52,7 +52,7 @@ import {
   listarCiclosDoCliente,
   listarPedidoCompraItens,
   
-  processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
+  processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo, listarProdutoresDaConta } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
 import { ieDaDevolucao, ieDoDestinatarioNoXml, itemDevolvivel, itensDoXmlNfe, municipioDoDestinatarioNoXml, podeDevolverNf, precoEDescontoDoItem, valoresDaDevolucao, type ValoresDevolucao } from "../../lib/fiscal/devolucao-compra";
 import { SeletorIE, useDadosEmissao } from "./EmissaoNfe";
@@ -318,7 +318,8 @@ interface ItemRascunho {
   // do item vem da Operação Gerencial do cabeçalho, não de um estado por item)
   maquinas_rateio: { maquina_id: string; percentual: number }[];
   veiculo_id: string;       // abastecimento em posto: veículo do cadastro de Transporte
-  funcionario_id: string;   // abastecimento em posto: motorista/operador
+  funcionario_id: string;   // abastecimento em posto: motorista/operador (funcionário)
+  produtor_id: string;      // abastecimento em posto: produtor que abasteceu (no lugar do funcionário — Seção 449)
   // Apropriação Direta — hodômetro/horímetro do veículo, só no modo combustível.
   horimetro: number;
   // ICMS retido na origem (Substituição Tributária) — lido do XML, item a item (CST 10/30/60/70
@@ -342,7 +343,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   lotes_semente: [],
   tipo_apropiacao: "estoque",
   deposito_id: "", bomba_id: "", maquina_id: "", centro_custo_id: "",
-  maquinas_rateio: [], horimetro: 0, veiculo_id: "", funcionario_id: "",
+  maquinas_rateio: [], horimetro: 0, veiculo_id: "", funcionario_id: "", produtor_id: "",
   cst_icms: "", icms_retido: false, valor_icms_st: 0,
 });
 
@@ -428,6 +429,8 @@ export default function ModalNf({
   const [maquinas, setMaquinas]   = useState<Maquina[]>([]);
   const [veiculosAbast, setVeiculosAbast] = useState<VeiculoUnificado[]>([]);
   const [motoristas, setMotoristas] = useState<{ id: string; nome: string }[]>([]);
+  // Produtores também abastecem em posto: entram na mesma lista do motorista/operador
+  const [produtoresAbast, setProdutoresAbast] = useState<{ id: string; nome: string }[]>([]);
   const [pedidos, setPedidos]     = useState<PedidoMin[]>([]);
   const [pedidoItensVinculado, setPedidoItensVinculado] = useState<PedidoCompraItem[]>([]);
   const [regrasClass, setRegrasClass] = useState<RegraClassificacao[]>([]);
@@ -649,6 +652,7 @@ export default function ModalNf({
     // Abastecimento em posto: máquinas e veículos (Transporte) de todas as fazendas do cliente, e os motoristas
     try { setVeiculosAbast(await listarVeiculosUnificados(idsParaNf, "todos")); } catch {}
     try { setMotoristas((await listarFuncionarios(idsParaNf)).filter(f => f.ativo !== false).map(f => ({ id: f.id, nome: f.nome }))); } catch {}
+    if (contaId) { try { setProdutoresAbast((await listarProdutoresDaConta(contaId)).map(p => ({ id: p.id, nome: p.nome })).sort((a, b) => a.nome.localeCompare(b.nome))); } catch {} }
     try { setRegrasClass(await listarRegrasClassificacao(fazendaIds.length ? fazendaIds : fazendaId)); } catch {}
     // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (antes só CP/CR: OG só de NF nem aparecia)
     try {
@@ -840,6 +844,7 @@ export default function ModalNf({
             maquinas_rateio:    Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
             veiculo_id:         i.veiculo_id          ?? "",
             funcionario_id:     i.funcionario_id      ?? "",
+            produtor_id:        i.produtor_id         ?? "",
             cst_icms:           (i as Record<string, unknown>).cst_icms as string ?? "",
             icms_retido:        !!(i as Record<string, unknown>).icms_retido,
             valor_icms_st:      (i as Record<string, unknown>).valor_icms_st as number ?? 0,
@@ -931,7 +936,7 @@ export default function ModalNf({
             deposito_id: i.deposito_id ?? "", bomba_id: i.bomba_id ?? "",
             maquina_id: i.maquina_id ?? "", centro_custo_id: i.centro_custo_id ?? "",
             maquinas_rateio: Array.isArray(i.maquinas_rateio) ? i.maquinas_rateio : [],
-            horimetro: i.horimetro ?? 0, veiculo_id: i.veiculo_id ?? "", funcionario_id: i.funcionario_id ?? "",
+            horimetro: i.horimetro ?? 0, veiculo_id: i.veiculo_id ?? "", funcionario_id: i.funcionario_id ?? "", produtor_id: i.produtor_id ?? "",
             lotes_semente: Array.isArray(i.lotes_semente) ? i.lotes_semente : (i.lote_semente ? [{ numero: i.lote_semente }] : []),
             pa_nome: i.principio_ativo_id ? i.descricao_produto : undefined,
             pa_auto: !!i.principio_ativo_id,
@@ -1187,7 +1192,7 @@ export default function ModalNf({
             tipo_apropiacao: tipoApropDeCfop(CFOP, "estoque"),
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
-            maquinas_rateio: [], horimetro: 0, veiculo_id: "", funcionario_id: "",
+            maquinas_rateio: [], horimetro: 0, veiculo_id: "", funcionario_id: "", produtor_id: "",
             cst_icms: cstIcms, icms_retido: icmsRetido, valor_icms_st: vIcmsSt,
           };
         }));
@@ -1699,6 +1704,7 @@ export default function ModalNf({
           // Só vão quando usados (Seção 426): sem a seção, NF que não aponta veículo da Transporte/motorista segue normal
           veiculo_id:          (tipo === "custo_direto" && modoDireto === "combustivel" && it.veiculo_id) ? it.veiculo_id : undefined,
           funcionario_id:      (tipo === "custo_direto" && modoDireto === "combustivel" && it.funcionario_id) ? it.funcionario_id : undefined,
+          produtor_id:         (tipo === "custo_direto" && modoDireto === "combustivel" && it.produtor_id) ? it.produtor_id : undefined,
           lotes_semente:       it.lotes_semente?.length ? it.lotes_semente : undefined,
           lote_semente:        it.lotes_semente?.length === 1 ? it.lotes_semente[0].numero : undefined,
           alerta_preco:        false,
@@ -3910,9 +3916,12 @@ export default function ModalNf({
                                     <option value="">⛽ Máquina ou veículo que abasteceu —</option>
                                     {(veiculosAbast.length ? veiculosAbast : maquinas.map(m => ({ ref: `m:${m.id}`, label: m.nome } as VeiculoUnificado))).map(v => <option key={v.ref} value={v.ref}>{v.label}</option>)}
                                   </SelectField>
-                                  <SelectField value={it.funcionario_id} onChange={e => setItem(it.key, { funcionario_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF8E8" }}>
-                                    <option value="">👤 Motorista / operador —</option>
-                                    {motoristas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                                  <SelectField value={it.produtor_id ? `p:${it.produtor_id}` : it.funcionario_id ? `f:${it.funcionario_id}` : ""}
+                                    onChange={e => { const v = e.target.value; setItem(it.key, { funcionario_id: v.startsWith("f:") ? v.slice(2) : "", produtor_id: v.startsWith("p:") ? v.slice(2) : "" }); }}
+                                    style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF8E8" }}>
+                                    <option value="">👤 Quem abasteceu (motorista, operador ou produtor) —</option>
+                                    {motoristas.length > 0 && <optgroup label="Funcionários">{motoristas.map(f => <option key={f.id} value={`f:${f.id}`}>{f.nome}</option>)}</optgroup>}
+                                    {produtoresAbast.length > 0 && <optgroup label="Produtores">{produtoresAbast.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nome}</option>)}</optgroup>}
                                   </SelectField>
                                   {/* Data, tipo de combustível, valor/L e valor total já vêm da NF —
                                       só falta o hodômetro/horímetro pra alimentar o histórico de

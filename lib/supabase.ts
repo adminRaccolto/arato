@@ -1563,6 +1563,7 @@ export type NfEntradaItem = {
   // Abastecimento em posto (Apropriação Direta, Seção 426): veículo da Transporte e motorista do abastecimento
   veiculo_id?: string | null;
   funcionario_id?: string | null;
+  produtor_id?: string | null;          // abastecimento em posto: produtor que abasteceu (Seção 449)
   alerta_preco: boolean;
   // ICMS retido na origem (Substituição Tributária), lido do XML da NF — CST/CSOSN do item e o
   // valor do ICMS-ST, quando informado pelo fornecedor. Informativo: o valor já está embutido em

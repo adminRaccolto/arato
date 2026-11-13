@@ -140,7 +140,9 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
    finally{await db.exec('RESET ROLE');}
   });
   await db.exec('CREATE TABLE financeiro_operacoes(requisicao_id uuid,tabela text,registro_id uuid,acao text,dados jsonb,antes jsonb,depois jsonb,retorno jsonb,created_at timestamptz)');
-  await db.exec(source.slice(source.indexOf('-- Seção 447 —')));
+  // Só a Seção 447 (até a próxima seção): as seções seguintes do arquivo usam tabelas que este banco de teste não tem
+  const i447=source.indexOf('-- Seção 447 —');const f447=source.indexOf("\n-- Seção ",i447+10);
+  await db.exec(source.slice(i447,f447<0?undefined:f447));
   await scenario('encargos opcionais: desmarcar cancela previsões e conserva salários e cálculos',async()=>{
    await db.query('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]);
    assert.equal((await get(id(2050))).status,'cancelado');assert.equal((await get(id(3050))).status,'cancelado');
