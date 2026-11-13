@@ -22523,3 +22523,47 @@ REVOKE ALL ON FUNCTION public.fiscal_reservar_evento(uuid,text,jsonb),public.fis
 GRANT EXECUTE ON FUNCTION public.fiscal_reservar_evento(uuid,text,jsonb),public.fiscal_concluir_evento(uuid,jsonb) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 448 — Avisos aos clientes com ciência (Gestão Arato → Avisos aos Clientes) (13/11/2026)
+-- A equipe Raccolto escreve o aviso (título, mensagem, tipo, público, início/fim, obrigatório, botão opcional) e ele
+-- aparece em popup para os usuários dos clientes. Cada usuário dá ciência uma vez; a tela mostra quem já leu e quem não.
+-- Leitura e gravação só pelas rotas do servidor (/api/admin/avisos e /api/avisos, com service role): RLS ligado e
+-- nenhuma política, então o navegador não lê nem grava direto.
+-- ═══════════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS avisos_sistema (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo       text NOT NULL,
+  mensagem     text NOT NULL,
+  tipo         text NOT NULL DEFAULT 'informativo' CHECK (tipo IN ('informativo','manutencao','importante')),
+  publico      text NOT NULL DEFAULT 'todos' CHECK (publico IN ('todos','contas')),
+  conta_ids    uuid[],
+  inicio       timestamptz NOT NULL DEFAULT now(),
+  fim          timestamptz,
+  obrigatorio  boolean NOT NULL DEFAULT false,
+  botao_texto  text,
+  botao_link   text,
+  ativo        boolean NOT NULL DEFAULT true,
+  criado_por   text,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  CHECK (fim IS NULL OR fim > inicio)
+);
+CREATE INDEX IF NOT EXISTS idx_avisos_sistema_periodo ON avisos_sistema(ativo, inicio, fim);
+
+CREATE TABLE IF NOT EXISTS avisos_ciencia (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  aviso_id   uuid NOT NULL REFERENCES avisos_sistema(id) ON DELETE CASCADE,
+  user_id    uuid NOT NULL,
+  conta_id   uuid,
+  nome       text,
+  email      text,
+  ciente_em  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (aviso_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_avisos_ciencia_user ON avisos_ciencia(user_id);
+
+ALTER TABLE avisos_sistema ENABLE ROW LEVEL SECURITY;
+ALTER TABLE avisos_ciencia ENABLE ROW LEVEL SECURITY;
+
+NOTIFY pgrst, 'reload schema';

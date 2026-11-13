@@ -9,6 +9,7 @@ import Footer from "../components/Footer";
 import SidebarAtalhos from "../components/SidebarAtalhos";
 import OliviaWidget from "../components/OliviaWidget";
 import AvisoNovidade from "../components/AvisoNovidade";
+import AvisosSistema from "../components/AvisosSistema";
 import ModalNaoFechaFora from "../components/ModalNaoFechaFora";
 import "./globals.css";
 import "./arato-operational.css";
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SidebarAtalhos />
           <OliviaWidget />
           <AvisoNovidade />
+          <AvisosSistema />
           <div style={{ paddingLeft: "var(--sidebar-w, 0px)", transition: "padding-left 0.2s ease" }}>
             <LayoutShell>{children}</LayoutShell>
           </div>

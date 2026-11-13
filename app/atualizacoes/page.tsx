@@ -7,6 +7,15 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-a",
+    data: "13/11/2026",
+    titulo: "Avisos da equipe Arato com ciência",
+    modulos: ["Sistema"],
+    itens: [
+      { tipo: "novidade", texto: "Avisos da equipe Arato: comunicados importantes (parada programada, novidades) passam a aparecer numa janela ao usar o sistema, com o botão \"Li e estou ciente\". Cada usuário dá a própria ciência uma vez; aviso não obrigatório pode ser deixado para depois (volta no próximo login)." },
+    ],
+  },
+  {
     versao: "2026.11.12-a",
     data: "12/11/2026",
     titulo: "Devolução de compra com desconto destacado",

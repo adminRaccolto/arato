@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { type: "link",    id: "faturamento", label: "Faturamento",           icon: "💳", path: "/admin/faturamento" },
   { type: "link",    id: "onboarding",label: "Agente Implantador",     icon: "🤖", path: "/admin/onboarding"   },
   { type: "link",    id: "dados",     label: "Dados & Limpeza",        icon: "🗑️", path: "/admin/dados"       },
+  { type: "link",    id: "avisos",    label: "Avisos aos Clientes",    icon: "📢", path: "/admin/avisos"      },
   { type: "divider", label: "App Campo" },
   { type: "link",    id: "campo",     label: "App Campo",              icon: "🚜", path: "/admin/campo"    },
   { type: "divider", label: "Produto" },
