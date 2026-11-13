@@ -15,8 +15,21 @@ export async function bloqueioRecusa(sb: SupabaseClient, devId: string): Promise
   if (error) throw error;
   if (!dev) return "O registro da devolução não foi encontrado no Arato.";
   if (dev.status === "cancelada") return null; // já desfeita (retomada de uma recusa interrompida)
-  const { count: diretos } = await sb.from("nf_entrada_itens").select("id", { count: "exact", head: true }).eq("nf_entrada_id", devId).eq("tipo_apropiacao", "direto");
-  if (diretos) return "Esta devolução tem item de Apropriação Direta (manutenção ou abastecimento): o custo original precisa ser conferido à mão. Fale com o suporte antes de registrar a recusa.";
+  // Apropriação Direta: custo direto puro só é abatido no DRE pelo item da devolução (sai junto ao desfazer). Só trava
+  // quando o item virou manutenção ou abastecimento de máquina — a devolução reduziu esses registros (lib/db.ts) e o
+  // valor original precisa ser conferido à mão.
+  const { data: diretos, error: eD } = await sb.from("nf_entrada_itens").select("origem_item_id").eq("nf_entrada_id", devId).eq("tipo_apropiacao", "direto");
+  if (eD) throw eD;
+  const origens = (diretos ?? []).map(d => d.origem_item_id as string | null).filter((x): x is string => !!x);
+  if (origens.length) {
+    const [{ count: manut, error: eM }, { count: abast, error: eA }] = await Promise.all([
+      sb.from("historico_manutencao").select("id", { count: "exact", head: true }).in("nf_entrada_item_id", origens),
+      sb.from("abastecimentos").select("id", { count: "exact", head: true }).in("nf_entrada_item_id", origens),
+    ]);
+    if (eM) throw eM;
+    if (eA) throw eA;
+    if (manut || abast) return "Esta devolução reduziu o custo de manutenção ou abastecimento de máquina (Apropriação Direta): o valor original precisa ser conferido à mão. Fale com o suporte antes de registrar a recusa.";
+  }
   const comp = Array.isArray(dev.compensacoes) ? (dev.compensacoes as { valor: number }[]) : [];
   const compensado = r2(comp.reduce((s, c) => s + Number(c.valor || 0), 0));
   const { data: titulos, error: eT } = await sb.from("lancamentos").select("id, tipo, status, valor_pago, lote_id, conciliado").eq("nf_entrada_id", devId);
