@@ -77,6 +77,23 @@ export async function desfazerCompensacaoDevolucao(sb: SupabaseClient, nfDevId: 
 }
 
 /**
+ * Cancelamento de NF-e de devolução ACEITO pela SEFAZ: desfaz antes o encontro de contas, para a conclusão local
+ * (fiscal_concluir_evento, Seção 445) conseguir estornar a devolução. Sem isso ela parava em "compensações históricas"
+ * sempre que a devolução tinha abatido os títulos da compra. Devolução com Apropriação Direta continua parando na
+ * conclusão (regra da Seção 445) — nesse caso os títulos não são mexidos aqui.
+ */
+export async function prepararCancelamentoDevolucao(sb: SupabaseClient, notaId: string): Promise<void> {
+  const { data: nota } = await sb.from("notas_fiscais").select("dados_nf_json").eq("id", notaId).maybeSingle();
+  const devId = (nota?.dados_nf_json as { devolucao_nf_entrada_id?: string } | null)?.devolucao_nf_entrada_id;
+  if (!devId) return;
+  const { data: dev } = await sb.from("nf_entradas").select("status, compensacoes").eq("id", devId).maybeSingle();
+  if (!dev || dev.status === "cancelada" || !Array.isArray(dev.compensacoes) || !dev.compensacoes.length) return;
+  const { count } = await sb.from("nf_entrada_itens").select("id", { count: "exact", head: true }).eq("nf_entrada_id", devId).eq("tipo_apropiacao", "direto");
+  if (count) return;
+  await desfazerCompensacaoDevolucao(sb, devId);
+}
+
+/**
  * Marca a NF de compra como devolvida ('total' | 'parcial' | null) pela soma das quantidades devolvidas (itens das
  * NFs de devolução não canceladas, ligados por origem_item_id). A NF continua "processada" por dentro — estoque,
  * custos e relatórios seguem contando a compra e a devolução — e a tela de Documentos Fiscais mostra "Devolvida"

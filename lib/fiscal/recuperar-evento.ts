@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { carregarCertificadoEmitente } from "../nfe/certificado-emitente";
 import { documentoDoModulo } from "../nfe/identidade-fiscal";
 import { consultarEventoNFe } from "../sefaz-consulta";
+import { prepararCancelamentoDevolucao } from "./devolucao-compensacao";
 
 /** Repete apenas a consulta e a conclusão local. Não retransmite o evento. */
 export async function recuperarEventoFiscal(db:SupabaseClient,id:string) {
@@ -21,6 +22,7 @@ export async function recuperarEventoFiscal(db:SupabaseClient,id:string) {
     }
     if(!resultado?.sucesso)return {ok:false,pendente:true,error:resultado?.xMotivo ?? "Evento ainda sem confirmação externa."};
   }
+  if(e.acao==="cancelar")await prepararCancelamentoDevolucao(db,e.nota_id);
   const r=await db.rpc("fiscal_concluir_evento",{p_id:id,p_resposta:resultado});if(r.error)throw r.error;
   return r.data;
 }

@@ -1,7 +1,6 @@
 "use client";
 import OperacaoFiscalSelect from "../../components/fiscal/OperacaoFiscalSelect";
 import EmissoesConferencia from "../../components/fiscal/EmissoesConferencia";
-import OpcoesUnidade from "../../components/OpcoesUnidade";
 import { imprimirCce } from "../../lib/fiscal/imprimir-cce";
 import VerificarCertificado from "../../components/fiscal/VerificarCertificado";
 import { hojeLocal } from "../../lib/data-local";
@@ -9,6 +8,7 @@ import { OperationalButton, OperationalGrid, OperationalHeading } from "../../co
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
+import ModalRecusaDevolucao from "../../components/fiscal/ModalRecusaDevolucao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
@@ -547,7 +547,7 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
@@ -557,6 +557,8 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
   onManifestarNF?: (n: NotaFiscal) => void;
   onCorrigir?: (n: NotaFiscal) => void;
   onDuplicar?: (n: NotaFiscal) => void;
+  /** Devolução de compra recusada pelo fornecedor (components/fiscal/ModalRecusaDevolucao.tsx) */
+  onRecusada?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -604,6 +606,14 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                 <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtMoeda(nota.valor_total)}</td>
                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
                   <span style={{ fontSize: 10, background: cs.bg, color: cs.color, padding: "3px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>{cs.icone} {cs.label}</span>
+                  {(() => {
+                    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+                    const rec = dj.recusa as { status?: string; retorno?: { numero?: string } } | undefined;
+                    if (rec?.status === "registrada") return <div style={{ fontSize: 10, color: "#791F1F", marginTop: 4, whiteSpace: "nowrap" }}>Recusada · entrada NF-e {rec.retorno?.numero}</div>;
+                    if (rec?.status === "emitindo" || rec?.status === "emitida") return <div style={{ fontSize: 10, color: "#7A5A12", marginTop: 4, whiteSpace: "nowrap" }}>Recusa em andamento</div>;
+                    if (dj.retorno_recusa_de) return <div style={{ fontSize: 10, color: "#0C447C", marginTop: 4, whiteSpace: "nowrap" }}>Retorno de devolução recusada</div>;
+                    return null;
+                  })()}
                 </td>
                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
                   <span style={{ fontSize: 10, background: nota.auto ? "#E8E8E8" : "#FBF0D8", color: nota.auto ? "#0D0D0D" : "#7A5A12", padding: "2px 7px", borderRadius: 8 }}>
@@ -657,6 +667,16 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                               style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
                               Cancelar NF-e
+                            </OperationalButton>
+                          )}
+                          {onRecusada && nota.tipo === "saida" && !!(nota.dados_nf_json as Record<string, unknown> | null)?.devolucao_nf_entrada_id
+                            && (nota.dados_nf_json as { recusa?: { status?: string } } | null)?.recusa?.status !== "registrada" && (
+                            <OperationalButton data-arato-button="secondary"
+                              onClick={(e) => { e.stopPropagation(); onRecusada(nota); }}
+                              title="O fornecedor não aceitou a devolução: cancela a NF-e (até 24 h) ou emite a NF-e de entrada do retorno"
+                              style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                            >
+                              ↩ Recusada pelo fornecedor
                             </OperationalButton>
                           )}
                           {onComplementar && (
@@ -884,7 +904,7 @@ function FiscalInner() {
 
   // Modais
   const [modalVenda, setModalVenda] = useState(false);
-  const [modalDevolucao, setModalDevolucao] = useState(false);
+  const [modalRecusa, setModalRecusa] = useState<NotaFiscal | null>(null);
   const [modalTransferencia, setModalTransferencia] = useState(false);
   const [salvandoTransf, setSalvandoTransf] = useState(false);
   const [fTransf, setFTransf] = useState({
@@ -1044,14 +1064,6 @@ function FiscalInner() {
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remessaModo, fazendaId, fVenda.cnpj, depositos]);
-
-  // Formulário Devolução
-  const [fDev, setFDev] = useState({
-    remetente: "", cnpj: "", ncm: "1201.90.00",
-    cfop: "2.201", quantidade: "", unidade: "sc", valorUnitario: "",
-    nfe_ref: "", chave_ref: "",
-    observacao: NATUREZAS_DEVOLUCAO[0].obs,
-  });
 
   // Contingência
   const [modoContingencia,    setModoContingencia]    = useState(false);
@@ -1337,7 +1349,8 @@ function FiscalInner() {
   // Notas de Venda (e somavam no faturamento). Transferência tem aba própria e também sai de Notas de Venda.
   const ehTransferenciaNota = (n: { cfop?: string | null }) => ["5.152","6.152","5.906","6.906"].includes(String(n.cfop ?? ""));
   const notasDevolucao  = notas.filter(n => (n.tipo === "entrada" && (n.cfop?.startsWith("1.2") || n.cfop?.startsWith("2.2")))
-    || (n.tipo === "saida" && modoDaNota(n) === "devolucao"));
+    || (n.tipo === "saida" && modoDaNota(n) === "devolucao")
+    || !!(n.dados_nf_json as Record<string, unknown> | null)?.retorno_recusa_de);
   const notasVenda      = notas.filter(n => n.tipo === "saida" && modoDaNota(n) !== "devolucao" && !ehTransferenciaNota(n));
   const notasCanceladas = notas.filter(n => n.status === "cancelada");
   const notasAutorizadas = notas.filter(n => n.status === "autorizada" && n.tipo === "saida");
@@ -1740,37 +1753,18 @@ function FiscalInner() {
   };
 
   // Emitir NF-e de Devolução
-  const emitirDevolucao = async () => {
-    if (!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario) return;
-    const valor = Math.round(Number(fDev.quantidade) * desmascarar(fDev.valorUnitario) * 100) / 100;
-    const nat = NATUREZAS_DEVOLUCAO.find(n => n.codigo === fDev.cfop);
-    const obs = [
-      fDev.nfe_ref ? `Ref. NF-e ${fDev.nfe_ref}.` : "",
-      fDev.chave_ref ? `Chave: ${fDev.chave_ref}.` : "",
-      nat?.obs ?? "",
-    ].filter(Boolean).join(" ");
-    setSalvando(true);
-    try {
-      await criarNotaFiscal({
-        fazenda_id: fazendaId!, numero: proximoNumero(), serie: "1", tipo: "entrada",
-        cfop: fDev.cfop, natureza: nat?.descricao ?? fDev.cfop,
-        destinatario: fDev.remetente, cnpj_destinatario: fDev.cnpj || undefined,
-        valor_total: valor, data_emissao: TODAY, status: "em_digitacao",
-        observacao: obs, auto: false,
-      });
-      setFDev({ remetente: "", cnpj: "", ncm: "1201.90.00", cfop: "2.201", quantidade: "", unidade: "sc", valorUnitario: "", nfe_ref: "", chave_ref: "", observacao: NATUREZAS_DEVOLUCAO[0].obs });
-      setModalDevolucao(false);
-      await carregar();
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
-    finally { setSalvando(false); }
-  };
-
   // Solicitar cancelamento — achado real 23/09/2026: isso era simulado (só um
   // alert(), nada transmitido à SEFAZ nem atualizado no banco). Agora chama
   // /api/fiscal/eventos, que transmite o evento oficial de cancelamento
   // (tpEvento 110111) de verdade e só marca "cancelada" se a SEFAZ aceitar.
   const solicitarCancelamento = async () => {
     if (!modalCancelamento || motivoCancelamento.trim().length < 15) return;
+    // NF-e de entrada do retorno de uma devolução recusada: cancelar não refaz a devolução no estoque nem no financeiro
+    if ((modalCancelamento.dados_nf_json as Record<string, unknown> | null)?.retorno_recusa_de && !(await confirmarAcao({
+      titulo: "Cancelar o retorno da devolução recusada?",
+      mensagem: "Esta NF-e trouxe de volta a mercadoria de uma devolução recusada. Cancelar só anula a nota na SEFAZ: o estoque e os títulos continuam como se a devolução não tivesse acontecido. Se a devolução voltou a valer, faça uma devolução nova pela NF do fornecedor.",
+      perigo: true,
+    }))) return;
     setSalvando(true);
     try {
       const res = await fetch("/api/fiscal/eventos", {
@@ -2029,7 +2023,8 @@ function FiscalInner() {
   const botaoNovo: Record<Aba, { label: string; onClick: () => void } | null> = {
     // Venda da produção sai pelo menu Saídas; este emissor fica para outras saídas até a tela Venda de Outros Bens
     venda:         { label: "◈ Outra NF-e de Saída",         onClick: () => { setBuscaPessoa(""); setDropdownPessoa(false); setModalVenda(true); } },
-    devolucao:     { label: "◈ Nova NF-e de Devolução",     onClick: () => setModalDevolucao(true) },
+    // A devolução de compra sai da NF do fornecedor (Notas de Fornecedores → Devolver); ver aba Nota de Devolução
+    devolucao:     null,
     transferencia: { label: "◈ Nova NF de Transferência",   onClick: () => setModalTransferencia(true) },
     cancelamento:  null,
     complemento:   null,
@@ -2189,20 +2184,27 @@ function FiscalInner() {
                       Notas de <strong>devolução</strong>: as de compra que a fazenda emite ao devolver mercadoria ao fornecedor
                       (<strong>5.2xx</strong>, <strong>5.410–5.413</strong>, <strong>5.553</strong>, <strong>5.556</strong> e 6.xxx), a de bem de terceiro (<strong>5.555</strong>),
                       os retornos de comodato, demonstração e conserto, e a devolução de venda recebida do comprador (<strong>1.201</strong> / <strong>2.201</strong>).
-                      Toda devolução referencia a chave da NF-e original.
+                      Toda devolução referencia a chave da NF-e original. A devolução de compra é emitida pela NF do fornecedor, em
+                      <strong> Notas de Fornecedores → Devolver</strong>. Se o fornecedor <strong>recusar</strong> a devolução, abra a nota aqui e use
+                      <strong> Recusada pelo fornecedor</strong>.
                     </div>
                   </div>
                   {notasDevolucao.length === 0 ? (
                     <div data-arato-statistic="action" style={{ padding: 40, textAlign: "center", color: "#666" }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>↩</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma devolução registrada</div>
-                      <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF-e de Devolução" para registrar uma devolução de mercadoria.</div>
-                      <OperationalButton data-arato-button="primary" onClick={() => setModalDevolucao(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                        ◈ Nova NF-e de Devolução
-                      </OperationalButton>
+                      <div style={{ fontSize: 12, color: "var(--text-3)" }}>Para devolver mercadoria ao fornecedor, abra a NF dele em Notas de Fornecedores e use Devolver.</div>
                     </div>
                   ) : (
-                    <TabelaNFe notas={notasDevolucao} />
+                    <TabelaNFe
+                      notas={notasDevolucao}
+                      onCancelar={n => setModalCancelamento(n)}
+                      onImprimirDanfe={n => n.chave_acesso
+                        ? window.open(`/api/fiscal/danfe?chave=${n.chave_acesso}&fazenda_id=${n.fazenda_id}`, "_blank")
+                        : window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")}
+                      onConsultarSefaz={consultarSefaz}
+                      onRecusada={n => setModalRecusa(n)}
+                    />
                   )}
                 </div>
               )}
@@ -3400,43 +3402,14 @@ function FiscalInner() {
         </div>
       )}
 
-      {/* ── MODAL: Nova NF-e de Devolução ── */}
-      {modalDevolucao && (
-        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
-         >
-          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 780, maxWidth: "97vw", maxHeight: "95vh", overflowY: "auto" }}>
-            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Nova NF-e de Devolução</div>
-            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>Emitida quando o comprador devolve mercadoria. Deve referenciar a NF-e original.</div>
-
-            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 14, marginBottom: 14 }}>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Remetente (quem devolve) *</label><input style={inputSt} placeholder="Bunge Alimentos S.A." value={fDev.remetente} onChange={e => setFDev(p => ({ ...p, remetente: e.target.value }))} /></div>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>CNPJ / CPF</label><input style={inputSt} placeholder="00.000.000/0001-00" value={fDev.cnpj} onChange={e => setFDev(p => ({ ...p, cnpj: e.target.value }))} /></div>
-            </div>
-            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>NF-e de referência (número)</label><input style={inputSt} placeholder="Ex: 001.001" value={fDev.nfe_ref} onChange={e => setFDev(p => ({ ...p, nfe_ref: e.target.value }))} /></div>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Chave de acesso (44 dígitos)</label><input style={inputSt} placeholder="00000000000000000000000000000000000000000000" value={fDev.chave_ref} onChange={e => setFDev(p => ({ ...p, chave_ref: e.target.value.replace(/\D/g, "").slice(0, 44) }))} /></div>
-            </div>
-            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
-              <label data-arato-label="true" style={labelSt}>CFOP da devolução *</label>
-              <SelectField style={inputSt} value={fDev.cfop} onChange={e => { const nat = NATUREZAS_DEVOLUCAO.find(n => n.codigo === e.target.value); setFDev(p => ({ ...p, cfop: e.target.value, observacao: nat?.obs ?? p.observacao })); }}>
-                {NATUREZAS_DEVOLUCAO.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
-              </SelectField>
-            </div>
-            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 100px 100px 160px", gap: 14, marginBottom: 14 }}>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>NCM *</label><SelectField style={inputSt} value={fDev.ncm} onChange={e => setFDev(p => ({ ...p, ncm: e.target.value }))}>{NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</SelectField></div>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Quantidade *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0" value={fDev.quantidade} onChange={e => setFDev(p => ({ ...p, quantidade: e.target.value.replace(/\D/g, "") }))} /></div>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Unidade</label><SelectField style={inputSt} value={fDev.unidade} onChange={e => setFDev(p => ({ ...p, unidade: e.target.value }))}><OpcoesUnidade base={["sc", "kg", "ton"]} atual={fDev.unidade} /></SelectField></div>
-              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Valor unit. (R$) *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0,00" value={fDev.valorUnitario} onChange={e => setFDev(p => ({ ...p, valorUnitario: aplicarMascara(e.target.value) }))} /></div>
-            </div>
-            {(() => { const v = fDev.quantidade && fDev.valorUnitario ? Math.round(Number(fDev.quantidade) * desmascarar(fDev.valorUnitario) * 100) / 100 : 0; if (!v) return null; return <div style={{ background: "#FAEEDA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#633806", marginBottom: 12 }}>Valor total da devolução: <strong style={{ fontSize: 15 }}>{fmtMoeda(v)}</strong></div>; })()}
-            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <OperationalButton data-arato-button="secondary" onClick={() => setModalDevolucao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="toggle" onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Emitindo…" : "⟳ Emitir NF-e de Devolução"}
-              </OperationalButton>
-            </div>
-          </div>
-        </div>
+      {/* ── MODAL: Devolução recusada pelo fornecedor ── */}
+      {modalRecusa && (
+        <ModalRecusaDevolucao
+          nota={modalRecusa}
+          onFechar={() => setModalRecusa(null)}
+          onCancelarNfe={n => { setModalRecusa(null); setModalCancelamento(n); }}
+          onConcluido={() => { carregar(); }}
+        />
       )}
 
       {/* ── MODAL: NF de Transferência ── */}

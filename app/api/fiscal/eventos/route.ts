@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cancelarNFeEmitida, corrigirNFeEmitida } from "../../../../lib/nfe/index";
 import { resolverModuloPorChave } from "../../../../lib/nfe/resolver-emitente";
+import { prepararCancelamentoDevolucao } from "../../../../lib/fiscal/devolucao-compensacao";
 
 export const maxDuration=60;
 export const runtime = "nodejs"; // lib/nfe usa node-forge, precisa de Node
@@ -25,6 +26,8 @@ export async function POST(request:NextRequest){
     if(!evento.executar)return NextResponse.json({ok:false,pendente:true,evento_id:evento.id,xMotivo:"Este evento já foi iniciado. Consulte Emissões em conferência antes de reenviar."},{status:202});
     const resultado=body.acao==="cancelar"?await cancelarNFeEmitida(nota.fazenda_id,modulo,nota.chave_acesso,dj.protocolo_autorizacao,texto,dj.ambiente):await corrigirNFeEmitida(nota.fazenda_id,modulo,nota.chave_acesso,texto,evento.sequencia,dj.ambiente);
     if(resultado.sucesso){
+      // Devolução que abateu títulos da compra: desfaz o encontro de contas antes de concluir (senão a conclusão para)
+      if(body.acao==="cancelar")await prepararCancelamentoDevolucao(adm,nota.id).catch(e=>console.error("[eventos] encontro de contas da devolução:",e));
       const r=await adm.rpc("fiscal_concluir_evento",{p_id:evento.id,p_resposta:resultado});
       if(r.error)return NextResponse.json({ok:true,sincronizacao_pendente:true,evento_id:evento.id,aviso:"Evento aceito na SEFAZ; consulte Emissões em conferência para concluir a gravação local.",...resultado,protocolo:resultado.protocoloEvento},{status:202});
       return NextResponse.json({...resultado,...r.data,protocolo:resultado.protocoloEvento,sequencia:evento.sequencia});

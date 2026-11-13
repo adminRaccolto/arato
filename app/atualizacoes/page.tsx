@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-c",
+    data: "13/11/2026",
+    titulo: "Devolução de compra recusada pelo fornecedor",
+    modulos: ["Fiscal", "Estoque", "Financeiro"],
+    itens: [
+      { tipo: "novidade", texto: "Painel de Notas → Nota de Devolução: novo botão \"Recusada pelo fornecedor\" na NF-e de devolução. Até 24 horas da autorização leva ao cancelamento; depois disso emite a NF-e de entrada da fazenda referenciando a devolução, com os mesmos itens, valores, desconto e ICMS. A mercadoria volta ao estoque, os títulos da compra voltam como estavam e a NF do fornecedor fica livre para uma devolução nova." },
+      { tipo: "correcao", texto: "Cancelar uma NF-e de devolução que abateu os títulos da compra ficava pendente de ajuste no Arato. Agora o abatimento é desfeito junto e a devolução é estornada por inteiro." },
+      { tipo: "melhoria", texto: "A aba Nota de Devolução passa a ter DANFE e cancelamento na própria lista." },
+      { tipo: "correcao", texto: "Retirado o botão \"Nova NF-e de Devolução\" do Painel de Notas: ele gravava a nota sem transmitir à SEFAZ. A devolução de compra continua em Notas de Fornecedores → Devolver." },
+    ],
+    onde: "Documentos Fiscais → Painel de Notas → Nota de Devolução",
+  },
+  {
     versao: "2026.11.13-b",
     data: "13/11/2026",
     titulo: "Folha: encargos opcionais no CP e previsões de funcionários inativos",
