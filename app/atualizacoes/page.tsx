@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-g",
+    data: "13/11/2026",
+    titulo: "Alíquotas com vírgula na Tributação NCM e nas Operações Fiscais",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Parâmetros do Sistema → Tributação NCM e Operações Fiscais: os campos de alíquota e base reduzida (ICMS, PIS, COFINS, IBS e CBS) zeravam ao digitar a vírgula. Agora aceitam decimais normalmente (ex.: 0,9 ou 61,11)." },
+    ],
+    onde: "Parâmetros do Sistema → Tributação NCM / Operações Fiscais",
+  },
+  {
     versao: "2026.11.13-f",
     data: "13/11/2026",
     titulo: "Adiantamento de funcionário entra em aberto no CP e pode pagar outra conta pela Folha",

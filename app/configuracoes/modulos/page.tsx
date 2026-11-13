@@ -5,6 +5,7 @@ import VerificarCertificado from "../../../components/fiscal/VerificarCertificad
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
+import InputNumerico from "../../../components/InputNumerico";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -71,6 +72,12 @@ const campo = (label: string, children: React.ReactNode, required?: boolean) => 
     </label>
     {children}
   </div>
+);
+
+// Alíquotas e percentuais: campo de texto com vírgula (o type="number" zerava ao digitar "0," ou "0.").
+const num = (value: number | null | undefined, onChange: (v: string) => void) => (
+  <InputNumerico decimais={2} value={value} onChange={onChange}
+    style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box" }} />
 );
 
 const inp = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -2449,17 +2456,17 @@ function ParametrosSistemaContent() {
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CST Interno", sel({ value: modalOp.icms_cst_interno ?? "051", onChange: e => setModalOp(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("CST Interestadual", sel({ value: modalOp.icms_cst_externo ?? "020", onChange: e => setModalOp(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.icms_aliq ?? 12, onChange: e => setModalOp(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
-              {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalOp.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: e.target.value === "" ? 100 : Number(e.target.value) })) }))}
+              {campo("Alíquota %", num(modalOp.icms_aliq ?? 12, v => setModalOp(p => ({ ...p!, icms_aliq: v === "" ? 0 : Number(v) || 0 }))))}
+              {campo("Base Reduzida %", num(modalOp.icms_base_reduzida_pct ?? 100, v => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: v === "" ? 100 : Number(v) || 0 }))))}
               {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("PIS / COFINS")}</div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("PIS CST", sel({ value: modalOp.pis_cst ?? "06", onChange: e => setModalOp(p => ({ ...p!, pis_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("PIS Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.pis_aliq ?? 0, onChange: e => setModalOp(p => ({ ...p!, pis_aliq: parseFloat(e.target.value) || 0 })) }))}
+              {campo("PIS Alíquota %", num(modalOp.pis_aliq ?? 0, v => setModalOp(p => ({ ...p!, pis_aliq: v === "" ? 0 : Number(v) || 0 }))))}
               {campo("COFINS CST", sel({ value: modalOp.cofins_cst ?? "06", onChange: e => setModalOp(p => ({ ...p!, cofins_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("COFINS Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.cofins_aliq ?? 0, onChange: e => setModalOp(p => ({ ...p!, cofins_aliq: parseFloat(e.target.value) || 0 })) }))}
+              {campo("COFINS Alíquota %", num(modalOp.cofins_aliq ?? 0, v => setModalOp(p => ({ ...p!, cofins_aliq: v === "" ? 0 : Number(v) || 0 }))))}
             </div>
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("IBS / CBS — Reforma Tributária")}</div>
@@ -2511,17 +2518,17 @@ function ParametrosSistemaContent() {
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CST Interno", sel({ value: modalNcm.icms_cst_interno ?? "051", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.icms_aliq ?? 12, onChange: e => setModalNcm(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
-              {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalNcm.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: e.target.value === "" ? 100 : Number(e.target.value) })) }))}
+              {campo("Alíquota %", num(modalNcm.icms_aliq ?? 12, v => setModalNcm(p => ({ ...p!, icms_aliq: v === "" ? 0 : Number(v) || 0 }))))}
+              {campo("Base Reduzida %", num(modalNcm.icms_base_reduzida_pct ?? 100, v => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: v === "" ? 100 : Number(v) || 0 }))))}
               {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("PIS CST", sel({ value: modalNcm.pis_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, pis_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("PIS Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.pis_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, pis_aliq: parseFloat(e.target.value) || 0 })) }))}
+              {campo("PIS Alíquota %", num(modalNcm.pis_aliq ?? 0, v => setModalNcm(p => ({ ...p!, pis_aliq: v === "" ? 0 : Number(v) || 0 }))))}
               {campo("COFINS CST", sel({ value: modalNcm.cofins_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, cofins_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("COFINS Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.cofins_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, cofins_aliq: parseFloat(e.target.value) || 0 })) }))}
+              {campo("COFINS Alíquota %", num(modalNcm.cofins_aliq ?? 0, v => setModalNcm(p => ({ ...p!, cofins_aliq: v === "" ? 0 : Number(v) || 0 }))))}
             </div>
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("IBS / CBS — Reforma Tributária (LC 214/2025)")}</div>
@@ -2530,9 +2537,9 @@ function ParametrosSistemaContent() {
               IBS/CBS = 0% para exportações (CFOP 7xxx) — imunidade constitucional.
             </div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
-              {campo("IBS Estadual %", inp({ type: "number", step: "0.01", value: modalNcm.ibs_estadual_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, ibs_estadual_aliq: parseFloat(e.target.value) || 0 })) }))}
-              {campo("IBS Municipal %", inp({ type: "number", step: "0.01", value: modalNcm.ibs_municipal_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, ibs_municipal_aliq: parseFloat(e.target.value) || 0 })) }))}
-              {campo("CBS %", inp({ type: "number", step: "0.01", value: modalNcm.cbs_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, cbs_aliq: parseFloat(e.target.value) || 0 })) }))}
+              {campo("IBS Estadual %", num(modalNcm.ibs_estadual_aliq ?? 0, v => setModalNcm(p => ({ ...p!, ibs_estadual_aliq: v === "" ? 0 : Number(v) || 0 }))))}
+              {campo("IBS Municipal %", num(modalNcm.ibs_municipal_aliq ?? 0, v => setModalNcm(p => ({ ...p!, ibs_municipal_aliq: v === "" ? 0 : Number(v) || 0 }))))}
+              {campo("CBS %", num(modalNcm.cbs_aliq ?? 0, v => setModalNcm(p => ({ ...p!, cbs_aliq: v === "" ? 0 : Number(v) || 0 }))))}
               {campo("Redução %", sel({ value: String(modalNcm.ibs_cbs_reducao_pct ?? 0), onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_reducao_pct: parseFloat(e.target.value) })), children: [["0","0% — sem redução"],["60","60% — produção rural (agro)"],["100","100% — zero (exportação/cesta básica)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Efetiva IBS+CBS", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
                 {(((modalNcm.ibs_estadual_aliq ?? 0) + (modalNcm.ibs_municipal_aliq ?? 0) + (modalNcm.cbs_aliq ?? 0)) * (1 - (modalNcm.ibs_cbs_reducao_pct ?? 0) / 100)).toFixed(2)}%
