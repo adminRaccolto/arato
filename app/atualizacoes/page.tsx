@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-h",
+    data: "13/11/2026",
+    titulo: "Data da baixa nos relatórios de Contas a Pagar e a Receber",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Relatório de CP e CR: a coluna antes chamada Data Pgto passa a aparecer como Data da baixa. Pode ser marcada ou desmarcada nas opções de colunas e acompanha o relatório na tela, no PDF e no Excel. As escolhas de colunas já salvas são preservadas." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → CP / CR → Colunas",
+  },
+  {
     versao: "2026.11.13-g",
     data: "13/11/2026",
     titulo: "Alíquotas com vírgula na Tributação NCM e nas Operações Fiscais",

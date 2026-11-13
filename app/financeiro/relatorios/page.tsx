@@ -301,7 +301,7 @@ function FinanceiroRelatoriosInner() {
     { key: "vencimento",     label: "Vencimento",        defaultW: 100, align: "left"  as const },
     { key: "valor",          label: "Valor",             defaultW: 110, align: "right" as const },
     { key: "status",         label: "Status",            defaultW: 90,  align: "left"  as const },
-    { key: "data_pagamento", label: "Data Pgto",         defaultW: 100, align: "left"  as const },
+    { key: "data_pagamento", label: "Data da baixa",     defaultW: 110, align: "left"  as const },
     { key: "valor_pago",     label: "Valor Pago",        defaultW: 110, align: "right" as const },
     { key: "moeda",          label: "Moeda",             defaultW: 65,  align: "left"  as const },
     { key: "forma_pgto",     label: "Forma Pgto",        defaultW: 120, align: "left"  as const },
@@ -2310,7 +2310,7 @@ function FinanceiroRelatoriosInner() {
                   const numCols = new Set(["valor", "valor_pago", "saldo", "dias"]);
                   // PDF: tabela de largura FIXA (cada coluna com fração da folha, texto quebra dentro da célula) — antes a
                   // tabela era encolhida por escala medida na tela e, na impressão, as colunas a partir de OG ficavam fora da folha.
-                  const PESO_COL: Record<string, number> = { tipo: 30, moeda: 34, status: 50, numero_nf: 52, emissao: 62, vencimento: 62, data_baixa: 62, venc_orig: 62, dias: 46, valor: 80, valor_pago: 80, saldo: 80 };
+                  const PESO_COL: Record<string, number> = { tipo: 30, moeda: 34, status: 50, numero_nf: 52, emissao: 62, vencimento: 62, data_pagamento: 70, venc_orig: 62, dias: 46, valor: 80, valor_pago: 80, saldo: 80 };
                   const pesos = colsVisiveis.map(c => PESO_COL[c.key] ?? Math.max(70, Math.min(160, (c as { defaultW?: number }).defaultW ?? 110)));
                   const somaPeso = pesos.reduce((a, b) => a + b, 0) || 1;
                   const colgroup = `<colgroup>${pesos.map(w => `<col style="width:${(w / somaPeso * 100).toFixed(2)}%">`).join("")}</colgroup>`;
