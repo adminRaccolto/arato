@@ -1,9 +1,33 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { COOKIE_ACESSO_MANUTENCAO, PARAM_ACESSO_MANUTENCAO, decidirManutencao, paginaManutencao } from "./lib/manutencao/modo";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Modo manutenção (ARATO_MANUTENCAO=1): responde antes de qualquer acesso ao banco. Ver lib/manutencao/modo.ts.
+  const manutencao = decidirManutencao({
+    ativo: process.env.ARATO_MANUTENCAO,
+    chave: process.env.ARATO_MANUTENCAO_CHAVE,
+    pathname,
+    chaveNaUrl: request.nextUrl.searchParams.get(PARAM_ACESSO_MANUTENCAO),
+    cookie: request.cookies.get(COOKIE_ACESSO_MANUTENCAO)?.value,
+  });
+  if (manutencao.tipo === "estatico") return NextResponse.next();
+  if (manutencao.tipo === "liberar_acesso") {
+    const destino = request.nextUrl.clone();
+    destino.searchParams.delete(PARAM_ACESSO_MANUTENCAO);
+    const r = NextResponse.redirect(destino);
+    r.cookies.set(COOKIE_ACESSO_MANUTENCAO, process.env.ARATO_MANUTENCAO_CHAVE!, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 12 * 60 * 60 });
+    return r;
+  }
+  if (manutencao.tipo === "bloquear_api") {
+    return NextResponse.json({ error: "O Arato está em manutenção programada. Tente novamente em instantes." }, { status: 503, headers: { "Retry-After": "600", "Cache-Control": "no-store" } });
+  }
+  if (manutencao.tipo === "bloquear_pagina") {
+    return new NextResponse(paginaManutencao(process.env.ARATO_MANUTENCAO_PREVISAO), { status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": "600", "Cache-Control": "no-store" } });
+  }
 
   // Rotas públicas — passa direto sem verificar sessão
   if (
