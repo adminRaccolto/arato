@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-i",
+    data: "13/11/2026",
+    titulo: "Fluxo de caixa com ou sem saldo anterior",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novidade", texto: "Fluxo de Caixa: nova caixa de seleção Considerar saldo acumulado anterior ao início, nos filtros de Diário, Mensal e Anual. Marcada, utiliza os saldos iniciais cadastrados nas contas selecionadas; desmarcada, inicia em zero e acumula somente os movimentos do período. No Diário, os atrasados anteriores só entram quando as opções de saldo anterior e de atrasados estiverem marcadas. A escolha acompanha a tela, o PDF e o Excel." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Fluxo de Caixa",
+  },
+  {
     versao: "2026.11.13-h",
     data: "13/11/2026",
     titulo: "Data da baixa nos relatórios de Contas a Pagar e a Receber",

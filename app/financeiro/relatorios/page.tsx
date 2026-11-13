@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { saldoInicialFluxo } from "../../../lib/financeiro/saldo-inicial-fluxo";
 import { agruparBorderosRelatorio, datasBorderosRelatorio, type LinhaBorderoRelatorio } from "../../../lib/financeiro/borderos-relatorio";
 import DetalhesBordero from "../../../components/relatorios/DetalhesBordero";
 import { COR_FLUXO, corLinhaFluxo, rotuloPrevisaoFluxo } from "../../../lib/financeiro/previsoes";
@@ -192,6 +193,7 @@ function FinanceiroRelatoriosInner() {
   const [incluirPrevisoes,  setIncluirPrevisoes]  = useState(true);
   // Fluxo diário: compromissos vencidos e não baixados (antes do início) entram no saldo inicial junto com os saldos das contas
   const [considerarAtrasados, setConsiderarAtrasados] = useState(false);
+  const [considerarSaldoAnterior, setConsiderarSaldoAnterior] = useState(true);
   useEffect(() => { try { if (localStorage.getItem("fc_considerar_atrasados") === "1") setConsiderarAtrasados(true); } catch { /* ok */ } }, []);
   const alternarAtrasados = (v: boolean) => { setConsiderarAtrasados(v); try { localStorage.setItem("fc_considerar_atrasados", v ? "1" : "0"); } catch { /* ok */ } };
   const [simForm,           setSimForm]           = useState({ descricao: "", valor: "", data: "", tipo: "entrada" as "entrada"|"saida", fornecedor: "" });
@@ -209,6 +211,7 @@ function FinanceiroRelatoriosInner() {
 
   // Ref para dados do modo Anual — alimentado durante o render do IIFE
   type PrintAnualData = {
+    saldoInicial: number;
     anosPresentes: string[];
     entradasA: { cat: string; anos: { real: number; prev: number }[] }[];
     saidasA:   { cat: string; anos: { real: number; prev: number }[] }[];
@@ -234,6 +237,7 @@ function FinanceiroRelatoriosInner() {
   };
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
   type PrintMensalData = {
+    saldoInicial: number;
     meses: { ym: string; label: string }[];
     entradasM: { cat: string; meses: { real: number; prev: number; sim: number }[] }[];
     saidasM:   { cat: string; meses: { real: number; prev: number; sim: number }[] }[];
@@ -626,6 +630,7 @@ function FinanceiroRelatoriosInner() {
       const soma = (v: number[]) => v.reduce((a, b) => a + b, 0);
       const totE = mensal ? dm!.totEntM : da!.totEntA, totS = mensal ? dm!.totSaiM : da!.totSaiA;
       const saldo = mensal ? dm!.saldoMesM : da!.saldoAnoA, acum = mensal ? dm!.saldoAcM : da!.saldoAcA;
+      const abertura = mensal ? dm!.saldoInicial : da!.saldoInicial;
       const linhas: (string | number)[][] = [
         ["Categoria", ...colunas, "Total"],
         ["ENTRADAS"],
@@ -646,6 +651,7 @@ function FinanceiroRelatoriosInner() {
         ? `${dm!.inicio.split("-").reverse().join("/")} a ${dm!.fim.split("-").reverse().join("/")} · ${dm!.incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}`
         : `Anos ${da!.anosPresentes.join(", ")} · ${da!.incluirPrevisoes ? "Realizados + pendentes" : "Somente os status marcados"}`;
       const resumo = XLSX.utils.aoa_to_sheet([[`Fluxo de Caixa — ${mensal ? "Mensal" : "Anual"}`], ["Escopo", escopo], ["Filtro", filtro],
+        ["Saldo anterior", considerarSaldoAnterior ? "Considerado — saldos iniciais das contas" : "Desconsiderado — início em zero"], ["Saldo inicial", abertura], ["Saldo final acumulado", acum[acum.length - 1] ?? abertura],
         ["Total entradas", soma(totE)], ["Total saídas", soma(totS)], ["Resultado", soma(totE) - soma(totS)]]);
       formatarNumeros(resumo, 0, 1);
       resumo["!cols"] = [{ wch: 20 }, { wch: 60 }];
@@ -734,16 +740,17 @@ function FinanceiroRelatoriosInner() {
               const secHeader = (label: string, bg: string, cor: string) =>
                 `<tr style="background:${bg}"><td colspan="${d.anosPresentes.length + 2}" style="padding:${padSec};font-weight:700;font-size:${fsSm};color:${cor};letter-spacing:.06em;text-transform:uppercase">${label}</td></tr>`;
 
-              const totalRow = (label: string, vals: number[], cor: string, bg = "var(--bg-page)", bold = true) =>
+              const totalRow = (label: string, vals: number[], cor: string, bg = "var(--bg-page)", bold = true, total = vals.reduce((s, v) => s + v, 0)) =>
                 `<tr style="background:${bg};border-top:0.5px solid var(--border)">
                   ${td(label, { align: "left", bold, color: "#111111", bg })}
                   ${vals.map(v => td(v === 0 ? "—" : fmtV(v), { color: v === 0 ? "#bbb" : cor, bold, bg })).join("")}
-                  ${td(fmtV(vals.reduce((s, v) => s + v, 0)), { color: corV(vals.reduce((s, v) => s + v, 0)), bold, bg })}
+                  ${td(fmtV(total), { color: corV(total), bold, bg })}
                 </tr>`;
 
               const html = `
                 <p style="font-size:11px;color:#555;margin-bottom:10px">
                   Visão plurianual · anos: ${d.anosPresentes.join(", ")} · ${d.incluirPrevisoes ? "Realizados + pendentes" : "Somente realizados"}
+                  · Saldo inicial: ${fmtV(d.saldoInicial)} (${considerarSaldoAnterior ? "saldo anterior considerado" : "início em zero"})
                 </p>
                 <div class="auto-fit-table">
                 <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
@@ -762,7 +769,7 @@ function FinanceiroRelatoriosInner() {
                     ${d.saidasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.saidasA, "var(--text-1)") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma saída.</td></tr>`}
                     ${totalRow("Total Saídas", d.totSaiA, "var(--text-1)")}
                     ${totalRow("Saldo do Ano", d.saldoAnoA, "", "var(--bg-tag)")}
-                    ${totalRow("Saldo Acumulado", d.saldoAcA, "", "var(--bg-tag)")}
+                    ${totalRow("Saldo Acumulado", d.saldoAcA, "", "var(--bg-tag)", true, d.saldoAcA[d.saldoAcA.length - 1] ?? d.saldoInicial)}
                   </tbody>
                 </table>
                 </div>`;
@@ -819,7 +826,7 @@ function FinanceiroRelatoriosInner() {
                 <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F8FAFB;border:0.5px solid #DDE2EE;border-radius:8px;font-size:11px;color:#555">
                   <span><strong>Período:</strong> ${periodo}</span>
                   <span><strong>Tipo:</strong> ${tipoLabel}</span>
-                  ${d.saldoInicial !== 0 ? `<span><strong>Saldo Inicial${d.saldoInicialNota ? " (contas + atrasados)" : ""}:</strong> <span style="color:${d.saldoInicial >= 0 ? "#111" : "#E24B4A"}">${fmtV(d.saldoInicial)}</span></span>${d.saldoInicialNota ? `<span style="color:#7A4300">${d.saldoInicialNota}</span>` : ""}` : ""}
+                  <span><strong>Saldo Inicial:</strong> <span style="color:${d.saldoInicial >= 0 ? "#111" : "#E24B4A"}">${fmtV(d.saldoInicial)}</span></span>${d.saldoInicialNota ? `<span style="color:#7A4300">${d.saldoInicialNota}</span>` : ""}
                 </div>
                 <!-- KPIs -->
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
@@ -974,9 +981,9 @@ function FinanceiroRelatoriosInner() {
                 const cpAntPeriodo = atrasados.filter(l => l.tipo === "pagar").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const crAntPeriodo = atrasados.filter(l => l.tipo === "receber").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
                 const temAtrasados = filtro.tipoVis !== "realizado" && !!filtro.inicio && (cpAntPeriodo > 0 || crAntPeriodo > 0);
-                const aplicaAtrasados = considerarAtrasados && temAtrasados;
+                const aplicaAtrasados = considerarSaldoAnterior && considerarAtrasados && temAtrasados;
                 // Saldo inicial = saldos das contas (+ CR atrasados − CP atrasados, se "Considerar atrasados?" estiver ligado)
-                const saldoInicial = saldoContas + (aplicaAtrasados ? crAntPeriodo - cpAntPeriodo : 0);
+                const saldoInicial = saldoInicialFluxo(considerarSaldoAnterior, saldoContas, aplicaAtrasados ? crAntPeriodo : 0, aplicaAtrasados ? cpAntPeriodo : 0);
 
                 // Separa realizados x pendentes x previsões
                 // Lancamentos baixados via Apoio Financeiro → realizado (mesmo que status ainda seja "em_aberto" no lancamento principal)
@@ -1066,7 +1073,7 @@ function FinanceiroRelatoriosInner() {
                 const fmtDia = (dt: string) => dt ? new Date(dt + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
                 // Atualiza ref para impressão limpa
-                printDiarioRef.current = { dias, diasMap, totalEntradas, totalSaidas, saldoFinal, saldoInicial, saldoInicialNota: aplicaAtrasados ? `Contas ${fmtBRL(saldoContas, 2)} · CR atrasados +${fmtBRL(crAntPeriodo, 2)} · CP atrasados −${fmtBRL(cpAntPeriodo, 2)}` : undefined, filtroInicio: filtro.inicio, filtroFim: filtro.fim, tipoVis: filtro.tipoVis };
+                printDiarioRef.current = { dias, diasMap, totalEntradas, totalSaidas, saldoFinal, saldoInicial, saldoInicialNota: !considerarSaldoAnterior ? "Saldo anterior desconsiderado — início em zero." : aplicaAtrasados ? `Contas ${fmtBRL(saldoContas, 2)} · CR atrasados +${fmtBRL(crAntPeriodo, 2)} · CP atrasados −${fmtBRL(cpAntPeriodo, 2)}` : "Saldo inicial das contas selecionadas.", filtroInicio: filtro.inicio, filtroFim: filtro.fim, tipoVis: filtro.tipoVis };
 
                 const salvarSim = async () => {
                   if (!simForm.descricao || !simForm.valor || !simForm.data || !contaId) return;
@@ -1327,6 +1334,13 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     {/* ── DIÁRIO ── */}
+                    <OperationalFilters className="no-print" style={{ padding:"10px 16px", background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)" }}>
+                      <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, cursor:"pointer" }}>
+                        <input type="checkbox" checked={considerarSaldoAnterior} onChange={e => setConsiderarSaldoAnterior(e.target.checked)} />
+                        Considerar saldo acumulado anterior ao início
+                      </label>
+                      <small style={{ display:"block", marginTop:4, color:"var(--text-2)" }}>Inclui os saldos iniciais cadastrados nas contas selecionadas. Desmarcado, o fluxo começa em zero e acumula somente os movimentos do período.</small>
+                    </OperationalFilters>
                     {subAbaFluxo === "diario" && (
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
                       {/* Filtros — linha 1: período + produtores */}
@@ -1395,7 +1409,7 @@ function FinanceiroRelatoriosInner() {
                               {crAntPeriodo > 0 && <span style={{ color: "#16A34A", fontWeight: 600 }}> CR {fmtBRL(crAntPeriodo, 2)}</span>}
                             </span>
                             <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: "var(--text-2)" }}>
-                              <input type="checkbox" checked={considerarAtrasados} onChange={e => alternarAtrasados(e.target.checked)} style={{ accentColor: "#1A4870" }} />
+                              <input type="checkbox" checked={considerarAtrasados} disabled={!considerarSaldoAnterior} onChange={e => alternarAtrasados(e.target.checked)} style={{ accentColor: "#1A4870" }} />
                               Considerar atrasados?
                             </label>
                           </div>
@@ -1689,12 +1703,13 @@ function FinanceiroRelatoriosInner() {
                       const totEntM   = mensalMeses.map((_, i) => entradasM.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
                       const totSaiM   = mensalMeses.map((_, i) => saidasM.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
                       const saldoMesM = mensalMeses.map((_, i) => totEntM[i] - totSaiM[i]);
-                      let _accM = 0;
+                      const saldoInicialM = saldoInicialFluxo(considerarSaldoAnterior, contasEfetivasM.reduce((s,c)=>s+Number(c.saldo_inicial ?? 0),0));
+                      let _accM = saldoInicialM;
                       const saldoAcM  = saldoMesM.map(v => { _accM += v; return _accM; });
                       const totEntAnual = totEntM.reduce((s, v) => s + v, 0);
                       const totSaiAnual = totSaiM.reduce((s, v) => s + v, 0);
                       const totLiqAnual = totEntAnual - totSaiAnual;
-                      printMensalRef.current = { meses: mensalMeses, entradasM, saidasM, totEntM, totSaiM, saldoMesM, saldoAcM, inicio: mensalInicio, fim: mensalFim, incluirPrevisoes };
+                      printMensalRef.current = { saldoInicial: saldoInicialM, meses: mensalMeses, entradasM, saidasM, totEntM, totSaiM, saldoMesM, saldoAcM, inicio: mensalInicio, fim: mensalFim, incluirPrevisoes };
                       const isSim = (cat: string) => cat.startsWith("◆ ");
                       const corM = (tipo: "receber"|"pagar", sim: boolean) =>
                         sim ? "#7C3AED" : tipo === "receber" ? "#111111" : "var(--text-1)";
@@ -1729,6 +1744,7 @@ function FinanceiroRelatoriosInner() {
                       return (
                         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                           {/* Cabeçalho */}
+                          <div style={{ padding:"8px 20px", fontSize:11, color:"var(--text-2)" }}>Saldo inicial: {fmtBRL(saldoInicialM, 2)} · {considerarSaldoAnterior ? "Saldo anterior das contas considerado" : "Saldo anterior desconsiderado; início em zero"}</div>
                           <OperationalFilters data-arato-filters="true" className="no-print" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                             <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                               Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
@@ -1938,7 +1954,8 @@ function FinanceiroRelatoriosInner() {
                       const totEntA   = anosPresentes.map((_, i) => entradasA.reduce((s, r) => s + r.anos[i].real + r.anos[i].prev, 0));
                       const totSaiA   = anosPresentes.map((_, i) => saidasA.reduce(  (s, r) => s + r.anos[i].real + r.anos[i].prev, 0));
                       const saldoAnoA = anosPresentes.map((_, i) => totEntA[i] - totSaiA[i]);
-                      let _accA = 0;
+                      const saldoInicialA = saldoInicialFluxo(considerarSaldoAnterior, contasEfetivasA.reduce((s,c)=>s+Number(c.saldo_inicial ?? 0),0));
+                      let _accA = saldoInicialA;
                       const saldoAcA  = saldoAnoA.map(v => { _accA += v; return _accA; });
                       const corSaldoA = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#111111";
 
@@ -2017,7 +2034,7 @@ function FinanceiroRelatoriosInner() {
                       };
 
                       // Atualiza dados para impressão PDF
-                      printAnualRef.current = { anosPresentes, entradasA, saidasA, totEntA, totSaiA, saldoAnoA, saldoAcA, incluirPrevisoes: anualStatus.size === ALL_STATUS_A.length };
+                      printAnualRef.current = { saldoInicial: saldoInicialA, anosPresentes, entradasA, saidasA, totEntA, totSaiA, saldoAnoA, saldoAcA, incluirPrevisoes: anualStatus.size === ALL_STATUS_A.length };
 
                       const descFiltroStatus = ALL_STATUS_A.filter(s => anualStatus.has(s))
                         .map(s => ({ baixado: "Baixados", em_aberto: "Aberto", vencido: "Vencidos", vencendo: "A Vencer" }[s]))
@@ -2028,6 +2045,7 @@ function FinanceiroRelatoriosInner() {
                           {barraFiltros}
                           <div style={{ padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)", fontSize: 11, color: "var(--text-2)" }}>
                             Visão plurianual · {anosPresentes.join(", ")}
+                            {" · "}Saldo inicial: {fmtBRL(saldoInicialA, 2)} ({considerarSaldoAnterior ? "saldo anterior considerado" : "início em zero"})
                             {lanVisA.some(l => l.natureza === "previsao") && <strong style={{ color: "#166534" }}> · inclui {lanVisA.filter(l => l.natureza === "previsao").length} previsões, {fmtBRL(lanVisA.filter(l => l.natureza === "previsao").reduce((t, l) => t + paraBRLRel(l, cotacaoUSD), 0), 2)}</strong>}
                             {(anualInicio || anualFim) && <> · Vencimento: {anualInicio || "…"} → {anualFim || "…"}</>}
                             {" · "}{descFiltroStatus}
