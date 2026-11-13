@@ -34,8 +34,9 @@ test("borderô atômico conserva valores e restaura a situação anterior", asyn
       CREATE TABLE extrato_transacoes(id uuid PRIMARY KEY,conciliado boolean,lancamento_id uuid,lancamento_ids uuid[],lancamento_desc text,
         lancamento_valor numeric,origem_vinculo text,confianca text,regra_id uuid,updated_at timestamptz);
     `);
-    // Usa o gatilho real em vigor: os novos parciais não podem dividir os títulos.
-    const start = source.indexOf("CREATE OR REPLACE FUNCTION fn_dividir_titulo_parcial()", source.indexOf("-- Seção 379 —"));
+    // Usa o gatilho real EM VIGOR (a última versão no arquivo — hoje a Seção 450). Antes o teste usava a da Seção 379
+    // e não percebeu que a 434 tinha quebrado a divisão do título no parcial do borderô.
+    const start = source.lastIndexOf("CREATE OR REPLACE FUNCTION fn_dividir_titulo_parcial()");
     const end = source.indexOf("NOTIFY pgrst", start);
     await db.exec(source.slice(start, end));
     await db.exec(`CREATE TRIGGER trg_parcial BEFORE UPDATE ON lancamentos FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();

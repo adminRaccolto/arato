@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-e",
+    data: "13/11/2026",
+    titulo: "Pagamento parcial de borderô volta a funcionar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Contas a Pagar → Borderôs: pagar só parte do borderô dava \"Saldo das partes diverge do borderô. Operação revertida.\" e nada era gravado. Agora o pagamento parcial divide cada título de novo: a parte paga fica no borderô pago e o saldo vai para um borderô novo em aberto, com o vencimento informado." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Borderôs → Confirmar Pagamento",
+  },
+  {
     versao: "2026.11.13-d",
     data: "13/11/2026",
     titulo: "Imprimir CT-e e NFS de fornecedor; produtor no abastecimento em posto",
