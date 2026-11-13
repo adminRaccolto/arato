@@ -10431,6 +10431,7 @@ function CadastrosInner() {
                   <input type="checkbox" id="funcAtivo" checked={fFunc.ativo} onChange={e => setFFunc(p => ({ ...p, ativo: e.target.checked }))} />
                   <label data-arato-label="true" htmlFor="funcAtivo" style={{ fontSize: 12, color: "var(--text-2)" }}>Funcionário ativo</label>
                 </div>
+                {!fFunc.ativo && <p style={{ gridColumn: "1/-1", fontSize: 12, color: "var(--text-2)", margin: "4px 0 0" }}>Ao salvar, as previsões não movimentadas serão retiradas dos rascunhos da folha, inclusive do mês atual. Depois, lance a demissão/rescisão na rotina própria. Títulos reais e pagamentos são preservados.</p>}
               </div>
             )}
 

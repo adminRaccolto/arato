@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { criarAdiantamentoFuncionario } from "../../../../lib/folha/adiantamento";
+import { preservarTituloDaFolha } from "../../../../lib/folha/inativacao";
 import { randomUUID } from "node:crypto";
 import { assinaturaAusencia, validarDecisaoAusencia } from "../../../../lib/folha/divergencias";
 import { carregarControleFolha, validarPeriodoControle } from "../../../../lib/folha/controle-server";
@@ -156,9 +157,11 @@ async function consumirPrevisaoDoTitulo(sb: any, tituloId: string | null | undef
 
 /** Remove as linhas da Previsão de Gastos geradas por esta folha (são refeitas a partir dela). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function apagarPrevisoesDaFolha(sb: any, folhaId: string): Promise<void> {
-  const { error } = await sb.from("previsoes_gasto").delete().eq("folha_id", folhaId).eq("origem", "folha");
-  if (error && !tabelaPrevisoesAusente(error)) console.error("[folha] apagar previsões:", error.message);
+async function apagarPrevisoesDaFolha(sb: any, folhaId: string, preservar: string[] = []): Promise<void> {
+  let q = sb.from("previsoes_gasto").delete().eq("folha_id", folhaId).eq("origem", "folha").eq("status", "aberta");
+  if (preservar.length) q = q.not("lancamento_previsao_id", "in", `(${preservar.join(",")})`);
+  const { error } = await q;
+  if (error && !tabelaPrevisoesAusente(error)) throw error;
 }
 
 // Ajusta somente a previsão do funcionário; criação/baixa usa a mesma rotina dentro da transação SQL.
@@ -197,10 +200,17 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
 }
 
 async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
-  const { data: folha } = await sb.from("folha_pagamento").select("*").eq("id", folhaId).maybeSingle();
-  if (!folha || folha.status === "fechado") return;
+  // A mesma limpeza da inativação impede recriar previsões ao reabrir/salvar rascunhos antigos.
+  const limpeza = await sb.rpc("folha_limpar_inativos", { p_folha: folhaId, p_em_sincronizacao: true });
+  if (limpeza.error) throw new Error(limpeza.error.code === "PGRST202"
+    ? "Aplique a Seção 446 do supabase_migrations.sql para sincronizar a folha com a inativação dos funcionários."
+    : limpeza.error.message);
+  const { data: folha, error: erroFolha } = await sb.from("folha_pagamento").select("*").eq("id", folhaId).maybeSingle();
+  if (erroFolha) throw erroFolha;
+  if (!folha || folha.status !== "rascunho") return;
   const { fazenda_id, empresa_id, competencia } = folha as { fazenda_id: string; empresa_id: string | null; competencia: string };
-  const { data: itens } = await sb.from("folha_funcionarios").select("*").eq("folha_id", folhaId);
+  const { data: itens, error: erroItens } = await sb.from("folha_funcionarios").select("*").eq("folha_id", folhaId);
+  if (erroItens) throw erroItens;
   const hoje = hojeLocal();
   const vencimento = (folha.data_vencimento as string | null) || vencimentoSalario(competencia);
   const rotulo = rotuloCompetencia(competencia);
@@ -229,17 +239,20 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
     ...(itens ?? []).map((i: any) => i.cp_lancamento_id),
     folha.cp_fgts_id, folha.cp_inss_patronal_id,
   ].filter(Boolean) as string[];
-  // Título de previsão que já foi pago (conciliação/baixa antes da trava) fica como está e não ganha previsão nova
-  const pagos = new Set<string>();
-  if (antigos.length) {
-    const { data: st } = await sb.from("lancamentos").select("id, status").in("id", antigos);
-    for (const t of st ?? []) if (t.status === "baixado" || t.status === "parcial") pagos.add(t.id as string);
+  // Também protege título real, parte paga, conciliação, borderô, cartão e contrato; não só o status da raiz.
+  const pagos = new Set<string>((limpeza.data?.titulos_preservados ?? []).map((t: { titulo_id: string }) => t.titulo_id));
+  for (let inicio = 0; inicio < antigos.length; inicio += 200) {
+    const ids = antigos.slice(inicio, inicio + 200).join(",");
+    const st = await buscarPaginado<Record<string, any>>((a, b) => sb.from("lancamentos")
+      .select("id,status,natureza,valor_pago,conciliado,lote_id,contrato_financeiro_id,fatura_cartao_id,titulo_origem_id,data_baixa")
+      .or(`id.in.(${ids}),titulo_origem_id.in.(${ids})`).order("id").range(a, b));
+    for (const t of st) if (preservarTituloDaFolha(t)) { pagos.add(t.id); if (t.titulo_origem_id) pagos.add(t.titulo_origem_id); }
   }
-  await apagarPrevisoesDaFolha(sb, folhaId);
-  if (antigos.length) {
-    await falharSeErro(sb.from("lancamentos").delete().in("id", antigos).eq("natureza", "previsao").not("status", "in", "(baixado,parcial)"), "excluir previsões da folha");
-    const soltos = antigos.filter(a => !pagos.has(a));
-    if (soltos.length) await sb.from("folha_funcionarios").update({ cp_lancamento_id: null }).eq("folha_id", folhaId).in("cp_lancamento_id", soltos);
+  await apagarPrevisoesDaFolha(sb, folhaId, [...pagos]);
+  const soltos = antigos.filter(a => !pagos.has(a));
+  if (soltos.length) {
+    await falharSeErro(sb.from("lancamentos").delete().in("id", soltos).eq("natureza", "previsao").not("status", "in", "(baixado,pago,parcial)"), "excluir previsões da folha");
+    await falharSeErro(sb.from("folha_funcionarios").update({ cp_lancamento_id: null }).eq("folha_id", folhaId).in("cp_lancamento_id", soltos), "desvincular previsões antigas");
   }
   const { data: fazRow } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
   const contaFolha = (fazRow?.conta_id as string | undefined) ?? null;
@@ -293,7 +306,7 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
   const vencEncargo = vencimentoEncargoFolha(competencia);
   let cpFgts: string | null = folha.cp_fgts_id && pagos.has(folha.cp_fgts_id) ? folha.cp_fgts_id : null;
   let cpInss: string | null = folha.cp_inss_patronal_id && pagos.has(folha.cp_inss_patronal_id) ? folha.cp_inss_patronal_id : null;
-  if (totalFGTS > 0.005 && !cpFgts) {
+  if (folha.gerar_encargos_cp !== false && totalFGTS > 0.005 && !cpFgts) {
     const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.013");
     const { data: l, error } = await inserirLancamentoFolha(sb, {
       fazenda_id, empresa_id: empresa_id ?? null, produtor_id: produtorIdFolha,
@@ -307,7 +320,7 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
     await registrarPrevisaoFolha(sb, { conta_id: contaFolha, fazenda_id, produtor_id: produtorIdFolha, empresa_id: empresa_id ?? null, og_id: og,
       descricao: `FGTS ${rotulo}`, valor: Math.round(totalFGTS * 100) / 100, data_vencimento: vencEncargo, ano_safra_id: null, folha_id: folhaId, titulo_id: cpFgts });
   }
-  if (empresa_id && totalINSSPat > 0.005 && !cpInss) {
+  if (folha.gerar_encargos_cp !== false && empresa_id && totalINSSPat > 0.005 && !cpInss) {
     const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
     const { data: l, error } = await inserirLancamentoFolha(sb, {
       fazenda_id, empresa_id, produtor_id: null,
@@ -322,7 +335,12 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
       descricao: `INSS Patronal ${rotulo}`, valor: Math.round(totalINSSPat * 100) / 100, data_vencimento: vencEncargo, ano_safra_id: null, folha_id: folhaId, titulo_id: cpInss });
   }
   // Seção 261 ausente: a coluna não existe e a previsão de encargo não fica rastreada (mesmo limite já existente no fechamento)
-  await sb.from("folha_pagamento").update({ cp_fgts_id: cpFgts, cp_inss_patronal_id: cpInss }).eq("id", folhaId);
+  await falharSeErro(sb.from("folha_pagamento").update({
+    cp_fgts_id: cpFgts, cp_inss_patronal_id: cpInss,
+    valor_bruto: Math.round((itens ?? []).reduce((s: number, it: any) => s + Number(it.salario_bruto ?? 0), 0) * 100) / 100,
+    valor_liquido: Math.round((itens ?? []).reduce((s: number, it: any) => s + liquidoItem(it), 0) * 100) / 100,
+    fgts_total: Math.round(totalFGTS * 100) / 100, inss_patronal: Math.round(totalINSSPat * 100) / 100,
+  }).eq("id", folhaId), "atualizar os totais da folha");
 }
 
 /** Reprocessar folha fechada é rotina liberada por grupo de usuário (Configurações → Usuários → grupo → Folha de
@@ -656,13 +674,14 @@ export async function POST(req: Request) {
       const { rows } = payload as { rows: unknown[] };
       const folhaDasLinhas = [...new Set((rows as { folha_id?: string }[]).map(r => r.folha_id).filter(Boolean))] as string[];
       for (const f of folhaDasLinhas) await exigirFolhaAberta(sb, f);
+      let incluidos = 0;
       if (rows.length) {
-        const { error } = await sb.from("folha_funcionarios").insert(rows);
+        const { data, error } = await sb.from("folha_funcionarios").insert(rows).select("id");
         if (error) throw error;
-        const folhaId = (rows[0] as { folha_id?: string }).folha_id;
-        if (folhaId) await sincronizarPrevisoesFolha(sb, folhaId);
+        incluidos = data?.length ?? 0;
+        for (const folhaId of folhaDasLinhas) await sincronizarPrevisoesFolha(sb, folhaId);
       }
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, incluidos, inativos_ignorados: rows.length - incluidos });
     }
 
     // ─── reprocessar_folha ────────────────────────────────────────────────────
@@ -761,6 +780,7 @@ export async function POST(req: Request) {
       const totFGTS = r2(novas.reduce((t, r) => t + Number(r.fgts ?? 0), 0));
       const totINSS = r2(novas.reduce((t, r) => t + Number(r.inss_patronal ?? 0), 0));
       for (const [nome, tid, novo] of [["FGTS", folha.cp_fgts_id, totFGTS], ["INSS Patronal", folha.cp_inss_patronal_id, folha.empresa_id ? totINSS : 0]] as [string, string | null, number][]) {
+        if (folha.gerar_encargos_cp === false) continue;
         let t = tid ? tituloPor.get(tid) : null;
         if (!t && novo > 0.005) {
           // Folha sem o vínculo gravado: o título do encargo pode existir (fechada antes do vínculo) — usa ele, não duplica

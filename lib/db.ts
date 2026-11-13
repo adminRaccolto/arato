@@ -2192,8 +2192,9 @@ export async function criarFuncionario(f: Omit<Funcionario, "id" | "created_at">
   return data;
 }
 export async function atualizarFuncionario(id: string, f: Partial<Funcionario>): Promise<void> {
-  const { error } = await supabase.from("funcionarios").update(f).eq("id", id);
+  const { data, error } = await supabase.from("funcionarios").update(f).eq("id", id).select("id").single();
   if (error) throw error;
+  if (!data) throw new Error("O funcionário não foi atualizado. Recarregue o cadastro e tente novamente.");
 }
 export async function excluirFuncionario(id: string): Promise<void> {
   const { error } = await supabase.from("funcionarios").delete().eq("id", id);

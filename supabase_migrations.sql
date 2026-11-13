@@ -22524,6 +22524,296 @@ GRANT EXECUTE ON FUNCTION public.fiscal_reservar_evento(uuid,text,jsonb),public.
 COMMIT;
 NOTIFY pgrst,'reload schema';
 
+-- Seção 446 — Inativação retira previsões dos rascunhos, antes da demissão/rescisão
+-- Executar inteira. Inclui os funcionários já inativos. Não altera folha fechada,
+-- título real, pago, parcial, conciliado, em borderô, cartão ou contrato financeiro.
+-- Requer as seções 432 e 438. Cancelados permanecem no histórico, fora dos saldos a pagar.
+BEGIN;
+CREATE OR REPLACE FUNCTION public.folha_previsao_livre(p_titulo uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+ SELECT NOT EXISTS (
+  SELECT 1 FROM lancamentos l WHERE (l.id=p_titulo OR l.titulo_origem_id=p_titulo) AND (
+   l.natureza IS DISTINCT FROM 'previsao' OR l.tipo IS DISTINCT FROM 'pagar'
+   OR coalesce(l.moeda,'BRL')<>'BRL' OR l.status IS NULL OR l.status NOT IN ('em_aberto','vencido','vencendo','cancelado')
+   OR coalesce(l.valor_pago,0)<>0 OR coalesce(l.conciliado,false) OR l.data_baixa IS NOT NULL
+   OR l.lote_id IS NOT NULL OR l.contrato_financeiro_id IS NOT NULL OR l.fatura_cartao_id IS NOT NULL
+   OR l.titulo_origem_id IS NOT NULL
+  )
+ ) AND NOT EXISTS(SELECT 1 FROM pagamento_lote_itens WHERE lancamento_id=p_titulo AND coalesce(origem_tabela,'lancamentos')='lancamentos')
+ AND NOT EXISTS(SELECT 1 FROM extrato_transacoes WHERE conciliado AND (lancamento_id=p_titulo OR p_titulo=ANY(lancamento_ids)))
+ AND NOT EXISTS(
+  SELECT 1 FROM previsoes_gasto p WHERE (p.lancamento_previsao_id=p_titulo OR p.id IN(SELECT previsao_gasto_id FROM lancamentos WHERE id=p_titulo))
+   AND (NOT(p.status='aberta' AND p.saldo=p.valor OR p.status='cancelada' AND p.saldo=0)
+     OR EXISTS(SELECT 1 FROM previsoes_gasto_consumos c WHERE c.previsao_id=p.id))
+ );
+$$;
+
+CREATE OR REPLACE FUNCTION public.folha_limpar_inativos(
+ p_folha uuid DEFAULT NULL,p_funcionario uuid DEFAULT NULL,p_em_sincronizacao boolean DEFAULT false
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE f folha_pagamento%ROWTYPE; it record; l lancamentos%ROWTYPE; e record;
+ v_linhas jsonb; v_protegidos jsonb:='[]'; v_encargos jsonb; v_antes jsonb;
+ v_removidos integer:=0; v_total integer:=0; v_cancelados integer:=0; v_valor numeric;
+ v_bruto numeric; v_liquido numeric; v_fgts numeric; v_inss numeric;
+BEGIN
+ IF p_folha IS NULL AND p_funcionario IS NULL THEN RAISE EXCEPTION 'Informe a folha ou o funcionário a conferir.'; END IF;
+ FOR f IN SELECT fp.* FROM folha_pagamento fp WHERE fp.status='rascunho'
+  AND (p_folha IS NULL OR fp.id=p_folha)
+  AND EXISTS(SELECT 1 FROM folha_funcionarios ff JOIN funcionarios c ON c.id=ff.funcionario_id
+    WHERE ff.folha_id=fp.id AND c.ativo=false AND (p_funcionario IS NULL OR c.id=p_funcionario))
+  ORDER BY fp.id FOR UPDATE LOOP
+  IF NOT p_em_sincronizacao AND f.previsoes_sync_em>clock_timestamp()-interval '2 minutes' THEN
+   RAISE EXCEPTION 'Uma folha deste funcionário está sendo atualizada. Aguarde e salve a inativação novamente.';
+  END IF;
+  v_linhas:='[]';v_encargos:='[]';v_removidos:=0;v_antes:=to_jsonb(f);
+  FOR it IN SELECT ff.*,c.fazenda_id AS fazenda_cadastro FROM folha_funcionarios ff
+   JOIN funcionarios c ON c.id=ff.funcionario_id WHERE ff.folha_id=f.id AND c.ativo=false
+    AND (p_funcionario IS NULL OR c.id=p_funcionario) ORDER BY ff.id FOR UPDATE OF ff LOOP
+   IF NOT EXISTS(SELECT 1 FROM fazendas fc JOIN fazendas ff ON ff.id=f.fazenda_id
+     WHERE fc.id=it.fazenda_cadastro AND (fc.id=ff.id OR (fc.conta_id IS NOT NULL AND fc.conta_id=ff.conta_id))) THEN
+    RAISE EXCEPTION 'Funcionário e folha pertencem a clientes diferentes.';
+   END IF;
+   l:=NULL;
+   IF it.cp_lancamento_id IS NOT NULL THEN
+    PERFORM id FROM lancamentos WHERE id=it.cp_lancamento_id OR titulo_origem_id=it.cp_lancamento_id ORDER BY id FOR UPDATE;
+    SELECT * INTO l FROM lancamentos WHERE id=it.cp_lancamento_id;
+    IF l.id IS NOT NULL AND (l.fazenda_id IS DISTINCT FROM f.fazenda_id OR l.funcionario_id IS NOT NULL AND l.funcionario_id IS DISTINCT FROM it.funcionario_id) THEN
+     RAISE EXCEPTION 'Título salarial incompatível com o funcionário da folha.';
+    END IF;
+    PERFORM id FROM previsoes_gasto WHERE lancamento_previsao_id=it.cp_lancamento_id OR id=l.previsao_gasto_id ORDER BY id FOR UPDATE;
+    IF NOT public.folha_previsao_livre(it.cp_lancamento_id) THEN
+     v_protegidos:=v_protegidos||jsonb_build_array(jsonb_build_object('folha_id',f.id,'funcionario_id',it.funcionario_id,'titulo_id',it.cp_lancamento_id));
+     CONTINUE;
+    END IF;
+    IF l.id IS NOT NULL AND l.status<>'cancelado' THEN
+     UPDATE lancamentos SET status='cancelado',observacao=concat_ws(E'\n',nullif(observacao,''),'Previsão retirada pela inativação do funcionário; rescisão apurada separadamente.') WHERE id=l.id;
+     v_cancelados:=v_cancelados+1;
+    END IF;
+    UPDATE previsoes_gasto SET status='cancelada',saldo=0,updated_at=clock_timestamp()
+     WHERE (lancamento_previsao_id=it.cp_lancamento_id OR id=l.previsao_gasto_id) AND status='aberta';
+   END IF;
+   v_linhas:=v_linhas||jsonb_build_array(jsonb_build_object('linha',to_jsonb(it)-'fazenda_cadastro','titulo',to_jsonb(l)));
+   DELETE FROM folha_funcionarios WHERE id=it.id;
+   v_removidos:=v_removidos+1;
+  END LOOP;
+  IF v_removidos=0 THEN CONTINUE; END IF;
+  SELECT round(coalesce(sum(salario_bruto),0),2),round(coalesce(sum(public.folha_liquido_financeiro(to_jsonb(t))),0),2),
+   round(coalesce(sum(fgts),0),2),round(coalesce(sum(inss_patronal),0),2)
+   INTO v_bruto,v_liquido,v_fgts,v_inss FROM folha_funcionarios t WHERE folha_id=f.id;
+  FOR e IN SELECT f.cp_fgts_id id,v_fgts valor,'FGTS' nome UNION ALL SELECT f.cp_inss_patronal_id,v_inss,'INSS Patronal' LOOP
+   IF e.id IS NULL THEN CONTINUE; END IF;
+   l:=NULL;
+   PERFORM id FROM lancamentos WHERE id=e.id OR titulo_origem_id=e.id ORDER BY id FOR UPDATE;
+   SELECT * INTO l FROM lancamentos WHERE id=e.id;
+   IF l.id IS NULL THEN CONTINUE; END IF;
+   IF l.fazenda_id IS DISTINCT FROM f.fazenda_id THEN RAISE EXCEPTION 'Encargo vinculado a outra fazenda.'; END IF;
+   PERFORM id FROM previsoes_gasto WHERE lancamento_previsao_id=e.id OR id=l.previsao_gasto_id ORDER BY id FOR UPDATE;
+   IF NOT public.folha_previsao_livre(e.id) THEN
+    v_protegidos:=v_protegidos||jsonb_build_array(jsonb_build_object('folha_id',f.id,'titulo_id',e.id,'encargo',e.nome));
+    CONTINUE;
+   END IF;
+   v_valor:=e.valor;
+   v_encargos:=v_encargos||jsonb_build_array(to_jsonb(l));
+   UPDATE lancamentos SET valor=CASE WHEN v_valor>0 THEN v_valor ELSE valor END,
+    status=CASE WHEN v_valor=0 THEN 'cancelado' ELSE status END WHERE id=e.id;
+   UPDATE previsoes_gasto SET valor=CASE WHEN v_valor>0 THEN v_valor ELSE valor END,
+    saldo=CASE WHEN status='aberta' THEN v_valor ELSE 0 END,
+    status=CASE WHEN v_valor=0 THEN 'cancelada' ELSE status END,updated_at=clock_timestamp()
+    WHERE (lancamento_previsao_id=e.id OR id=l.previsao_gasto_id) AND status IN('aberta','cancelada');
+  END LOOP;
+  UPDATE folha_pagamento SET valor_bruto=v_bruto,valor_liquido=v_liquido,fgts_total=v_fgts,inss_patronal=v_inss WHERE id=f.id;
+  INSERT INTO folha_historico(folha_id,usuario_id,usuario_nome,acao,alteracoes)
+   VALUES(f.id,auth.uid(),CASE WHEN auth.uid() IS NULL THEN 'Sistema' ELSE 'Usuário' END,'inativacao_funcionario',
+    jsonb_build_object('antes',v_antes,'linhas_retiradas',v_linhas,'encargos_antes',v_encargos,
+     'depois',jsonb_build_object('valor_bruto',v_bruto,'valor_liquido',v_liquido,'fgts_total',v_fgts,'inss_patronal',v_inss)));
+  v_total:=v_total+v_removidos;
+ END LOOP;
+ RETURN jsonb_build_object('linhas_removidas',v_total,'previsoes_canceladas',v_cancelados,'titulos_preservados',v_protegidos);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.fn_funcionario_inativo_previsoes() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+ IF NEW.ativo=false THEN PERFORM public.folha_limpar_inativos(NULL,NEW.id); END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_funcionario_inativo_previsoes ON funcionarios;
+CREATE TRIGGER trg_funcionario_inativo_previsoes AFTER UPDATE OF ativo ON funcionarios
+ FOR EACH ROW EXECUTE FUNCTION public.fn_funcionario_inativo_previsoes();
+
+CREATE OR REPLACE FUNCTION public.fn_folha_recusar_inativo() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_ativo boolean;v_status text;
+BEGIN
+ -- A ordem funcionário → folha acompanha o fechamento e a inativação.
+ IF NEW.funcionario_id IS NULL THEN RETURN NEW; END IF;
+ SELECT ativo INTO v_ativo FROM funcionarios WHERE id=NEW.funcionario_id FOR SHARE;
+ SELECT status INTO v_status FROM folha_pagamento WHERE id=NEW.folha_id FOR UPDATE;
+ IF v_ativo=false AND v_status='rascunho' THEN
+  -- Uma tela aberta antes da inativação não derruba a inclusão dos demais funcionários.
+  -- INSERT retorna só as linhas efetivamente aceitas; a API informa as desconsideradas.
+  IF TG_OP='INSERT' THEN RETURN NULL; END IF;
+  RAISE EXCEPTION 'Funcionário inativo não pode ser incluído em rascunho de folha. A rescisão é lançada na rotina própria.';
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_folha_recusar_inativo ON folha_funcionarios;
+CREATE TRIGGER trg_folha_recusar_inativo BEFORE INSERT OR UPDATE OF funcionario_id,folha_id ON folha_funcionarios
+ FOR EACH ROW EXECUTE FUNCTION public.fn_folha_recusar_inativo();
+REVOKE ALL ON FUNCTION public.folha_previsao_livre(uuid),public.folha_limpar_inativos(uuid,uuid,boolean),
+ public.fn_funcionario_inativo_previsoes(),public.fn_folha_recusar_inativo() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.folha_limpar_inativos(uuid,uuid,boolean) TO service_role;
+
+-- Regulariza também o caso já existente, com histórico e os mesmos bloqueios de segurança.
+DO $$ DECLARE r record;BEGIN
+ FOR r IN SELECT c.id FROM funcionarios c WHERE c.ativo=false AND EXISTS(
+  SELECT 1 FROM folha_funcionarios ff JOIN folha_pagamento f ON f.id=ff.folha_id
+   WHERE ff.funcionario_id=c.id AND f.status='rascunho') ORDER BY c.id LOOP
+  PERFORM id FROM funcionarios WHERE id=r.id FOR UPDATE;
+  PERFORM public.folha_limpar_inativos(NULL,r.id);
+ END LOOP;
+END $$;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
+-- Seção 447 — Encargos no CP opcionais por folha (salários e cálculos preservados)
+-- Aplicar após 446. Mantém habilitada a geração nas folhas existentes.
+BEGIN;
+ALTER TABLE folha_pagamento ADD COLUMN IF NOT EXISTS gerar_encargos_cp boolean NOT NULL DEFAULT true;
+CREATE OR REPLACE FUNCTION public.fn_folha_opcao_encargos_cp() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE l lancamentos%ROWTYPE;v_id uuid;
+BEGIN
+ IF NEW.gerar_encargos_cp IS NOT DISTINCT FROM OLD.gerar_encargos_cp THEN RETURN NEW; END IF;
+ IF OLD.status<>'rascunho' OR NEW.status<>'rascunho' THEN
+  RAISE EXCEPTION 'Reabra a folha antes de alterar a geração de encargos no CP.';
+ END IF;
+ IF OLD.previsoes_sync_em>clock_timestamp()-interval '2 minutes' THEN
+  RAISE EXCEPTION 'A folha está sendo atualizada. Aguarde antes de alterar a geração de encargos.';
+ END IF;
+ IF NOT NEW.gerar_encargos_cp THEN
+  FOREACH v_id IN ARRAY ARRAY[OLD.cp_fgts_id,OLD.cp_inss_patronal_id] LOOP
+   IF v_id IS NULL THEN CONTINUE; END IF;
+   PERFORM id FROM lancamentos WHERE id=v_id OR titulo_origem_id=v_id ORDER BY id FOR UPDATE;
+   SELECT * INTO l FROM lancamentos WHERE id=v_id;
+   IF NOT FOUND THEN CONTINUE; END IF;
+   IF l.fazenda_id IS DISTINCT FROM OLD.fazenda_id THEN RAISE EXCEPTION 'Encargo vinculado a outra fazenda.'; END IF;
+   PERFORM id FROM previsoes_gasto WHERE lancamento_previsao_id=v_id OR id=l.previsao_gasto_id ORDER BY id FOR UPDATE;
+   IF NOT public.folha_previsao_livre(v_id) THEN
+    RAISE EXCEPTION 'A folha possui encargo efetivado ou movimentado no CP. Regularize esse título antes de optar pelo lançamento manual, para evitar duplicidade.';
+   END IF;
+   UPDATE lancamentos SET status='cancelado',observacao=concat_ws(E'\n',nullif(observacao,''),'Encargo previsto cancelado: guias serão lançadas manualmente no CP.') WHERE id=v_id;
+   UPDATE previsoes_gasto SET status='cancelada',saldo=0,updated_at=clock_timestamp()
+    WHERE (lancamento_previsao_id=v_id OR id=l.previsao_gasto_id) AND status='aberta';
+  END LOOP;
+  NEW.cp_fgts_id:=NULL;NEW.cp_inss_patronal_id:=NULL;
+ END IF;
+ INSERT INTO folha_historico(folha_id,usuario_id,usuario_nome,acao,alteracoes)
+ VALUES(OLD.id,auth.uid(),'Usuário','Geração de encargos no CP',jsonb_build_object('antes',OLD.gerar_encargos_cp,'depois',NEW.gerar_encargos_cp));
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_folha_opcao_encargos_cp ON folha_pagamento;
+CREATE TRIGGER trg_folha_opcao_encargos_cp BEFORE UPDATE OF gerar_encargos_cp ON folha_pagamento
+ FOR EACH ROW EXECUTE FUNCTION public.fn_folha_opcao_encargos_cp();
+REVOKE ALL ON FUNCTION public.fn_folha_opcao_encargos_cp() FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION public.folha_fechar_atomica(p_id uuid,p_requisicao uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE f folha_pagamento%ROWTYPE; it folha_funcionarios%ROWTYPE; cad funcionarios%ROWTYPE;l lancamentos%ROWTYPE;
+ v_op financeiro_operacoes%ROWTYPE; v_antes jsonb; v_apos jsonb;v_ret jsonb;v_adi numeric;v_antes_liq numeric;v_liq numeric;v_val numeric;
+ v_venc date;v_enc_venc date;v_ano uuid;v_og uuid;v_rotulo text;v_obs text;v_tipo text;v_cp uuid;v_fgts uuid;v_inss uuid;v_prod uuid;
+BEGIN
+ IF p_id IS NULL OR p_requisicao IS NULL THEN RAISE EXCEPTION 'Folha e identificação da operação obrigatórias.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_requisicao::text,0));
+ SELECT * INTO v_op FROM financeiro_operacoes WHERE requisicao_id=p_requisicao;
+ IF FOUND THEN
+  IF v_op.tabela<>'folha_pagamento' OR v_op.registro_id<>p_id OR v_op.acao<>'fechar' THEN RAISE EXCEPTION 'Identificação de fechamento já utilizada.';END IF;
+  RETURN v_op.retorno||jsonb_build_object('repetido',true);
+ END IF;
+ -- A criação de adiantamento também trava funcionário antes da folha.
+ PERFORM c.id FROM funcionarios c WHERE c.id IN(SELECT funcionario_id FROM folha_funcionarios WHERE folha_id=p_id) ORDER BY c.id FOR UPDATE;
+ SELECT * INTO f FROM folha_pagamento WHERE id=p_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Folha não encontrada.'; END IF;
+ IF f.status IN ('fechado','pago') THEN RETURN jsonb_build_object('ok',true,'repetido',true); END IF;
+ IF f.status<>'rascunho' THEN RAISE EXCEPTION 'Folha indisponível para fechamento.'; END IF;
+ IF f.previsoes_sync_em>clock_timestamp()-interval '2 minutes' THEN RAISE EXCEPTION 'A folha está sendo atualizada. Aguarde e tente novamente.'; END IF;
+ PERFORM financeiro_validar_referencias(f.fazenda_id,jsonb_build_object('empresa_id',f.empresa_id,'produtor_id',f.produtor_id));
+ v_antes:=to_jsonb(f);
+ v_venc:=coalesce(f.data_vencimento,(date_trunc('month',(f.competencia||'-01')::date)+interval '1 month 4 days')::date);
+ v_enc_venc:=(date_trunc('month',(f.competencia||'-01')::date)+interval '1 month 19 days')::date;
+ v_ano:=fn_ano_safra_da_data(f.fazenda_id,v_venc);
+ v_rotulo:=(ARRAY['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'])[right(f.competencia,2)::int]||'/'||left(f.competencia,4);
+ v_og:=folha_og_por_classificacao(f.fazenda_id,'2.01.01.10.001');
+ FOR it IN SELECT * FROM folha_funcionarios WHERE folha_id=f.id ORDER BY id FOR UPDATE LOOP
+  l:=NULL;cad:=NULL;v_antes_liq:=folha_liquido_financeiro(to_jsonb(it));
+  IF it.funcionario_id IS NOT NULL THEN
+   SELECT * INTO cad FROM funcionarios WHERE id=it.funcionario_id;
+   PERFORM financeiro_validar_referencias(f.fazenda_id,jsonb_build_object('funcionario_id',it.funcionario_id,'produtor_id',it.produtor_id));
+   PERFORM id FROM adiantamentos_salario WHERE funcionario_id=it.funcionario_id AND status='pendente'
+    AND(competencia_ref=f.competencia OR competencia_ref IS NULL) ORDER BY id FOR UPDATE;
+   SELECT round(coalesce(sum(greatest(0,valor-coalesce(descontado_gratificacao_cp,0))),0),2) INTO v_adi FROM adiantamentos_salario
+    WHERE funcionario_id=it.funcionario_id AND status='pendente' AND(competencia_ref=f.competencia OR competencia_ref IS NULL);
+   UPDATE folha_funcionarios SET adiantamento=v_adi WHERE id=it.id RETURNING * INTO it;
+  END IF;
+  v_liq:=folha_liquido_financeiro(to_jsonb(it));
+  v_obs:=CASE WHEN coalesce(it.outros_descontos,0)>0 THEN 'Outros descontos R$ '||replace(to_char(it.outros_descontos,'FM999999999990.00'),'.',',')||coalesce(': '||nullif(trim(it.desc_outros_descontos),''),'') END;
+  IF it.cp_lancamento_id IS NOT NULL THEN SELECT * INTO l FROM lancamentos WHERE id=it.cp_lancamento_id FOR UPDATE; END IF;
+  IF l.id IS NOT NULL THEN
+   IF l.fazenda_id<>f.fazenda_id OR l.tipo<>'pagar' OR coalesce(l.moeda,'BRL')<>'BRL' OR (l.funcionario_id IS NOT NULL AND l.funcionario_id IS DISTINCT FROM it.funcionario_id) THEN RAISE EXCEPTION 'Título salarial incompatível com a folha.'; END IF;
+   IF l.natureza='previsao' THEN
+    IF l.status IN ('baixado','pago','parcial') OR coalesce(l.valor_pago,0)>0 THEN UPDATE lancamentos SET natureza='real' WHERE id=l.id RETURNING * INTO l;
+    ELSE
+     v_val:=CASE WHEN abs(l.valor-v_antes_liq)>0.005 THEN l.valor ELSE v_liq END;
+     UPDATE lancamentos SET natureza='real',valor=v_val,status=CASE WHEN v_val>0 THEN 'em_aberto' ELSE 'cancelado' END,observacao=v_obs WHERE id=l.id RETURNING * INTO l;
+    END IF;
+   END IF;
+  ELSIF v_liq>0.005 THEN
+   INSERT INTO lancamentos(fazenda_id,empresa_id,produtor_id,funcionario_id,ano_safra_id,natureza,tipo,descricao,valor,moeda,status,
+    observacao,categoria,origem_lancamento,operacao_gerencial_id,data_vencimento,data_lancamento,auto)
+   VALUES(f.fazenda_id,coalesce(f.empresa_id,cad.empresa_id),coalesce(it.produtor_id,cad.produtor_id),it.funcionario_id,v_ano,'real','pagar',
+    'Salário '||v_rotulo||' — '||it.nome_funcionario,v_liq,'BRL','em_aberto',v_obs,'Pessoal / Salários','folha',v_og,v_venc,(now() AT TIME ZONE 'America/Cuiaba')::date,true) RETURNING * INTO l;
+   UPDATE folha_funcionarios SET cp_lancamento_id=l.id WHERE id=it.id;
+  END IF;
+  IF l.id IS NOT NULL AND l.previsao_gasto_id IS NOT NULL AND l.valor>0 THEN
+   IF EXISTS(SELECT 1 FROM previsoes_gasto WHERE id=l.previsao_gasto_id AND status='aberta') THEN
+    PERFORM previsoes_comando_atomico(l.previsao_gasto_id,'consumir',jsonb_build_object('valor',l.valor,'origem','folha','lancamento_id',l.id));
+   END IF;
+  END IF;
+ END LOOP;
+ SELECT produtor_id INTO v_prod FROM folha_funcionarios WHERE folha_id=f.id AND produtor_id IS NOT NULL ORDER BY id LIMIT 1;
+ v_fgts:=f.cp_fgts_id;v_inss:=f.cp_inss_patronal_id;
+ FOREACH v_tipo IN ARRAY ARRAY['FGTS','INSS Patronal'] LOOP
+  IF NOT f.gerar_encargos_cp THEN CONTINUE; END IF;
+  IF v_tipo='INSS Patronal' AND f.empresa_id IS NULL THEN CONTINUE; END IF;
+  v_cp:=CASE WHEN v_tipo='FGTS' THEN f.cp_fgts_id ELSE f.cp_inss_patronal_id END;l:=NULL;
+  SELECT round(coalesce(sum(CASE WHEN v_tipo='FGTS' THEN fgts ELSE inss_patronal END),0),2) INTO v_val FROM folha_funcionarios WHERE folha_id=f.id;
+  IF v_cp IS NOT NULL THEN SELECT * INTO l FROM lancamentos WHERE id=v_cp FOR UPDATE; END IF;
+  IF l.id IS NOT NULL THEN
+   IF l.fazenda_id<>f.fazenda_id OR l.tipo<>'pagar' THEN RAISE EXCEPTION 'Encargo vinculado incompatível com a folha.'; END IF;
+   IF l.natureza='previsao' THEN UPDATE lancamentos SET natureza='real',status=CASE WHEN status IN ('baixado','pago','parcial') THEN status WHEN valor>0 THEN 'em_aberto' ELSE 'cancelado' END WHERE id=l.id RETURNING * INTO l; END IF;
+  ELSIF v_val>0.005 THEN
+   v_og:=folha_og_por_classificacao(f.fazenda_id,CASE WHEN v_tipo='FGTS' THEN '2.01.01.10.013' ELSE '2.01.01.10.014' END);
+   INSERT INTO lancamentos(fazenda_id,empresa_id,produtor_id,natureza,tipo,descricao,valor,moeda,status,categoria,origem_lancamento,operacao_gerencial_id,data_vencimento,data_lancamento,auto)
+   VALUES(f.fazenda_id,f.empresa_id,CASE WHEN v_tipo='FGTS' THEN v_prod END,'real','pagar',v_tipo||' '||v_rotulo,v_val,'BRL','em_aberto',
+    'Pessoal / Encargos','folha',v_og,v_enc_venc,(now() AT TIME ZONE 'America/Cuiaba')::date,true) RETURNING * INTO l;
+  END IF;
+  IF l.id IS NOT NULL AND l.previsao_gasto_id IS NOT NULL AND l.valor>0 AND EXISTS(SELECT 1 FROM previsoes_gasto WHERE id=l.previsao_gasto_id AND status='aberta') THEN
+   PERFORM previsoes_comando_atomico(l.previsao_gasto_id,'consumir',jsonb_build_object('valor',l.valor,'origem','folha','lancamento_id',l.id));
+  END IF;
+  IF v_tipo='FGTS' THEN v_fgts:=l.id;ELSE v_inss:=l.id;END IF;
+ END LOOP;
+ UPDATE adiantamentos_salario SET status='descontado' WHERE status='pendente' AND(competencia_ref=f.competencia OR competencia_ref IS NULL)
+  AND valor-coalesce(descontado_gratificacao_cp,0)>0 AND funcionario_id IN(SELECT funcionario_id FROM folha_funcionarios WHERE folha_id=f.id);
+ UPDATE folha_pagamento SET status='fechado',cp_fgts_id=v_fgts,cp_inss_patronal_id=v_inss,
+  valor_liquido=(SELECT coalesce(sum(folha_liquido_financeiro(to_jsonb(t))),0) FROM folha_funcionarios t WHERE folha_id=f.id)
+  WHERE id=f.id RETURNING to_jsonb(folha_pagamento) INTO v_apos;
+ v_ret:=jsonb_build_object('ok',true,'id',f.id,'status','fechado');
+ INSERT INTO financeiro_operacoes VALUES(p_requisicao,'folha_pagamento',f.id,'fechar','{}',v_antes,v_apos,v_ret,clock_timestamp());
+ RETURN v_ret;
+END;
+$$;
+COMMIT;
+NOTIFY pgrst,'reload schema';
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Seção 448 — Avisos aos clientes com ciência (Gestão Arato → Avisos aos Clientes) (13/11/2026)
 -- A equipe Raccolto escreve o aviso (título, mensagem, tipo, público, início/fim, obrigatório, botão opcional) e ele

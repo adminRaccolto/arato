@@ -100,6 +100,7 @@ interface Folha {
   valor_liquido: number;
   inss_patronal?: number;
   fgts_total?: number;
+  gerar_encargos_cp?: boolean;
   obs?: string;
   data_vencimento?: string | null;   // data de pagamento (vencimento do CP de salário) escolhida ao gerar a folha
   num_funcionarios?: number;
@@ -574,6 +575,7 @@ export default function FolhaPagamentoPage() {
     if (!fazendaId) return;
     setSaving(true);
     try {
+      let inativosIgnorados = 0;
       // Apenas os funcionários marcados
       const funcs = (folhaEdit.funcionarios ?? []).filter((_, i) => selecionados.has(i));
       if (funcs.length === 0) { setMsg(!folhaEdit.id && !empNova ? "Escolha o empregador da folha." : "Selecione ao menos um funcionário."); setSaving(false); return; }
@@ -582,7 +584,7 @@ export default function FolhaPagamentoPage() {
         // Edição de folha existente — mantém empregador e fazenda originais
         // Folha de PJ sem produtor gravado (antigas): leva o produtor vinculado dos funcionários
         const produtorEdit = folhaEdit.empresa_id && !folhaEdit.produtor_id ? (funcs.find(f => f.produtor_id)?.produtor_id ?? null) : folhaEdit.produtor_id;
-        await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, produtorEdit, folhaEdit.fazenda_id);
+        inativosIgnorados += await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, produtorEdit, folhaEdit.fazenda_id);
         setMsg("Folha salva.");
       } else {
         // Nova folha — uma por EMPREGADOR por mês: empresa (PJ) ou, sem empresa, o produtor rural. Produtores diferentes
@@ -612,11 +614,12 @@ export default function FolhaPagamentoPage() {
         const meses = monthsInRange(modalCompDe, modalCompAte);
         for (const comp of meses) {
           for (const { empresaId, produtorId, fazendaIdGrupo, itens } of grupos.values()) {
-            await salvarFolhaMes(comp, itens, empresaId, produtorId, fazendaIdGrupo);
+            inativosIgnorados += await salvarFolhaMes(comp, itens, empresaId, produtorId, fazendaIdGrupo);
           }
         }
         setMsg(meses.length > 1 ? `Folha gerada em ${meses.length} meses.` : "Folha salva.");
       }
+      if (inativosIgnorados) setMsg(p => p + " Funcionários inativados após a abertura da tela foram desconsiderados.");
       setModalFolha(false);
       carregar();
     } catch (e: any) {
@@ -687,7 +690,7 @@ export default function FolhaPagamentoPage() {
     const compBase = folhaEdit.id ? folhaEdit.competencia : modalCompDe;
     const diaPgto = Number(dataPgto.slice(8, 10)) || diaPagamentoPadrao();
     const data_vencimento = dataPgto && comp === compBase ? dataPgto : vencimentoSalario(comp, diaPgto);
-    const dadosFolha = { valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs, data_vencimento };
+    const dadosFolha = { valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs, data_vencimento, gerar_encargos_cp: folhaEdit.gerar_encargos_cp !== false };
 
     if (!folhaId) {
       // Upsert via API route (service_role_key evita RLS 42501)
@@ -746,8 +749,10 @@ export default function FolhaPagamentoPage() {
         inss_patronal: f.inss_patronal,
         fgts: f.fgts,
       }));
-      await apiFolha({ operacao: "insert_funcionarios", rows });
+      const res = await apiFolha({ operacao: "insert_funcionarios", rows });
+      return Number(res.inativos_ignorados ?? 0);
     }
+    return 0;
   }
 
   async function fecharFolhas(lista: Folha[]) {
@@ -1085,6 +1090,7 @@ export default function FolhaPagamentoPage() {
         if (!funcs.length) { criadas.push(`${nomeMes(novaComp)} (sem funcionários ativos)`); continue; }
         const novaRes = await apiFolha({ operacao: "upsert_folha", somente_criar: true,
           fazenda_id: repFolha.fazenda_id, empresa_id: repFolha.empresa_id ?? null, produtor_id: repFolha.produtor_id ?? null, competencia: novaComp,
+          gerar_encargos_cp: repFolha.gerar_encargos_cp !== false,
           data_vencimento: vencimentoSalario(novaComp, Number(repFolha.data_vencimento?.slice(8,10)) || diaPagamentoPadrao()),
           valor_bruto: funcs.reduce((s,f)=>s+f.salario_bruto,0), valor_liquido: funcs.reduce((s,f)=>s+liquido(f),0),
           inss_patronal: funcs.reduce((s,f)=>s+f.inss_patronal,0), fgts_total: funcs.reduce((s,f)=>s+f.fgts,0) });
@@ -1710,6 +1716,13 @@ export default function FolhaPagamentoPage() {
             </div>
 
             {/* Sub-abas */}
+            <label style={{ display:"flex", alignItems:"flex-start", gap:8, fontSize:13, marginBottom:16 }}>
+              <input type="checkbox" checked={folhaEdit.gerar_encargos_cp !== false}
+                disabled={!!folhaEdit.status && folhaEdit.status !== "rascunho"}
+                onChange={e => setFolhaEdit(p => ({ ...p, gerar_encargos_cp:e.target.checked }))} />
+              <span><strong>Gerar encargos da folha no Contas a Pagar (FGTS e INSS patronal)</strong>
+                <small style={{ display:"block", color:"var(--text-2)", marginTop:3 }}>Desmarque para lançar as guias manualmente no CP. Os cálculos da folha e os descontos do salário continuam iguais.</small></span>
+            </label>
             <div data-arato-tabs="true" style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
               {([["funcionarios","Funcionários"],["resumo","Resumo"]] as const).map(([k,l])=>(
                 <OperationalButton data-arato-tab-active={abaModal === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={()=>setAbaModal(k)}
