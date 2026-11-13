@@ -1014,6 +1014,9 @@ Ver seção "O que é simulado" acima — hoje são controle de status local, se
 ### Fiscal → LCDPR / SPED ECD
 Geram o arquivo a partir dos lançamentos classificados (vínculo de atividade, entidade contábil PF/PJ) — gerar o arquivo aqui **não é o mesmo que transmitir** à Receita Federal. O SPED pode pular lançamentos sem Operação Gerencial com conta de débito/crédito configurada — revise a prévia antes de considerar completo.
 
+### Parâmetros do Sistema → Fiscal → Contribuinte de IBS/CBS
+Cada Inscrição Estadual do produtor (ou cada empresa) tem o campo "Contribuinte de IBS/CBS?". **Não** (produtor que não é contribuinte): a NF-e sai sem IBS/CBS e não precisa de Tributação NCM. **Sim**: cada NCM da nota precisa estar cadastrado em Tributação NCM (CST, cClassTrib e redução) — sem o cadastro a emissão para com "Cadastre a tributação IBS/CBS do NCM ...". Os padrões de MT (soja, milho, algodão em pluma, caroço de algodão, sorgo e trigo) vêm com CST 200 / cClassTrib 200036 e redução de 60% (produto in natura). Destinação diferente (alimentação humana, ração, semente) ou diferimento se resolve com uma Operação Fiscal escolhida na emissão, porque cada NCM tem uma regra só. Em 2026 a nota usa as alíquotas de teste (0,1% IBS e 0,9% CBS). Quem é ou não contribuinte é decisão do contador.
+
 ### Fiscal → Obrigações → IBS / CBS — 2027
 Telas de simulação e parametrização da Reforma Tributária — são ferramentas de cálculo/configuração, não prova de obrigação legal cumprida. Sempre recomende confirmar com o contador antes de uma decisão real baseada nessas simulações.
 

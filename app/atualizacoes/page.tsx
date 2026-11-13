@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-j",
+    data: "13/11/2026",
+    titulo: "IBS/CBS: escolha de contribuinte e novos padrões de NCM",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Parâmetros do Sistema → Fiscal: o campo \"Destacar IBS/CBS\" passa a se chamar \"Contribuinte de IBS/CBS?\". Não contribuinte: a NF-e sai sem IBS/CBS e não exige a Tributação NCM. Contribuinte: o IBS/CBS segue a Tributação NCM. Vale por Inscrição Estadual (produtor) ou por empresa, e também no CT-e." },
+      { tipo: "melhoria", texto: "Tributação NCM → Carregar padrões MT: soja, milho, algodão, caroço de algodão, sorgo e trigo passam a vir com CST 200 / cClassTrib 200036 e redução de 60% (produto agropecuário in natura, LC 214/2025 art. 137), no lugar de 410/410999." },
+      { tipo: "correcao", texto: "Padrões MT com descrição errada: NCM 1207.29.00 é caroço de algodão (não algodão em caroço) e 1001.19.00 é trigo duro em grão (não trigo para semeadura)." },
+    ],
+    onde: "Parâmetros do Sistema → Fiscal / Tributação NCM",
+  },
+  {
     versao: "2026.11.13-i",
     data: "13/11/2026",
     titulo: "Fluxo de caixa com ou sem saldo anterior",

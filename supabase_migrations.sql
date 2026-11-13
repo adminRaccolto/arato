@@ -13667,6 +13667,7 @@ NOTIFY pgrst, 'reload schema';
 
 
 -- ── Seção 294 — IBS/CBS padrão CST 410 / cClassTrib 410999 (sem valores) — definição do contador 24/09/2026 ──
+-- ⚠ NÃO EXECUTAR — superada pela Seção 452 (13/11/2026). Converteria todas as tributações NCM para 410/410999.
 UPDATE ncm_tributacoes
    SET ibs_cbs_cst = '410', ibs_cbs_cclasstrib = '410999',
        ibs_estadual_aliq = 0, ibs_municipal_aliq = 0, cbs_aliq = 0, ibs_cbs_reducao_pct = 0;
@@ -23105,4 +23106,25 @@ $$;
 REVOKE ALL ON FUNCTION public.folha_estado_titulo_uso(uuid),public.folha_usar_adiantamento(text,jsonb,uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.folha_estado_titulo_uso(uuid),public.folha_usar_adiantamento(text,jsonb,uuid,uuid) TO service_role;
 COMMIT;
+NOTIFY pgrst, 'reload schema';
+
+
+-- =============================================================================
+-- Seção 452 — IBS/CBS dos padrões de MT: 410/410999 → 200/200036 com redução de 60% (13/11/2026)
+-- =============================================================================
+-- Tabela trazida pelo dono (LC 214/2025, art. 137 — produto agropecuário in natura). Só altera as
+-- linhas dos 7 NCMs de padrão que ainda estão com 410/410999; linhas editadas à mão ficam como estão.
+-- Também corrige dois rótulos: 12072900 é caroço de algodão e 10011900 é trigo duro (não semente).
+-- Em 2026 a NF-e usa as alíquotas de teste (0,1% IBS / 0,9% CBS) de qualquer forma.
+UPDATE ncm_tributacoes
+   SET ibs_cbs_cst = '200', ibs_cbs_cclasstrib = '200036', ibs_cbs_reducao_pct = 60,
+       ibs_estadual_aliq = 0.1, ibs_municipal_aliq = 0, cbs_aliq = 0.9
+ WHERE ncm IN ('12019000','10059010','52010020','12072900','10079000','10019900','10011900')
+   AND ibs_cbs_cst = '410' AND ibs_cbs_cclasstrib = '410999';
+UPDATE ncm_tributacoes SET descricao = 'Caroço de algodão (exceto semeadura)'
+ WHERE ncm = '12072900' AND descricao = 'Algodão em caroço';
+UPDATE ncm_tributacoes SET descricao = 'Trigo comum em grão (exceto semeadura)'
+ WHERE ncm = '10019900' AND descricao = 'Trigo em grão';
+UPDATE ncm_tributacoes SET descricao = 'Trigo duro em grão (exceto semeadura)'
+ WHERE ncm = '10011900' AND descricao = 'Trigo para semeadura';
 NOTIFY pgrst, 'reload schema';

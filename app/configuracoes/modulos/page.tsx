@@ -144,7 +144,7 @@ const FISCAL_CFOP: FieldDef[] = [
 ];
 
 const FISCAL_CERT: FieldDef[] = [
-  { key: "ibs_cbs_ativo",  label: "Destacar IBS/CBS na NF-e",                    type: "select",   options: ["nao","sim"], labels: ["Não (padrão atual)","Sim — fase de transição"] },
+  { key: "ibs_cbs_ativo",  label: "Contribuinte de IBS/CBS? (NF-e)", type: "select", options: ["nao","sim"], labels: ["Não — não contribuinte: a NF-e sai sem IBS/CBS","Sim — contribuinte: IBS/CBS conforme a Tributação NCM"] },
 ];
 
 // Config específica de cada Inscrição Estadual do produtor — série e numeração são
@@ -155,7 +155,7 @@ const IE_FISCAL_FIELDS: FieldDef[] = [
   { key: "numero_inicial",  label: "Próx. Número NF-e",      type: "number", placeholder: "1" },
   { key: "crt",             label: "CRT (Regime Tributário)",type: "select", options: ["1","2","3","4"], labels: ["1 – Simples Nacional","2 – SN – Excesso de sublimite","3 – Regime Normal","4 – MEI"] },
   { key: "csosn_padrao", label: "CSOSN (Simples/MEI)", type: "select", options: ["","102","103","300","400","500"], labels: ["Selecione para Simples/MEI","102 — Sem permissão de crédito","103 — Isenção por faixa de receita","300 — Imune","400 — Não tributada","500 — ICMS cobrado anteriormente por ST"] },
-  { key: "ibs_cbs_ativo",   label: "Destacar IBS/CBS na NF-e",type: "select", options: ["nao","sim"], labels: ["Não (padrão atual)","Sim — fase de transição"] },
+  { key: "ibs_cbs_ativo",   label: "Contribuinte de IBS/CBS? (NF-e)", type: "select", options: ["nao","sim"], labels: ["Não — não contribuinte: a NF-e sai sem IBS/CBS","Sim — contribuinte: IBS/CBS conforme a Tributação NCM"] },
 ];
 
 const MDFE_FIELDS: FieldDef[] = [
@@ -204,7 +204,7 @@ const CTE_BASE_FIELDS: FieldDef[] = [
   // IBS/CBS (Reforma Tributária, LC 214/2025 · NT 2025.001) — obrigatório no CT-e de emitente
   // Lucro Presumido/Real desde 05/01/2026 (Simples/MEI dispensados). 2026 é ano de transição:
   // sugestão da lei p/ o destaque = CBS 0,9% e IBS 0,1% — CONFIRME com o contador antes de ativar.
-  { key: "ibs_cbs_ativo",       label: "Destacar IBS/CBS no CT-e",  type: "select", options: ["nao","sim"], labels: ["Não (não recomendado p/ Lucro Presumido/Real)","Sim — obrigatório (CRT 3)"] },
+  { key: "ibs_cbs_ativo",       label: "Contribuinte de IBS/CBS? (CT-e)", type: "select", options: ["nao","sim"], labels: ["Não — não contribuinte: o CT-e sai sem IBS/CBS","Sim — contribuinte: destaca IBS/CBS (obrigatório no CRT 3)"] },
   { key: "ibs_cbs_cst",         label: "CST do IBS/CBS",            type: "select", options: ["000","410"], labels: ["000 – Tributação integral (padrão do frete)","410 – Imunidade / não incidência (sem valores)"] },
   { key: "ibs_cbs_cclasstrib",  label: "cClassTrib (6 dígitos)",    type: "text",   placeholder: "000001" },
   { key: "ibs_uf_aliq",         label: "IBS – alíquota UF (%)",     type: "text",   placeholder: "0.10" },
@@ -236,7 +236,9 @@ const EXPEDICAO_FIELDS: FieldDef[] = [
 // ICMS: diferido (CST 051) nas operações internas; base reduzida 61,11% (CST 020) nas interestaduais
 // Fundamento: RICMS/MT + Convênio ICMS 100/97
 // PIS/COFINS: CST 06 (alíquota zero) — Lei 10.925/2004 para grãos
-// IBS/CBS: redução de 60% para produtos agropecuários — LC 214/2025 / Reforma Tributária
+// IBS/CBS: CST 200 / cClassTrib 200036, redução de 60% — produto agropecuário in natura (LC 214/2025,
+// art. 137), conforme tabela trazida pelo dono em 13/11/2026. Só vale para emitente marcado como
+// contribuinte de IBS/CBS em Parâmetros → Fiscal; não contribuinte emite sem IBS/CBS.
 type NcmPreset = Omit<NcmTributacao, "id">;
 
 const NCM_PRESETS_MT: NcmPreset[] = [
@@ -247,9 +249,9 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010). Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Art. 1º, I da Lei 10.925/2004.",
   },
   {
@@ -259,9 +261,9 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010). Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Art. 1º, I da Lei 10.925/2004.",
   },
   {
@@ -271,21 +273,21 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "Operação não tributada pelo ICMS conforme RICMS/MT. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
   {
-    ncm: "12072900", descricao: "Algodão em caroço",
+    ncm: "12072900", descricao: "Caroço de algodão (exceto semeadura)",
     icms_cst_interno: "051", icms_cst_externo: "020",
     icms_aliq: 12, icms_base_reduzida_pct: 61.11,
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Base de cálculo reduzida a 61,11% nas interestaduais — Conv. ICMS 100/97. PIS/COFINS: alíquota zero.",
   },
   {
@@ -295,35 +297,35 @@ const NCM_PRESETS_MT: NcmPreset[] = [
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Base de cálculo reduzida a 61,11% nas interestaduais — Conv. ICMS 100/97. PIS/COFINS: alíquota zero.",
   },
   {
-    ncm: "10019900", descricao: "Trigo em grão",
+    ncm: "10019900", descricao: "Trigo comum em grão (exceto semeadura)",
     // Interno: diferido no MT (RICMS/MT). Externo: base reduzida Conv. ICMS 100/97 — trigo listado explicitamente na Cláusula 1ª §2°
     icms_cst_interno: "051", icms_cst_externo: "020",
     icms_aliq: 12, icms_base_reduzida_pct: 61.11,
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97 (trigo em grão incluído na Cláusula 1ª, §2°). PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
   {
-    ncm: "10011900", descricao: "Trigo para semeadura",
-    // Interno: diferido no MT. Externo: base reduzida Conv. ICMS 100/97 (trigo em grão)
+    ncm: "10011900", descricao: "Trigo duro em grão (exceto semeadura)",
+    // Trigo duro (1001.19.00) — não é semente: semente de trigo comum é 1001.91.00. ICMS igual ao trigo em grão.
     icms_cst_interno: "051", icms_cst_externo: "020",
     icms_aliq: 12, icms_base_reduzida_pct: 61.11,
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0, ibs_municipal_aliq: 0, cbs_aliq: 0,
-    ibs_cbs_reducao_pct: 0,
-    ibs_cbs_cst: '410', ibs_cbs_cclasstrib: '410999',
+    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
+    ibs_cbs_reducao_pct: 60,
+    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
     inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
 ];
