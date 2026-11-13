@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.13-b",
+    data: "13/11/2026",
+    titulo: "Folha: encargos opcionais no CP e previsões de funcionários inativos",
+    modulos: ["Folha de Pagamento", "Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "novidade", texto: "Folha de Pagamento: nova caixa de seleção \"Gerar encargos da folha no Contas a Pagar\". Marcada, mantém a geração de FGTS e INSS patronal; desmarcada, permite lançar as guias manualmente no CP. Os cálculos, descontos e salários permanecem na folha. A escolha é salva por folha e acompanha a replicação para outros meses." },
+      { tipo: "correcao", texto: "Inativar um funcionário retira suas previsões não movimentadas de todos os rascunhos, inclusive do mês atual, e recalcula os encargos dos funcionários restantes. Não é preciso informar a demissão nesse momento: a rescisão pode ser processada depois pela rotina própria. Folhas fechadas, títulos reais e pagamentos são preservados." },
+      { tipo: "correcao", texto: "Salvar ou reabrir uma folha não recria as previsões retiradas pela inativação. Se a tela foi aberta antes de o funcionário ser inativado, ele é desconsiderado ao salvar, com aviso, sem impedir a inclusão dos demais. Ao desmarcar os encargos no CP, as previsões existentes são canceladas; encargos já efetivados ou movimentados exigem regularização antes da mudança." },
+    ],
+  },
+  {
     versao: "2026.11.13-a",
     data: "13/11/2026",
     titulo: "Avisos da equipe Arato com ciência",
@@ -22,6 +33,45 @@ const RELEASES = [
     modulos: ["Fiscal"],
     itens: [
       { tipo: "correcao", texto: "NF-e de devolução de compra: produto com desconto na NF de origem sai com o valor cheio, o desconto destacado e o valor líquido, como na nota do fornecedor (antes, o líquido ia como valor do produto e o desconto não aparecia). O desconto de cada item vem do XML da nota de origem; sem XML, o desconto da nota é rateado pelos itens. Na tela de devolução, abaixo do valor devolvido aparecem o valor cheio e o desconto." },
+    ],
+  },
+  {
+    versao: "2026.11.11-c",
+    data: "11/11/2026",
+    titulo: "LCDPR por produtor e recuperação de emissões fiscais",
+    modulos: ["Fiscal", "Documentos Fiscais", "Transporte", "Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "LCDPR: o CPF escolhido passa a delimitar os movimentos exportados. Operações exclusivas mantêm seu valor integral; a participação do imóvel só é aplicada às operações compartilhadas. A opção Todos permanece uma visão gerencial, e o arquivo oficial é gerado por contribuinte." },
+      { tipo: "correcao", texto: "LCDPR: período e valores usam o pagamento ou recebimento efetivo. Uma venda não é mais excluída apenas por citar o nome de outra empresa do grupo. Movimentos sem data de baixa, compensações de adiantamento e pagamentos parciais antigos que exigem conferência ficam identificados." },
+      { tipo: "melhoria", texto: "LCDPR: validação de documentos, imóveis, participantes, datas e contas bancárias antes do TXT. Contas históricas inativas continuam disponíveis; contas de um produtor não são atribuídas automaticamente ao parceiro. O demonstrativo anual inicia em zero e os totais usam a mesma seleção do PDF e da planilha." },
+      { tipo: "correcao", texto: "LCDPR: lançamentos manuais e importações de planilha passam a ser gravados com autoria. Repetir a mesma importação não duplica as linhas; alterações e exclusões guardam histórico e detectam mudanças feitas por outra operação." },
+      { tipo: "correcao", texto: "Parâmetros fiscais: trocar cliente descarta carregamentos do contexto anterior. Salvar NCM ou operação confirma a gravação, mantém a fazenda original do cadastro e detecta edição concorrente. Salvar uma configuração antiga não restaura a numeração ou o certificado anterior." },
+      { tipo: "melhoria", texto: "NF-e: operações fiscais, NCM e vínculos de operação gerencial passam a alimentar os campos tributários suportados da emissão. Cadastros têm vigência, e o documento guarda a regra aplicada. Dados inválidos, regras divergentes e falhas na leitura dos parâmetros interrompem a emissão com indicação do problema." },
+      { tipo: "correcao", texto: "NF-e: totais dos impostos passam a somar os valores arredondados de cada item. A data informada segue ao XML da NF-e e do CT-e. O regime do emitente é considerado nos grupos tributários suportados, incluindo CSOSN no Simples Nacional." },
+      { tipo: "novidade", texto: "Emissões em conferência: novo acompanhamento nas telas fiscal, comercial, CT-e e MDF-e para consultar a mesma chave e concluir a gravação local após uma resposta incerta ou falha de armazenamento. A recuperação não retransmite automaticamente o documento nem troca seu número." },
+      { tipo: "correcao", texto: "NF-e, CT-e e MDF-e: reserva de numeração protegida contra solicitações simultâneas e reenvios. A emissão diferencia rejeição, pendência e autorização com gravação local pendente. A escolha do titular é conferida antes do envio, sem substituição silenciosa por outro emitente." },
+      { tipo: "melhoria", texto: "Certificados e comunicação fiscal: consulta respeita o titular da chave, valida a conexão e tem prazo de resposta. O diagnóstico informa modelo, UF e ambiente consultados. A distribuição guarda os documentos recebidos antes de avançar a sequência e não apresenta falha de gravação como documento salvo." },
+      { tipo: "correcao", texto: "Cancelamento e carta de correção da NF-e: eventos aceitos ficam registrados para concluir os efeitos locais se houver falha posterior. A recuperação consulta a situação sem reenviar o evento. Uma resposta atrasada não reabre documento cancelado ou encerrado." },
+      { tipo: "correcao", texto: "Operações gerenciais: vínculos antigos voltam a aparecer nos seletores principais de CP, CR e NF; limpar um campo realmente remove seu vínculo. A reclassificação de uma NF atualiza sua classificação e os títulos vinculados em conjunto." },
+      { tipo: "melhoria", texto: "Preparação contábil: a exportação passa a ser um CSV auxiliar ao contador, com origem dos movimentos e pendências explícitas. O arquivo anterior deixa de ser apresentado como ECD completa; a escrituração oficial continua exigindo preparação e validação contábil próprias." },
+    ],
+  },
+  {
+    versao: "2026.11.11-b",
+    data: "11/11/2026",
+    titulo: "Mais consistência no financeiro, nas previsões e no estoque",
+    modulos: ["Financeiro", "Compras", "Estoque", "Folha de Pagamento", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "CP e CR: baixa, estorno e reprogramação passam a confirmar as alterações em conjunto. Repetir a mesma confirmação não duplica a operação. Títulos de borderô devem ser pagos ou estornados pela rotina do próprio borderô." },
+      { tipo: "correcao", texto: "Pagamentos parciais: saldo considera o principal separadamente de juros, multa e desconto. Estornar a baixa limpa os dados do pagamento e da conciliação sem alterar o valor original da parte do título." },
+      { tipo: "correcao", texto: "Previsões de Gastos: criação, efetivação, edição e decisões de saldo atualizam previsão e título em conjunto. Repetir o consumo pelo mesmo documento não desconta o saldo novamente. No financeiro, a natureza real prevalece sobre a origem histórica de previsão." },
+      { tipo: "correcao", texto: "Pedidos de Compra: gerar o financeiro grava o título e seu vínculo com o pedido juntos. Solicitações simultâneas reutilizam o vínculo, evitando criar outro título para o mesmo pedido. Inconsistências históricas são apontadas para conferência." },
+      { tipo: "correcao", texto: "Abastecimentos: criar, editar ou excluir atualiza o lançamento, o saldo da bomba e a movimentação de estoque em conjunto. Registros antigos sem vínculo único de estoque pedem conferência antes da alteração." },
+      { tipo: "correcao", texto: "Estoque: ajuste manual usa o saldo da fazenda e do depósito escolhidos, sem substituir o saldo consolidado de outros locais. Falha na gravação interrompe a operação em vez de confirmar um movimento incompleto." },
+      { tipo: "correcao", texto: "Folha de Pagamento: fechamento por empregador confirma salários, encargos, adiantamentos e previsões em conjunto. Se uma etapa falhar, as anteriores não ficam gravadas pela metade. A simulação de reprocessamento não altera vínculos financeiros." },
+      { tipo: "melhoria", texto: "CP, CR e relatórios: carregamentos antigos não substituem os dados do contexto atual; filtros de colunas ocultas ficam visíveis e podem ser removidos. Erros ao carregar informações são apresentados, sem tratar uma consulta incompleta como lista vazia." },
+      { tipo: "correcao", texto: "Integrações: melhorias no reaproveitamento da autenticação do SIEG e nos prazos de resposta dos serviços. Na cobrança da assinatura Arato, uma notificação de atraso não regride um pagamento já confirmado." },
+      { tipo: "correcao", texto: "eSocial: a tela orienta o envio oficial e não gera protocolo nem apresenta um evento como transmitido sem transmissão efetiva." },
     ],
   },
   {
