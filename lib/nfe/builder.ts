@@ -692,11 +692,13 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     );
   }
 
-  const enderDest = dest.logradouro
-    ? `<enderDest>
+  // Endereço do destinatário: o que o cadastro tem vai sempre; padrão só no campo que falta. Antes, sem logradouro, o
+  // bloco inteiro virava genérico e descartava cidade e CEP conhecidos (xMun = UF, CEP 00000000) — achado 16/11/2026
+  // na NF-e 5/923 da Kuluene (destinatário com cidade e CEP no cadastro, sem rua).
+  const enderDest = `<enderDest>
       <xLgr>${escXml(dest.logradouro || "NAO INFORMADO")}</xLgr>
       <nro>${escXml(dest.numero || "S/N")}</nro>
-      <xBairro>${escXml(dest.bairro || "N/A")}</xBairro>
+      <xBairro>${escXml(dest.bairro || (dest.logradouro ? "N/A" : "NAO INFORMADO"))}</xBairro>
       <cMun>${destCMun}</cMun>
       <xMun>${escXml(dest.municipio_nome || destUF || "N/I")}</xMun>
       <UF>${destUF}</UF>
@@ -704,17 +706,6 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <cPais>1058</cPais>
       <xPais>Brasil</xPais>
       ${dest.telefone ? `<fone>${soDigitos(dest.telefone)}</fone>` : ""}
-    </enderDest>`
-    : `<enderDest>
-      <xLgr>NAO INFORMADO</xLgr>
-      <nro>S/N</nro>
-      <xBairro>NAO INFORMADO</xBairro>
-      <cMun>${destCMun}</cMun>
-      <xMun>${escXml(destUF)}</xMun>
-      <UF>${destUF}</UF>
-      <CEP>00000000</CEP>
-      <cPais>1058</cPais>
-      <xPais>Brasil</xPais>
     </enderDest>`;
 
   // ── Totais ────────────────────────────────────────────────────────────────

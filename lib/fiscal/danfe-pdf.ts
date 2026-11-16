@@ -4,10 +4,25 @@ import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVISO_ESPELHO, TEXTO_ESPELHO } from "./espelho";
 
+/**
+ * dhEmi com o mesmo horário de parede da nota, mas no fuso de quem gera o PDF. O canhoto do nfe-danfe-pdf formata a
+ * emissão no fuso do processo: no servidor (UTC) a nota de 16:46 (-04:00) saía "EMISSÃO: 20:46" (achado 16/11/2026,
+ * NF 5/923 da Kuluene). A data (10 primeiros caracteres) continua a da nota. Só para desenhar o DANFE; o XML não muda.
+ */
+export function dhEmiNoFusoLocal(dh: string): string {
+  const m = dh.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return dh;
+  const [ano, mes, dia, h, mi, se] = m.slice(1).map(Number);
+  const off = -new Date(ano, mes - 1, dia, h, mi, se).getTimezoneOffset();
+  const p2 = (n: number) => String(Math.abs(n)).padStart(2, "0");
+  return `${m[0]}${off >= 0 ? "+" : "-"}${p2(Math.trunc(off / 60))}:${p2(off % 60)}`;
+}
+
 /** Gera o PDF do DANFE. `logo` é o Buffer da imagem (pdfkit aceita Buffer no lugar do caminho). */
 export async function gerarDanfePdf(xml: string, opcoes: { cancelada?: boolean; logo?: Buffer } = {}): Promise<Buffer> {
   const { gerarPDF } = await import("nfe-danfe-pdf");
-  const pdfDoc = await gerarPDF(xml, {
+  const xmlDanfe = xml.replace(/<dhEmi>([^<]+)<\/dhEmi>/, (_t, dh: string) => `<dhEmi>${dhEmiNoFusoLocal(dh)}</dhEmi>`);
+  const pdfDoc = await gerarPDF(xmlDanfe, {
     cancelada: !!opcoes.cancelada,
     ...(opcoes.logo ? { pathLogo: opcoes.logo as unknown as string } : {}),
   });

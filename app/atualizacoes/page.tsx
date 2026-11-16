@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-q",
+    data: "16/11/2026",
+    titulo: "DANFE com código de barras e horário certo; endereço do destinatário sem rua",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O DANFE impresso pelo Arato saía sem o código de barras da chave de acesso. A imagem era descartada ao fechar o PDF. Agora sai completo, também na impressão em lote." },
+      { tipo: "correcao", texto: "O canhoto do DANFE mostrava a emissão 4 horas adiantada (horário do servidor). Agora mostra o horário da nota." },
+      { tipo: "correcao", texto: "Quando o destinatário não tinha rua no cadastro, a NF-e saía com a UF no lugar da cidade e o CEP zerado, mesmo com cidade e CEP cadastrados. Agora vão a cidade e o CEP do cadastro; só a rua e o bairro ficam como NAO INFORMADO. Notas já autorizadas não mudam." },
+    ],
+    onde: "Documentos Fiscais → Painel de Notas (DANFE) e toda emissão de NF-e",
+  },
+  {
     versao: "2026.11.16-p",
     data: "16/11/2026",
     titulo: "Tributação NCM: padrões do agro no lugar do Padrão MT só de grãos",

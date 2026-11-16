@@ -1,6 +1,7 @@
 import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { gerarDanfePdf } from "../../../../lib/fiscal/danfe-pdf";
 
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -135,39 +136,18 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* sem logo — DANFE sai sem logo, igual sempre saiu até aqui */ }
 
-  // 3. Gera o DANFE em PDF
+  // 3. Gera o DANFE em PDF — pelo mesmo gerador do espelho (lib/fiscal/danfe-pdf.ts). Achado 16/11/2026 (NF 5/923 da
+  // Kuluene impressa sem código de barras): a biblioteca já fecha o PDF e ainda grava a imagem do código de barras (e a
+  // logo) em seguida; o end() repetido aqui finalizava o arquivo antes, a imagem chegava depois do fim e era descartada
+  // junto com o erro "push after EOF". O gerador não fecha de novo.
   try {
-    const { gerarPDF } = await import("nfe-danfe-pdf");
-
-    const pdfDoc = await gerarPDF(xmlContent, {
-      cancelada: nfStatus === "cancelada",
-      ...(logoBuffer ? { pathLogo: logoBuffer as unknown as string } : {}),
-    });
-
-    // Converte o PDFDocument (stream) em Buffer.
-    // pdfkit em Node.js ≥18 emite "stream.push() after EOF" como evento de erro
-    // após o evento "end" — é um quirk não-fatal; se já temos os dados, resolvemos.
-    const chunks: Buffer[] = [];
-    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-      let ended = false;
-      pdfDoc.on("data",  (chunk: Buffer) => chunks.push(chunk));
-      pdfDoc.on("end",   () => { ended = true; resolve(Buffer.concat(chunks)); });
-      pdfDoc.on("error", (err: Error) => {
-        if (ended) return; // erro tardio após "end" — ignorar
-        if (chunks.length > 0 && /push.*after EOF/i.test(err?.message ?? "")) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          reject(err);
-        }
-      });
-      pdfDoc.end();
-    });
+    const pdfBuffer = await gerarDanfePdf(xmlContent, { cancelada: nfStatus === "cancelada", logo: logoBuffer });
 
     // ?download=1 baixa o arquivo direto (botão "DANFE em PDF"); sem ele abre no navegador para imprimir
     const baixar = req.nextUrl.searchParams.get("download") === "1";
     const nNF = (xmlContent.match(/<nNF>(\d+)<\/nNF>/)?.[1] ?? "").replace(/^0+/, "");
     const nomeArq = nNF ? `DANFE NF ${nNF}.pdf` : `DANFE-${chave}.pdf`;
-    return new NextResponse(pdfBuffer.buffer as ArrayBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type":        "application/pdf",
