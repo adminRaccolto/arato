@@ -23128,3 +23128,14 @@ UPDATE ncm_tributacoes SET descricao = 'Trigo comum em grão (exceto semeadura)'
 UPDATE ncm_tributacoes SET descricao = 'Trigo duro em grão (exceto semeadura)'
  WHERE ncm = '10011900' AND descricao = 'Trigo para semeadura';
 NOTIFY pgrst, 'reload schema';
+
+
+-- =============================================================================
+-- Seção 453 — Excluir cliente: log do sistema deixa de travar a exclusão da fazenda (16/11/2026)
+-- =============================================================================
+-- A exclusão de cliente (Seção 416) guarda audit_log e logs_sistema como histórico, mas logs_sistema.fazenda_id tinha
+-- chave estrangeira para fazendas (sem ON DELETE): com qualquer log da fazenda, o DELETE da fazenda falhava e nada era
+-- excluído ("violates foreign key constraint logs_sistema_fazenda_id_fkey"). O log é histórico: a ligação sai e o id
+-- da fazenda continua gravado (dá para cruzar com a cópia guardada em backups/exclusoes/). audit_log já não tinha a ligação.
+ALTER TABLE logs_sistema DROP CONSTRAINT IF EXISTS logs_sistema_fazenda_id_fkey;
+NOTIFY pgrst, 'reload schema';

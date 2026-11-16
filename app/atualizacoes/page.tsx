@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-b",
+    data: "16/11/2026",
+    titulo: "Gestão Arato: excluir cliente volta a funcionar",
+    modulos: ["Gestão Arato"],
+    itens: [
+      { tipo: "correcao", texto: "Excluir cliente parava com \"violates foreign key constraint logs_sistema_fazenda_id_fkey\" e nada era excluído. O log do sistema continua guardado como histórico, mas não trava mais a exclusão da fazenda (Seção 453)." },
+    ],
+    onde: "Gestão Arato → Clientes → 🗑",
+  },
+  {
     versao: "2026.11.16-a",
     data: "16/11/2026",
     titulo: "Tributação NCM avisa quando o cadastro não foi salvo",

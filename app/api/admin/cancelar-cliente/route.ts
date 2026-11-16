@@ -157,7 +157,8 @@ export async function POST(req: Request) {
 
     const { data: feito, error: eExcluir } = await admin.rpc("fn_excluir_cliente", { p_conta: body.conta_id, p_aplicar: true });
     if (eExcluir) {
-      return NextResponse.json({ ok: false, error: eExcluir.message, backup }, { status: 500 });
+      const travaLog = /logs_sistema_fazenda_id_fkey/.test(eExcluir.message);
+      return NextResponse.json({ ok: false, error: travaLog ? "Execute a Seção 453 no Supabase para liberar a exclusão (o log do sistema ainda trava a fazenda)." : eExcluir.message, backup }, { status: travaLog ? 503 : 500 });
     }
     const usuarios = ((feito as { usuarios?: string[] }).usuarios ?? []);
     const falhasLogin: string[] = [];
