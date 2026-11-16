@@ -454,6 +454,23 @@ export default function DocumentosFiscaisPage() {
     }
   }
 
+  // Estorno da NFS direto da lista, como o da NF (mesma rota do botão Estornar do modal da NFS)
+  async function estornarNfsGrid(d: RelDocFiscal) {
+    if (!confirm(`Estornar NFS-e ${d.numero}?\n\nIsso irá:\n• Cancelar o lançamento financeiro (CP) associado\n• Retornar a NFS-e para "Pendente" para reprocessamento`)) return;
+    try {
+      const res = await fetch("/api/compras/estornar-nf-servico", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nf_id: d.id }) });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(json.error ?? `Erro HTTP ${res.status}`);
+      }
+      alert(`NFS-e ${d.numero} estornada. Ela voltou para Pendente — abra para corrigir e processar de novo.`);
+      setPopover(null);
+      recarregar();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao estornar NFS-e");
+    }
+  }
+
   // ── Impressão de CT-e (DACTE) e NFS (espelho) — a NF de produtos imprime pelo DANFE ──
   // A janela abre já no clique (depois de um await o navegador bloqueia o pop-up) e recebe o documento quando ele chega.
   async function imprimirDocumento(d: RelDocFiscal) {
@@ -1131,10 +1148,23 @@ export default function DocumentosFiscaisPage() {
                     🏷 Reclassificar
                   </OperationalButton>
                 )}
-                {d.tipo_doc === "NFS" && (
+                {/* NFS com os mesmos botões da NF: pendente → Processar; processada → Abrir + Estornar */}
+                {d.tipo_doc === "NFS" && pendente && (
+                  <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: false }); }}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#1A5C38", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>
+                    ▶ Processar
+                  </OperationalButton>
+                )}
+                {d.tipo_doc === "NFS" && !pendente && (
                   <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
-                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     Abrir NFS
+                  </OperationalButton>
+                )}
+                {d.tipo_doc === "NFS" && processada && (
+                  <OperationalButton data-arato-button="secondary" onClick={() => estornarNfsGrid(d)}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF3E2", color: "#8A4A00", border: "0.5px solid #F6C87A", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    ↺ Estornar
                   </OperationalButton>
                 )}
                 {d.tipo_doc === "NF" && pendente && d.origem_doc === "sieg" && (

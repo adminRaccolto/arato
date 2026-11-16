@@ -28,10 +28,11 @@ import { useAuth } from "../AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra, Empresa, Produtor } from "../../lib/supabase";
 import SelectBusca from "../SelectBusca";
-import { listarPessoasDaConta, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta } from "../../lib/db";
+import { listarPessoasDaConta, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta, listarIEsDoProdutor } from "../../lib/db";
 import InputMonetario from "../InputMonetario";
 import ModalCadastroFornecedor from "./ModalCadastroFornecedor";
 import { LC116, codigoLC116 } from "../../lib/fiscal/lc116";
+import { escolherIeTomador, ieObrigatoria, ieTomadorDaObservacao, rotuloIe, type IeTomador } from "../../lib/fiscal/nfse-ie";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -97,6 +98,7 @@ const CAB_VAZIO = () => ({
   prestador_id: "", prestador_nome: "", prestador_cnpj: "",
   tomador_id: "", tomador_tipo: "" as "produtor" | "empresa" | "pessoa" | "", tomador_nome: "", tomador_cnpj: "",
   municipio_prestacao: "",
+  ie_tomador: "", // só na tela: escolhe a fazenda e o município (nf_servicos não tem coluna de IE)
   data_prestacao: hojeLocal(),
   competencia: new Date().toISOString().substring(0, 7),
   codigo_servico: "", cnae: "", discriminacao: "",
@@ -130,6 +132,8 @@ export default function ModalNfServico({
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [produtores, setProdutores] = useState<Produtor[]>([]);
   const [fazendas,   setFazendas]   = useState<Array<{id:string;nome:string}>>([]);
+  // IEs ativas do produtor tomador — a IE da nota define a fazenda e o município, como na NF de produtos
+  const [iesTomador, setIesTomador] = useState<IeTomador[]>([]);
 
   const [viewOnly, setViewOnly] = useState(viewOnlyInicial ?? false);
   const [etapa,   setEtapa]   = useState<Etapa>("prestador");
@@ -251,11 +255,47 @@ export default function ModalNfServico({
     const p    = prod ?? emp ?? pess;
     const tipo: "produtor" | "empresa" | "pessoa" | "" = prod ? "produtor" : emp ? "empresa" : pess ? "pessoa" : "";
     if (p) {
-      setCab(prev => ({ ...prev, tomador_id: idSel, tomador_tipo: tipo, tomador_nome: p.nome ?? prev.tomador_nome, tomador_cnpj: p.cpf_cnpj ?? prev.tomador_cnpj, municipio_prestacao: prev.municipio_prestacao || (prod?.municipio ?? "") }));
+      setCab(prev => ({ ...prev, tomador_id: idSel, tomador_tipo: tipo, ie_tomador: "", tomador_nome: p.nome ?? prev.tomador_nome, tomador_cnpj: p.cpf_cnpj ?? prev.tomador_cnpj, municipio_prestacao: prev.municipio_prestacao || (prod?.municipio ?? "") }));
     } else {
-      setCab(prev => ({ ...prev, tomador_id: idSel, tomador_tipo: "" }));
+      setCab(prev => ({ ...prev, tomador_id: idSel, tomador_tipo: "", ie_tomador: "" }));
     }
   }
+
+  // IE do tomador escolhida: a NFS passa a ser da fazenda dessa IE e o município de prestação vira o da IE.
+  // NF processada só mostra a IE — fazenda e município ficam como foram processados.
+  function aplicarIeTomador(ie: IeTomador | undefined) {
+    if (!ie) { setCab(p => ({ ...p, ie_tomador: "" })); return; }
+    const processada = nfEdit?.status === "processada";
+    setCab(p => ({
+      ...p, ie_tomador: ie.inscricao_estadual,
+      ...(processada ? {} : {
+        fazenda_id: ie.fazenda_id && (fazendaIds.includes(ie.fazenda_id) || ie.fazenda_id === fazendaId) ? ie.fazenda_id : p.fazenda_id,
+        municipio_prestacao: ie.municipio ? `${ie.municipio}${ie.estado ? ` - ${ie.estado}` : ""}` : p.municipio_prestacao,
+      }),
+    }));
+  }
+
+  useEffect(() => {
+    if (cab.tomador_tipo !== "produtor" || !cab.tomador_id) { setIesTomador([]); return; }
+    let vivo = true;
+    listarIEsDoProdutor(cab.tomador_id).then(l => { if (vivo) setIesTomador(l.filter(i => i.ativa)); }).catch(() => { if (vivo) setIesTomador([]); });
+    return () => { vivo = false; };
+  }, [cab.tomador_id, cab.tomador_tipo]);
+
+  // Escolha automática da IE: a lida da nota na importação (gravada na observação) → única fazenda possível. Nota
+  // processada sem marca mostra a IE da fazenda em que foi processada. Sem como decidir, fica em branco e o
+  // processamento pede a IE (antes caía na fazenda "dona" do produtor). Escolha manual nunca é trocada.
+  useEffect(() => {
+    if (!iesTomador.length || iesTomador.some(i => i.inscricao_estadual === cab.ie_tomador)) return;
+    const daNota = ieTomadorDaObservacao(nfEdit?.observacao ?? cab.observacao);
+    let ie = escolherIeTomador(iesTomador, daNota, "");
+    if (!ie && nfEdit?.status === "processada") {
+      const daFazenda = iesTomador.filter(i => i.fazenda_id === cab.fazenda_id);
+      if (daFazenda.length === 1) ie = daFazenda[0];
+    }
+    if (ie) aplicarIeTomador(ie);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iesTomador, nfEdit?.id]);
 
   // ── Carrega a NF (edição/visualização) ou abre em branco (nova) ──
   useEffect(() => {
@@ -294,6 +334,7 @@ export default function ModalNfServico({
         tomador_nome:         nf.tomador_nome ?? "",
         tomador_cnpj:         nf.tomador_cnpj ?? "",
         municipio_prestacao:  nf.municipio_prestacao || (tomadorMatch?.item as Produtor | undefined)?.municipio || "",
+        ie_tomador:           "",
         data_prestacao:       nf.data_prestacao,
         competencia:          nf.competencia ?? nf.data_prestacao.substring(0, 7),
         codigo_servico:       nf.codigo_servico ?? "",
@@ -356,6 +397,16 @@ export default function ModalNfServico({
     if (status === "processada" && vServico <= 0) { setErr("Valor do serviço deve ser maior que zero para processar."); return; }
     if (status !== "digitando" && !cab.ano_safra_id) { setErr("Selecione o Ano Safra antes de salvar/processar a NFS-e."); return; }
     if (status === "processada" && !cab.operacao_gerencial_id) { setErr("Selecione a Operação Gerencial para processar."); return; }
+    if (status === "processada" && cab.tomador_tipo === "produtor") {
+      const ieSel = iesTomador.find(i => i.inscricao_estadual === cab.ie_tomador);
+      if (!ieSel && ieObrigatoria(iesTomador)) { setErr("Escolha a I.E. do tomador (a que está na nota). O produtor tem inscrições em fazendas diferentes e a IE define em qual fazenda e município a NFS-e é processada."); setEtapa("prestador"); return; }
+      const fazDestino = cab.fazenda_id || fazendaId;
+      if (ieSel?.fazenda_id && fazDestino && ieSel.fazenda_id !== fazDestino) {
+        const nomeIe = fazendas.find(f => f.id === ieSel.fazenda_id)?.nome ?? "outra fazenda";
+        const nomeNf = fazendas.find(f => f.id === fazDestino)?.nome ?? "outra fazenda";
+        setErr(`A I.E. ${ieSel.inscricao_estadual} é da ${nomeIe}, mas a NFS-e está marcada como da ${nomeNf}. Confira a IE ou a fazenda antes de processar.`); setEtapa("prestador"); return;
+      }
+    }
 
     const codigoFinal = cab.codigo_servico === "outros" ? codigoLivre : cab.codigo_servico;
 
@@ -629,7 +680,7 @@ export default function ModalNfServico({
                 const passado = ordem.indexOf(etapa) > i;
                 return (
                   <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#111111" : passado ? "#E8E8E8" : "var(--bg-page)", color: ativo ? "#fff" : passado ? "#111111" : "var(--text-muted)" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#1A5C38" : passado ? "#E8E8E8" : "var(--bg-page)", color: ativo ? "#fff" : passado ? "#111111" : "var(--text-muted)" }}>
                       {i + 1}
                     </div>
                     {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
@@ -641,16 +692,17 @@ export default function ModalNfServico({
           </div>
 
           <div data-arato-dialog-body="true" style={{ padding: 24 }}>
-            {viewOnly && (
+            {viewOnly && nfEdit?.status === "processada" && (
+              // Mesmo aviso da NF de produtos: processada é só leitura; para editar, estornar primeiro
+              <div data-arato-dialog-heading="true" style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <span>🔒 NFS-e já processada — somente leitura. Para editar, use <strong>↺ Estornar</strong> primeiro (reverte o financeiro).</span>
+                <button data-arato-button="secondary" onClick={estornarNf} style={{ padding: "4px 12px", border: "0.5px solid #F6C87A", borderRadius: 6, background: "#FEF3E2", color: "#8A4A00", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>↺ Estornar</button>
+              </div>
+            )}
+            {viewOnly && nfEdit?.status !== "processada" && (
               <div data-arato-dialog-heading="true" style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>🔒 Modo visualização — clique em <strong>Editar</strong> para fazer alterações</span>
-                <span style={{ display: "flex", gap: 8 }}>
-                  {/* Estornar direto daqui: antes só existia no passo 3 em modo edição, e quem abria a NF não achava */}
-                  {nfEdit?.status === "processada" && (
-                    <button data-arato-button="secondary" onClick={estornarNf} style={{ padding: "4px 12px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", color: "#7A4800", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>↺ Estornar</button>
-                  )}
-                  <button data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
-                </span>
+                <button data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
               </div>
             )}
             {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{err}</div>}
@@ -739,6 +791,24 @@ export default function ModalNfServico({
                     <label data-arato-label="true" style={lbl}>CNPJ / CPF do Tomador</label>
                     <input value={cab.tomador_cnpj} onChange={e => setCab(p=>({...p,tomador_cnpj:e.target.value}))} placeholder="00.000.000/0001-00" style={inp} />
                   </div>
+                  {cab.tomador_tipo === "produtor" && iesTomador.length > 0 && (() => {
+                    const obrigatoria = ieObrigatoria(iesTomador);
+                    return (
+                      <div>
+                        <label data-arato-label="true" style={lbl}>I.E. do Tomador{obrigatoria ? " *" : ""}</label>
+                        <SelectField value={cab.ie_tomador} onChange={e => aplicarIeTomador(iesTomador.find(i => i.inscricao_estadual === e.target.value))}
+                          style={{ ...inp, borderColor: obrigatoria && !cab.ie_tomador ? "#EF9F27" : undefined }}>
+                          <option value="">— selecionar IE —</option>
+                          {iesTomador.map(i => <option key={i.id ?? i.inscricao_estadual} value={i.inscricao_estadual}>{rotuloIe(i, fazendas.find(f => f.id === i.fazenda_id)?.nome)}</option>)}
+                        </SelectField>
+                        {obrigatoria && !cab.ie_tomador && (
+                          <div style={{ fontSize: 11, color: "#7A4800", marginTop: 4 }}>
+                            O produtor tem inscrições em fazendas diferentes. Escolha a IE que está na nota: ela define a fazenda e o município de prestação.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div style={{ height: 1, background: "var(--bg-tag)", margin: "18px 0" }} />
@@ -770,7 +840,7 @@ export default function ModalNfServico({
               </div>
               <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
                 <button data-arato-button="secondary" style={btnR} onClick={onClose}>Fechar</button>
-                {!viewOnly && <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>}
+                <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>
               </div>
               </>
             )}
@@ -822,7 +892,7 @@ export default function ModalNfServico({
                 <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
                 <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
                   <button data-arato-button="secondary" style={btnR} onClick={onClose}>Fechar</button>
-                  {!viewOnly && <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>}
+                  <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>
                 </div>
               </div>
               </>
@@ -1052,29 +1122,31 @@ export default function ModalNfServico({
                 </div>
 
               </div>
+              {/* Mesmo arranjo da NF de produtos: à esquerda Voltar + ações sobre a nota (também em modo leitura);
+                  à direita Salvar como Pendente + Processar (verde) */}
               <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
                 <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {/* Ações sobre a NF já existente — ficam aqui dentro do modal (não há mais botões de linha por tipo na grid unificada) */}
-                  {nfEdit && nfEdit.status === "processada" && !viewOnly && (
-                    <button data-arato-button="secondary" onClick={estornarNf} style={{ ...btnR, borderColor: "#EF9F2750", background: "#FEF3E2", color: "#7A4800" }}>↺ Estornar</button>
+                  <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
+                  {nfEdit && nfEdit.status === "processada" && (
+                    <button data-arato-button="secondary" onClick={estornarNf} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                   )}
-                  {nfEdit && (nfEdit.status === "pendente" || nfEdit.status === "digitando") && !viewOnly && (
+                  {nfEdit && (nfEdit.status === "pendente" || nfEdit.status === "digitando") && (
                     <button data-arato-button="secondary" onClick={cancelarNf} style={btnR}>✕ Cancelar NF</button>
                   )}
-                  {nfEdit && nfEdit.status !== "cancelada" && !viewOnly && (
-                    <button data-arato-button="danger" onClick={iniciarExclusao} style={{ ...btnR, borderColor: "#E24B4A30", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
+                  {nfEdit && nfEdit.status !== "cancelada" && (
+                    <button data-arato-button="danger" onClick={iniciarExclusao} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
                   )}
-                  <button data-arato-button="secondary" style={btnR} onClick={onClose}>Fechar</button>
-                  {!viewOnly && <>
+                </div>
+                {!viewOnly && (
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <button data-arato-button="secondary" style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
                       {saving ? "Salvando…" : "Salvar como Pendente"}
                     </button>
-                    <button data-arato-button="toggle" style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
+                    <button data-arato-button="toggle" style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }} onClick={() => salvar("processada")} disabled={saving}>
                       {saving ? "Processando…" : "✓ Processar NF"}
                     </button>
-                  </>}
-                </div>
+                  </div>
+                )}
               </div>
               </>
             )}

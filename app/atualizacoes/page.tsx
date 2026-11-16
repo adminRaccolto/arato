@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-o",
+    data: "16/11/2026",
+    titulo: "NFS-e de fornecedor: I.E. do tomador e botões iguais aos da NF",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A NFS-e passa a ter a I.E. do Tomador, como a NF de produtos. A IE define a fazenda e o município de prestação. Na importação do SIEG, a IE vem da nota (ou do município do tomador). Se o produtor tem IEs em fazendas diferentes e a nota não diz qual, o processamento pede a IE. Antes, a NFS ia para a fazenda principal do produtor e com o município do cadastro dele." },
+      { tipo: "melhoria", texto: "Botões da NFS-e iguais aos da NF: na lista, ▶ Processar para pendente e Abrir NFS + ↺ Estornar para processada. No modal, Estornar, Cancelar e Excluir ficam à esquerda (também no modo leitura) e Salvar como Pendente + ✓ Processar NF (verde) à direita. Nota processada abre só para leitura, com o aviso de estornar para editar." },
+    ],
+    onde: "Documentos Fiscais → Entradas → Notas de Fornecedores (NF de Serviços)",
+  },
+  {
     versao: "2026.11.16-n",
     data: "16/11/2026",
     titulo: "Espelho da NF-e nas demais telas de emissão",

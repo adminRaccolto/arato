@@ -11,6 +11,7 @@ import { detectarCancelamentoNfse } from "../../../../lib/fiscal/nfse-cancelamen
 import { baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 import { prepararConsultaSieg, autenticacaoSiegRecusada, mensagemCredencialSieg } from "../../../../lib/fiscal/sieg-consulta";
+import { escolherIeTomador, marcaIeTomador, tomadorDoXmlNfse, type IeTomador } from "../../../../lib/fiscal/nfse-ie";
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
@@ -54,7 +55,7 @@ function money(s: string): number {
 interface Nfse {
   chave: string; numero: string; data_emissao: string;
   prestador_cnpj: string; prestador_nome: string;
-  tomador_cnpj: string; municipio: string; discriminacao: string;
+  tomador_cnpj: string; tomador_ie: string; tomador_ibge: string; municipio: string; discriminacao: string;
   codigo_servico: string; cnae: string; valor_servico: number; valor_deducoes: number;
   aliquota_iss: number; valor_iss: number; iss_retido: boolean;
   valor_inss: number; valor_ir: number; valor_liquido: number;
@@ -92,6 +93,8 @@ function parseNfse(xml: string): Nfse | null {
     // Sem bloco do tomador não há de onde ler: vazio (quem chama usa o CPF/CNPJ buscado no SIEG), nunca o 1º do arquivo.
     const tomLido = tId || tBlk ? tv(tId || tBlk, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "") : "";
     const tomador_cnpj = tomLido && tomLido !== prestador_cnpj ? tomLido : "";
+    // IE e município do tomador na nota — decidem a fazenda quando o produtor tem IEs em fazendas diferentes
+    const { ie: tomador_ie, ibge: tomador_ibge } = tomadorDoXmlNfse(xml);
 
     const municipio = tv(xml, "MunicipioIncidencia", "CodigoMunicipio", "Municipio", "cMunFG", "municipio");
 
@@ -122,7 +125,7 @@ function parseNfse(xml: string): Nfse | null {
 
     return {
       chave, numero, data_emissao, prestador_cnpj, prestador_nome,
-      tomador_cnpj, municipio, discriminacao, codigo_servico, cnae,
+      tomador_cnpj, tomador_ie, tomador_ibge, municipio, discriminacao, codigo_servico, cnae,
       valor_servico, valor_deducoes, aliquota_iss, valor_iss,
       iss_retido, valor_inss, valor_ir, valor_liquido,
     };
@@ -174,6 +177,8 @@ export async function POST(req: NextRequest) {
     const soDig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
     const fazendaDoTomador = new Map<string, string>();
     const docsDoCliente: string[] = [];   // CPF/CNPJ de todos os produtores e empresas do cliente
+    // IEs dos produtores do cliente, por CPF/CNPJ: a fazenda da NFS segue a IE da nota (como na NF de produtos)
+    const iesDoTomador = new Map<string, IeTomador[]>();
     {
       const filtroCliente = contaIdDoc ? `conta_id.eq.${contaIdDoc},fazenda_id.in.(${fazendaIdsDaConta.join(",")})` : `fazenda_id.in.(${fazendaIdsDaConta.join(",")})`;
       const [{ data: prods }, { data: emps }, { data: fzsDono }] = await Promise.all([
@@ -188,6 +193,16 @@ export async function POST(req: NextRequest) {
         const dono = (fzsDono ?? []).find(f => f.produtor_id === p.id)?.id as string | undefined;
         if (dono) fazendaDoTomador.set(d, dono);
         else if (p.fazenda_id && !fazendaDoTomador.has(d)) fazendaDoTomador.set(d, p.fazenda_id as string);
+      }
+      const docDoProdutor = new Map((prods ?? []).map(p => [p.id as string, soDig(p.cpf_cnpj)]));
+      if (docDoProdutor.size) {
+        const { data: ies } = await db.from("produtor_inscricoes_estaduais")
+          .select("produtor_id, fazenda_id, inscricao_estadual, municipio, estado, municipio_ibge, ativa").in("produtor_id", [...docDoProdutor.keys()]);
+        for (const ie of (ies ?? []) as (IeTomador & { produtor_id: string })[]) {
+          const d = docDoProdutor.get(ie.produtor_id);
+          if (!d || (ie.fazenda_id && !fazendaIdsDaConta.includes(ie.fazenda_id))) continue;
+          iesDoTomador.set(d, [...(iesDoTomador.get(d) ?? []), ie]);
+        }
       }
     }
 
@@ -420,9 +435,17 @@ export async function POST(req: NextRequest) {
         if (todas.length) { await marcarCanceladas(todas); continue; }
       }
 
+      // IE do tomador escolhida pela nota (IE lida → município do tomador → única fazenda); sem ela, a fazenda "dona"
+      const ieEscolhida = escolherIeTomador(iesDoTomador.get(soDig(nfse.tomador_cnpj || cnpj)) ?? [], nfse.tomador_ie, nfse.tomador_ibge);
+      const fazendaPelaIe = ieEscolhida?.fazenda_id ?? null;
+      const marcaIe = marcaIeTomador(nfse.tomador_ie || ieEscolhida?.inscricao_estadual || "");
+
       if (existing) {
         if (!force) { duplicadas++; continue; }
+        // Re-importação acerta a fazenda pela IE só enquanto a nota não foi processada (processada tem CP lançado)
+        const moverFazenda = fazendaPelaIe && existing.status !== "processada" && existing.status !== "cancelada" ? { fazenda_id: fazendaPelaIe } : {};
         const { data: atualizada, error: updateErr } = await db.from("nf_servicos").update({
+          ...moverFazenda,
           chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
           prestador_nome:      nfse.prestador_nome || "Prestador SIEG",
           prestador_cnpj:      nfse.prestador_cnpj || null,
@@ -445,7 +468,7 @@ export async function POST(req: NextRequest) {
           valor_ir:            nfse.valor_ir,
           valor_outras_retencoes: 0,
           valor_liquido:       nfse.valor_liquido,
-          observacao:          `Re-importado via Sieg em ${new Date().toLocaleDateString("pt-BR")}`,
+          observacao:          `Re-importado via Sieg em ${new Date().toLocaleDateString("pt-BR")}${marcaIe}`,
         }).eq("id", (existing as { id: string }).id).select("id").maybeSingle();
         if (updateErr || !atualizada) { erros.push(`NFSe ${nfse.numero}: ${updateErr?.message ?? "Nota não encontrada ao confirmar a atualização."}`); continue; }
         importadas++;
@@ -453,7 +476,7 @@ export async function POST(req: NextRequest) {
       }
 
       const { error: insErr } = await db.from("nf_servicos").insert({
-        fazenda_id:          fazendaDoTomador.get(soDig(nfse.tomador_cnpj)) ?? fazenda_id,
+        fazenda_id:          fazendaPelaIe ?? fazendaDoTomador.get(soDig(nfse.tomador_cnpj)) ?? fazenda_id,
         numero_nf:           nfse.numero,
         serie:               "NFS",
         chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
@@ -478,7 +501,7 @@ export async function POST(req: NextRequest) {
         valor_liquido:       nfse.valor_liquido,
         status:              canc.tipo === "nota_cancelada" ? "cancelada" : "pendente",
         origem:              "api",
-        observacao:          `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")} — Tomador: ${cnpj}${canc.tipo === "nota_cancelada" ? " · Cancelada pelo prestador" : ""}`,
+        observacao:          `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")} — Tomador: ${cnpj}${marcaIe}${canc.tipo === "nota_cancelada" ? " · Cancelada pelo prestador" : ""}`,
       });
 
       if (insErr) {
