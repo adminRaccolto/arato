@@ -35,17 +35,18 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 // ═══════════════════════════════════════════════════════════════════════════
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { sincronizarDocumentosSieg } from "../../../lib/fiscal/sieg-sincronizacao";
+import { sincronizarDocumentosSieg, resumoRespostaSieg } from "../../../lib/fiscal/sieg-sincronizacao";
 import TopNav from "../../../components/TopNav";
 import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalNf from "../../../components/fiscal/ModalNf";
 import ModalProcessarLote from "../../../components/fiscal/ModalProcessarLote";
 import ModalCteEntrada from "../../../components/fiscal/ModalCteEntrada";
 import ModalCteEntradaNovo from "../../../components/fiscal/ModalCteEntradaNovo";
+import ModalRecuperarNfSieg from "../../../components/fiscal/ModalRecuperarNfSieg";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarOperacoesGerenciaisAtivasDaConta, listarCentrosCustoGeralDaConta } from "../../../lib/db";
 import type { OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
@@ -249,12 +250,16 @@ export default function DocumentosFiscaisPage() {
 
   const toggle = (set: Set<string>, setFn: (s: Set<string>) => void, v: string) => {
     const next = new Set(set);
-    next.has(v) ? next.delete(v) : next.add(v);
+    if (next.has(v)) next.delete(v); else next.add(v);
     setFn(next);
   };
 
-  async function carregar() {
-    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+  const [localizarNf, setLocalizarNf] = useState(false);
+  const [revisaoCarga, setRevisaoCarga] = useState(0);
+  const recarregar = useCallback(() => setRevisaoCarga(n => n + 1), []);
+  const escopoFazendas = fazendaIds?.join(",") ?? "";
+  const carregar = useCallback(async () => {
+    const fids = escopoFazendas ? escopoFazendas.split(",") : fazendaId ? [fazendaId] : [];
     if (!fids.length && !contaId) return;
     const minhaCarga = ++cargaRef.current;
     setCarregando(true);
@@ -265,6 +270,7 @@ export default function DocumentosFiscaisPage() {
       const PAGE = 1000;
       const todas: RelDocFiscal[] = [];
       for (let from = 0; ; from += PAGE) {
+        if (minhaCarga !== cargaRef.current) return;
         let q = supabase.from("rel_documentos_fiscais").select("*");
         q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
         if (fTipo.size > 0) q = q.in("tipo_doc", Array.from(fTipo));
@@ -287,21 +293,21 @@ export default function DocumentosFiscaisPage() {
     } finally {
       if (minhaCarga === cargaRef.current) setCarregando(false);
     }
-  }
+  }, [escopoFazendas, fazendaId, contaId, fTipo, fStatus, fTipoEntrada, fOrigem, fDataDe, fDataAte]);
 
   async function sincronizarSieg() {
     const fazAlvo = fazendaId;
     if (!fazAlvo) return;
     // Mesmo período do filtro de datas da tela; sem datas, últimos 30 dias
-    const siegDtIni = fDataDe || hoje30(30);
-    const siegDtFim = fDataAte || hoje30(0);
+    const siegDtFim = fDataAte || hojeLocal();
+    const siegDtIni = fDataDe || new Date(new Date(`${siegDtFim}T12:00:00.000Z`).getTime() - 30 * 86_400_000).toISOString().slice(0, 10);
     setSiegSyncing(true); setSiegMsg("");
     try {
       setSiegMsg(await sincronizarDocumentosSieg({
         fazenda_id: fazAlvo, data_inicio: siegDtIni, data_fim: siegDtFim, force_reimport: siegForce,
       }));
       // Também atualiza a lista em caso de sucesso parcial: a outra rotina pode ter importado notas.
-      await carregar();
+      recarregar();
     } catch (e) { setSiegMsg(`✗ Erro de rede: ${e}`); }
     finally { setSiegSyncing(false); }
   }
@@ -321,13 +327,21 @@ export default function DocumentosFiscaisPage() {
       const txt = await res.text();
       let j: Record<string, unknown>;
       try { j = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 200)); }
-      if (j.erro) alert(`Erro: ${j.erro}`);
-      else await carregar();
+      if (!res.ok || j.erro) throw new Error(String(j.erro || `HTTP ${res.status}`));
+      const resumo = resumoRespostaSieg(j);
+      setSiegMsg(`${resumo.falha ? "✗" : resumo.aviso ? "⚠" : "✓"} ${resumo.texto}`);
+      recarregar();
     } catch (e) { alert(`Erro ao re-importar: ${e}`); }
     finally { setSiegReimp(p => ({ ...p, [d.id]: false })); }
   }
 
-  useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const controle = cargaRef;
+    setResultado(null);
+    setSelecionados(new Set());
+    void carregar();
+    return () => { controle.current++; };
+  }, [carregar, revisaoCarga]);
   // ?abrir=<id>: abre a NF direto (vindo do aviso de NF duplicada em outra tela)
   useEffect(() => {
     const abrir = new URLSearchParams(window.location.search).get("abrir");
@@ -350,7 +364,6 @@ export default function DocumentosFiscaisPage() {
   // tudo que o popup mostra já vem em rel_documentos_fiscais. ──
   const [popover, setPopover] = useState<{ d: RelDocFiscal; x: number; y: number } | null>(null);
   // ── SIEG: sincronização por período e re-importação de uma NF (tela unificada) ──
-  const hoje30 = (dias: number) => new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
   const [siegForce, setSiegForce] = useState(false);
   const [siegSyncing, setSiegSyncing] = useState(false);
   const [siegMsg, setSiegMsg] = useState("");
@@ -387,7 +400,7 @@ export default function DocumentosFiscaisPage() {
       if (!json.ok) throw new Error(json.error ?? "Erro ao reclassificar");
       setNfDetalhe(prev => { const n = { ...prev }; delete n[reclass.d.id]; return n; });
       setReclass(null);
-      await carregar();
+      recarregar();
     } catch (e: unknown) {
       setReclass(r => r ? { ...r, salvando: false, err: e instanceof Error ? e.message : "Erro ao reclassificar" } : r);
     }
@@ -435,7 +448,7 @@ export default function DocumentosFiscaisPage() {
       if (!r.ok) throw new Error(r.error ?? "Erro ao estornar NF");
       alert(`NF ${d.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
       setPopover(null);
-      carregar();
+      recarregar();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Erro ao estornar NF");
     }
@@ -733,7 +746,7 @@ export default function DocumentosFiscaisPage() {
 
         <OperationalFilters data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#555" }}>
           <span style={{ fontWeight: 600 }}>SIEG</span>
-          <span style={{ color: "#888" }}>usa o período do filtro acima{!fDataDe && !fDataAte ? " (sem datas: últimos 30 dias)" : ""}</span>
+          <span style={{ color: "#888" }}>busca pela emissão no período do filtro acima{!fDataDe && !fDataAte ? " (sem datas: últimos 30 dias)" : ""}</span>
           <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", userSelect: "none" }}>
             <input type="checkbox" checked={siegForce} onChange={e => setSiegForce(e.target.checked)} style={{ cursor: "pointer" }} />
             Forçar re-importação
@@ -741,7 +754,8 @@ export default function DocumentosFiscaisPage() {
           <OperationalButton data-arato-button="primary" onClick={sincronizarSieg} disabled={siegSyncing} style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#111111", color: "#fff", fontWeight: 600, fontSize: 12, cursor: siegSyncing ? "default" : "pointer" }}>
             {siegSyncing ? "Sincronizando…" : "⟳ Sincronizar SIEG"}
           </OperationalButton>
-          {siegMsg && <span style={{ color: siegMsg.startsWith("✗") ? "#B91C1C" : "#1A6B3C" }}>{siegMsg}</span>}
+          <OperationalButton data-arato-button="secondary" onClick={() => setLocalizarNf(true)} disabled={siegSyncing || !fazendaId}>Localizar NF-e</OperationalButton>
+          {siegMsg && <span style={{ color: siegMsg.startsWith("✗") ? "#B91C1C" : siegMsg.startsWith("⚠") ? "#7A4300" : "#1A6B3C" }}>{siegMsg}</span>}
         </OperationalFilters>
 
         <div data-arato-grid-container="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 290px)" }}>
@@ -812,7 +826,7 @@ export default function DocumentosFiscaisPage() {
                           onChange={e => {
                             setSelecionados(prev => {
                               const next = new Set(prev);
-                              e.target.checked ? next.add(d.id) : next.delete(d.id);
+                              if (e.target.checked) next.add(d.id); else next.delete(d.id);
                               return next;
                             });
                           }}
@@ -1173,22 +1187,30 @@ export default function DocumentosFiscaisPage() {
         </div>
       )}
 
+      {localizarNf && fazendaId && <ModalRecuperarNfSieg fazendaId={fazendaId} numeroInicial={fBusca}
+        onClose={() => setLocalizarNf(false)} onLocalizada={nota => {
+          setLocalizarNf(false); setFTipo(new Set(["NF"])); setFStatus(new Set()); setFTipoEntrada(new Set());
+          setFOrigem(new Set()); setFDestinatario(new Set()); setFDataDe(nota.data_emissao); setFDataAte(nota.data_emissao);
+          setFBuscaEm("numero"); setFBusca(nota.numero); setQtdVisivel(100); setSelecionados(new Set());
+          setSiegMsg(`✓ NF-e ${nota.numero} localizada. Confira a nota no grid.`); recarregar();
+        }} />}
+
       {modalLote && (
         <ModalProcessarLote
           nfs={linhas.filter(l => l.tipo_doc === "NF" && l.status_normalizado === "pendente" && selecionados.has(l.id)).map(l => ({ id: l.id, fazenda_id: l.fazenda_id, numero: l.numero, emitente_nome: l.participante_nome, emitente_cnpj: l.participante_cnpj, valor: l.valor_total }))}
           onClose={() => setModalLote(false)}
-          onSaved={() => { carregar(); setSelecionados(new Set()); }}
+          onSaved={() => { recarregar(); setSelecionados(new Set()); }}
         />
       )}
 
       {cteNovo && (
         <ModalCteEntradaNovo fazendaIds={fazendaIds ?? (fazendaId ? [fazendaId] : [])} fazendaPadrao={fazendaId ?? null}
-          onClose={() => setCteNovo(false)} onCriado={id => { setCteNovo(false); carregar(); setCteEntradaId(id); }} />
+          onClose={() => setCteNovo(false)} onCriado={id => { setCteNovo(false); recarregar(); setCteEntradaId(id); }} />
       )}
 
       {cteEntradaId && (
         <ModalCteEntrada id={cteEntradaId} fazendaIds={fazendaIds ?? (fazendaId ? [fazendaId] : [])} contaId={contaId ?? null}
-          onClose={() => setCteEntradaId(null)} onSaved={carregar} />
+          onClose={() => setCteEntradaId(null)} onSaved={recarregar} />
       )}
 
       {modalNfs && fazendaId && (
@@ -1197,7 +1219,7 @@ export default function DocumentosFiscaisPage() {
           fazendaIdPadrao={fazendaId}
           viewOnlyInicial={modalNfs.viewOnly}
           onClose={() => setModalNfs(null)}
-          onSaved={carregar}
+          onSaved={recarregar}
         />
       )}
 
@@ -1207,7 +1229,7 @@ export default function DocumentosFiscaisPage() {
           id={modalNf.id}
           acaoInicial={modalNf.acaoInicial}
           onClose={() => setModalNf(null)}
-          onSaved={carregar}
+          onSaved={recarregar}
           onAbrirExistente={nfId => setModalNf({ id: nfId })}
         />
       )}

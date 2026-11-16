@@ -65,3 +65,27 @@ test("erros parciais e cancelamento de NFS-e processada ficam visíveis", async 
   assert.match(msg, /NFSe 123: falha ao salvar/);
   assert.match(msg, /nº 456 \(verifique o estorno\)/);
 });
+
+test("download recusado em aviso legado não aparece como sucesso", async t => {
+  t.mock.method(globalThis, "fetch", async (url: string) => Response.json(url.endsWith("sieg-sync-nfse")
+    ? { importadas: 0, diagnostico: ["CnpjTom: ERRO (HTTP 401: API Key inválida)"] }
+    : { sucesso: true, erros: [], avisos: ["NF-e não consultadas: HTTP 401 API Key inválida"] }));
+  const msg = await sincronizarDocumentosSieg(parametros);
+  assert.match(msg, /^✗/); assert.match(msg, /API Key inválida/); assert.match(msg, /CnpjTom/);
+});
+test("consulta incompleta e falha declarada não viram consulta vazia bem-sucedida", async t => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ sucesso: false, consulta_completa: false, situacao: "falha", importados_nfe: 0 }));
+  assert.match(await sincronizarDocumentosSieg(parametros), /^✗/);
+});
+test("consulta válida sem resultados informa ausência de documentos", async t => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ sucesso: true, consulta_completa: true }));
+  const msg = await sincronizarDocumentosSieg(parametros);
+  assert.match(msg, /^✓/); assert.match(msg, /Nenhum documento encontrado/);
+});
+test("consulta completa por índice alternativo é aviso, preservando as notas importadas", async t => {
+  t.mock.method(globalThis, "fetch", async (url: string) => Response.json(url.endsWith("sieg-sync-nfse")
+    ? { importadas: 2, sucesso: true, consulta_completa: true, diagnostico: ["Primeiro índice: ERRO (HTTP 400); segundo índice: 2 XMLs"] }
+    : { importados_nfe: 1, sucesso: true, consulta_completa: true }));
+  const msg = await sincronizarDocumentosSieg(parametros);
+  assert.match(msg, /^⚠/); assert.match(msg, /NFS-e: 2 importadas/); assert.match(msg, /tentativa alternativa/);
+});

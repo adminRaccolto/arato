@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-d",
+    data: "16/11/2026",
+    titulo: "Recuperação de notas de fornecedores e consultas SIEG mais claras",
+    modulos: ["Fiscal", "Integrações"],
+    itens: [
+      { tipo: "novidade", texto: "Notas de Fornecedores → Localizar NF-e: procure uma nota de produtos pela chave de acesso ou por número, CNPJ do fornecedor, data de emissão e série opcional. A nota recuperada aparece no grid para conferência; notas já cadastradas mantêm o processamento existente." },
+      { tipo: "correcao", texto: "Consultas manuais ao SIEG passam a buscar pela data de emissão selecionada. A sincronização automática continua acompanhando os documentos recebidos pelo SIEG. A reimportação preserva as associações dos itens já feitas pelo usuário." },
+      { tipo: "correcao", texto: "Falhas de acesso, consultas incompletas e erros ao gravar notas deixam de aparecer como sincronização concluída. A tela distingue falhas de uma consulta válida sem documentos encontrados." },
+      { tipo: "correcao", texto: "Trocar ou limpar os filtros de Notas de Fornecedores recarrega os documentos, evitando que a tela continue mostrando apenas a seleção anterior." },
+    ],
+    onde: "Documentos Fiscais → Entradas → Notas de Fornecedores",
+  },
+  {
     versao: "2026.11.16-c",
     data: "16/11/2026",
     titulo: "Módulos e planos com uma lista só",

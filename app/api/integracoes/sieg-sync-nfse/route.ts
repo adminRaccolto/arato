@@ -8,8 +8,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { mesmaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
 import { detectarCancelamentoNfse } from "../../../../lib/fiscal/nfse-cancelamento";
-import { baixarXmlsSieg, baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
+import { prepararConsultaSieg, autenticacaoSiegRecusada, mensagemCredencialSieg } from "../../../../lib/fiscal/sieg-consulta";
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
@@ -140,6 +141,9 @@ export async function POST(req: NextRequest) {
     // Tela do cliente (login) ou o robô diário do SIEG (cron/sieg-auto, chave interna).
     const negado = ehChamadaInterna(req) ? null : await exigirAcessoFazenda(req, fazenda_id);
     if (negado) return negado;
+    let consulta;
+    try { consulta = prepararConsultaSieg({ data_inicio: dtIni, data_fim: dtFim }); }
+    catch (e) { return NextResponse.json({ erro: (e as Error).message }, { status: 400 }); }
 
     const db = sb();
 
@@ -235,14 +239,15 @@ export async function POST(req: NextRequest) {
     const toISO   = (d: string) => d.length === 10 ? d + "T00:00:00.000Z" : d;
     // Padrão 30 dias (não 1 ano) para a primeira sync ser rápida
     const trintaDias = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    const iniStr  = dtIni ? toISO(dtIni) : (cfg.ultima_sync_nfse_ts ?? trintaDias);
-    const fimStr  = dtFim ? toISO(dtFim).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString();
+    const iniStr  = consulta.inicio ?? (dtIni ? toISO(dtIni) : (cfg.ultima_sync_nfse_ts ?? trintaDias));
+    const fimStr  = consulta.fim ?? (dtFim ? toISO(dtFim).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString());
     // Para NFSe (TipoXml 3), a SIEG rejeita DataEmissaoInicio/Fim com hora —
     // exige só dia/mês/ano ("Certifique-se de apenas passar dia/mês/ano em
     // NFSe", HTTP 400). DataUpload aceita datetime completo normalmente —
     // só o filtro por DataEmissao é exigente com o formato.
     const iniData = iniStr.slice(0, 10);
     const fimData = fimStr.slice(0, 10);
+    const porEmissao = !!(dtIni || dtFim);
 
     console.log(`[nfse] fazenda=${fazenda_id} cnpjs=${cnpjs.join(",")} ${iniStr.slice(0,10)}→${fimStr.slice(0,10)}`);
 
@@ -283,6 +288,7 @@ export async function POST(req: NextRequest) {
           console.log(`[nfse] ${label} cnpj=${cnpj}: ${r.length} XMLs`);
           if (r.length > 0) docs = r;
         } catch (e) {
+          if (autenticacaoSiegRecusada(e)) throw new Error(mensagemCredencialSieg);
           // 60 chars cortava bem no meio da mensagem de erro real da SIEG
           // (ex: "...IsSuccess":false,"ErrorM" — nunca dava pra ver o motivo).
           tentativas.push(`${label}: ERRO (${String(e).replace(/^Error: /, "").slice(0, 600)})`);
@@ -290,8 +296,10 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      await tentar("CnpjTom+DataUpload",   { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjTom: cnpj });
-      await tentar("CnpjDest+DataUpload",  { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjDest: cnpj });
+      if (!porEmissao) {
+        await tentar("CnpjTom+DataUpload",   { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjTom: cnpj });
+        await tentar("CnpjDest+DataUpload",  { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr, CnpjDest: cnpj });
+      }
       await tentar("CnpjTom+DataEmissao",  { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData, CnpjTom: cnpj });
       await tentar("CnpjDest+DataEmissao", { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData, CnpjDest: cnpj });
 
@@ -305,12 +313,13 @@ export async function POST(req: NextRequest) {
           await sleep(800);
           let allXmls: string[] = [];
           try {
-            allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr });
+            if (!porEmissao) allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataUploadInicio: iniStr, DataUploadFim: fimStr });
             if (allXmls.length === 0) {
               await sleep(800);
               allXmls = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 3, DataEmissaoInicio: iniData, DataEmissaoFim: fimData });
             }
           } catch (e) {
+            if (autenticacaoSiegRecusada(e)) throw new Error(mensagemCredencialSieg);
             tentativas.push(`Fallback: ERRO (${String(e).replace(/^Error: /, "").slice(0, 600)})`);
           }
           // filtra client-side pelo CNPJ do tomador no XML
@@ -328,6 +337,7 @@ export async function POST(req: NextRequest) {
         ? `✓ ${docs.length} XMLs — CNPJ ${cnpj} | período ${iniStr.slice(0,10)}→${fimStr.slice(0,10)}`
         : `✗ 0 XMLs — CNPJ buscado: ${cnpj} | período ${iniStr.slice(0,10)}→${fimStr.slice(0,10)}`;
       diagnostico.push(`${resumo} | tentativas: ${tentativas.join(" | ")}`);
+      if (!docs.length && tentativas.some(t => t.includes("ERRO ("))) erros.push(`Consulta de NFS-e incompleta para ${cnpj}; consulte o diagnóstico.`);
       console.log(`[nfse] diagnóstico CNPJ ${cnpj}: ${tentativas.join(" ; ")}`);
 
       for (const xml of docs) xmlsList.push({ xml, cnpj });
@@ -387,6 +397,10 @@ export async function POST(req: NextRequest) {
         console.warn(`[nfse] parse null: ${trecho}`);
         continue;
       }
+      if (porEmissao && (nfse.data_emissao < iniData || nfse.data_emissao > fimData)) continue;
+      if (nfse.tomador_cnpj && !cnpjs.includes(nfse.tomador_cnpj)) {
+        erros.push(`NFSe ${nfse.numero}: destinatário fora dos documentos monitorados deste cliente.`); continue;
+      }
 
       // Verificar duplicata
       // Duplicata = mesma NFS-e em QUALQUER fazenda da conta (número + prestador sem pontuação, data até 45 dias, ou a mesma
@@ -408,7 +422,7 @@ export async function POST(req: NextRequest) {
 
       if (existing) {
         if (!force) { duplicadas++; continue; }
-        await db.from("nf_servicos").update({
+        const { data: atualizada, error: updateErr } = await db.from("nf_servicos").update({
           chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
           prestador_nome:      nfse.prestador_nome || "Prestador SIEG",
           prestador_cnpj:      nfse.prestador_cnpj || null,
@@ -432,7 +446,8 @@ export async function POST(req: NextRequest) {
           valor_outras_retencoes: 0,
           valor_liquido:       nfse.valor_liquido,
           observacao:          `Re-importado via Sieg em ${new Date().toLocaleDateString("pt-BR")}`,
-        }).eq("id", (existing as { id: string }).id);
+        }).eq("id", (existing as { id: string }).id).select("id").maybeSingle();
+        if (updateErr || !atualizada) { erros.push(`NFSe ${nfse.numero}: ${updateErr?.message ?? "Nota não encontrada ao confirmar a atualização."}`); continue; }
         importadas++;
         continue;
       }
@@ -480,16 +495,18 @@ export async function POST(req: NextRequest) {
     if (!periodoManualNfse && erros.length === 0) {
       // relê a config antes de gravar: a sincronização de NF-e pode ter gravado a marca dela neste intervalo
       const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazCfg).eq("modulo", "sieg").maybeSingle();
-      await db.from("configuracoes_modulo").upsert({
+      const { error: configErr } = await db.from("configuracoes_modulo").upsert({
         fazenda_id: fazCfg, modulo: "sieg",
         config: { ...((fresca?.config as Record<string, unknown> | null) ?? cfg), ultima_sync_nfse_ts: new Date(new Date(fimStr).getTime() - 86_400_000).toISOString() },
       });
+      if (configErr) erros.push(`Não foi possível salvar o acompanhamento da consulta: ${configErr.message}`);
     }
 
     console.log(`[nfse] importadas=${importadas} duplicadas=${duplicadas} erros=${erros.length}`);
 
     return NextResponse.json({
-      sucesso: true, importadas, duplicadas, canceladas,
+      sucesso: erros.length === 0, situacao: erros.length ? (importadas || duplicadas ? "parcial" : "falha") : "concluida",
+      consulta_completa: erros.length === 0, importadas, duplicadas, canceladas,
       canceladas_processadas: canceladasProcessadas,
       total_xmls: xmlsList.length,
       erros: erros.slice(0, 10),

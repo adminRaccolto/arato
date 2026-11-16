@@ -8,12 +8,12 @@
  * Retorna: { importados_nfe, duplicados_nfe, erros, total_xmls }
  */
 
-import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { baixarXmlsSieg, baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, parseCTeXml, parseEventoCancelamentoCteXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 import { atualizarFalhas, documentosMonitorados, falhasParaTentar, janelaDaEmissao, type FalhaRodada, type FalhaSieg } from "../../../../lib/fiscal/sieg-monitoramento";
+import { prepararConsultaSieg, periodoSieg, correspondeConsultaSieg, autenticacaoSiegRecusada, mensagemCredencialSieg, type PedidoConsultaSieg } from "../../../../lib/fiscal/sieg-consulta";
 
 // Teto de trabalho por chamada: passou disso, para de buscar/processar (sem avançar a marca) e responde normalmente,
 // em vez de a Vercel matar a função aos 300 s sem gravar nada. A próxima rodada continua de onde parou.
@@ -49,12 +49,15 @@ export async function POST(req: NextRequest) {
   const inicioMs = Date.now();
   const semTempo = () => Date.now() - inicioMs > ORCAMENTO_MS;
   try {
-    const body = await req.json() as { fazenda_id: string; data_inicio?: string; data_fim?: string; force_reimport?: boolean; chaves_acesso?: string[] };
+    const body = await req.json() as PedidoConsultaSieg & { fazenda_id: string; force_reimport?: boolean };
     const { fazenda_id, data_inicio: dataInicioParam, data_fim: dataFimParam, force_reimport: forceReimport, chaves_acesso: chavesAcesso } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
     // Tela do cliente (login) ou o robô diário do SIEG (cron/sieg-auto, chave interna).
     const negado = ehChamadaInterna(req) ? null : await exigirAcessoFazenda(req, fazenda_id);
     if (negado) return negado;
+    let consulta;
+    try { consulta = prepararConsultaSieg(body); }
+    catch (e) { return NextResponse.json({ erro: (e as Error).message }, { status: 400 }); }
 
     const db = sb();
 
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    console.log(`[sieg-sync] clienteId=${siegCreds.clienteId} apiKey=...${siegCreds.apiKey.slice(-6)}`);
+    console.log("[sieg-sync] consulta de documentos iniciada");
 
     // CPFs/CNPJs monitorados — suporta array (novo) e string única (legado)
     let cnpjs: string[] = [];
@@ -183,12 +186,12 @@ export async function POST(req: NextRequest) {
     const toISO = (d: string) => d.length === 10 ? d + "T00:00:00.000Z" : d;
     const dataInicioOverride = dataInicioParam ? toISO(dataInicioParam) : null;
     const umAnoAtras = new Date(Date.now() - 365 * 86_400_000).toISOString();
-    const uploadInicio = dataInicioOverride ?? (
+    const uploadInicio = consulta.inicio ?? dataInicioOverride ?? (
       (cfg.ultima_sync_ts ?? cfg.ultima_sync_data)
         ? toISO(cfg.ultima_sync_ts ?? cfg.ultima_sync_data!)
         : umAnoAtras
     );
-    const uploadFim = dataFimParam ? toISO(dataFimParam).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString();
+    const uploadFim = consulta.fim ?? (dataFimParam ? toISO(dataFimParam).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString());
 
     // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
     const xmlsNFe: { xml: string; cnpj_destino: string }[] = [];
@@ -198,12 +201,13 @@ export async function POST(req: NextRequest) {
       try {
         const docs = await baixarXmlsSiegChunked(siegCreds, {
           TipoXml: 1,
-          DataUploadInicio: uploadInicio,
-          DataUploadFim:    uploadFim,
+          ...periodoSieg(consulta.base, uploadInicio, uploadFim),
+          ...(consulta.emitente ? { CnpjEmit: consulta.emitente } : {}),
           CnpjDest:         cnpj,
         });
         for (const xml of docs) xmlsNFe.push({ xml, cnpj_destino: cnpj });
       } catch (e) {
+        if (autenticacaoSiegRecusada(e)) return NextResponse.json({ erro: mensagemCredencialSieg, situacao: "falha" }, { status: 502 });
         // Um CPF/CNPJ com falha (ex.: SIEG ocupado, 429) não derruba os outros: segue, avisa e não avança a marca
         falhaDownload.push(`NF-e de ${cnpj} não consultadas: ${String(e).slice(0, 160)}`);
         cortado = true;
@@ -212,7 +216,7 @@ export async function POST(req: NextRequest) {
 
     // ── 2b. Notas que falharam ao gravar em rodadas anteriores: baixa de novo pela data de emissão ──────────
     const avisosRetry: string[] = [];
-    for (const f of falhasParaTentar(falhasAnteriores, "nfe")) {
+    for (const f of consulta.pontual ? [] : falhasParaTentar(falhasAnteriores, "nfe")) {
       if (semTempo()) { cortado = true; break; }
       if (xmlsNFe.some(x => x.xml.includes(f.chave))) continue;
       try {
@@ -220,13 +224,22 @@ export async function POST(req: NextRequest) {
         const docs = await baixarXmlsSieg(siegCreds, { TipoXml: 1, DataEmissaoInicio: j.inicio, DataEmissaoFim: j.fim, CnpjDest: soDig(f.destino) });
         const achado = docs.find(x => x.includes(f.chave));
         if (achado) xmlsNFe.push({ xml: achado, cnpj_destino: soDig(f.destino) });
-      } catch (e) { avisosRetry.push(`Nota pendente ${f.numero} não consultada: ${String(e).slice(0, 120)}`); }
+      } catch (e) {
+        if (autenticacaoSiegRecusada(e)) return NextResponse.json({ erro: mensagemCredencialSieg, situacao: "falha" }, { status: 502 });
+        avisosRetry.push(`Nota pendente ${f.numero} não consultada: ${String(e).slice(0, 120)}`);
+      }
     }
 
     // ── 3. Processar cada XML ────────────────────────────────────────────────
+    if (consulta.numero) {
+      const candidatas = new Set(xmlsNFe.map(x => parseNFeXml(x.xml)).filter(n => n && correspondeConsultaSieg(n, consulta, cnpjs)).map(n => n!.chave));
+      if (candidatas.size > 1) return NextResponse.json({ erro: "Mais de uma NF-e corresponde à busca. Informe a série ou a chave de acesso; nenhuma nota foi importada." }, { status: 409 });
+    }
     let importados_nfe = 0;
     let duplicados_nfe = 0;
-    const erros: string[] = [];
+    const erros: string[] = [...falhaDownload, ...avisosRetry];
+    const encontradas = new Set<string>();
+    const notas: { id: string; numero: string; data_emissao: string }[] = [];
 
     const falha = (nfe: { chave: string; numero?: string | null; nome_emitente?: string | null; data_emissao?: string | null; cnpj_destinatario?: string | null }, dest: string, erro: string) =>
       falhasRodada.push({ chave: nfe.chave, tipo: "nfe", numero: String(nfe.numero ?? ""), emitente: String(nfe.nome_emitente ?? ""), destino: soDig(nfe.cnpj_destinatario || dest), emissao: String(nfe.data_emissao ?? ""), erro: erro.slice(0, 300) });
@@ -236,36 +249,47 @@ export async function POST(req: NextRequest) {
       if (!nfe) { erros.push("XML sem Id NFe válido"); continue; }
       if (!nfe.numero || !nfe.data_emissao) { erros.push(`NF ${nfe.chave}: campos obrigatórios ausentes`); falha(nfe, cnpj_destino, "Campos obrigatórios ausentes no XML (número ou data de emissão)"); continue; }
 
-      // Filtro por chaves específicas (re-importação pontual)
-      if (chavesAcesso && chavesAcesso.length > 0 && !chavesAcesso.includes(nfe.chave)) continue;
+      // Mesmo na recuperação pontual, o XML deve ser destinado a um documento monitorado deste cliente.
+      if (!correspondeConsultaSieg(nfe, consulta, cnpjs)) continue;
+      if (encontradas.has(nfe.chave)) continue;
+      encontradas.add(nfe.chave);
 
       // Verificar duplicata pela chave de acesso em qualquer fazenda da conta
       // Usa limit(1) + array: maybeSingle() falha silenciosamente quando há >1 linha
       // (retorna {data:null, error:PGRST116}), causando criação de mais duplicatas.
-      const { data: dups } = await db
+      const { data: dups, error: dupErr } = await db
         .from("nf_entradas")
         .select("id, status, fazenda_id")
         .in("fazenda_id", fazendaIdsDaConta)
         .eq("chave_acesso", nfe.chave)
         .order("created_at", { ascending: true })
         .limit(1);
+      if (dupErr) { erros.push(`NF ${nfe.numero}: ${dupErr.message}`); falha(nfe, cnpj_destino, dupErr.message); continue; }
       const dup = dups?.[0] ?? null;
 
       // Verifica duplicata contra a outra rotina de sincronização SIEG (cron/sieg-sync, automática
       // 2×/dia) — grava a mesma NF em nf_importadas_sieg com seu próprio CP, sem se conhecerem.
       // Sem esta checagem, uma NF já importada automaticamente pelo cron seria reimportada aqui
       // manualmente, gerando um segundo lançamento financeiro para a mesma compra.
-      if (!dup && !forceReimport) {
-        const { data: dupCron } = await db
+      if (!dup) {
+        const { data: dupCron, error: legadoErr } = await db
           .from("nf_importadas_sieg")
           .select("id")
           .in("fazenda_id", fazendaIdsDaConta)
           .eq("chave_acesso", nfe.chave)
-          .maybeSingle();
-        if (dupCron) { duplicados_nfe++; resolvidas.add(nfe.chave); continue; }
+          .limit(1);
+        if (legadoErr) { erros.push(`NF ${nfe.numero}: ${legadoErr.message}`); falha(nfe, cnpj_destino, legadoErr.message); continue; }
+        if (dupCron?.length) {
+          if (consulta.pontual) erros.push(`NF ${nfe.numero} já registrada na integração anterior. Regularize o vínculo existente antes de recuperar, para preservar o financeiro.`);
+          else duplicados_nfe++;
+          resolvidas.add(nfe.chave); continue;
+        }
       }
       // Já processada e sem "forçar": nada a fazer — pula antes de regravar o XML no Storage (economiza tempo)
-      if (dup && dup.status !== "pendente" && !forceReimport) { duplicados_nfe++; resolvidas.add(nfe.chave); continue; }
+      if (dup && dup.status !== "pendente" && !forceReimport) {
+        duplicados_nfe++; resolvidas.add(nfe.chave);
+        notas.push({ id: dup.id, numero: nfe.numero, data_emissao: nfe.data_emissao }); continue;
+      }
 
       const fazNf = fazendaDoDestino.get(soDig(nfe.cnpj_destinatario || cnpj_destino)) ?? fazenda_id;
       const itensPayload = nfe.itens.map(item => ({
@@ -303,8 +327,8 @@ export async function POST(req: NextRequest) {
         // estoque), o cabeçalho é sempre atualizado com os dados reais do XML; só quando já foi
         // processada/cancelada é que exige "forçar", porque aí já existe efeito financeiro.
         if (dup.status !== "pendente" && !forceReimport) { duplicados_nfe++; continue; }
-        // Atualiza cabeçalho e, se ainda pendente, recria itens
-        await db.from("nf_entradas").update({
+        // Atualiza o XML/cabeçalho sem apagar associações de itens já feitas pelo usuário.
+        const { data: atualizada, error: updateErr } = await db.from("nf_entradas").update({
           numero:            nfe.numero,
           serie:             nfe.serie,
           data_emissao:      nfe.data_emissao,
@@ -319,12 +343,21 @@ export async function POST(req: NextRequest) {
           nome_destinatario: nfe.nome_destinatario,
           xml_storage_path:  xmlStorageOk ? xmlPath : null,
           observacao:        `Re-importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
-        }).eq("id", dup.id);
+        }).eq("id", dup.id).select("id").maybeSingle();
+        if (updateErr || !atualizada) {
+          const motivo = updateErr?.message ?? "Nota não encontrada ao confirmar a atualização.";
+          erros.push(`NF ${nfe.numero}: ${motivo}`); falha(nfe, cnpj_destino, motivo); continue;
+        }
         if (dup.status === "pendente" && itensPayload.length > 0) {
-          await db.from("nf_entrada_itens").delete().eq("nf_entrada_id", dup.id);
-          await db.from("nf_entrada_itens").insert(itensPayload.map(it => ({ ...it, nf_entrada_id: dup.id })));
+          const { data: itensExistentes, error: itensConsultaErr } = await db.from("nf_entrada_itens").select("id").eq("nf_entrada_id", dup.id).limit(1);
+          if (itensConsultaErr) { erros.push(`NF ${nfe.numero}: ${itensConsultaErr.message}`); falha(nfe, cnpj_destino, itensConsultaErr.message); continue; }
+          if (!itensExistentes?.length) {
+            const { error: itensErr } = await db.from("nf_entrada_itens").insert(itensPayload.map(it => ({ ...it, nf_entrada_id: dup.id })));
+            if (itensErr) { erros.push(`NF ${nfe.numero}: ${itensErr.message}`); falha(nfe, cnpj_destino, itensErr.message); continue; }
+          }
         }
         importados_nfe++;
+        notas.push({ id: dup.id, numero: nfe.numero, data_emissao: nfe.data_emissao });
         resolvidas.add(nfe.chave);
         continue;
       }
@@ -366,11 +399,16 @@ export async function POST(req: NextRequest) {
         const { error: iErr } = await db.from("nf_entrada_itens").insert(
           itensPayload.map(it => ({ ...it, nf_entrada_id: nfRow.id }))
         );
-        if (iErr) { erros.push(`Itens NF ${nfe.numero}: ${iErr.message}`); falha(nfe, cnpj_destino, `Itens não gravados: ${iErr.message}`); }
+        if (iErr) {
+          erros.push(`Itens NF ${nfe.numero}: ${iErr.message}`); falha(nfe, cnpj_destino, `Itens não gravados: ${iErr.message}`);
+          // Não conta cabeçalho sem itens como importação concluída. A fila retomará esta nota.
+          continue;
+        }
         else resolvidas.add(nfe.chave);
       } else resolvidas.add(nfe.chave);
 
       importados_nfe++;
+      notas.push({ id: nfRow.id, numero: nfe.numero, data_emissao: nfe.data_emissao });
     }
 
     // ── 3b. Cancelamentos do emitente (evento 110111) na mesma janela ────────
@@ -379,13 +417,14 @@ export async function POST(req: NextRequest) {
     let canceladas_nfe = 0;
     const avisos: string[] = [];
     const AVISO_CANCELADA = "⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar.";
-    for (const cnpj of cnpjs) {
+    for (const cnpj of consulta.pontual ? [] : cnpjs) {
       if (semTempo()) { cortado = true; break; }
       let eventos: string[] = [];
       try {
-        eventos = await baixarEventosCancelamentoSieg(siegCreds, { TipoXml: 1, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjDest: cnpj });
+        eventos = await baixarEventosCancelamentoSieg(siegCreds, { TipoXml: 1, ...periodoSieg(consulta.base, uploadInicio, uploadFim), CnpjDest: cnpj });
       } catch (e) {
         avisos.push(`Cancelamentos (${cnpj}) não consultados: ${String(e).slice(0, 200)}`);
+        erros.push(autenticacaoSiegRecusada(e) ? mensagemCredencialSieg : "Consulta de cancelamentos de NF-e incompleta."); cortado = true;
         continue;
       }
       const chaves = [...new Set(eventos.map(parseEventoCancelamentoXml).filter((c): c is string => !!c))];
@@ -412,13 +451,14 @@ export async function POST(req: NextRequest) {
     const dig = (v: unknown) => String(v ?? "").replace(/\D/g, "");
     let contaIdCte: string | null = null;
     { const { data: fz } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle(); contaIdCte = (fz?.conta_id as string | null) ?? null; }
-    cteLoop: for (const cnpj of cnpjs) {
+    cteLoop: for (const cnpj of consulta.pontual ? [] : cnpjs) {
       if (semTempo()) { cortado = true; break; }
       let docs: string[] = [];
       try {
-        docs = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 2, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjTom: cnpj });
+        docs = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 2, ...periodoSieg(consulta.base, uploadInicio, uploadFim), CnpjTom: cnpj });
       } catch (e) {
         avisos.push(`CT-e (${cnpj}) não consultados: ${String(e).slice(0, 200)}`);
+        erros.push(autenticacaoSiegRecusada(e) ? mensagemCredencialSieg : "Consulta de CT-e incompleta."); cortado = true;
         continue;
       }
       for (const xml of docs) {
@@ -484,11 +524,11 @@ export async function POST(req: NextRequest) {
     // tenta de novo em vez de perder a nota.
     // Nota que falhou ao gravar não segura mais a marca: vai para a lista de pendências (falhas_sieg) e é tentada de
     // novo nas próximas rodadas pela data de emissão. A marca só não avança em período manual ou se o tempo acabou.
-    const periodoManual = !!(dataInicioParam || dataFimParam);
+    const periodoManual = consulta.pontual || consulta.base === "emissao" || !!(dataInicioParam || dataFimParam);
     const avancaMarca = !periodoManual && !cortado;
     const falhasSieg = atualizarFalhas(falhasAnteriores, falhasRodada, resolvidas, new Date().toISOString());
     avisos.push(...falhaDownload, ...avisosRetry);
-    if (cortado) avisos.push("Tempo esgotado nesta rodada: o restante continua na próxima sincronização.");
+    if (cortado) avisos.push("Consulta incompleta: revise os erros e tente novamente o período pendente.");
     if (falhasSieg.length) avisos.push(`${falhasSieg.length} nota(s) com erro ao gravar — veja em Configurações → Integrações → Sieg. O sistema tenta de novo a cada sincronização.`);
     const marcaTs = new Date(new Date(uploadFim).getTime() - 86_400_000).toISOString();
     const novoCfg = {
@@ -502,12 +542,18 @@ export async function POST(req: NextRequest) {
     // relê a config antes de gravar: a sincronização de NFS-e pode ter gravado a marca dela neste intervalo
     const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazCfg).eq("modulo", "sieg").maybeSingle();
     const cfgFresca = (fresca?.config ?? {}) as Record<string, unknown>;
-    await db
+    const { error: configErr } = await db
       .from("configuracoes_modulo")
       .upsert({ fazenda_id: fazCfg, modulo: "sieg", config: { ...cfg, ...cfgFresca, ...novoCfg } });
+    if (configErr) erros.push(`Não foi possível salvar o acompanhamento da consulta: ${configErr.message}`);
 
     return NextResponse.json({
-      sucesso:       true,
+      sucesso:       erros.length === 0 && !cortado,
+      situacao: erros.length || cortado ? (importados_nfe || duplicados_nfe || importados_cte ? "parcial" : "falha") : consulta.pontual && !encontradas.size ? "nao_encontrada" : "concluida",
+      consulta_completa: !cortado && erros.length === 0,
+      base_periodo: consulta.base,
+      encontradas_nfe: encontradas.size,
+      notas: consulta.pontual ? notas : undefined,
       importados_nfe,
       duplicados_nfe,
       canceladas_nfe,
@@ -517,7 +563,7 @@ export async function POST(req: NextRequest) {
       avisos,
       total_xmls:    xmlsNFe.length,
       erros:         erros.slice(0, 20),
-      marca_avancou: avancaMarca,
+      marca_avancou: avancaMarca && !configErr,
     });
 
   } catch (err) {
