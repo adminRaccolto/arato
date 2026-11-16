@@ -1,122 +1,21 @@
-/**
- * GET /api/integracoes/sieg-test?fazenda_id=xxx
- * Testa as credenciais SIEG v1 (JWT + baixar-xmls) e retorna diagnóstico.
- */
-
+/** GET: diagnóstico de acesso ao SIEG, sem importar nem devolver documentos fiscais. */
 import { NextRequest, NextResponse } from "next/server";
 import { credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { diagnosticarSieg } from "../../../../lib/fiscal/sieg-diagnostico";
 import { exigirAcessoFazenda, exigirLogin } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const fazendaId = req.nextUrl.searchParams.get("fazenda_id") ?? "";
   const negado = fazendaId ? await exigirAcessoFazenda(req, fazendaId) : await exigirLogin(req);
   if (negado) return negado;
-
   const creds = credenciaisEnv();
-
-  const diagCreds = {
-    apiKey_ok:    !!creds.apiKey,
-    secretKey_ok: !!creds.secretKey,
-    clienteId:    creds.clienteId || "(não configurado)",
-    apiKey_fim:   creds.apiKey   ? `...${creds.apiKey.slice(-6)}`   : "(vazio)",
-    secretKey_fim:creds.secretKey? `...${creds.secretKey.slice(-6)}`: "(vazio)",
-  };
-
-  if (!credenciaisValidas(creds)) {
-    return NextResponse.json({
-      erro: "Credenciais SIEG incompletas. Configure SIEG_API_KEY, SIEG_SECRET_KEY e SIEG_CLIENTE_ID.",
-      diagCreds,
-    }, { status: 500 });
-  }
-
-  console.log(`[sieg-test] fazenda=${fazendaId} clienteId=${creds.clienteId}`);
-
-  try {
-    // Passo 1: obter JWT
-    const jwtRes = await fetch("https://api.sieg.com/api/v1/create-jwt", {
-      method:  "POST",
-      headers: {
-        "accept":         "application/json",
-        "Content-Length": "0",
-        "X-Secret-Key":   creds.secretKey,
-        "X-Client-Id":    creds.clienteId,
-      },
-      body: "",
-    });
-
-    const jwtBody = await jwtRes.text();
-    console.log(`[sieg-test] JWT status=${jwtRes.status} body=${jwtBody.slice(0, 100)}`);
-
-    if (!jwtRes.ok) {
-      return NextResponse.json({
-        diagCreds,
-        etapa: "create-jwt",
-        sieg_status: jwtRes.status,
-        sieg_ok: false,
-        sieg_resposta: jwtBody.slice(0, 300),
-      });
-    }
-
-    let jwt: string;
-    try {
-      const parsed = JSON.parse(jwtBody);
-      jwt = typeof parsed === "string" ? parsed : (parsed.token ?? parsed.Token ?? JSON.stringify(parsed));
-    } catch {
-      jwt = jwtBody.trim().replace(/^["']|["']$/g, "");
-    }
-
-    // Passo 2: testar baixar-xmls (Take=1)
-    const xmlRes = await fetch("https://api.sieg.com/api/v1/baixar-xmls", {
-      method:  "POST",
-      headers: {
-        "accept":        "application/json",
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${jwt}`,
-        "X-API-Key":     creds.apiKey,
-        "X-Secret-Key":  creds.secretKey,
-        "X-Client-Id":   creds.clienteId,
-      },
-      body: JSON.stringify({
-        TipoXml:          1,
-        Take:             1,
-        Skip:             0,
-        BaixarEventos:    false,
-        DataUploadInicio: new Date(Date.now() - 7 * 86_400_000).toISOString(),
-        DataUploadFim:    new Date().toISOString(),
-      }),
-    });
-
-    const xmlBuffer = await xmlRes.arrayBuffer();
-    const xmlBytes  = new Uint8Array(xmlBuffer);
-    const isZip     = xmlBytes[0] === 0x50 && xmlBytes[1] === 0x4B; // "PK"
-
-    let xmlParsed: unknown;
-    let xmlInfo    = "";
-    if (isZip) {
-      xmlParsed = "(resposta ZIP — XMLs serão extraídos pelo sieg-sync)";
-      xmlInfo   = `ZIP válido — ${xmlBuffer.byteLength} bytes`;
-    } else {
-      const txt = Buffer.from(xmlBuffer).toString("utf-8");
-      try { xmlParsed = JSON.parse(txt); } catch { xmlParsed = txt.slice(0, 300); }
-    }
-
-    console.log(`[sieg-test] baixar-xmls status=${xmlRes.status} isZip=${isZip} bytes=${xmlBuffer.byteLength}`);
-
-    return NextResponse.json({
-      diagCreds,
-      jwt_ok:        true,
-      jwt_preview:   `${jwt.slice(0, 20)}...`,
-      sieg_status:   xmlRes.status,
-      sieg_ok:       xmlRes.ok,
-      sieg_formato:  isZip ? "ZIP" : "JSON",
-      sieg_info:     xmlInfo || undefined,
-      sieg_resposta: xmlParsed,
-    });
-
-  } catch (err) {
-    console.error("[sieg-test] erro de rede:", err);
-    return NextResponse.json({ diagCreds, erro_rede: String(err) }, { status: 502 });
-  }
+  if (!credenciaisValidas(creds)) return NextResponse.json({ tipo: "erro", situacao: "configuracao_pendente",
+    titulo: "Credenciais não configuradas", mensagem: "Solicite ao administrador a configuração das credenciais da integração SIEG." },
+    { status: 503, headers: { "Cache-Control": "no-store" } });
+  const resultado = await diagnosticarSieg(creds);
+  return NextResponse.json(resultado, { status: resultado.sieg_status === 429 ? 429 : 200,
+    headers: { "Cache-Control": "no-store", ...(resultado.retry_after ? { "Retry-After": String(resultado.retry_after) } : {}) } });
 }

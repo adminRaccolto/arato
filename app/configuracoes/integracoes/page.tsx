@@ -9,6 +9,9 @@ import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 import BalancaSerial, { type MarcaBalanca } from "../../../components/BalancaSerial";
+import { apresentarDiagnosticoSieg, segundosRetryAfter } from "../../../lib/fiscal/sieg-diagnostico-modelo";
+
+const SIEG_DIAGNOSTICO_ESPERA = "arato:sieg:diagnostico:aguardar-ate";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -158,6 +161,28 @@ function ModalSieg({
   const [certResults, setCertResults] = useState<CertResult[]>([]);
   const [diagResult,  setDiagResult]  = useState<Record<string, unknown> | null>(null);
   const [diagLoading, setDiagLoading] = useState(false);
+  const [diagAguardarAte, setDiagAguardarAte] = useState(0);
+  const [diagAgora, setDiagAgora] = useState(0);
+  const diagSegundos = Math.max(0, Math.ceil((diagAguardarAte - diagAgora) / 1000));
+
+  useEffect(() => {
+    try {
+      const prazo = Number(localStorage.getItem(SIEG_DIAGNOSTICO_ESPERA));
+      if (Number.isFinite(prazo) && prazo > Date.now()) setDiagAguardarAte(prazo);
+    } catch { /* O teste continua disponível se o armazenamento estiver bloqueado. */ }
+    setDiagAgora(Date.now());
+  }, []);
+
+  useEffect(() => {
+    if (!diagAguardarAte) return;
+    const atualizar = () => {
+      const agora = Date.now();
+      setDiagAgora(agora);
+      if (agora >= diagAguardarAte) setDiagAguardarAte(0);
+    };
+    const timer = window.setInterval(atualizar, 1000);
+    return () => window.clearInterval(timer);
+  }, [diagAguardarAte]);
 
   function adicionarDoc() {
     const limpo = novoDoc.replace(/\D/g, "");
@@ -229,13 +254,21 @@ function ModalSieg({
   }
 
   async function testarDiagnostico() {
+    if (diagLoading || diagAguardarAte > Date.now()) return;
     setDiagLoading(true);
     setDiagResult(null);
     try {
-      const res = await fetch(`/api/integracoes/sieg-test?fazenda_id=${fazendaId}`);
+      const res = await fetch(`/api/integracoes/sieg-test?fazenda_id=${fazendaId}`, { cache: "no-store" });
       const data = await res.json() as Record<string, unknown>;
       setDiagResult(data);
-    } catch (e) { setDiagResult({ erro_rede: String(e) }); }
+      if (res.status === 429 || data.sieg_status === 429) {
+        const segundos = segundosRetryAfter(res.headers.get("Retry-After") ?? String(data.retry_after ?? ""));
+        const prazo = Date.now() + segundos * 1000;
+        setDiagAgora(Date.now());
+        setDiagAguardarAte(prazo);
+        try { localStorage.setItem(SIEG_DIAGNOSTICO_ESPERA, String(prazo)); } catch { /* Mantém o prazo em memória. */ }
+      }
+    } catch { setDiagResult({ sieg_status: 0 }); }
     setDiagLoading(false);
   }
 
@@ -606,44 +639,28 @@ function ModalSieg({
               <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                             marginBottom: 10 }}>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>Diagnóstico da chave</div>
-                <OperationalButton data-arato-button="toggle" onClick={testarDiagnostico} disabled={diagLoading}
-                  style={{ padding: "6px 14px", background: diagLoading ? "var(--bg-page)" : "var(--bg-card)",
+                <OperationalButton data-arato-button="toggle" onClick={testarDiagnostico} disabled={diagLoading || diagSegundos > 0}
+                  style={{ padding: "6px 14px", background: diagLoading || diagSegundos > 0 ? "var(--bg-page)" : "var(--bg-card)",
                            border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12,
-                           cursor: diagLoading ? "not-allowed" : "pointer", color: "#111111", fontWeight: 600 }}>
-                  {diagLoading ? "Testando…" : "Testar chave agora"}
+                           cursor: diagLoading || diagSegundos > 0 ? "not-allowed" : "pointer", color: "#111111", fontWeight: 600 }}>
+                  {diagLoading ? "Testando…" : diagSegundos > 0 ? `Novo teste em ${diagSegundos}s` : "Testar chave agora"}
                 </OperationalButton>
               </div>
               {diagResult && (() => {
-                const ok      = Boolean(diagResult.sieg_ok);
-                const status  = String(diagResult.sieg_status ?? "—");
-                const kd      = diagResult.keyDiag as Record<string, unknown> | undefined;
-                const resp    = typeof diagResult.sieg_resposta === "string"
-                  ? diagResult.sieg_resposta
-                  : JSON.stringify(diagResult.sieg_resposta);
-                const errNet  = diagResult.erro_rede ? String(diagResult.erro_rede) : null;
+                const status = Number(diagResult.sieg_status ?? 0);
+                const apresentacao = apresentarDiagnosticoSieg(status, String(diagResult.etapa ?? "baixar-xmls"));
+                const tipo = String(diagResult.tipo ?? apresentacao.tipo);
+                const cor = tipo === "sucesso" ? "#166534" : tipo === "aviso" ? "#92400E" : "#B91C1C";
                 return (
-                  <div style={{ padding: "14px 16px", background: ok ? "#F0FFF4" : "#FFF5F5",
-                                border: `0.5px solid ${ok ? "#86EFAC" : "#FCA5A5"}`,
+                  <div role="status" aria-live="polite" style={{ padding: "14px 16px", background: tipo === "sucesso" ? "#F0FFF4" : tipo === "aviso" ? "#FFFBEB" : "#FFF5F5",
+                                border: `0.5px solid ${tipo === "sucesso" ? "#86EFAC" : tipo === "aviso" ? "#FCD34D" : "#FCA5A5"}`,
                                 borderRadius: 8, fontSize: 12 }}>
-                    {kd && (
-                      <div style={{ fontFamily: "monospace", color: "var(--text-2)", marginBottom: 10,
-                                    lineHeight: 1.8 }}>
-                        <span style={{ fontWeight: 700 }}>Fonte:</span> {String(kd.fonte)}<br />
-                        <span style={{ fontWeight: 700 }}>Comprimento:</span> {String(kd.comprimento)} chars<br />
-                        <span style={{ fontWeight: 700 }}>Início:</span> {String(kd.inicio)} &nbsp;
-                        <span style={{ fontWeight: 700 }}>Fim:</span> {String(kd.fim)}<br />
-                        {Boolean(kd.foi_decoded) && (
-                          <span style={{ color: "#EF9F27" }}>⚠ Chave tinha URL-encoding — corrigida automaticamente</span>
-                        )}
-                      </div>
-                    )}
-                    <div style={{ fontWeight: 700, color: ok ? "#16A34A" : "#E24B4A", marginBottom: 4 }}>
-                      HTTP {status} — {ok ? "Autenticado ✓" : "Falha na autenticação ✗"}
+                    <div style={{ fontWeight: 700, color: cor, marginBottom: 4 }}>
+                      {status > 0 ? `HTTP ${status} — ` : ""}{String(diagResult.titulo ?? apresentacao.titulo)}
                     </div>
-                    <div style={{ fontFamily: "monospace", color: "var(--text-2)", wordBreak: "break-all" }}>
-                      {resp as string}
+                    <div style={{ color: cor, lineHeight: 1.6 }}>
+                      {String(diagResult.mensagem ?? apresentacao.mensagem)}
                     </div>
-                    {errNet && <div style={{ color: "#E24B4A", marginTop: 6 }}>{errNet}</div>}
                   </div>
                 );
               })()}

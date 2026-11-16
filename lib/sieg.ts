@@ -45,6 +45,11 @@ export function credenciaisValidas(c: SiegCredentials): boolean {
 const jwtCache = new Map<string, { token: string; expira: number }>();
 const jwtPendentes = new Map<string, Promise<string>>();
 const chaveJwt = (c: SiegCredentials) => createHash("sha256").update(JSON.stringify([c.clienteId,c.secretKey,c.apiKey])).digest("hex");
+export class SiegHttpError extends Error {
+  constructor(public status: number, public retryAfter: string | null, public etapa: string, detalhe: string) {
+    super(`SIEG ${etapa} HTTP ${status}: ${detalhe}`);
+  }
+}
 async function getJwt(creds: SiegCredentials): Promise<string> {
   const chave = chaveJwt(creds), salvo = jwtCache.get(chave);
   if (salvo && salvo.expira > Date.now()) return salvo.token;
@@ -54,7 +59,7 @@ async function getJwt(creds: SiegCredentials): Promise<string> {
     const res = await fetchComTimeout(`${SIEG_BASE}/create-jwt`, {
       method: "POST", headers: { accept: "application/json", "Content-Length": "0", "X-Secret-Key": creds.secretKey, "X-Client-Id": creds.clienteId }, body: "",
     });
-    if (!res.ok) throw new Error(`SIEG create-jwt HTTP ${res.status}: ${(await res.text()).slice(0,300)}`);
+    if (!res.ok) throw new SiegHttpError(res.status, res.headers.get("Retry-After"), "create-jwt", (await res.text()).slice(0, 300));
     const data = await res.json();
     const raw = typeof data === "string" ? data : data.token ?? data.Token;
     if (typeof raw !== "string" || !raw.trim()) throw new Error("SIEG não retornou token de acesso válido.");
@@ -80,6 +85,18 @@ async function fetchSiegAutenticado(creds: SiegCredentials, url: string, init: R
   jwtCache.delete(chaveJwt(creds));
   headers.set("Authorization",`Bearer ${await getJwt(creds)}`);
   return fetchComTimeout(url,{...init,headers});
+}
+
+/** Diagnóstico sem importar XML: compartilha o JWT da integração e não repete respostas 429. */
+export async function consultarAcessoSieg(creds: SiegCredentials): Promise<{ status: number; retryAfter: string | null; etapa: string }> {
+  const res = await fetchSiegAutenticado(creds, `${SIEG_BASE}/baixar-xmls`, {
+    method: "POST", body: JSON.stringify({ TipoXml: 1, Take: 1, Skip: 0, BaixarEventos: false,
+      DataUploadInicio: new Date(Date.now() - 7 * 86_400_000).toISOString(), DataUploadFim: new Date().toISOString() }),
+  });
+  const resultado = { status: res.status, retryAfter: res.headers.get("Retry-After"), etapa: "baixar-xmls" };
+  // O diagnóstico não precisa devolver documentos, JWT ou trechos de credenciais ao navegador.
+  await res.body?.cancel();
+  return resultado;
 }
 
 // ─── Headers padrão para as chamadas autenticadas ────────────────────────────

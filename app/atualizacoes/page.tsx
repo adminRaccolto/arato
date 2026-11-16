@@ -18,6 +18,17 @@ const RELEASES = [
     onde: "Configurações → Usuários e Permissões",
   },
   {
+    versao: "2026.11.16-f",
+    data: "16/11/2026",
+    titulo: "Diagnóstico SIEG distingue limite de consultas e falhas de acesso",
+    modulos: ["Integrações", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Testar chave agora deixa de mostrar limite de consultas (HTTP 429), ausência de documentos ou indisponibilidade como falha de autenticação. Cada situação recebe uma orientação própria; o limite de consultas mantém a validação da credencial inconclusiva." },
+      { tipo: "melhoria", texto: "Quando o SIEG pede uma pausa, o botão mostra a contagem regressiva antes de permitir novo teste, mesmo ao fechar e reabrir a configuração. Sem prazo informado, a espera é de um minuto." },
+    ],
+    onde: "Configurações → Integrações → Sieg DFe Monitor → Registro no Sieg",
+  },
+  {
     versao: "2026.11.16-e",
     data: "16/11/2026",
     titulo: "Usuários e Permissões controla o menu inteiro",
