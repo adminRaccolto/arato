@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-p",
+    data: "16/11/2026",
+    titulo: "Tributação NCM: padrões do agro no lugar do Padrão MT só de grãos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "O botão Carregar padrões do agro inclui de uma vez 51 NCMs do setor, sem alterar os já cadastrados. Os grupos são: grãos (com a tributação completa de MT), bovinos e gergelim, sementes, fertilizantes e calcário, defensivos e inoculantes, vacinas, rações e reprodutores, e peças, pneus e máquinas. Cada NCM vem com o IBS/CBS do seu grupo: 200/200036 para produto in natura, 200/200038 para insumos do Anexo IX da LC 214/2025 e 000/000001 para os demais." },
+      { tipo: "melhoria", texto: "Fora dos grãos, ICMS, PIS e COFINS ficam \"Pela operação\": o NCM só define o IBS/CBS e vale a Operação Fiscal da nota. Assim, uma peça ou insumo não sai com o ICMS diferido dos grãos." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → Tributação NCM",
+  },
+  {
     versao: "2026.11.16-o",
     data: "16/11/2026",
     titulo: "NFS-e de fornecedor: I.E. do tomador e botões iguais aos da NF",

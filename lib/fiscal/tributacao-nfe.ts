@@ -33,7 +33,9 @@ export async function resolverTributacaoNFe(db:SupabaseClient,fazendaId:string,i
     const op=input.operacao_fiscal_id?candidatas.find(r=>r.id===input.operacao_fiscal_id):escolher(candidatas,fazendaId,"CFOP "+cfop);
     if(input.operacao_fiscal_id&&!op)throw new Error("A operação fiscal selecionada não corresponde ao cliente, CFOP ou data da nota.");
     const ncm=escolher(ncms.filter(r=>vigente(r)&&dig(r.ncm)===dig(item.ncm)),fazendaId,"NCM "+item.ncm);
-    const ncmAplica=ncm&&dig((interno?ncm.cfop_dentro:ncm.cfop_fora) || (interno?config.cfop_venda_dentro:config.cfop_venda_fora) || (interno?"5101":"6101"))===cfop?ncm:undefined;
+    // CST de ICMS em branco no NCM = "pela operação": o NCM só define o IBS/CBS (padrões do agro fora dos grãos, lib/fiscal/ncm-padrao.ts)
+    const ncmDefineIcms=!!ncm&&!!String((interno?ncm.icms_cst_interno:ncm.icms_cst_externo) ?? "").trim();
+    const ncmAplica=ncmDefineIcms&&ncm&&dig((interno?ncm.cfop_dentro:ncm.cfop_fora) || (interno?config.cfop_venda_dentro:config.cfop_venda_fora) || (interno?"5101":"6101"))===cfop?ncm:undefined;
     const regra=op ?? ncmAplica;
     let pisCfop:string|undefined;let cofinsCfop:string|undefined;
     if(input.operacao_gerencial_id){

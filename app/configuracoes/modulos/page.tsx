@@ -1,5 +1,6 @@
 "use client";
 import { salvarCadastroFiscal } from "../../../lib/fiscal/cadastros";
+import { grupoDoNcm, ncmsDoPadraoAgro, PADRAO_AGRO } from "../../../lib/fiscal/ncm-padrao";
 import { lerPaginas } from "../../../lib/paginar";
 import VerificarCertificado from "../../../components/fiscal/VerificarCertificado";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
@@ -230,104 +231,6 @@ const EXPEDICAO_FIELDS: FieldDef[] = [
   { key: "tolerancia_divergencia_pct",     label: "Tolerância divergência peso (%)",           type: "number", placeholder: "1" },
   { key: "gerar_nf_remessa_auto",          label: "Gerar NF Remessa automaticamente",          type: "select", options: ["sim","nao"], labels: ["Sim","Não"] },
   { key: "bucket_xmls",                    label: "Bucket Supabase (XMLs NF-e/MDF-e)",         type: "text",   placeholder: "arquivos" },
-];
-
-// ─── Presets NCM — Mato Grosso ────────────────────────────────────────────────
-// ICMS: diferido (CST 051) nas operações internas; base reduzida 61,11% (CST 020) nas interestaduais
-// Fundamento: RICMS/MT + Convênio ICMS 100/97
-// PIS/COFINS: CST 06 (alíquota zero) — Lei 10.925/2004 para grãos
-// IBS/CBS: CST 200 / cClassTrib 200036, redução de 60% — produto agropecuário in natura (LC 214/2025,
-// art. 137), conforme tabela trazida pelo dono em 13/11/2026. Só vale para emitente marcado como
-// contribuinte de IBS/CBS em Parâmetros → Fiscal; não contribuinte emite sem IBS/CBS.
-type NcmPreset = Omit<NcmTributacao, "id">;
-
-const NCM_PRESETS_MT: NcmPreset[] = [
-  {
-    ncm: "12019000", descricao: "Soja em grão",
-    icms_cst_interno: "051", icms_cst_externo: "020",
-    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010). Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Art. 1º, I da Lei 10.925/2004.",
-  },
-  {
-    ncm: "10059010", descricao: "Milho em grão",
-    icms_cst_interno: "051", icms_cst_externo: "020",
-    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010). Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Art. 1º, I da Lei 10.925/2004.",
-  },
-  {
-    ncm: "52010020", descricao: "Algodão em pluma",
-    icms_cst_interno: "041", icms_cst_externo: "041",
-    icms_aliq: 0, icms_base_reduzida_pct: 100,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "Operação não tributada pelo ICMS conforme RICMS/MT. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
-  },
-  {
-    ncm: "12072900", descricao: "Caroço de algodão (exceto semeadura)",
-    icms_cst_interno: "051", icms_cst_externo: "020",
-    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Base de cálculo reduzida a 61,11% nas interestaduais — Conv. ICMS 100/97. PIS/COFINS: alíquota zero.",
-  },
-  {
-    ncm: "10079000", descricao: "Sorgo em grão",
-    icms_cst_interno: "051", icms_cst_externo: "020",
-    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Base de cálculo reduzida a 61,11% nas interestaduais — Conv. ICMS 100/97. PIS/COFINS: alíquota zero.",
-  },
-  {
-    ncm: "10019900", descricao: "Trigo comum em grão (exceto semeadura)",
-    // Interno: diferido no MT (RICMS/MT). Externo: base reduzida Conv. ICMS 100/97 — trigo listado explicitamente na Cláusula 1ª §2°
-    icms_cst_interno: "051", icms_cst_externo: "020",
-    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97 (trigo em grão incluído na Cláusula 1ª, §2°). PIS/COFINS: alíquota zero — Lei 10.925/2004.",
-  },
-  {
-    ncm: "10011900", descricao: "Trigo duro em grão (exceto semeadura)",
-    // Trigo duro (1001.19.00) — não é semente: semente de trigo comum é 1001.91.00. ICMS igual ao trigo em grão.
-    icms_cst_interno: "051", icms_cst_externo: "020",
-    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
-    pis_cst: "06", pis_aliq: 0,
-    cofins_cst: "06", cofins_aliq: 0,
-    cfop_dentro: "5101", cfop_fora: "6101",
-    ibs_estadual_aliq: 0.1, ibs_municipal_aliq: 0, cbs_aliq: 0.9,
-    ibs_cbs_reducao_pct: 60,
-    ibs_cbs_cst: '200', ibs_cbs_cclasstrib: '200036',
-    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
-  },
 ];
 
 // ─── Operações Fiscais ────────────────────────────────────────────────────────
@@ -843,17 +746,19 @@ function ParametrosSistemaContent() {
     }catch(e){alert((e as {message?:string}).message ?? String(e));}
   };
 
-  const carregarPresetsMT = async () => {
+  // Padrões do agro (lib/fiscal/ncm-padrao.ts): grãos com a tributação completa de MT + sementes, fertilizantes,
+  // corretivos, defensivos, pecuária, peças e máquinas com o IBS/CBS do grupo. Só inclui o que falta; nunca altera NCM já cadastrado.
+  const carregarPadraoAgro = async () => {
     if(!fazendaId||cfgContexto.current!==contextoAtual){alert("Os parâmetros do cliente ainda não terminaram de carregar. Recarregue a página e tente de novo.");return;}
+    const {novos,porGrupo}=ncmsDoPadraoAgro(ncms.map(n=>n.ncm));
+    if(!novos.length){alert("Todos os NCMs do padrão do agro já estão cadastrados — nada a incluir. NCM fora do padrão entra pelo botão \"+ Adicionar NCM\".");return;}
+    const resumo=porGrupo.filter(g=>g.qtd).map(g=>`• ${g.grupo}: ${g.qtd}`).join("\n");
+    if(!(await confirmarAcao({titulo:"Carregar padrões do agro",mensagem:`Serão incluídos ${novos.length} NCM(s):\n${resumo}\n\nNCMs já cadastrados não são alterados. Fora dos grãos, ICMS, PIS e COFINS ficam "pela operação fiscal" e só o IBS/CBS é definido.`,perigo:false})))return;
     setCarregandoPresets(true);
     try{
-      const novos=NCM_PRESETS_MT.filter(p=>!ncms.some(n=>n.ncm===p.ncm)).map(p=>({...p,fazenda_id:fazendaId}));
-      if(novos.length){const {error}=await supabase.from("ncm_tributacoes").insert(novos);if(error)throw error;}
+      const {error}=await supabase.from("ncm_tributacoes").insert(novos.map(p=>({...p,fazenda_id:fazendaId})));if(error)throw error;
       await recarregarNcms();
-      // Antes não dizia nada: com os 7 já cadastrados o botão só "piscava" (achado 16/11/2026).
-      alert(novos.length
-        ? `${novos.length} NCM(s) do padrão MT incluído(s): ${novos.map(p=>p.ncm).join(", ")}.`
-        : "Os 7 NCMs do padrão MT (soja, milho, algodão, caroço de algodão, sorgo e trigo) já estão cadastrados — nada a incluir. Outros NCMs (peças, insumos) entram pelo botão \"+ Adicionar NCM\".");
+      alert(`${novos.length} NCM(s) do padrão do agro incluído(s):\n${resumo}`);
     }catch(e){alert((e as {message?:string}).message ?? String(e));}finally{setCarregandoPresets(false);}
   };
 
@@ -1710,7 +1615,7 @@ function ParametrosSistemaContent() {
         "000": "Tributada", "020": "Base Reduzida", "040": "Isenta",
         "041": "Não Tributada", "051": "Diferido", "090": "Outras",
       };
-      return map[cst] ?? cst;
+      return cst ? (map[cst] ?? cst) : "Pela operação";
     };
     const cstColor = (cst: string) => {
       if (cst === "051") return { bg: "#DCFCE7", color: "#16A34A" };
@@ -1729,18 +1634,19 @@ function ParametrosSistemaContent() {
         </div>
 
         <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 12, color: "#166534", lineHeight: 1.6 }}>
-          <strong>ICMS/MT:</strong> CST 051 = diferido (operações internas) · CST 020 = base reduzida 61,11% / efetiva 7,33% (interestaduais) — Conv. ICMS 100/97.
-          {" "}<strong>PIS/COFINS:</strong> CST 06 = alíquota zero para grãos — Lei 10.925/2004.
-          {" "}<strong>IBS/CBS:</strong> redução de 60% para produtos agropecuários — LC 214/2025 (Reforma Tributária). IBS/CBS = 0 para exportações (CFOP 7xxx).
+          <strong>Padrões do agro:</strong> grãos (venda) com a tributação completa de MT; produção animal, sementes, fertilizantes, corretivos, defensivos, inoculantes, vacinas, rações, peças, pneus e máquinas com o IBS/CBS do grupo.
+          {" "}<strong>ICMS/MT dos grãos:</strong> CST 051 = diferido (internas) · CST 020 = base reduzida 61,11% / efetiva 7,33% (interestaduais) — Conv. ICMS 100/97. <strong>PIS/COFINS:</strong> CST 06 = alíquota zero — Lei 10.925/2004.
+          {" "}<strong>IBS/CBS:</strong> 200/200036 (redução de 60%) para produto agropecuário in natura; 200/200038 (redução de 60%) para insumos do Anexo IX da LC 214/2025; 000/000001 para os demais.
+          {" "}<strong>&quot;Pela operação&quot;:</strong> o NCM não define ICMS, PIS nem COFINS; vale a Operação Fiscal da nota (insumos têm isenção interna e base reduzida que dependem da operação — Conv. ICMS 100/97, prorrogado até 2027). Combustíveis não entram no padrão (IBS/CBS monofásico).
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <OperationalButton data-arato-button="primary"
-            onClick={carregarPresetsMT}
+            onClick={carregarPadraoAgro}
             disabled={carregandoPresets}
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
-            {carregandoPresets ? "Carregando..." : "Carregar Padrões MT (só grãos: soja, milho, algodão, sorgo, trigo)"}
+            {carregandoPresets ? "Carregando..." : `Carregar padrões do agro (${PADRAO_AGRO.reduce((s,g)=>s+g.itens.length,0)} NCMs)`}
           </OperationalButton>
           <OperationalButton data-arato-button="primary"
             onClick={() => setModalNcm({ ...NCM_MODAL_VAZIO })}
@@ -1769,7 +1675,7 @@ function ParametrosSistemaContent() {
                 return (
                   <tr key={n.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                     <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700 }}>{n.ncm}</td>
-                    <td style={{ padding: "8px 10px", fontWeight: 600, maxWidth: 180 }}>{n.descricao}</td>
+                    <td style={{ padding: "8px 10px", fontWeight: 600, maxWidth: 180 }}>{n.descricao}{grupoDoNcm(n.ncm) && <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-3)" }}>{grupoDoNcm(n.ncm)}</div>}</td>
                     <td style={{ padding: "8px 10px" }}>
                       <span style={{ padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: interno.bg, color: interno.color }}>{cstLabel(n.icms_cst_interno)}</span>
                     </td>
@@ -1782,10 +1688,10 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{efetiva.toFixed(2)}%</td>
                     <td style={{ padding: "8px 10px", textAlign: "right", color: n.pis_aliq === 0 ? "#16A34A" : "var(--text-1)" }}>
-                      {n.pis_cst} / {n.pis_aliq.toFixed(2)}%
+                      {n.pis_cst ? `${n.pis_cst} / ${n.pis_aliq.toFixed(2)}%` : "Pela operação"}
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "right", color: n.cofins_aliq === 0 ? "#16A34A" : "var(--text-1)" }}>
-                      {n.cofins_cst} / {n.cofins_aliq.toFixed(2)}%
+                      {n.cofins_cst ? `${n.cofins_cst} / ${n.cofins_aliq.toFixed(2)}%` : "Pela operação"}
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -2525,8 +2431,8 @@ function ParametrosSistemaContent() {
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("ICMS")}</div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
-              {campo("CST Interno", sel({ value: modalNcm.icms_cst_interno ?? "051", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
+              {campo("CST Interno", sel({ value: modalNcm.icms_cst_interno ?? "051", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["","Pela operação fiscal"],["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
+              {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["","Pela operação fiscal"],["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", num(modalNcm.icms_aliq ?? 12, v => setModalNcm(p => ({ ...p!, icms_aliq: v === "" ? 0 : Number(v) || 0 }))))}
               {campo("Base Reduzida %", num(modalNcm.icms_base_reduzida_pct ?? 100, v => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: v === "" ? 100 : Number(v) || 0 }))))}
               {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
@@ -2534,9 +2440,9 @@ function ParametrosSistemaContent() {
 
             <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
-              {campo("PIS CST", sel({ value: modalNcm.pis_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, pis_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
+              {campo("PIS CST", sel({ value: modalNcm.pis_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, pis_cst: e.target.value })), children: [["","Pela operação fiscal"],["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("PIS Alíquota %", num(modalNcm.pis_aliq ?? 0, v => setModalNcm(p => ({ ...p!, pis_aliq: v === "" ? 0 : Number(v) || 0 }))))}
-              {campo("COFINS CST", sel({ value: modalNcm.cofins_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, cofins_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
+              {campo("COFINS CST", sel({ value: modalNcm.cofins_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, cofins_cst: e.target.value })), children: [["","Pela operação fiscal"],["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("COFINS Alíquota %", num(modalNcm.cofins_aliq ?? 0, v => setModalNcm(p => ({ ...p!, cofins_aliq: v === "" ? 0 : Number(v) || 0 }))))}
             </div>
 
