@@ -50,3 +50,43 @@ export function operacaoPorCfop(cfop: string | null | undefined): OperacaoRemess
   const c = String(cfop ?? "").replace(/\D/g, "");
   return OPERACOES_REMESSA.find(o => o.chave !== "emprestimo" && (o.interno === c || o.externo === c));
 }
+
+export type OpcaoCfopRemessa = { cfop: string; nome: string };
+
+/** CFOPs das Operações Fiscais ativas da fazenda emitente, na direção da remessa (interno × interestadual), para o
+ *  seletor de CFOP da NF de remessa. O CFOP sugerido entra mesmo sem cadastro. Um CFOP aparece uma vez só. */
+export function opcoesCfopRemessa(ufEmitente: string | null | undefined, ufDestino: string | null | undefined,
+  cadastro: OperacaoFiscalCadastro[], sugerido?: string | null): OpcaoCfopRemessa[] {
+  const a = String(ufEmitente ?? "").trim().toUpperCase(), b = String(ufDestino ?? "").trim().toUpperCase();
+  const interestadual = !!a && !!b && a !== b;
+  const vistos = new Map<string, string>();
+  for (const c of cadastro) {
+    if (c.ativa === false) continue;
+    const cfop = String((interestadual ? c.cfop_externo : c.cfop_interno) ?? "").replace(/\D/g, "");
+    if (/^\d{4}$/.test(cfop) && !vistos.has(cfop)) vistos.set(cfop, c.nome);
+  }
+  const sug = String(sugerido ?? "").replace(/\D/g, "");
+  if (/^\d{4}$/.test(sug) && !vistos.has(sug)) vistos.set(sug, "sugerido — sem Operação Fiscal cadastrada");
+  return [...vistos].map(([cfop, nome]) => ({ cfop, nome })).sort((x, y) => x.cfop.localeCompare(y.cfop));
+}
+
+/** Informações fiscais de um CFOP escolhido no seletor: CST, texto legal e nome da Operação Fiscal cadastrada com ele
+ *  (na direção da remessa; se não houver, em qualquer direção); sem cadastro, CST pela regra do CFOP. */
+export function infoFiscalPorCfop(cfop: string, ufEmitente: string | null | undefined, ufDestino: string | null | undefined,
+  cadastro: OperacaoFiscalCadastro[] = []): InfoFiscalRemessa {
+  const a = String(ufEmitente ?? "").trim().toUpperCase(), b = String(ufDestino ?? "").trim().toUpperCase();
+  const ufIndefinida = !a || !b;
+  const interestadual = !ufIndefinida && a !== b;
+  const c = cfop.replace(/\D/g, "");
+  const ativos = cadastro.filter(x => x.ativa !== false);
+  const naDirecao = ativos.find(x => (interestadual ? x.cfop_externo : x.cfop_interno) === c);
+  const cad = naDirecao ?? ativos.find(x => x.cfop_interno === c || x.cfop_externo === c);
+  // CST do lado em que o CFOP está no cadastro (interno ou interestadual)
+  const ladoExterno = naDirecao ? interestadual : cad?.cfop_externo === c && cad?.cfop_interno !== c;
+  const cstCad = cad ? cst3(ladoExterno ? cad.icms_cst_externo : cad.icms_cst_interno) : "";
+  return {
+    cfop: c, interestadual, ufIndefinida, natureza: cad?.nome ?? "",
+    cst: cstCad || cstExibicaoPorCfop(c), cstDoCadastro: !!cstCad,
+    operacaoFiscal: cad?.nome ?? null, infCpl: cad?.inf_cpl_template?.trim() || null,
+  };
+}

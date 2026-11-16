@@ -341,7 +341,7 @@ Como cada área funciona hoje. Para o passo a passo das tarefas comuns, use ante
 
 **Emitir NF Remessa:** o botão na NF de entrada processada abre Documentos Fiscais → Saídas → Remessas com a + Nova Remessa ligada a essa NF (itens, depósito de origem e valor vêm dela). Na NF de entrada, o tipo "Entrega de compra futura" é entrega de compra para entrega futura (VEF) já faturada, não remessa para armazém.
 
-**CFOP da remessa:** ao lado do CST do ICMS há o campo CFOP, já preenchido com o sugerido pela operação escolhida e pela UF do armazém (ex.: 5905). Pode trocar digitando outro CFOP; "voltar ao sugerido" desfaz. Com o CFOP trocado, o CST automático e o texto legal seguem a regra do CFOP digitado (não os da Operação Fiscal da operação sugerida) — confira o CST antes de emitir.
+**CFOP da remessa:** ao lado do CST do ICMS fica o seletor de CFOP, com as Operações Fiscais ativas da fazenda emitente (Fiscal → Operações Fiscais) na direção da remessa — 5xxx dentro do estado, 6xxx para outro estado. Vem marcado o sugerido pela operação da remessa (ex.: 5905). Escolhendo outro, o CST automático, o texto legal e a natureza da operação passam a ser os da Operação Fiscal escolhida. Trocar o armazém para outra UF volta ao sugerido. CFOP que não está na lista: cadastre a Operação Fiscal ou use "Outro CFOP (digitar)" em Operação da remessa.
 
 **Valor com desconto:** com a NF de compra de origem escolhida, o valor unitário vem líquido do desconto: o desconto do cabeçalho é rateado pelos itens, proporcional ao valor de cada um.
 

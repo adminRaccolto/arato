@@ -19,7 +19,7 @@ import type { Deposito, Insumo, NfRemessaLogistica, Pessoa } from "../../../lib/
 import { listarNfRemessasLogisticas, listarPessoasDaConta, listarInsumosParaConta, listarDepositosMulti, listarNfEntradaItens, insumoAtivo } from "../../../lib/db";
 import { CFOP_RETORNO, lerXmlNfe } from "../../../lib/fiscal/nfe-xml";
 import { cstExibicaoPorCfop } from "../../../lib/nfe/cst-por-cfop";
-import { OPERACOES_REMESSA, infoFiscalRemessa, operacaoPorCfop, type OperacaoFiscalCadastro } from "../../../lib/fiscal/remessa-operacoes";
+import { OPERACOES_REMESSA, infoFiscalPorCfop, infoFiscalRemessa, opcoesCfopRemessa, operacaoPorCfop, type OperacaoFiscalCadastro } from "../../../lib/fiscal/remessa-operacoes";
 import { ratearDescontoNf } from "../../../lib/nfe/remessa";
 import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
@@ -147,7 +147,7 @@ function RemessasConteudo() {
   const [cfopXml, setCfopXml] = useState("");
   const [opsFiscais, setOpsFiscais] = useState<(OperacaoFiscalCadastro & { fazenda_id: string })[]>([]);
   const [cstRem, setCstRem] = useState("");   // CST do ICMS escolhido à mão ("" = automático pelo CFOP)
-  // CFOP trocado à mão ("" = o sugerido pela operação/UF; " " = campo apagado pelo usuário, ainda sem número)
+  // CFOP escolhido no seletor de Operações Fiscais ("" = o sugerido pela operação da remessa e a UF)
   const [cfopManual, setCfopManual] = useState("");
   const [natureza, setNatureza] = useState("Remessa para depósito em armazém geral");
   const [dataRem, setDataRem] = useState(hojeLocal());
@@ -165,12 +165,18 @@ function RemessasConteudo() {
   // Informações fiscais da operação: CFOP pela UF do emitente × destinatário; CST e texto do cadastro de Operações
   // Fiscais da fazenda emitente quando houver, senão da regra do CFOP
   const opRem = OPERACOES_REMESSA.find(o => o.chave === tipoRem);
-  const fiscal = opRem ? infoFiscalRemessa(opRem, ufFazenda.get(fazendaRem ?? "") ?? "", armazem?.estado ?? "", opsFiscais.filter(o => o.fazenda_id === fazendaRem)) : null;
+  const ufEmitRem = ufFazenda.get(fazendaRem ?? "") ?? "", ufDestRem = armazem?.estado ?? "";
+  const opsFazendaRem = opsFiscais.filter(o => o.fazenda_id === fazendaRem);
+  const fiscal = opRem ? infoFiscalRemessa(opRem, ufEmitRem, ufDestRem, opsFazendaRem) : null;
   const cfopSugerido = modo === "externa" && cfopXml ? cfopXml : tipoRem === "outro" ? cfopOutro.replace(/\D/g, "").slice(0, 4) : fiscal?.cfop ?? "";
   const cfopEfetivo = modo === "arato" && cfopManual ? cfopManual : cfopSugerido;
-  // CFOP trocado à mão: CST automático e texto legal deixam de vir da operação sugerida e seguem a regra do CFOP digitado
-  const fiscalUso = tipoRem !== "outro" && !(modo === "arato" && cfopManual && cfopManual !== fiscal?.cfop) ? fiscal : null;
+  // CFOP escolhido no seletor: CST, texto legal e natureza vêm da Operação Fiscal cadastrada com esse CFOP
+  const fiscalEscolhido = modo === "arato" && cfopManual && cfopManual !== fiscal?.cfop ? infoFiscalPorCfop(cfopManual, ufEmitRem, ufDestRem, opsFazendaRem) : null;
+  const fiscalUso = fiscalEscolhido ?? (tipoRem !== "outro" ? fiscal : null);
+  const opcoesCfop = opcoesCfopRemessa(ufEmitRem, ufDestRem, opsFazendaRem, cfopSugerido);
   useEffect(() => { setCfop(cfopEfetivo); }, [cfopEfetivo]);
+  // Mudou a UF do emitente ou do armazém: o CFOP escolhido pode ter mudado de lado (5xxx × 6xxx) — volta ao sugerido
+  useEffect(() => { setCfopManual(""); }, [ufEmitRem, ufDestRem]);
   function escolherTipoRem(chave: string) {
     setTipoRem(chave); setCfopXml(""); setCfopManual("");
     const op = OPERACOES_REMESSA.find(o => o.chave === chave);
@@ -639,12 +645,19 @@ function RemessasConteudo() {
                   <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
                   <div>
                     <label style={lbl}>CFOP</label>
-                    <input value={cfopManual ? cfopManual.trim() : cfopSugerido} inputMode="numeric" placeholder="ex.: 5905"
-                      onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 4); setCfopManual(v === cfopSugerido ? "" : v || " "); }}
-                      style={inp} />
-                    {cfopManual
-                      ? <button type="button" onClick={() => setCfopManual("")} style={{ marginTop: 4, background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 11, textDecoration: "underline", padding: 0 }}>voltar ao sugerido{cfopSugerido ? ` (${cfopSugerido})` : ""}</button>
-                      : <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Sugerido pela operação{cfopSugerido ? "" : " — escolha a operação ou digite"}</div>}
+                    <select value={cfopManual || cfopSugerido} style={inp}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setCfopManual(v === cfopSugerido ? "" : v);
+                        const nome = opsFazendaRem.find(o => o.ativa !== false && (o.cfop_interno === v || o.cfop_externo === v))?.nome;
+                        if (v === cfopSugerido && opRem) setNatureza(opRem.natureza); else if (nome) setNatureza(nome);
+                      }}>
+                      {!cfopSugerido && !cfopManual && <option value="">Selecionar…</option>}
+                      {opcoesCfop.map(o => <option key={o.cfop} value={o.cfop}>{o.cfop} — {o.nome}{o.cfop === cfopSugerido ? " (sugerido)" : ""}</option>)}
+                    </select>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+                      {cfopManual ? "CST e texto legal da Operação Fiscal escolhida" : "Operações Fiscais da fazenda (Fiscal → Operações Fiscais)"}
+                    </div>
                   </div>
                   <div>
                     <label style={lbl}>CST do ICMS</label>

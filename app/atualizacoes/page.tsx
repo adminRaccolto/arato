@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-k",
+    data: "16/11/2026",
+    titulo: "CFOP da remessa escolhido entre as Operações Fiscais",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "NF de remessa: o CFOP deixa de ser digitado e passa a ser escolhido entre as Operações Fiscais da fazenda (5xxx ou 6xxx conforme a UF do armazém), com o sugerido já marcado. Ao escolher, CST, texto legal e natureza vêm da Operação Fiscal." },
+    ],
+    onde: "Documentos Fiscais → Saídas → Remessas → + Nova Remessa",
+  },
+  {
     versao: "2026.11.16-j",
     data: "16/11/2026",
     titulo: "Incluir e excluir nas telas de configuração voltam a funcionar",
