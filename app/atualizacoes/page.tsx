@@ -13,6 +13,7 @@ const RELEASES = [
     modulos: ["Fiscal"],
     itens: [
       { tipo: "correcao", texto: "Parâmetros do Sistema → Tributação NCM e Operações Fiscais: se os dados do cliente ainda não tinham terminado de carregar, o Salvar fechava sem gravar e sem avisar. Agora aparece \"O cadastro NÃO foi salvo\" com a orientação de recarregar a página." },
+      { tipo: "correcao", texto: "Tributação NCM → Carregar Padrões MT: com os 7 NCMs de grão já cadastrados o botão só piscava. Agora diz quantos NCMs incluiu ou avisa que já estão todos lá; NCM de peça ou insumo entra por \"+ Adicionar NCM\"." },
     ],
     onde: "Parâmetros do Sistema → Tributação NCM / Operações Fiscais",
   },

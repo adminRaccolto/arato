@@ -844,12 +844,16 @@ function ParametrosSistemaContent() {
   };
 
   const carregarPresetsMT = async () => {
-    if(!fazendaId||cfgContexto.current!==contextoAtual)return;
+    if(!fazendaId||cfgContexto.current!==contextoAtual){alert("Os parâmetros do cliente ainda não terminaram de carregar. Recarregue a página e tente de novo.");return;}
     setCarregandoPresets(true);
     try{
       const novos=NCM_PRESETS_MT.filter(p=>!ncms.some(n=>n.ncm===p.ncm)).map(p=>({...p,fazenda_id:fazendaId}));
       if(novos.length){const {error}=await supabase.from("ncm_tributacoes").insert(novos);if(error)throw error;}
       await recarregarNcms();
+      // Antes não dizia nada: com os 7 já cadastrados o botão só "piscava" (achado 16/11/2026).
+      alert(novos.length
+        ? `${novos.length} NCM(s) do padrão MT incluído(s): ${novos.map(p=>p.ncm).join(", ")}.`
+        : "Os 7 NCMs do padrão MT (soja, milho, algodão, caroço de algodão, sorgo e trigo) já estão cadastrados — nada a incluir. Outros NCMs (peças, insumos) entram pelo botão \"+ Adicionar NCM\".");
     }catch(e){alert((e as {message?:string}).message ?? String(e));}finally{setCarregandoPresets(false);}
   };
 
@@ -1736,7 +1740,7 @@ function ParametrosSistemaContent() {
             disabled={carregandoPresets}
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
-            {carregandoPresets ? "Carregando..." : "Carregar Padrões MT (soja, milho, algodão, sorgo, trigo)"}
+            {carregandoPresets ? "Carregando..." : "Carregar Padrões MT (só grãos: soja, milho, algodão, sorgo, trigo)"}
           </OperationalButton>
           <OperationalButton data-arato-button="primary"
             onClick={() => setModalNcm({ ...NCM_MODAL_VAZIO })}
