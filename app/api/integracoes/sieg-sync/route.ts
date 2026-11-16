@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { baixarXmlsSieg, baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, parseCTeXml, parseEventoCancelamentoCteXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSieg, baixarXmlsSiegChunked, buscarXmlNfePorChaveSieg, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, parseCTeXml, parseEventoCancelamentoCteXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 import { atualizarFalhas, documentosMonitorados, falhasParaTentar, janelaDaEmissao, type FalhaRodada, type FalhaSieg } from "../../../../lib/fiscal/sieg-monitoramento";
 import { prepararConsultaSieg, periodoSieg, correspondeConsultaSieg, autenticacaoSiegRecusada, mensagemCredencialSieg, type PedidoConsultaSieg } from "../../../../lib/fiscal/sieg-consulta";
@@ -196,7 +196,19 @@ export async function POST(req: NextRequest) {
     // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
     const xmlsNFe: { xml: string; cnpj_destino: string }[] = [];
     const falhaDownload: string[] = [];
-    for (const cnpj of cnpjs) {
+    for (const chave of consulta.chaves) {
+      if (semTempo()) { cortado = true; break; }
+      try {
+        const xml = await buscarXmlNfePorChaveSieg(siegCreds, chave, cnpjs);
+        if (xml) xmlsNFe.push({ xml, cnpj_destino: parseNFeXml(xml)?.cnpj_destinatario ?? "" });
+      } catch (e) {
+        if (autenticacaoSiegRecusada(e)) return NextResponse.json({ erro: mensagemCredencialSieg, situacao: "falha" }, { status: 502 });
+        falhaDownload.push(`Consulta individual da NF-e não concluída: ${String(e).slice(0, 160)}`);
+        cortado = true;
+        break;
+      }
+    }
+    for (const cnpj of consulta.chaves.length ? [] : cnpjs) {
       if (semTempo()) { cortado = true; break; }
       try {
         const docs = await baixarXmlsSiegChunked(siegCreds, {
@@ -210,6 +222,26 @@ export async function POST(req: NextRequest) {
         if (autenticacaoSiegRecusada(e)) return NextResponse.json({ erro: mensagemCredencialSieg, situacao: "falha" }, { status: 502 });
         // Um CPF/CNPJ com falha (ex.: SIEG ocupado, 429) não derruba os outros: segue, avisa e não avança a marca
         falhaDownload.push(`NF-e de ${cnpj} não consultadas: ${String(e).slice(0, 160)}`);
+        cortado = true;
+      }
+    }
+
+    // Na busca pontual, o índice do destinatário não deve ser a única forma de encontrar a nota.
+    // O XML da consulta complementar continua sujeito ao número, série, período e titularidade do cliente.
+    if (consulta.numero && !cortado && !falhaDownload.length && !xmlsNFe.some(x => {
+      const n = parseNFeXml(x.xml);
+      return n && correspondeConsultaSieg(n, consulta, cnpjs);
+    })) {
+      try {
+        if (semTempo()) cortado = true;
+        else {
+          const docs = await baixarXmlsSiegChunked(siegCreds, { TipoXml: 1,
+            ...periodoSieg("emissao", uploadInicio, uploadFim), CnpjEmit: consulta.emitente });
+          for (const xml of docs) xmlsNFe.push({ xml, cnpj_destino: parseNFeXml(xml)?.cnpj_destinatario ?? "" });
+        }
+      } catch (e) {
+        if (autenticacaoSiegRecusada(e)) return NextResponse.json({ erro: mensagemCredencialSieg, situacao: "falha" }, { status: 502 });
+        falhaDownload.push(`Consulta complementar do fornecedor não concluída: ${String(e).slice(0, 160)}`);
         cortado = true;
       }
     }

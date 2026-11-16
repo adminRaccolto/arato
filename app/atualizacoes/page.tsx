@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-l",
+    data: "16/11/2026",
+    titulo: "Recuperação de NF-e com consulta direta pela chave",
+    modulos: ["Fiscal", "Integrações"],
+    itens: [
+      { tipo: "correcao", texto: "Localizar NF-e → Chave de acesso passa a consultar o documento individual no SIEG antes de recorrer à busca por período. A busca pelo número também consulta o fornecedor quando o filtro do destinatário não retorna a nota, conferindo a titularidade antes de importar." },
+      { tipo: "correcao", texto: "Na consulta individual, respostas inválidas ou de erro deixam de ser interpretadas como nota não encontrada. Somente o XML da chave solicitada e destinado ao cliente pode seguir para recuperação." },
+    ],
+    onde: "Documentos Fiscais → Entradas → Notas de Fornecedores → Localizar NF-e",
+  },
+  {
     versao: "2026.11.16-k",
     data: "16/11/2026",
     titulo: "CFOP da remessa escolhido entre as Operações Fiscais",

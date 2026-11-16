@@ -369,18 +369,63 @@ export async function baixarXmlsSieg(
 }
 
 // ─── XML de uma NF-e pela chave de acesso ────────────────────────────────────
+/** Consulta individual documentada pelo SIEG; não depende do índice de emissão/destinatário. */
+export async function baixarXmlNfePorChaveSieg(creds: SiegCredentials, chave: string): Promise<string | null> {
+  if (!/^\d{44}$/.test(chave) || chave.slice(20, 22) !== "55") throw new Error("Chave de NF-e inválida.");
+  const res = await fetchSiegAutenticado(creds, `${SIEG_BASE}/baixar-xml`, {
+    method: "POST", body: JSON.stringify({ ChaveXml: chave, TipoXml: 1, BaixarEventos: false }),
+  });
+  if (res.status === 404) { await res.body?.cancel(); return null; }
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new SiegHttpError(res.status, res.headers.get("Retry-After"), "baixar-xml", "Não foi possível consultar o documento individual.");
+  }
+  const buffer = Buffer.from(await res.arrayBuffer());
+  let candidatos: string[] = [];
+  if (buffer[0] === 0x50 && buffer[1] === 0x4B) {
+    candidatos = new AdmZip(buffer).getEntries().filter(e => !e.isDirectory && e.name.toLowerCase().endsWith(".xml")).map(e => e.getData().toString("utf8"));
+  } else {
+    const texto = buffer.toString("utf8").trim();
+    if (texto.startsWith("<")) candidatos = [texto];
+    else {
+      let json: unknown;
+      try { json = JSON.parse(texto); } catch { throw new Error("SIEG baixar-xml: resposta inválida; consulta não confirmada."); }
+      const lista = Array.isArray(json) ? json : typeof json === "string" ? [json]
+        : json && typeof json === "object" && ["Xml", "XML", "xml", "XmlBase64", "xmlBase64"].some(k => k in json) ? [json] : null;
+      if (!lista) throw new Error("SIEG baixar-xml: resposta de controle inesperada; consulta não confirmada.");
+      candidatos = lista.map(item => {
+        const obj = item as Record<string, unknown>;
+        const xml = typeof item === "string" ? item : String(obj?.Xml ?? obj?.XML ?? obj?.xml ?? obj?.XmlBase64 ?? obj?.xmlBase64 ?? "");
+        if (!xml) throw new Error("SIEG baixar-xml: documento sem XML; consulta não confirmada.");
+        return xml.trim().startsWith("<") ? xml : Buffer.from(xml, "base64").toString("utf8");
+      });
+    }
+  }
+  if (!candidatos.length) return null;
+  const xml = candidatos.find(x => parseNFeXml(x)?.chave === chave);
+  if (!xml) throw new Error("SIEG baixar-xml: o XML recebido não corresponde à chave solicitada.");
+  return xml;
+}
+
 // Procura no SIEG pelo mês da emissão (da própria chave, com um dia de folga de cada lado) e pelo CNPJ do emitente;
 // sem resultado, tenta também pelo destinatário informado. Devolve o XML ou null se o SIEG não tiver a nota.
 export async function buscarXmlNfePorChaveSieg(creds: SiegCredentials, chave: string, cnpjsDest: string[] = []): Promise<string | null> {
   if (!/^\d{44}$/.test(chave)) return null;
+  const destinos = cnpjsDest.map(d => d.replace(/\D/g, "")).filter(d => d.length === 11 || d.length === 14);
+  const permitido = (xml: string) => !cnpjsDest.length || destinos.includes(parseNFeXml(xml)?.cnpj_destinatario ?? "");
+  const direto = await baixarXmlNfePorChaveSieg(creds, chave);
+  if (direto) {
+    if (!permitido(direto)) throw new Error("O XML localizado não é destinado aos documentos monitorados deste cliente. Confira o destinatário da NF-e.");
+    return direto;
+  }
   const ano = 2000 + parseInt(chave.slice(2, 4), 10), mes = parseInt(chave.slice(4, 6), 10);
   const inicio = new Date(Date.UTC(ano, mes - 1, 1) - 86_400_000).toISOString();
   const fim = new Date(Date.UTC(ano, mes, 1) + 86_400_000 - 1).toISOString();
   const cnpjEmit = chave.slice(6, 20);
-  const achar = (xmls: string[]) => xmls.find(x => x.includes(chave)) ?? null;
+  const achar = (xmls: string[]) => xmls.find(x => parseNFeXml(x)?.chave === chave && permitido(x)) ?? null;
   const porEmit = achar(await baixarXmlsSiegChunked(creds, { TipoXml: 1, DataEmissaoInicio: inicio, DataEmissaoFim: fim, CnpjEmit: cnpjEmit }));
   if (porEmit) return porEmit;
-  for (const dest of cnpjsDest.map(d => d.replace(/\D/g, "")).filter(d => d.length === 11 || d.length === 14)) {
+  for (const dest of destinos) {
     const x = achar(await baixarXmlsSiegChunked(creds, { TipoXml: 1, DataEmissaoInicio: inicio, DataEmissaoFim: fim, CnpjDest: dest, CnpjEmit: cnpjEmit }));
     if (x) return x;
   }
