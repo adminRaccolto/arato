@@ -166,7 +166,9 @@ function RemessasConteudo() {
   // Fiscais da fazenda emitente quando houver, senão da regra do CFOP
   const opRem = OPERACOES_REMESSA.find(o => o.chave === tipoRem);
   const ufEmitRem = ufFazenda.get(fazendaRem ?? "") ?? "", ufDestRem = armazem?.estado ?? "";
-  const opsFazendaRem = opsFiscais.filter(o => o.fazenda_id === fazendaRem);
+  // Operações Fiscais são do cliente (ficam espalhadas entre as fazendas dele): as da fazenda emitente vêm primeiro e
+  // ganham no empate, como na emissão (lib/fiscal/tributacao-nfe.ts). Achado 16/11/2026: só a emitente sumia com o 5934.
+  const opsFazendaRem = [...opsFiscais.filter(o => o.fazenda_id === fazendaRem), ...opsFiscais.filter(o => o.fazenda_id !== fazendaRem)];
   const fiscal = opRem ? infoFiscalRemessa(opRem, ufEmitRem, ufDestRem, opsFazendaRem) : null;
   const cfopSugerido = modo === "externa" && cfopXml ? cfopXml : tipoRem === "outro" ? cfopOutro.replace(/\D/g, "").slice(0, 4) : fiscal?.cfop ?? "";
   const cfopEfetivo = modo === "arato" && cfopManual ? cfopManual : cfopSugerido;
@@ -649,8 +651,8 @@ function RemessasConteudo() {
                       onChange={e => {
                         const v = e.target.value;
                         setCfopManual(v === cfopSugerido ? "" : v);
-                        const nome = opsFazendaRem.find(o => o.ativa !== false && (o.cfop_interno === v || o.cfop_externo === v))?.nome;
-                        if (v === cfopSugerido && opRem) setNatureza(opRem.natureza); else if (nome) setNatureza(nome);
+                        const natureza = opcoesCfop.find(o => o.cfop === v)?.natureza;
+                        if (v === cfopSugerido && opRem) setNatureza(opRem.natureza); else if (natureza) setNatureza(natureza);
                       }}>
                       {!cfopSugerido && !cfopManual && <option value="">Selecionar…</option>}
                       {opcoesCfop.map(o => <option key={o.cfop} value={o.cfop}>{o.cfop} — {o.nome}{o.cfop === cfopSugerido ? " (sugerido)" : ""}</option>)}

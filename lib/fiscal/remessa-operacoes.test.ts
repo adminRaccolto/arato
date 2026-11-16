@@ -36,9 +36,15 @@ test("seletor de CFOP da remessa: Operações Fiscais da fazenda na direção ce
     { nome: "Outras Saídas", cfop_interno: "5949", cfop_externo: "6949", icms_cst_interno: "90", icms_cst_externo: "90" },
     { nome: "Inativa", cfop_interno: "5915", cfop_externo: "6915", ativa: false },
   ];
-  assert.deepEqual(opcoesCfopRemessa("MT", "MT", cad, "5905").map(o => o.cfop), ["5905", "5949"]);
-  assert.deepEqual(opcoesCfopRemessa("MT", "PR", cad, "6905").map(o => o.cfop), ["6905", "6949"]);
-  assert.match(opcoesCfopRemessa("MT", "MT", cad, "5934").find(o => o.cfop === "5934")!.nome, /sem Operação Fiscal/);
+  const internas = opcoesCfopRemessa("MT", "MT", cad, "5905");
+  // cadastradas + padrão de remessa (5934 simbólica para armazém sempre aparece)
+  for (const c of ["5905", "5949", "5934", "5915", "5901", "5924", "5912", "5908"]) assert.ok(internas.some(o => o.cfop === c), c);
+  assert.equal(internas.find(o => o.cfop === "5905")!.cadastrada, true);
+  assert.equal(internas.find(o => o.cfop === "5949")!.nome, "Outras Saídas");
+  assert.match(internas.find(o => o.cfop === "5934")!.nome, /sem Operação Fiscal/);
+  assert.equal(internas.find(o => o.cfop === "5934")!.natureza, "Remessa simbólica para armazém geral");
+  assert.ok(opcoesCfopRemessa("MT", "PR", cad, "6905").every(o => o.cfop.startsWith("6")));
+  assert.ok(opcoesCfopRemessa("MT", "MT", cad, "5555").some(o => o.cfop === "5555" && !o.cadastrada));
 
   const i = infoFiscalPorCfop("5949", "MT", "MT", cad);
   assert.equal(i.cst, "090"); assert.equal(i.operacaoFiscal, "Outras Saídas"); assert.ok(i.cstDoCadastro);

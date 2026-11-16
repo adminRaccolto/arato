@@ -51,23 +51,30 @@ export function operacaoPorCfop(cfop: string | null | undefined): OperacaoRemess
   return OPERACOES_REMESSA.find(o => o.chave !== "emprestimo" && (o.interno === c || o.externo === c));
 }
 
-export type OpcaoCfopRemessa = { cfop: string; nome: string };
+export type OpcaoCfopRemessa = { cfop: string; nome: string; natureza: string; cadastrada: boolean };
 
-/** CFOPs das Operações Fiscais ativas da fazenda emitente, na direção da remessa (interno × interestadual), para o
- *  seletor de CFOP da NF de remessa. O CFOP sugerido entra mesmo sem cadastro. Um CFOP aparece uma vez só. */
+/** Opções do seletor de CFOP da NF de remessa, na direção da remessa (interno × interestadual):
+ *  1) Operações Fiscais ativas do cliente (a lista deve vir com as da fazenda emitente primeiro — elas ganham no empate);
+ *  2) as operações padrão de remessa (5905, 5934, 5915…), mesmo sem cadastro;
+ *  3) o CFOP sugerido, se ainda não estiver. Um CFOP aparece uma vez só. */
 export function opcoesCfopRemessa(ufEmitente: string | null | undefined, ufDestino: string | null | undefined,
   cadastro: OperacaoFiscalCadastro[], sugerido?: string | null): OpcaoCfopRemessa[] {
   const a = String(ufEmitente ?? "").trim().toUpperCase(), b = String(ufDestino ?? "").trim().toUpperCase();
   const interestadual = !!a && !!b && a !== b;
-  const vistos = new Map<string, string>();
+  const vistos = new Map<string, OpcaoCfopRemessa>();
   for (const c of cadastro) {
     if (c.ativa === false) continue;
     const cfop = String((interestadual ? c.cfop_externo : c.cfop_interno) ?? "").replace(/\D/g, "");
-    if (/^\d{4}$/.test(cfop) && !vistos.has(cfop)) vistos.set(cfop, c.nome);
+    if (/^\d{4}$/.test(cfop) && !vistos.has(cfop)) vistos.set(cfop, { cfop, nome: c.nome, natureza: c.nome, cadastrada: true });
+  }
+  for (const op of OPERACOES_REMESSA) {
+    if (op.chave === "emprestimo") continue;   // mesmo CFOP de "outras saídas"
+    const cfop = interestadual ? op.externo : op.interno;
+    if (!vistos.has(cfop)) vistos.set(cfop, { cfop, nome: `${op.nome} — sem Operação Fiscal cadastrada`, natureza: op.natureza, cadastrada: false });
   }
   const sug = String(sugerido ?? "").replace(/\D/g, "");
-  if (/^\d{4}$/.test(sug) && !vistos.has(sug)) vistos.set(sug, "sugerido — sem Operação Fiscal cadastrada");
-  return [...vistos].map(([cfop, nome]) => ({ cfop, nome })).sort((x, y) => x.cfop.localeCompare(y.cfop));
+  if (/^\d{4}$/.test(sug) && !vistos.has(sug)) vistos.set(sug, { cfop: sug, nome: "sugerido — sem Operação Fiscal cadastrada", natureza: "", cadastrada: false });
+  return [...vistos.values()].sort((x, y) => x.cfop.localeCompare(y.cfop));
 }
 
 /** Informações fiscais de um CFOP escolhido no seletor: CST, texto legal e nome da Operação Fiscal cadastrada com ele

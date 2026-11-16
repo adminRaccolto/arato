@@ -23,7 +23,7 @@ const RELEASES = [
     titulo: "CFOP da remessa escolhido entre as Operações Fiscais",
     modulos: ["Fiscal"],
     itens: [
-      { tipo: "melhoria", texto: "NF de remessa: o CFOP deixa de ser digitado e passa a ser escolhido entre as Operações Fiscais da fazenda (5xxx ou 6xxx conforme a UF do armazém), com o sugerido já marcado. Ao escolher, CST, texto legal e natureza vêm da Operação Fiscal." },
+      { tipo: "melhoria", texto: "NF de remessa: o CFOP deixa de ser digitado e passa a ser escolhido entre as Operações Fiscais do cliente e as operações padrão de remessa (5905, 5934 simbólica, 5915, 5901…), em 5xxx ou 6xxx conforme a UF do armazém, com o sugerido já marcado. Ao escolher, CST, texto legal e natureza vêm da Operação Fiscal." },
     ],
     onde: "Documentos Fiscais → Saídas → Remessas → + Nova Remessa",
   },
