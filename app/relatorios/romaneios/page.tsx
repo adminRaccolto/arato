@@ -9,6 +9,8 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { listarFazendasDaConta, listarAnosSafra, listarTodosCiclos } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
+import { SemPermissao, usePodeAbrir } from "../../../components/GuardRota";
+import { modulosDaRota } from "../../../lib/rotas-permissao";
 import type { RomaneioEntrada, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 const fmt   = (n?: number | null, d = 2) => (n ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -56,6 +58,9 @@ function RelatorioRomaneios() {
   const params = useSearchParams();
 
   const [aba, setAba] = useState<Aba>(() => (params.get("aba") as Aba | null) ?? "entrada");
+  // Entrada (Romaneios de Terceiros) é do módulo Estoque; Saída, da Expedição — cada aba segue o grupo de usuários
+  const modulosAba = modulosDaRota("/relatorios/romaneios", "?aba=" + aba);
+  const podeAba = usePodeAbrir(modulosAba);
   const [fazendas, setFazendas]     = useState<Fazenda[]>([]);
   const [anosSafra, setAnosSafra]   = useState<AnoSafra[]>([]);
   const [ciclos, setCiclos]         = useState<Ciclo[]>([]);
@@ -185,6 +190,7 @@ function RelatorioRomaneios() {
     transition: "all .15s",
   });
 
+  if (podeAba === false && modulosAba) return <SemPermissao modulos={modulosAba} />;
   return (
     <>
       <TopNav />

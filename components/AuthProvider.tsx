@@ -7,6 +7,7 @@ import { calcularStepsCompletos } from "../lib/onboarding";
 import { planoInclui } from "../lib/planos";
 import { ehAddon, ehExclusivoRaccolto } from "../lib/modulos";
 import { grupoPermite } from "../lib/permissoes-grupo";
+import { definirPermissoesEscrita } from "../lib/permissao-escrita";
 import { ehConfiguracaoPorGrupo } from "../lib/permissoes-configuracao";
 import type { PlanoId } from "../lib/planos";
 import { useRouter } from "next/navigation";
@@ -594,6 +595,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setAnoSafraVigenteDesc(escolhido?.descricao ?? null);
     })().catch(() => {});
   }, [fazendaId, fazendaIds, contaId]);
+
+  // Criar/Editar/Excluir valendo nas gravações do navegador (lib/permissao-escrita.ts) — mesmo papel e grupo da tela
+  useEffect(() => {
+    definirPermissoesEscrita({ role: userRole, permissoes: permissoes as Record<string, unknown>, carregado: modulosCarregados });
+  }, [userRole, permissoes, modulosCarregados]);
 
   // Regra das permissões por grupo: lib/permissoes-grupo.ts (grupo legado × grupo v2; usuário sem grupo vê tudo).
   const podeAcessar = useCallback((modulo: string) => {

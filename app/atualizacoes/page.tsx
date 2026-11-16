@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-g",
+    data: "16/11/2026",
+    titulo: "Permissões valem também pelo endereço e no salvar/excluir",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Tela sem \"Ver\" no grupo do usuário não abre nem digitando o endereço ou por link salvo: aparece \"Sem acesso a esta tela\". Em Cadastros e no relatório de Romaneios vale por aba (ex.: Máquinas, Fazendas, Romaneios de Saída)." },
+      { tipo: "melhoria", texto: "Criar, Editar e Excluir passam a valer nas gravações das telas: sem a ação marcada no grupo, o salvar ou excluir não grava e avisa \"Seu grupo de usuário não tem permissão\". Equipe Raccolto e usuário sem grupo não são afetados." },
+    ],
+    onde: "Configurações → Usuários e Permissões",
+  },
+  {
     versao: "2026.11.16-e",
     data: "16/11/2026",
     titulo: "Usuários e Permissões controla o menu inteiro",

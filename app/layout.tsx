@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AuthProvider from "../components/AuthProvider";
+import GuardRota from "../components/GuardRota";
 import ConfirmarAcaoHost from "../components/ConfirmarAcao";
 import ConfirmarEstornoCartaoHost from "../components/financeiro/ConfirmarEstornoCartao";
 import BannerInadimplente from "../components/BannerInadimplente";
@@ -74,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AvisoNovidade />
           <AvisosSistema />
           <div style={{ paddingLeft: "var(--sidebar-w, 0px)", transition: "padding-left 0.2s ease" }}>
-            <LayoutShell>{children}</LayoutShell>
+            <LayoutShell><GuardRota>{children}</GuardRota></LayoutShell>
           </div>
           <Footer />
         </AuthProvider>

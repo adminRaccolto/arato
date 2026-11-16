@@ -1,9 +1,11 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { protegerEscritas } from "./permissao-escrita";
 
 const url  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createBrowserClient(url, key);
+// Gravações do navegador respeitam Criar/Editar/Excluir do grupo de usuários na tela aberta (lib/permissao-escrita.ts)
+export const supabase = protegerEscritas(createBrowserClient(url, key));
 
 // ————————————————————————————————————————
 // Tipos do banco (espelham as tabelas abaixo)

@@ -12,6 +12,8 @@ import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { SemPermissao, usePodeAbrir } from "../../components/GuardRota";
+import { modulosDaRota } from "../../lib/rotas-permissao";
 import TopNav from "../../components/TopNav";
 import {
   listarFazendas, criarFazenda, atualizarFazenda, excluirFazenda,
@@ -301,6 +303,9 @@ function CadastrosInner() {
   const router = useRouter();
   const { fazendaId, fazendaIds, contaId, userRole } = useAuth();
   const [aba, setAba] = useState<TabCad>((params.get("tab") as TabCad) ?? "produtores");
+  // Cada aba pertence a um módulo do grupo de usuários (Máquinas, Fazendas, Safras, Classificação × Cadastros)
+  const modulosAba = modulosDaRota("/cadastros", "?tab=" + aba);
+  const podeAba = usePodeAbrir(modulosAba);
 
   // Sincroniza a aba sempre que o query param ?tab= mudar na URL
   useEffect(() => {
@@ -2542,6 +2547,7 @@ function CadastrosInner() {
   });
 
   // ══════ RENDER ══════
+  if (podeAba === false && modulosAba) return <SemPermissao modulos={modulosAba} />;
   return (
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
