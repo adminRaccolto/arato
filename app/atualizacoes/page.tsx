@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-j",
+    data: "16/11/2026",
+    titulo: "Incluir e excluir nas telas de configuração voltam a funcionar",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Com as permissões novas, incluir ou excluir NCM, Operação Fiscal, Plano de Contas e outras configurações ficava bloqueado para usuário de cliente, porque essas telas só têm Ver e Editar. Agora quem tem Editar inclui e exclui." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema / Plano de Contas / Operações Gerenciais",
+  },
+  {
     versao: "2026.11.16-i",
     data: "16/11/2026",
     titulo: "Gestão Arato: limpeza completa e papel Operacional",

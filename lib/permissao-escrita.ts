@@ -6,6 +6,7 @@
 
 import { grupoPermite, type PermissoesGrupo } from "./permissoes-grupo";
 import { modulosDaRota } from "./rotas-permissao";
+import { moduloPorId } from "./modulos";
 
 const EQUIPE = ["raccotlo", "raccotlo_gestor", "raccotlo_operacional", "raccotlo_seletor", "bpo"];
 
@@ -33,13 +34,26 @@ const ACOES: Record<OperacaoEscrita, string[]> = {
 };
 const NOME_ACAO: Record<OperacaoEscrita, string> = { insert: "criar", update: "editar", upsert: "gravar", delete: "excluir" };
 
+/** Ações que liberam a gravação no módulo. Módulo que não tem a ação na tela de permissões usa a mais próxima que ele
+ *  tem: configuração (só Ver/Editar) inclui e exclui com Editar; NF-e (Ver/Criar/Aprovar) altera com Criar; relatório
+ *  (só Ver/Exportar) grava o que a própria tela precisar com Ver. Achado 16/11/2026: sem isso, incluir NCM ou Operação
+ *  Fiscal ficava bloqueado para todo cliente com grupo. */
+export function acoesExigidas(modulo: string, op: OperacaoEscrita): string[] {
+  const oferece = moduloPorId(modulo)?.acoes;
+  if (!oferece) return ACOES[op];
+  const diretas = ACOES[op].filter(a => oferece.includes(a as never));
+  if (diretas.length) return diretas;
+  for (const alt of ["editar", "criar"]) if (oferece.includes(alt as never)) return [alt];
+  return ["visualizar"];
+}
+
 /** Mensagem de bloqueio, ou null quando a gravação pode seguir. Pura: recebe o endereço e o estado. */
 export function bloqueioEscrita(tabela: string, op: OperacaoEscrita, pathname: string, search: string, e: Estado = estado): string | null {
   if (TABELAS_LIVRES.has(tabela)) return null;
   if (!e.carregado || EQUIPE.includes(e.role ?? "")) return null;
   const modulos = modulosDaRota(pathname, search);
   if (!modulos) return null;
-  const ok = modulos.some(m => ACOES[op].some(a => grupoPermite(e.permissoes, m, a)));
+  const ok = modulos.some(m => acoesExigidas(m, op).some(a => grupoPermite(e.permissoes, m, a)));
   return ok ? null : `Seu grupo de usuário não tem permissão para ${NOME_ACAO[op]} nesta tela. Peça para liberar em Configurações → Usuários e Permissões.`;
 }
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bloqueioEscrita, definirPermissoesEscrita, protegerEscritas } from "./permissao-escrita";
+import { acoesExigidas, bloqueioEscrita, definirPermissoesEscrita, protegerEscritas } from "./permissao-escrita";
 
 const so_ver = { _v2: true, estoque: ["visualizar"], fin_pagar: ["visualizar", "criar", "editar"], cadastros: ["visualizar", "excluir"] };
 const estado = (permissoes: Record<string, unknown>, role = "client") => ({ role, permissoes, carregado: true });
@@ -48,4 +48,17 @@ test("cliente protegido: gravação bloqueada não chega ao banco e devolve erro
     delete (globalThis as { window?: unknown }).window;
     definirPermissoesEscrita({ role: null, permissoes: {}, carregado: false });
   }
+});
+
+test("módulo sem a ação usa a mais próxima: configuração inclui e exclui com Editar", () => {
+  assert.deepEqual(acoesExigidas("conf_fiscal", "insert"), ["editar"]);
+  assert.deepEqual(acoesExigidas("conf_fiscal", "delete"), ["editar"]);
+  assert.deepEqual(acoesExigidas("fiscal_nfe", "update"), ["criar"]);
+  assert.deepEqual(acoesExigidas("fin_relatorios", "upsert"), ["visualizar"]);
+  assert.deepEqual(acoesExigidas("estoque", "delete"), ["excluir"]);
+  const admin = estado({ _v2: true, conf_fiscal: ["visualizar", "editar"] });
+  assert.equal(bloqueioEscrita("ncm_tributacoes", "insert", "/configuracoes/modulos", "", admin), null);
+  assert.equal(bloqueioEscrita("ncm_tributacoes", "delete", "/configuracoes/modulos", "", admin), null);
+  const soVer = estado({ _v2: true, conf_fiscal: ["visualizar"] });
+  assert.match(bloqueioEscrita("ncm_tributacoes", "insert", "/configuracoes/modulos", "", soVer)!, /permissão/);
 });
