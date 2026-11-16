@@ -16,6 +16,7 @@ import {
 } from "../../lib/db";
 import { cfopPorDestino, destinatarioDaInscricao, mesmoEstabelecimento } from "../../lib/fiscal/transferencia-maquina";
 import type { TransferenciaMaquina, MotivoTransferenciaMaquina, Maquina, Pessoa, Produtor, ProdutorIE } from "../../lib/supabase";
+import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../lib/fiscal/espelho-cliente";
 
 // Transporte da NF-e (modalidade do frete, transportadora, veículo e motorista) — mesmos dados da NF-e de produto
 type Transp = { frete: "0" | "1" | "2" | "9"; transportadora_id: string; veiculo_id: string; placa: string; uf_placa: string; motorista_nome: string; motorista_cpf: string };
@@ -349,8 +350,9 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
     else alert("Esta NF-e ainda não está no Monitor de NF-e Emitidas. Fale com o suporte para registrá-la.");
   }
 
-  async function emitirRemessa() {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir remessa)", perigo: false }))) return;
+  // espelho: a NF-e de remessa montada como na emissão, sem transmitir nem registrar; abre o DANFE de conferência
+  async function emitirRemessa(espelho?: JanelaEspelho) {
+    if (!espelho && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir remessa)", perigo: false }))) return;
     if (!fazendaId) return;
     const motivoCfg = MOTIVOS[f.motivo];
     const ehEntrada = motivoCfg.direcao === "entrada";
@@ -367,6 +369,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
     // sem chamar a SEFAZ. Se o proprietário informou os dados da NF dele, gravamos
     // como referência (não é uma NF nossa, é só rastreabilidade do documento dele).
     if (!motivoCfg.emiteNfEtapa1) {
+      if (espelho) return; // sem NF nossa nesta etapa: não há espelho
       setSalvando(true);
       setErro("");
       try {
@@ -425,9 +428,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       const cfopSaida = cfopPorDestino(motivoCfg.cfopEtapa1 ?? "", ieEmissao?.uf || em.uf, dest.estado);
       const { transporte, motorista } = montarTransporte(trNova, f.motorista_nome, f.motorista_cpf);
 
-      const resp = await fetch("/api/fiscal/emitir-nfe", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const corpo = {
           fazenda_id: em.fazenda_id,
           modulo_key: moduloKey,
           cpf_cnpj_hint: cpfCnpjHint,
@@ -453,7 +454,11 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
           frete: trNova.frete,
           transporte,
           tipo: "1",
-        }),
+      };
+      if (espelho) { await mostrarEspelhoNfe(corpo, espelho); return; }
+      const resp = await fetch("/api/fiscal/emitir-nfe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpo),
       });
       const res = await resp.json() as ResultadoEmissao;
       if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
@@ -502,14 +507,16 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
     }
   }
 
-  async function emitirRetorno() {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir retorno)", perigo: false }))) return;
+  // espelho: a NF-e de retorno/devolução montada como na emissão, sem transmitir nem registrar
+  async function emitirRetorno(espelho?: JanelaEspelho) {
+    if (!espelho && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir retorno)", perigo: false }))) return;
     if (!modalRet || !fazendaId) return;
     const motivoCfg = MOTIVOS[modalRet.motivo];
     if (!motivoCfg.temEtapa2) return;
 
     // Sem NF na devolução (equipamento de prestador de serviço) — só fecha o registro.
     if (!motivoCfg.emiteNfEtapa2) {
+      if (espelho) return; // sem NF nesta etapa: não há espelho
       setRetSalvando(true);
       setRetErro("");
       try {
@@ -540,9 +547,7 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
       const moduloKey = emR.modulo;
       const { transporte, motorista } = montarTransporte(trRet, trRet.motorista_nome, trRet.motorista_cpf);
 
-      const resp = await fetch("/api/fiscal/emitir-nfe", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const corpo = {
           fazenda_id: emR.fazenda_id,
           modulo_key: moduloKey,
           cpf_cnpj_hint: modalRet.emitente_cpf_cnpj,
@@ -568,7 +573,11 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
           transporte,
           nfe_ref: modalRet.nf_saida_chave || undefined,
           tipo: tipoNfRetorno,
-        }),
+      };
+      if (espelho) { await mostrarEspelhoNfe(corpo, espelho); return; }
+      const resp = await fetch("/api/fiscal/emitir-nfe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpo),
       });
       const res = await resp.json() as ResultadoEmissao;
       if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
@@ -846,7 +855,11 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="primary" onClick={emitirRemessa} disabled={salvando} style={{ ...btnV, cursor: salvando ? "default" : "pointer" }}>
+              {MOTIVOS[f.motivo].emiteNfEtapa1 && (
+                <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => emitirRemessa(j))} disabled={salvando}
+                  title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ." style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600 }}>📄 Espelho</OperationalButton>
+              )}
+              <OperationalButton data-arato-button="primary" onClick={() => emitirRemessa()} disabled={salvando} style={{ ...btnV, cursor: salvando ? "default" : "pointer" }}>
                 {salvando ? "Salvando…" : (MOTIVOS[f.motivo].emiteNfEtapa1 ? "Emitir NF de Remessa" : "Registrar Entrada")}
               </OperationalButton>
             </div>
@@ -878,7 +891,11 @@ export default function RemessasMaquinas({ retornoId }: { retornoId?: string | n
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalRet(null)}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="primary" onClick={emitirRetorno} disabled={retSalvando} style={{ ...btnV, background: "#1A6B3C", cursor: retSalvando ? "default" : "pointer" }}>
+              {motivoCfgRet.emiteNfEtapa2 && (
+                <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => emitirRetorno(j))} disabled={retSalvando}
+                  title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ." style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600 }}>📄 Espelho</OperationalButton>
+              )}
+              <OperationalButton data-arato-button="primary" onClick={() => emitirRetorno()} disabled={retSalvando} style={{ ...btnV, background: "#1A6B3C", cursor: retSalvando ? "default" : "pointer" }}>
                 {retSalvando ? "Salvando…" : (motivoCfgRet.emiteNfEtapa2 ? "Emitir NF" : "Confirmar Saída")}
               </OperationalButton>
             </div>

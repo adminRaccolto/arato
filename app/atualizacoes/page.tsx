@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-n",
+    data: "16/11/2026",
+    titulo: "Espelho da NF-e nas demais telas de emissão",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Botão 📄 Espelho também em Venda por Contrato, Venda Avulsa e Devoluções (no assistente e na nota pendente da lista), NF de Transferência, retorno de remessa, devolução de compra e remessa/retorno de máquinas. Mostra o DANFE montado como será transmitido, sem valor fiscal; nada é gravado nem enviado à SEFAZ." },
+    ],
+    onde: "Documentos Fiscais → Venda por Contrato, Venda Avulsa, Devoluções, Painel de Notas (Transferência), Retornos Recebidos, Remessas (Máquinas) e Notas de Fornecedores (↩ Devolver)",
+  },
+  {
     versao: "2026.11.16-m",
     data: "16/11/2026",
     titulo: "Espelho da NF-e, CT-e e MDF-e antes de transmitir; remessa pendente no Painel de Notas",

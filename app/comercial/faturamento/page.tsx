@@ -25,6 +25,7 @@ import ProdutorCombo from "../../../components/ProdutorCombo";
 import { fmtNcm, ncmPadraoDoProduto, produtoDoContrato } from "../../../lib/fiscal/ncm-produtos";
 import { ehRascunho, montarRascunhoDuplicado, podeDuplicarNota } from "../../../lib/fiscal/duplicar-nota";
 import { precoKgDoContrato } from "../../../lib/contratos/preco-nf";
+import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
 import { notaAguardaRomaneio, pesoDaNota } from "../../../lib/contratos/romaneio-nf";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
@@ -961,8 +962,44 @@ function FaturamentoInner() {
     nota.dados_nf_json = dj;
   }
 
-  async function emitirNota() {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir nota)", perigo: false }))) return;
+  // Nota pendente no grid (em digitação, não rascunho): mesmo corpo para o espelho e para o botão Transmitir
+  function corpoTransmissaoPendente(nota: NotaFiscal) {
+    const dj = nota.dados_nf_json as Record<string, string> ?? {};
+    // modulo_key: usa o salvo no dados_nf_json (vazio = servidor resolve via fallback)
+    const moduloKey = dj.modulo_key ?? "";
+    const itens = (nota.itens_json as {item:string;ncm:string;cfop:string;unidade:string;quantidade:number;valor_unitario:number}[]) ?? [];
+    return {
+      fazenda_id: nota.fazenda_id,
+      modulo_key: moduloKey,
+      destinatario: {
+        nome:           nota.destinatario,
+        cpf_cnpj:       nota.cnpj_destinatario || undefined,
+        ie:             dj.dest_ie || undefined,
+        logradouro:     dj.dest_endereco || undefined,
+        numero:         dj.dest_numero || undefined,
+        bairro:         dj.dest_bairro || undefined,
+        cep:            dj.dest_cep || undefined,
+        telefone:       dj.dest_fone || undefined,
+        municipio_ibge: dj.dest_municipio_ibge || undefined,
+        municipio_nome: dj.dest_cidade || undefined,
+        uf:             dj.dest_uf || undefined,
+      },
+      itens: itens.map((i, idx) => ({
+        descricao:      i.item,
+        ncm:            i.ncm,
+        cfop:           i.cfop ?? nota.cfop,
+        unidade:        i.unidade,
+        quantidade:     i.quantidade,
+        valor_unitario: i.valor_unitario,
+      })),
+      natureza: nota.natureza,
+      tipo: "1" as const,
+    };
+  }
+
+  // espelho: mesmos dados e validações da emissão, sem gravar a nota nem transmitir; abre o DANFE de conferência
+  async function emitirNota(espelho?: JanelaEspelho) {
+    if (!espelho && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir nota)", perigo: false }))) return;
     const fazEmissao = fazNFe || fazendaId || "";
     if (!fazEmissao) { setErroForm("Selecione a fazenda emitente."); return; }
     if (!fVenda.produtor_id) { setErroForm("Selecione o produtor."); return; }
@@ -975,36 +1012,10 @@ function FaturamentoInner() {
     try {
       const { payload, moduloFiscal } = await montarPayloadNota();
       if ((contratoSelecionado || fVenda.complementar_de) && nfeItens.some(i => !(i.valor_total > 0))) { setErroForm("Item da nota sem valor: confira o preço e a quantidade."); return; }
-
-      // Rascunho (cópia de NF emitida): grava na mesma linha, sem deixar o rascunho para trás
-      let nova: NotaFiscal;
-      if (rascunhoId) {
-        const { data: atual, error: eRasc } = await supabase.from("notas_fiscais").update(payload).eq("id", rascunhoId).select().single();
-        if (eRasc) throw eRasc;
-        nova = atual as NotaFiscal;
-      } else {
-        nova = await criarNotaFiscal(payload);
-      }
-
-      // Atualiza o romaneio com o nfe_numero para que o DANFE possa reconstruir os itens
-      if (fVenda.romaneio_id) {
-        await supabase.from("romaneios").update({
-          nfe_numero: nova.numero,
-          nfe_status:  "gerando",
-        }).eq("id", fVenda.romaneio_id);
-      }
-
-      // Transmite para o SEFAZ via /api/fiscal/emitir-nfe
-      let erroSefaz: string | null = null;
-      if (moduloFiscal) {
-        try {
-          const resp = await fetch("/api/fiscal/emitir-nfe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+      const corpoEmissao = (notaId?: string) => ({
               fazenda_id:      fazEmissao,
-              nota_id:nova.id,
-              modulo_key:      moduloFiscal.modulo,
+              nota_id:notaId,
+              modulo_key:      moduloFiscal?.modulo,
               data_emissao: fVenda.data_emissao,
               operacao_fiscal_id:operacaoFiscalId || undefined,variaveis_fiscais:variaveisFiscais,
               emit_ie_override: fVenda.ie_id
@@ -1054,7 +1065,35 @@ function FaturamentoInner() {
                 placa:      fVenda.placa || undefined,
                 uf_veiculo: fVenda.uf_placa || undefined,
               } : undefined,
-            }),
+      });
+      if (espelho) { await mostrarEspelhoNfe(corpoEmissao(), espelho); return; }
+
+      // Rascunho (cópia de NF emitida): grava na mesma linha, sem deixar o rascunho para trás
+      let nova: NotaFiscal;
+      if (rascunhoId) {
+        const { data: atual, error: eRasc } = await supabase.from("notas_fiscais").update(payload).eq("id", rascunhoId).select().single();
+        if (eRasc) throw eRasc;
+        nova = atual as NotaFiscal;
+      } else {
+        nova = await criarNotaFiscal(payload);
+      }
+
+      // Atualiza o romaneio com o nfe_numero para que o DANFE possa reconstruir os itens
+      if (fVenda.romaneio_id) {
+        await supabase.from("romaneios").update({
+          nfe_numero: nova.numero,
+          nfe_status:  "gerando",
+        }).eq("id", fVenda.romaneio_id);
+      }
+
+      // Transmite para o SEFAZ via /api/fiscal/emitir-nfe
+      let erroSefaz: string | null = null;
+      if (moduloFiscal) {
+        try {
+          const resp = await fetch("/api/fiscal/emitir-nfe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(corpoEmissao(nova.id)),
           });
           if (resp.ok || resp.status === 422) {
             const res = await resp.json() as {
@@ -1775,46 +1814,23 @@ function FaturamentoInner() {
                           )
                         )}
                         {nota.status === "em_digitacao" && !rasc && (
+                          <OperationalButton data-arato-button="secondary" title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal)"
+                            style={{ padding:"4px 10px", fontSize:11, background:"#D5E8F5", color:"#0B2D50", border:"0.5px solid #1A4870", borderRadius:6, cursor:"pointer", fontWeight:600 }}
+                            onClick={() => comJanelaEspelho(j => mostrarEspelhoNfe(corpoTransmissaoPendente(nota), j))}>
+                            📄 Espelho
+                          </OperationalButton>
+                        )}
+                        {nota.status === "em_digitacao" && !rasc && (
                           <OperationalButton data-arato-button="primary"
                             style={{ padding:"4px 10px", fontSize:11, background:"#2A2A2A", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
-                              const dj = nota.dados_nf_json as Record<string, string> ?? {};
-                              // modulo_key: usa o salvo no dados_nf_json (vazio = servidor resolve via fallback)
-                              const moduloKey = dj.modulo_key ?? "";
-                              const itens = (nota.itens_json as {item:string;ncm:string;cfop:string;unidade:string;quantidade:number;valor_unitario:number}[]) ?? [];
                               setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "em_digitacao" } : n));
                               try {
                                 const resp = await fetch("/api/fiscal/emitir-nfe", {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    fazenda_id: nota.fazenda_id,
-                                    modulo_key: moduloKey,
-                                    destinatario: {
-                                      nome:           nota.destinatario,
-                                      cpf_cnpj:       nota.cnpj_destinatario || undefined,
-                                      ie:             dj.dest_ie || undefined,
-                                      logradouro:     dj.dest_endereco || undefined,
-                                      numero:         dj.dest_numero || undefined,
-                                      bairro:         dj.dest_bairro || undefined,
-                                      cep:            dj.dest_cep || undefined,
-                                      telefone:       dj.dest_fone || undefined,
-                                      municipio_ibge: dj.dest_municipio_ibge || undefined,
-                                      municipio_nome: dj.dest_cidade || undefined,
-                                      uf:             dj.dest_uf || undefined,
-                                    },
-                                    itens: itens.map((i, idx) => ({
-                                      descricao:      i.item,
-                                      ncm:            i.ncm,
-                                      cfop:           i.cfop ?? nota.cfop,
-                                      unidade:        i.unidade,
-                                      quantidade:     i.quantidade,
-                                      valor_unitario: i.valor_unitario,
-                                    })),
-                                    natureza: nota.natureza,
-                                    tipo: "1" as const,
-                                  }),
+                                  body: JSON.stringify(corpoTransmissaoPendente(nota)),
                                 });
                                 const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; serie?: string; cStat?: string; xMotivo?: string; erro?: string };
                                 if (res.sucesso && res.chave) {
@@ -2294,7 +2310,13 @@ function FaturamentoInner() {
                       {salvandoRascunho ? "Salvando…" : "Salvar rascunho"}
                     </OperationalButton>
                   )}
-                  <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo || salvandoRascunho}>
+                  {/* Espelho — o DANFE montado como será transmitido, sem valor fiscal, para conferir antes */}
+                  <OperationalButton data-arato-button="secondary" style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600 }}
+                    onClick={() => comJanelaEspelho(j => emitirNota(j))} disabled={emitindo || salvandoRascunho}
+                    title="Gera o DANFE exatamente como será transmitido, marcado como espelho (sem valor fiscal). Nada é gravado nem enviado à SEFAZ.">
+                    📄 Espelho
+                  </OperationalButton>
+                  <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={() => emitirNota()} disabled={emitindo || salvandoRascunho}>
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
                   </OperationalButton>
                 </div>

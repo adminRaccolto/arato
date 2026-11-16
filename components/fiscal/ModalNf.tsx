@@ -67,6 +67,7 @@ import { estornarNfComConfirmacao } from "../../lib/fiscal/estornar-nf-cliente";
 import { cobrancaDaNf, motivoSemCp, CFOPS_ENTREGA_FUTURA, CFOPS_REMESSA_BEM, CFOPS_SIMPLES_FATURAMENTO } from "../../lib/fiscal/cfop-cobranca";
 import { alocarRemessa } from "../../lib/estoque/entrega-futura";
 import { chavesReferenciadas } from "../../lib/fiscal/retorno-rateio";
+import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../lib/fiscal/espelho-cliente";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -2099,8 +2100,10 @@ export default function ModalNf({
   // Emite a NF-e de devolução DE VERDADE na SEFAZ (saída, de volta ao fornecedor — CFOP 5201/6201)
   // antes de gravar qualquer coisa no sistema: sem NF-e autorizada não há como o caminhão sair com a
   // mercadoria de forma regular, então nada é escriturado se a SEFAZ rejeitar.
-  async function confirmarDevolucao() {
+  // espelho: mesma NF-e de devolução, sem transmitir nem processar; abre o DANFE de conferência
+  async function confirmarDevolucao(espelho?: JanelaEspelho) {
     if (!fazendaId || !devNfOrig) return;
+    if (espelho && devExterna) return;
     const itensParaDevolver = devItens.filter(i => i.quantidade_devolver > 0);
     if (itensParaDevolver.length === 0) {
       setDevErr("Informe a quantidade a devolver em ao menos um item.");
@@ -2211,10 +2214,7 @@ export default function ModalNf({
           }
         } catch { /* segue sem — o erro da SEFAZ embaixo já orienta a corrigir o cadastro */ }
       }
-      const resp = await fetch("/api/fiscal/emitir-nfe", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const corpo = {
           // A NF de origem pode ser de qualquer fazenda do cliente — nunca a "fazendaId" ativa da
           // sessão, senão o emissor busca config e cadastro de Pessoas na fazenda errada e falha.
           fazenda_id:   devNfOrig.fazenda_id,
@@ -2242,7 +2242,12 @@ export default function ModalNf({
           tipo:     "1",
           // devolução: SEFAZ rejeita (328) CFOP de devolução sem finNFe 4; retorno de comodato/demonstração/conserto é NF normal
           fin_nfe:  finalidadeDoRetorno(itensParaDevolver.map(i => i.cfop)),
-        }),
+      };
+      if (espelho) { await mostrarEspelhoNfe(corpo, espelho); return; }
+      const resp = await fetch("/api/fiscal/emitir-nfe", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpo),
       });
       const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string; xmlUrl?: string; emit_razao?: string; emit_cnpj?: string; emit_ie?: string; emit_endereco?: string; emit_numero?: string; emit_bairro?: string; emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string };
       if (!res.sucesso || !res.chave) {
@@ -4760,8 +4765,14 @@ export default function ModalNf({
               {/* Ações */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button data-arato-button="secondary" style={btnR} onClick={() => setDevModal(false)}>Cancelar</button>
+                {!devExterna && (
+                  <button data-arato-button="secondary" onClick={() => comJanelaEspelho(j => confirmarDevolucao(j))}
+                    disabled={devSaving || devItens.filter(i => i.quantidade_devolver > 0).length === 0}
+                    title="DANFE da devolução montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
+                    style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", borderColor: "#1A4870", fontWeight: 600 }}>📄 Espelho</button>
+                )}
                 <button data-arato-button="toggle"
-                  onClick={confirmarDevolucao}
+                  onClick={() => confirmarDevolucao()}
                   disabled={devSaving || devItens.filter(i => i.quantidade_devolver > 0).length === 0}
                   style={{ ...btnV, background: devSaving ? "#ccc" : "#E24B4A", cursor: devSaving ? "default" : "pointer" }}
                 >

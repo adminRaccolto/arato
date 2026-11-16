@@ -24,6 +24,7 @@ import { listarTransferenciasMaquinas, atualizarTransferenciaMaquina } from "../
 import Link from "next/link";
 import { fatorUnidade } from "../../../lib/estoque/unidades";
 import { hojeLocal } from "../../../lib/data-local";
+import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
 import { chavesReferenciadas, problemasRateio, quantidadesPorRemessa, ratearRetorno } from "../../../lib/fiscal/retorno-rateio";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -275,7 +276,8 @@ function RetornosConteudo() {
     setRetTr(TRANSP_VAZIO); setRetExt({ numero: "", serie: "", chave: "" }); setRetErro("");
   }
 
-  async function confirmarRetorno() {
+  // espelho: mesmos dados da emissão do retorno, sem transmitir nem registrar; abre o DANFE de conferência
+  async function confirmarRetorno(espelho?: JanelaEspelho) {
     if (!retRem) return;
     const valorDe = (v: string) => parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
     // A remessa da linha + as outras do mesmo armazém marcadas: cada uma com o seu valor (até o saldo dela)
@@ -288,7 +290,7 @@ function RetornosConteudo() {
     const valor = lote.reduce((t, x) => t + x.valor, 0);
     if (!retVolta) { setRetErro("Escolha o depósito para onde a mercadoria volta."); return; }
     if (retModo === "externa" && !retExt.numero.trim()) { setRetErro("Informe o número da NF de retorno."); return; }
-    if (!(await confirmarAcao({ titulo: retModo === "arato" ? "Emitir NF-e de retorno?" : "Registrar retorno?", perigo: false,
+    if (!espelho && !(await confirmarAcao({ titulo: retModo === "arato" ? "Emitir NF-e de retorno?" : "Registrar retorno?", perigo: false,
       mensagem: `Retorno de ${fmtBRL(valor)}: ${lote.map(x => `remessa NF ${x.rem.nf_remessa_numero} ${fmtBRL(x.valor)}${x.valor < saldoRemessa(x.rem) - 0.01 ? " (parcial)" : ""}`).join("; ")}. A mercadoria volta para "${depositos.find(d => d.id === retVolta)?.nome}".` }))) return;
     setRetSalvando(true); setRetErro("");
     try {
@@ -316,7 +318,7 @@ function RetornosConteudo() {
         fazEmissao = em.fazenda_id;
         const dest = pessoas.find(p => p.id === retRem.destinatario_pessoa_id);
         const { transporte, motorista } = montarTransporte(dados, retTr);
-        const resp = await fetch("/api/fiscal/emitir-nfe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        const corpo = {
           fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf, emit_ie_override: ie?.ie || undefined,
           destinatario: {
             nome: retRem.destinatario_nome, cpf_cnpj: dest ? (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined : undefined, ie: dest?.inscricao_est || undefined,
@@ -328,7 +330,9 @@ function RetornosConteudo() {
           // Uma NF de retorno pode referenciar várias remessas (um <NFref> por chave)
           natureza: retNatureza, nfe_ref: lote.map(x => x.rem.nf_remessa_chave).filter((k): k is string => !!k), frete: retTr.frete, transporte, tipo: "1",
           inf_cpl: [`Retorno de remessa — NF ref: ${lote.map(x => x.rem.nf_remessa_chave ?? x.rem.nf_remessa_numero ?? "").join(", ")}`, motorista].filter(Boolean).join(" | "),
-        }) });
+        };
+        if (espelho) { await mostrarEspelhoNfe(corpo, espelho); return; }
+        const resp = await fetch("/api/fiscal/emitir-nfe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
         const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string } & Record<string, string | undefined>;
         if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
         nf = { numero: res.numero ?? "", serie: res.serie, chave: res.chave, protocolo: res.protocolo, xml_url: res.xmlUrl,
@@ -634,7 +638,12 @@ function RetornosConteudo() {
               {retErro && <div style={{ padding: 10, background: "#FCEBEB", color: "#791F1F", borderRadius: 8, fontSize: 13 }}>{retErro}</div>}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <OperationalButton data-arato-button="secondary" onClick={() => setRetRem(null)} style={{ padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
-                <OperationalButton data-arato-button="primary" onClick={confirmarRetorno} disabled={retSalvando} style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{retSalvando ? "Salvando…" : retModo === "arato" ? "Emitir NF-e de retorno" : "Registrar retorno"}</OperationalButton>
+                {retModo === "arato" && (
+                  <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => confirmarRetorno(j))} disabled={retSalvando}
+                    title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
+                    style={{ padding: "8px 18px", background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>📄 Espelho</OperationalButton>
+                )}
+                <OperationalButton data-arato-button="primary" onClick={() => confirmarRetorno()} disabled={retSalvando} style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{retSalvando ? "Salvando…" : retModo === "arato" ? "Emitir NF-e de retorno" : "Registrar retorno"}</OperationalButton>
               </div>
             </div>
           </div>

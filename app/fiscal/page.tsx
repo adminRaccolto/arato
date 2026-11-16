@@ -1977,8 +1977,9 @@ function FiscalInner() {
   }
 
   // Emitir NF-e de Transferência (CFOP 5.152 / 6.152)
-  const emitirTransferencia = async () => {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir transferencia)", perigo: false }))) return;
+  // espelho: a NF-e de transferência montada como na emissão, sem transmitir nem gravar; abre o DANFE de conferência
+  const emitirTransferencia = async (espelho?: JanelaEspelho) => {
+    if (!espelho && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir transferencia)", perigo: false }))) return;
     if (!fazendaId) return;
     if (iesTransf.length > 1 && !fTransf.ie_selecionada) { alert("Selecione a Inscrição Estadual de origem do produtor."); return; }
     const fazOrigem = fazendaDaIe(iesTransf, fTransf.ie_selecionada) || (await fazendaDoProdutor(fTransf.produtor_id)) || fazendaId;
@@ -1999,10 +2000,7 @@ function FiscalInner() {
         .from("fazendas").select("nome, municipio, estado, logradouro, numero, bairro, cep, municipio_ibge, cpf_cnpj")
         .eq("id", fzDest.id).maybeSingle();
 
-      const res = await fetch("/api/fiscal/emitir-nfe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const corpoTransf = {
           fazenda_id:       fazOrigem,
           modulo_key:       moduloKeyAtivo || undefined,
           emit_ie_override: fTransf.ie_selecionada || prodSel?.inscricao_est || undefined,
@@ -2032,7 +2030,12 @@ function FiscalInner() {
           inf_cpl:  [natObj.obs, fTransf.obs].filter(Boolean).join(" | "),
           frete: "9",
           tipo: "1",
-        }),
+      };
+      if (espelho) { await mostrarEspelhoNfe(corpoTransf, espelho); return; }
+      const res = await fetch("/api/fiscal/emitir-nfe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpoTransf),
       });
       const resBody = await res.json() as { sucesso?: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string; erro?: string };
 
@@ -3638,7 +3641,13 @@ function FiscalInner() {
               <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)" }}>Não gera recebimento financeiro · CFOP {fTransf.cfop}</div>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
                 <OperationalButton data-arato-button="secondary" onClick={() => setModalTransferencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
-                <OperationalButton data-arato-button="toggle" onClick={emitirTransferencia}
+                <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => emitirTransferencia(j))}
+                  disabled={!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf}
+                  title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
+                  style={{ padding: "8px 18px", background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                  📄 Espelho
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={() => emitirTransferencia()}
                   disabled={!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf}
                   style={{ padding: "8px 18px", background: (!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf) ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                   {salvandoTransf ? "⟳ Emitindo…" : "⟳ Emitir NF de Transferência"}
