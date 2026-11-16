@@ -76,6 +76,7 @@ export interface ResultadoEmissaoMDFe {
   cStat:        string;
   xMotivo:      string;
   respostaSefaz?: boolean;
+  xmlPrevia?:   string;   // espelho: XML montado, sem assinatura e sem transmissão
 }
 
 /** Resolve município + IBGE de destino a partir dos CT-e/NF-e vinculados ao MDF-e. */
@@ -137,6 +138,7 @@ export async function emitirMDFe(
   fazendaId: string,
   mdfeId: string,
   requisicaoId?:string,
+  previa=false,   // espelho: monta o XML como na transmissão e para antes de reservar número, assinar e enviar
 ): Promise<ResultadoEmissaoMDFe> {
   const { data: m, error: erroDocumento } = await sb().from("mdfes").select("*").eq("id", mdfeId).maybeSingle();
   if (erroDocumento) throw erroDocumento;
@@ -191,9 +193,11 @@ export async function emitirMDFe(
   }
   const confg = resolved.mdfeConfig;
   const fc = resolved.fiscalConfig;
-  let pem: PemPair;
-  try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
-  catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
+  let pem!: PemPair;
+  if (!previa) {   // o espelho não assina: não depende do certificado
+    try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
+    catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
+  }
 
   // 3. Veículo (placa + tara) e motorista(es)
   // Conjunto digitado sem cadastro (Seção 384): placas, UF, tara e capacidade lançadas no próprio MDF-e.
@@ -411,6 +415,13 @@ export async function emitirMDFe(
   };
 
   buildMDFe(input);
+  if (previa) {
+    // Espelho: o mesmo XML que iria para a SEFAZ, com o próximo número da série (o definitivo é reservado na transmissão)
+    const proximo = parseInt(String(confg.numero_inicial ?? ""), 10);
+    emitente.numero_mdfe = Number.isFinite(proximo) && proximo > 0 ? proximo : 1;
+    const esp = buildMDFe(input);
+    return { sucesso: true, cStat: "PREVIA", xMotivo: "Espelho gerado. Nada foi transmitido à SEFAZ.", chave: esp.chave, numero: String(emitente.numero_mdfe), xmlPrevia: esp.xml };
+  }
   const dadosOperacao={mdfe_id:mdfeId};
   const operacao=await abrirOperacaoFiscal(sb(),{id:requisicaoId,fazenda:fazendaId,modelo:58,documento:emitente.cpf_cnpj,serie:emitente.serie,ambiente:emitente.ambiente,
     dados:dadosOperacao,modulo:resolved.mdfeModulo,proximo:confg.numero_inicial,registro:mdfeId});

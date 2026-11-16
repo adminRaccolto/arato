@@ -23,6 +23,8 @@ import { OPERACOES_REMESSA, infoFiscalPorCfop, infoFiscalRemessa, opcoesCfopReme
 import { ratearDescontoNf } from "../../../lib/nfe/remessa";
 import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
+import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
+import { notaPendenteDaRemessa } from "../../../lib/fiscal/remessa-pendente";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -302,20 +304,34 @@ function RemessasConteudo() {
     });
   }
 
-  async function salvar() {
+  // acao: "agora" transmite na hora; "painel" grava a NF-e como pendente de transmissão no Painel de Notas (Documentos
+  // Fiscais), para conferir no espelho e transmitir de lá; uma janela = só o espelho, nada é gravado.
+  // Em todos os casos a remessa (transferência de estoque) só é registrada com a NF-e autorizada.
+  async function salvar(acao: "agora" | "painel" | JanelaEspelho = "agora") {
+    const espelho = typeof acao === "object" ? acao : null;
     const cf = cfop.replace(/\D/g, "");
     if (!armazem) { setErro("Escolha o armazém (destinatário)."); return; }
     if (!depOrigem || !depTerceiro) { setErro("Escolha o depósito de origem e o depósito do armazém."); return; }
     if (itens.some(i => !i.insumo_id || !(numBR(i.quantidade) > 0))) { setErro("Todo item precisa estar ligado a um produto do cadastro e ter quantidade."); return; }
     if (!/^\d{4}$/.test(cf)) { setErro("Informe o CFOP da remessa (ex.: 5905)."); return; }
     if (modo === "externa" && !ext.numero.trim()) { setErro("Informe o número da NF emitida."); return; }
-    if (!(await confirmarAcao({ titulo: modo === "arato" ? "Emitir NF-e de remessa?" : "Registrar remessa?", perigo: false,
-      mensagem: `${itens.length} item(ns), ${fmtBRL(totalItens)}, para ${armazem.nome}. O estoque passa de "${depositos.find(d => d.id === depOrigem)?.nome}" para "${depositos.find(d => d.id === depTerceiro)?.nome}". Não gera CP/CR.` }))) return;
+    const deDepositos = `O estoque passa de "${depositos.find(d => d.id === depOrigem)?.nome}" para "${depositos.find(d => d.id === depTerceiro)?.nome}"`;
+    if (!espelho && !(await confirmarAcao(acao === "painel" && modo === "arato"
+      ? { titulo: "Enviar a NF-e de remessa ao painel?", perigo: false,
+          mensagem: `${itens.length} item(ns), ${fmtBRL(totalItens)}, para ${armazem.nome}. A NF-e fica pendente de transmissão no Painel de Notas (Documentos Fiscais): confira o espelho e transmita de lá. ${deDepositos} só quando ela for autorizada. Não gera CP/CR.` }
+      : { titulo: modo === "arato" ? "Emitir NF-e de remessa?" : "Registrar remessa?", perigo: false,
+          mensagem: `${itens.length} item(ns), ${fmtBRL(totalItens)}, para ${armazem.nome}. ${deDepositos}. Não gera CP/CR.` }))) return;
     setSalvando(true); setErro("");
     try {
       const itensReg = itens.map(i => ({ insumo_id: i.insumo_id, descricao: i.descricao || insumoPorId.get(i.insumo_id)?.nome || "", ncm: i.ncm, unidade: (i.unidade || "UN").toUpperCase(), quantidade: numBR(i.quantidade), valor_unitario: numBR(i.valor_unitario), valor_total: Math.round(numBR(i.quantidade) * numBR(i.valor_unitario) * 100) / 100 }));
       let nf: { numero: string; serie?: string; chave?: string | null; protocolo?: string | null; xml?: string | null; xml_url?: string | null; emit?: Record<string, string | undefined> };
       let fazEmissao = fazendaRem;
+      // Registro da remessa (sem a NF): enviado já com a NF autorizada, aqui ou depois pelo painel
+      const registroDe = (faz: string) => ({
+        acao: "registrar", fazenda_id: faz, nf_entrada_id: nfOrigem?.id ?? null, emissao: modo, cfop: cf, cfop_retorno: CFOP_RETORNO[cf] ?? cf, natureza,
+        destinatario: { pessoa_id: armazem.id, nome: armazem.nome, uf: armazem.estado ?? null },
+        deposito_origem_id: depOrigem, deposito_terceiro_id: depTerceiro, data: dataRem, observacao: obs || undefined, itens: itensReg,
+      });
       if (modo === "arato") {
         let cpfHint: string | undefined;
         if (nfOrigem?.produtor_id) { const { data: pr } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfOrigem.produtor_id).maybeSingle(); cpfHint = pr?.cpf_cnpj ?? undefined; }
@@ -326,9 +342,7 @@ function RemessasConteudo() {
         if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
         fazEmissao = em.fazenda_id;
         const { transporte, motorista } = montarTransporte(dados, tr);
-        const resp = await fetch("/api/fiscal/emitir-nfe", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const corpo = {
             fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf, emit_ie_override: ie?.ie || undefined,
             destinatario: {
               nome: armazem.nome, cpf_cnpj: (armazem.cpf_cnpj ?? "").replace(/\D/g, "") || undefined, ie: armazem.inscricao_est || undefined,
@@ -339,7 +353,31 @@ function RemessasConteudo() {
             itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, cst_icms: cstRem || (fiscalUso?.cstDoCadastro ? fiscalUso.cst : undefined) })),
             natureza, inf_cpl: [fiscalUso?.infCpl, obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
             frete: tr.frete, transporte, tipo: "1",
-          }),
+        };
+        if (espelho) { await mostrarEspelhoNfe(corpo, espelho); return; }
+        if (acao === "painel") {
+          // Número prévio (o próximo da série); o definitivo é reservado na transmissão
+          let previa: { serie: string | null; numero: number | null } = { serie: null, numero: null };
+          try {
+            const rn = await fetch("/api/fiscal/numeracao-nfe", { method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf, emit_ie_override: ie?.ie || undefined }) });
+            if (rn.ok) previa = await rn.json();
+          } catch { /* sem prévia: número provisório */ }
+          const { error: eIns } = await supabase.from("notas_fiscais").insert(notaPendenteDaRemessa({
+            fazenda_id: em.fazenda_id, numero: previa.numero != null ? String(previa.numero).padStart(6, "0") : "PREVIA", serie: previa.serie ?? "1",
+            cfop: cf, natureza, destinatario: armazem.nome, cnpj_destinatario: armazem.cpf_cnpj, data: dataRem, observacao: obs || null,
+            itens: itensReg, pendente: { corpo, registro: registroDe(em.fazenda_id) },
+            destino: { ie: armazem.inscricao_est, endereco: armazem.logradouro, numero: armazem.numero, bairro: armazem.bairro, cidade: armazem.municipio,
+              uf: armazem.estado, cep: armazem.cep, ibge: armazem.municipio_ibge },
+          }));
+          if (eIns) throw new Error(`Não foi possível enviar a NF-e ao painel: ${eIns.message}`);
+          setMsg(`✓ NF-e de remessa para ${armazem.nome} enviada ao Painel de Notas como pendente de transmissão. Confira o espelho e transmita em Documentos Fiscais → Painel de Notas; o estoque passa para "${depositos.find(d => d.id === depTerceiro)?.nome}" quando ela for autorizada.`);
+          setModal(false);
+          return;
+        }
+        const resp = await fetch("/api/fiscal/emitir-nfe", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(corpo),
         });
         const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string } & Record<string, string | undefined>;
         if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
@@ -351,11 +389,7 @@ function RemessasConteudo() {
       }
       const r = await fetch("/api/fiscal/remessas", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          acao: "registrar", fazenda_id: fazEmissao, nf_entrada_id: nfOrigem?.id ?? null, emissao: modo, cfop: cf, cfop_retorno: CFOP_RETORNO[cf] ?? cf, natureza,
-          destinatario: { pessoa_id: armazem.id, nome: armazem.nome, uf: armazem.estado ?? null },
-          deposito_origem_id: depOrigem, deposito_terceiro_id: depTerceiro, data: dataRem, observacao: obs || undefined, nf, itens: itensReg,
-        }),
+        body: JSON.stringify({ ...registroDe(fazEmissao), nf }),
       });
       const j = await r.json() as { ok: boolean; error?: string };
       if (!j.ok) throw new Error(modo === "arato" ? `A NF-e ${nf.numero} foi autorizada, mas o registro da remessa falhou: ${j.error}. Avise o suporte antes de emitir de novo.` : j.error);
@@ -708,7 +742,18 @@ function RemessasConteudo() {
             </div>
             <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={btnR}>Cancelar</OperationalButton>
-              <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}>{salvando ? "Salvando…" : modo === "arato" ? "Emitir NF-e de remessa" : "Registrar remessa"}</OperationalButton>
+              {modo === "arato" ? <>
+                {/* Espelho: o DANFE como será transmitido, sem valor fiscal. Painel: fica pendente para conferir e transmitir de lá. */}
+                <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => salvar(j))} disabled={salvando}
+                  title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
+                  style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600, opacity: salvando ? 0.6 : 1 }}>📄 Espelho</OperationalButton>
+                <OperationalButton data-arato-button="secondary" onClick={() => salvar("agora")} disabled={salvando} style={{ ...btnR, opacity: salvando ? 0.6 : 1 }}
+                  title="Transmite à SEFAZ agora, sem passar pelo painel">Emitir agora</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={() => salvar("painel")} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}
+                  title="Grava a NF-e como pendente de transmissão no Painel de Notas, para conferir no espelho e transmitir de lá">{salvando ? "Salvando…" : "Enviar ao painel (pendente)"}</OperationalButton>
+              </> : (
+                <OperationalButton data-arato-button="primary" onClick={() => salvar()} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}>{salvando ? "Salvando…" : "Registrar remessa"}</OperationalButton>
+              )}
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ const armazenamento=()=>{try{return typeof window!=="undefined"?window.sessionSt
 export async function identificarRequisicaoFiscal(url:string,init:RequestInit):Promise<{init:RequestInit;assinatura?:string}> {
   const path=url.split("?")[0];
   if(!/^\/api\/fiscal\/emitir-(nfe|cte|mdfe)$/.test(path)||String(init.method ?? "GET").toUpperCase()!=="POST"||typeof init.body!=="string")return {init};
+  if(/"previa":true/.test(init.body))return {init}; // espelho: nada é reservado nem transmitido
   const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(path+"|"+init.body));
   const assinatura=prefixo+Array.from(new Uint8Array(bytes)).map(v=>v.toString(16).padStart(2,"0")).join("");
   let item=pendentes.get(assinatura);

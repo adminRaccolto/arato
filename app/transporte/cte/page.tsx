@@ -18,7 +18,9 @@ import { listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import type { Produtor } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
-import { COLS_PARTIC, PARTIC_VAZIO, imprimirDacte, particDeCte, type ParticCte } from "../../../lib/fiscal/dacte";
+import { COLS_PARTIC, PARTIC_VAZIO, htmlDacte, imprimirDacte, particDeCte, type ParticCte } from "../../../lib/fiscal/dacte";
+import { dacteDoXml } from "../../../lib/fiscal/dacte-xml";
+import { comJanelaEspelho, mostrarHtmlEspelho, validarEspelho, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -1145,9 +1147,10 @@ function CtePageInner() {
   }
 
   // ── Autorizar — transmissão real SEFAZ ──────────────────
-  async function autorizar(c: Cte) {
+  // espelho: mesma montagem da autorização, mas o servidor para antes de numerar, assinar e transmitir; abre o DACTE do XML
+  async function autorizar(c: Cte, espelho?: JanelaEspelho) {
     if (!fazendaId) return;
-    if (!confirm(`Transmitir CT-e ${c.numero_cte} para a SEFAZ?\nAmbiente configurado em Parâmetros → CT-e.`)) return;
+    if (!espelho && !confirm(`Transmitir CT-e ${c.numero_cte} para a SEFAZ?\nAmbiente configurado em Parâmetros → CT-e.`)) return;
 
     // Usa IBGE salvo no cadastro; fallback por nome de cidade via ViaCEP
     const cExt = c as Cte & { ibge_origem?: string; ibge_destino?: string; remetente_ie?: string; destinatario_ie?: string };
@@ -1278,6 +1281,16 @@ function CtePageInner() {
         faltantes.map(g => `• ${g.label}: ${g.nome || "(sem nome)"} / ${g.uf || "(sem UF)"} — IBGE ${g.ibge || "ausente"}`).join("\n") +
         `\n\nPreencha o(s) campo(s) "Cód. IBGE" correspondente(s) diretamente neste CT-e, ou corrija o cadastro do remetente/destinatário.`
       );
+      return;
+    }
+
+    if (espelho) {
+      const esp = await validarEspelho("/api/fiscal/emitir-cte", payload);
+      const d = esp ? dacteDoXml(esp.xml, "espelho") : null;
+      if (!esp || !d) return;
+      // Chave e protocolo do espelho não valem: o número é o próximo da série e a chave só existe depois de transmitir
+      mostrarHtmlEspelho(htmlDacte({ ...d.dados, chave_acesso: null, protocolo_autorizacao: null }, logoCliente, d.rntrc || empresasTransp.find(e => e.id === c.emitente_id)?.rntrc), espelho);
+      if (esp.aviso) alert(esp.aviso);
       return;
     }
 
@@ -1625,6 +1638,12 @@ function CtePageInner() {
                           {c.status === "rascunho" && (
                             <OperationalButton data-arato-button="primary" onClick={() => autorizar(c)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Autorizar SEFAZ
+                            </OperationalButton>
+                          )}
+                          {c.status === "rascunho" && (
+                            <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => autorizar(c, j))} title="Espelho do CT-e montado como será transmitido, para conferir antes (sem valor fiscal)"
+                              style={{ padding: "4px 10px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>
+                              📄 Espelho
                             </OperationalButton>
                           )}
                           {c.status === "rascunho" && (

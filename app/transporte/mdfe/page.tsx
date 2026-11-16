@@ -9,6 +9,7 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
 import { emitenteCiot } from "../../../lib/antt/contexto";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { comJanelaEspelho, mostrarHtmlEspelho, validarEspelho, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import SeletorConjunto from "../../../components/transporte/SeletorConjunto";
@@ -43,7 +44,7 @@ function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
 // ─────────────────────────────────────────────────────────────
 // DAMDFE — Documento Auxiliar do MDF-e
 // ─────────────────────────────────────────────────────────────
-function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string, placasReboque: string[] = []) {
+function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string, placasReboque: string[] = [], espelho?: JanelaEspelho) {
   const chave44 = (m.chave_acesso ?? "").replace(/\D/g, "");
   const chaveBlocks = chave44 ? chave44.replace(/(.{4})/g, "$1 ").trim() : "— aguardando autorização SEFAZ —";
   const numFmt = m.numero_mdfe.padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
@@ -231,6 +232,8 @@ function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string, plac
 </body>
 </html>`;
 
+  // Espelho (antes de transmitir): mesma impressão, marcada como sem valor fiscal, na janela aberta no clique
+  if (espelho) { mostrarHtmlEspelho(html, espelho); return; }
   const win = window.open("", "_blank");
   if (win) { win.document.write(html); win.document.close(); }
 }
@@ -1043,6 +1046,23 @@ function MdfePageInner() {
     await autorizar(m, true);
   }
 
+  // Emitente real do MDF-e: o escolhido nele; senão a transportadora do CT-e vinculado; senão a 1ª empresa.
+  function imprimirDamdfeDe(m: Mdfe, espelho?: JanelaEspelho) {
+    const cteChave = (m.documentos.find(d => d.tipo === "cte")?.chave ?? "").replace(/\D/g, "");
+    const cnpjCte = ctes.find(c => (c.chave_acesso ?? "").replace(/\D/g, "") === cteChave)?.emitente_cnpj ?? null;
+    const doc = m.emitente_cnpj || cnpjCte || empresaCpfCnpj;
+    const emp = empresasTransp.find(e => e.cpf_cnpj.replace(/\D/g, "") === (doc ?? "").replace(/\D/g, ""));
+    imprimirDamdfe(m, doc, m.emitente_razao_social || emp?.razao_social || emp?.nome || empresaNome, placasReboque(m), espelho);
+  }
+
+  // Espelho do rascunho: o servidor monta o MDF-e como na transmissão (acusa o que barraria) e para antes de numerar,
+  // assinar e transmitir; aprovado, abre o DAMDFE marcado como espelho
+  async function espelhoMdfe(m: Mdfe, j: JanelaEspelho) {
+    if (!fazendaId) return;
+    const esp = await validarEspelho("/api/fiscal/emitir-mdfe", { fazenda_id: (m as { fazenda_id?: string }).fazenda_id || fazendaId, mdfe_id: m.id });
+    if (esp) imprimirDamdfeDe(m, j);
+  }
+
   async function autorizar(m: Mdfe, tarasConferidas = false) {
     if (!fazendaId) return;
     if (!tarasConferidas) {
@@ -1301,6 +1321,13 @@ function MdfePageInner() {
                             </OperationalButton>
                           )}
                           {m.status === "rascunho" && (
+                            <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => espelhoMdfe(m, j))} disabled={autorizando === m.id}
+                              title="Espelho do MDF-e montado como será transmitido, para conferir antes (sem valor fiscal)"
+                              style={{ padding: "4px 10px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>
+                              📄 Espelho
+                            </OperationalButton>
+                          )}
+                          {m.status === "rascunho" && (
                             <OperationalButton data-arato-button="danger" onClick={() => excluirRascunho(m)} disabled={autorizando === m.id} title="Excluir este rascunho (nunca autorizado)"
                               style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
                               Excluir
@@ -1312,14 +1339,7 @@ function MdfePageInner() {
                             </OperationalButton>
                           )}
                           {(m.status === "autorizado" || m.status === "encerrado") && (
-                            <OperationalButton data-arato-button="secondary" onClick={() => {
-                              // Emitente real do MDF-e: o escolhido nele; senão a transportadora do CT-e vinculado; senão a 1ª empresa.
-                              const cteChave = (m.documentos.find(d => d.tipo === "cte")?.chave ?? "").replace(/\D/g, "");
-                              const cnpjCte = ctes.find(c => (c.chave_acesso ?? "").replace(/\D/g, "") === cteChave)?.emitente_cnpj ?? null;
-                              const doc = m.emitente_cnpj || cnpjCte || empresaCpfCnpj;
-                              const emp = empresasTransp.find(e => e.cpf_cnpj.replace(/\D/g, "") === (doc ?? "").replace(/\D/g, ""));
-                              imprimirDamdfe(m, doc, m.emitente_razao_social || emp?.razao_social || emp?.nome || empresaNome, placasReboque(m));
-                            }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => imprimirDamdfeDe(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                               DAMDFE
                             </OperationalButton>
                           )}

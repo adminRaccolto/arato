@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       emitente_cnpj: body.emitente_cnpj,
       cte_id:        body.cte_id,
       cte_substituido_id: body.tp_cte === "3" ? body.cte_substituido_id : null,
+      previa:        (body as { previa?: boolean }).previa === true,
     });
     return NextResponse.json(resultado, { status: resultado.pendente || resultado.sincronizacao_pendente ? 202 : resultado.sucesso ? 200 : 422 });
   } catch (err) {

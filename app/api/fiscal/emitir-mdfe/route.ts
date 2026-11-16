@@ -14,13 +14,14 @@ export const preferredRegion = ["gru1"];
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { fazenda_id?: string; mdfe_id?: string };
+    const body = await req.json() as { fazenda_id?: string; mdfe_id?: string; previa?: boolean };
     const negado = await exigirAcessoRegistro(req, "mdfes", body.mdfe_id);
     if (negado) return negado;
     if (!body.fazenda_id || !body.mdfe_id) {
       return NextResponse.json({ sucesso: false, cStat: "400", xMotivo: "fazenda_id e mdfe_id são obrigatórios" }, { status: 400 });
     }
-    const resultado = await emitirMDFe(body.fazenda_id, body.mdfe_id, req.headers.get("x-arato-requisicao") || undefined);
+    // previa: espelho para conferência — monta o XML e para antes de numerar, assinar e transmitir
+    const resultado = await emitirMDFe(body.fazenda_id, body.mdfe_id, req.headers.get("x-arato-requisicao") || undefined, body.previa === true);
     return NextResponse.json(resultado, { status: resultado.pendente || resultado.sincronizacao_pendente ? 202 : resultado.sucesso ? 200 : 422 });
   } catch (err) {
     console.error("[emitir-mdfe]", err);

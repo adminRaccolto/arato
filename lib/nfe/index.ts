@@ -224,6 +224,7 @@ export interface ResultadoEmissao {
   cStat: string;
   xMotivo: string;
   xmlAssinado?: string;   // disponível mesmo em rejeição, para debug
+  xmlPrevia?: string;     // espelho (previa=true): XML montado, sem assinatura e sem transmissão
   // Dados do emitente — para persistir em dados_nf_json e usados no DANFE
   emit_razao?: string;
   emit_cnpj?: string;
@@ -245,7 +246,8 @@ export async function emitirNFe(
   emitIeOverride?: string,            // IE específica do produtor (multi-IE)
   tentativa = 0,
   requisicaoId?:string,
-  registroId?:string
+  registroId?:string,
+  previa=false   // espelho: monta o XML como na transmissão e para antes de reservar número, assinar e enviar
 ): Promise<ResultadoEmissao> {
   const dadosOperacao=structuredClone(input);
   let operacao:OperacaoFiscal;
@@ -399,9 +401,12 @@ export async function emitirNFe(
     } catch { /* API do IBGE fora do ar — segue sem o fallback, cai no erro CFG normal abaixo */ }
   }
 
-  let pem: PemPair;
-  try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
-  catch(e) { return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível carregar o certificado A1 deste titular."}; }
+  let pem!: PemPair;
+  // O espelho não assina: não depende do certificado
+  if (!previa) {
+    try { pem=(await carregarCertificadoEmitente(sb(),fazendaId,documentoDoModulo(moduloKey) || confg.cpf_cnpj_emitente || '')).pem; }
+    catch(e) { return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível carregar o certificado A1 deste titular."}; }
+  }
 
   const cpfCnpjEmit = (confg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
   const isCPFEmit   = cpfCnpjEmit.length === 11;
@@ -535,6 +540,14 @@ export async function emitirNFe(
   try {
     // Valida o documento completo antes de reservar a numeração.
     buildNFe({...input,itens:itensComIBSCBS,emitente:{...emitente,numero_nfe:1},infCpl:infCplFinal});
+    if (previa) {
+      // Espelho: o mesmo XML que iria para a SEFAZ, com o próximo número da série (o definitivo é reservado na transmissão)
+      const proximo = parseInt(String(confg.numero_inicial ?? ""), 10);
+      emitente.numero_nfe = Number.isFinite(proximo) && proximo > 0 ? proximo : 1;
+      const esp = buildNFe({...input,itens:itensComIBSCBS,emitente,infCpl:infCplFinal});
+      return { sucesso:true, cStat:"PREVIA", xMotivo:"Espelho gerado. Nada foi transmitido à SEFAZ.", chave:esp.chave,
+        numero:String(emitente.numero_nfe), serie:String(serieConfg), ambiente:emitente.ambiente, xmlPrevia:esp.xml };
+    }
     operacao=await abrirOperacaoFiscal(sb(),{id:requisicaoId,fazenda:fazendaId,modelo:55,documento:emitente.cpf_cnpj,serie:emitente.serie,ambiente:emitente.ambiente,
       dados:dadosOperacao,modulo:confg.__ie_modulo || moduloKey,proximo:confg.numero_inicial,registro:registroId});
     if(!operacao.executar)return retornoOperacaoExistente(operacao) as ResultadoEmissao;

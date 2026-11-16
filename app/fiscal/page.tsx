@@ -10,6 +10,8 @@ import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import ModalRecusaDevolucao from "../../components/fiscal/ModalRecusaDevolucao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
+import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../lib/fiscal/espelho-cliente";
+import { registrarRemessaAutorizada, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "../../lib/fiscal/remessa-pendente";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
 import { modoDaNota } from "../../lib/fiscal/modo-faturamento";
@@ -547,8 +549,12 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa }: {
   notas: NotaFiscal[];
+  /** Remessa pendente de transmissão (vinda de Documentos Fiscais → Remessas): espelho, registrar depois de autorizada, excluir */
+  onEspelhoRemessa?: (n: NotaFiscal) => void;
+  onRegistrarRemessa?: (n: NotaFiscal) => void;
+  onExcluirRemessa?: (n: NotaFiscal) => void;
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
   onConsultarSefaz?: (n: NotaFiscal) => void;
@@ -643,7 +649,24 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                         </div>
                       )}
                     </div>
+                    {remessaPendenteDe(nota.dados_nf_json) && nota.status === "em_digitacao" && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: "#0B2D50", background: "#D5E8F5", borderRadius: 6, padding: "6px 10px" }}>
+                        NF-e de remessa enviada de Remessas, pendente de transmissão. Confira o espelho antes de transmitir; a remessa e a transferência de estoque são registradas quando ela for autorizada.
+                        {(nota.dados_nf_json as Record<string, unknown>)?.sefaz_erro ? <div style={{ color: "#791F1F", marginTop: 4 }}>Última tentativa: {String((nota.dados_nf_json as Record<string, unknown>).sefaz_erro)}</div> : null}
+                      </div>
+                    )}
+                    {remessaSemRegistro(nota as NotaRemessa) && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: "#791F1F", background: "#FCEBEB", borderRadius: 6, padding: "6px 10px" }}>
+                        NF-e autorizada, mas a remessa (transferência de estoque) ainda não foi registrada{(nota.dados_nf_json as Record<string, unknown>)?.remessa_registro_erro ? `: ${String((nota.dados_nf_json as Record<string, unknown>).remessa_registro_erro)}` : "."}
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      {remessaSemRegistro(nota as NotaRemessa) && onRegistrarRemessa && (
+                        <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRegistrarRemessa(nota); }}
+                          style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#1A4870", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                          ↻ Registrar remessa
+                        </OperationalButton>
+                      )}
                       {nota.status === "autorizada" && (
                         <>
                           <OperationalButton data-arato-button="secondary"
@@ -742,6 +765,29 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                       )}
                       {nota.status === "em_digitacao" && (() => {
                         const isRascunho = (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
+                        if (isRascunho && onRetransmitir && remessaPendenteDe(nota.dados_nf_json)) {
+                          return (
+                            <>
+                              {onEspelhoRemessa && (
+                                <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onEspelhoRemessa(nota); }}
+                                  title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal)"
+                                  style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                                  📄 Espelho
+                                </OperationalButton>
+                              )}
+                              <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
+                                style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                                ▶ Transmitir
+                              </OperationalButton>
+                              {onExcluirRemessa && !nota.chave_acesso && (
+                                <OperationalButton data-arato-button="danger" onClick={(e) => { e.stopPropagation(); onExcluirRemessa(nota); }}
+                                  style={{ padding: "5px 12px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11 }}>
+                                  Excluir
+                                </OperationalButton>
+                              )}
+                            </>
+                          );
+                        }
                         if (isRascunho && onRetransmitir) {
                           return (
                             <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
@@ -1368,7 +1414,41 @@ function FiscalInner() {
   // Corrigir e retransmitir — abre o modal pré-preenchido com os dados da nota rejeitada
   // Devolução de bem de terceiro exige finalidade de devolução e NF referenciada: só as Notas de Venda enviam os dois
   const ehDevolucaoBemTerceiro = (cfop?: string | null) => ["5555", "6555"].includes(String(cfop ?? "").replace(/\D/g, ""));
+  // ── Remessa pendente (vinda de Documentos Fiscais → Remessas): transmitida daqui com os dados guardados ──
+  async function transmitirRemessaDoPainel(nota: NotaFiscal) {
+    if (!(await confirmarAcao({ titulo: "Transmitir NF-e de remessa?", perigo: false,
+      mensagem: `NF-e de remessa para ${nota.destinatario}, ${fmtMoeda(nota.valor_total)}. Depois de autorizada, a remessa é registrada e o estoque passa para o depósito do armazém. Conferiu o espelho?` }))) return;
+    setSalvando(true);
+    try {
+      const r = await transmitirRemessaPendente(supabase, nota as NotaRemessa, hojeLocal());
+      await carregar();
+      alert(r.ok ? `✓ NF-e ${r.numero} autorizada e remessa registrada: estoque transferido para o depósito do armazém.` : r.erro);
+    } catch (e) {
+      alert("Erro ao transmitir: " + (e instanceof Error ? e.message : String(e)));
+    } finally { setSalvando(false); }
+  }
+  async function registrarRemessaDoPainel(nota: NotaFiscal) {
+    setSalvando(true);
+    try {
+      const r = await registrarRemessaAutorizada(supabase, nota as NotaRemessa);
+      await carregar();
+      alert(r.ok ? `✓ Remessa da NF-e ${r.numero} registrada: estoque transferido para o depósito do armazém.` : r.erro);
+    } finally { setSalvando(false); }
+  }
+  async function excluirRemessaPendente(nota: NotaFiscal) {
+    if (!(await confirmarAcao({ titulo: "Excluir NF-e pendente", perigo: true, textoConfirmar: "Excluir",
+      mensagem: `Excluir a NF-e de remessa pendente para ${nota.destinatario}? Ela nunca foi transmitida à SEFAZ e o estoque não foi movido.` }))) return;
+    const { error } = await supabase.from("notas_fiscais").delete().eq("id", nota.id).eq("status", "em_digitacao").is("chave_acesso", null);
+    if (error) { alert("Não foi possível excluir: " + error.message); return; }
+    await carregar();
+  }
+  function espelhoRemessaDoPainel(nota: NotaFiscal) {
+    const p = remessaPendenteDe(nota.dados_nf_json);
+    if (p) void comJanelaEspelho(j => mostrarEspelhoNfe(p.corpo, j));
+  }
+
   function abrirRetransmit(nota: NotaFiscal) {
+    if (remessaPendenteDe(nota.dados_nf_json) && nota.status === "em_digitacao") { void transmitirRemessaDoPainel(nota); return; }
     if (ehDevolucaoBemTerceiro(nota.cfop)) { router.push(`/comercial/faturamento?corrigir=${nota.id}`); return; }
     const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
@@ -1518,8 +1598,9 @@ function FiscalInner() {
   };
 
   // Emitir NF-e de Venda — build → sign → transmit SEFAZ
-  const emitirVenda = async () => {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir venda)", perigo: false }))) return;
+  // espelho: mesmo corpo da emissão, mas o servidor para antes de numerar, assinar e transmitir e devolve o DANFE de conferência
+  const emitirVenda = async (espelho?: JanelaEspelho) => {
+    if (!espelho && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir venda)", perigo: false }))) return;
     if (ehDevolucaoBemTerceiro(fVenda.cfop)) { alert("Devolução de bem de terceiro (CFOP 5.555/6.555) é emitida em Documentos Fiscais → Notas de Venda → Avulsa — Venda, que envia a finalidade de devolução e a NF referenciada."); return; }
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
@@ -1585,10 +1666,7 @@ function FiscalInner() {
       const ieEfetiva   = fVenda.ie_selecionada || prodSelEmit?.inscricao_est || undefined;
       const fazEmissao  = await fazendaEmissaoVenda();
 
-      const res = await fetch("/api/fiscal/emitir-nfe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const corpoEmissao = {
           fazenda_id:        fazEmissao,
           modulo_key:        moduloKeyAtivo,
           nota_id:retransmitindoNota?.id,
@@ -1626,7 +1704,12 @@ function FiscalInner() {
             peso_bruto:    desmascarar(fVenda.peso_bruto),
             peso_liquido:  desmascarar(fVenda.peso_liquido),
           } : undefined,
-        }),
+      };
+      if (espelho) { await mostrarEspelhoNfe(corpoEmissao, espelho); return; }
+      const res = await fetch("/api/fiscal/emitir-nfe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpoEmissao),
       });
       const resBody = await res.json() as {
         sucesso?:boolean;chave?:string;numero?:string;protocolo?:string;operacao_id?:string;pendente?:boolean;sincronizacao_pendente?:boolean;tributacao_itens?:unknown[];totais?:Record<string,number>;ambiente?:string;
@@ -2163,6 +2246,9 @@ function FiscalInner() {
                       ? window.open(`/api/fiscal/danfe?chave=${n.chave_acesso}&fazenda_id=${n.fazenda_id}`, "_blank")
                       : window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")}
                     onRetransmitir={abrirRetransmit}
+                    onEspelhoRemessa={espelhoRemessaDoPainel}
+                    onRegistrarRemessa={registrarRemessaDoPainel}
+                    onExcluirRemessa={excluirRemessaPendente}
                     onManifestarNF={maniTestarNF}
                     onCorrigir={abrirModalCorrecao}
                     onDuplicar={n => router.push(`/comercial/faturamento?duplicar=${n.id}`)}
@@ -3361,7 +3447,13 @@ function FiscalInner() {
                   style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: fVenda.destinatario && moduloKeyAtivo && !salvando ? 1 : 0.5 }}>
                   {salvando ? "⟳ Salvando…" : "○ Salvar Rascunho"}
                 </OperationalButton>
-                <OperationalButton data-arato-button="toggle" onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                {/* Espelho — o DANFE montado como será transmitido, sem valor fiscal, para conferir antes */}
+                <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => emitirVenda(j))} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                  title="Gera o DANFE exatamente como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
+                  style={{ padding: "7px 18px", background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: fVenda.destinatario && moduloKeyAtivo && !salvando ? 1 : 0.5 }}>
+                  📄 Espelho
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={() => emitirVenda()} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
                   style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#111111" : "var(--text-muted)", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   {salvando ? "⟳ Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
                 </OperationalButton>

@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-m",
+    data: "16/11/2026",
+    titulo: "Espelho da NF-e, CT-e e MDF-e antes de transmitir; remessa pendente no Painel de Notas",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Botão 📄 Espelho: gera o documento montado exatamente como será transmitido, marcado \"ESPELHO — SEM VALOR FISCAL\", para conferir antes. NF-e sai em DANFE (PDF); CT-e e MDF-e na impressão do DACTE / DAMDFE. Nada vai à SEFAZ e nenhum número é reservado; se algo barraria a transmissão, aparece o motivo." },
+      { tipo: "novo", texto: "Remessa de mercadoria (Remessas → + Nova Remessa) pode ir ao Painel de Notas como pendente de transmissão: confira o espelho e transmita de lá. O estoque só passa para o depósito do armazém quando a NF-e é autorizada." },
+    ],
+    onde: "Documentos Fiscais → Painel de Notas e Saídas → Remessas; Fretes e Transporte → CT-e e MDF-e (linha do rascunho)",
+  },
+  {
     versao: "2026.11.16-l",
     data: "16/11/2026",
     titulo: "Recuperação de NF-e com consulta direta pela chave",

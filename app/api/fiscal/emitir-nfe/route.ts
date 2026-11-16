@@ -8,6 +8,9 @@ import { emitirNFe } from "../../../../lib/nfe/index";
 import { resolverModuloKey } from "../../../../lib/nfe/resolver-emitente";
 import type { NFeInput } from "../../../../lib/nfe/builder";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
+import { createClient } from "../../../../lib/supabase-servidor";
+import { nfeProcEspelho } from "../../../../lib/fiscal/espelho";
+import { gerarDanfePdf, logoContaParaPdf, marcarPdfEspelho } from "../../../../lib/fiscal/danfe-pdf";
 
 export const maxDuration=60;
 export const runtime = "nodejs"; // xml-crypto e node-forge precisam de Node
@@ -65,6 +68,7 @@ export async function POST(req: NextRequest) {
       nfe_ref?: string | string[];
       tipo?: "0" | "1";
       fin_nfe?: "1" | "2" | "3" | "4";  // 1=normal, 2=complementar, 3=ajuste, 4=devolução
+      previa?: boolean;  // espelho: mesmo corpo da emissão; devolve o DANFE marcado como espelho, sem numerar nem transmitir
       // Transportadora e veículo (<transporta>/<veicTransp>). Antes este bloco era ignorado aqui: a tela mandava
       // transportadora e placa, mas nenhuma NF-e emitida por esta rota levava transporte no XML nem no DANFE.
       transporte?: {
@@ -131,6 +135,16 @@ export async function POST(req: NextRequest) {
     if (!moduloKey) {
       moduloKey = await resolverModuloKey(body.fazenda_id, undefined);
       if (!moduloKey) throw new Error("Selecione e configure o emitente da NF-e.");
+    }
+    if (body.previa) {
+      const previa = await emitirNFe(body.fazenda_id, moduloKey, input, body.emit_ie_override, 0, undefined, undefined, true);
+      // Erro de validação: o mesmo que a transmissão acusaria, em JSON, para a tela mostrar
+      if (!previa.sucesso || !previa.xmlPrevia) return NextResponse.json(previa, { status: 422 });
+      const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: faz } = await db.from("fazendas").select("conta_id").eq("id", body.fazenda_id).maybeSingle();
+      const pdf = await marcarPdfEspelho(await gerarDanfePdf(nfeProcEspelho(previa.xmlPrevia), { logo: await logoContaParaPdf(db, faz?.conta_id as string | undefined) }));
+      return new NextResponse(Buffer.from(pdf), { status: 200, headers: {
+        "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="ESPELHO NF-e ${previa.numero ?? ""}.pdf"`, "Cache-Control": "no-store" } });
     }
     const resultado = await emitirNFe(body.fazenda_id, moduloKey, input, body.emit_ie_override, 0, req.headers.get("x-arato-requisicao") || undefined, body.nota_id);
 

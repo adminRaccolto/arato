@@ -92,11 +92,14 @@ export interface ResultadoEmissaoCTe {
   cStat:      string;
   xMotivo:    string;
   xmlAssinado?: string;
+  xmlPrevia?: string;   // espelho: XML montado, sem assinatura e sem transmissão
   aviso?:     string;   // aviso não-bloqueante mostrado depois de autorizado (ex: IBS/CBS não destacado)
 }
 
 export interface EmitirCTeOptions {
   requisicao_id?:string;
+  /** Espelho: monta o XML como na transmissão e para antes de reservar número, assinar e enviar. */
+  previa?: boolean;
   emitente_cnpj?: string | null;
   cte_id?:        string | null; // ID do registro em `ctes` — atualizado com service_role após autorização
   /** CT-e substituto: ID do registro original em `ctes` (precisa estar autorizado). */
@@ -315,9 +318,11 @@ export async function emitirCTe(
   const fc = resolved.fiscalConfig;
 
 
-  let pem: PemPair;
-  try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
-  catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
+  let pem!: PemPair;
+  if (!options.previa) {   // o espelho não assina: não depende do certificado
+    try {pem=(await carregarCertificadoEmitente(sb(),fazendaId,resolved.emitenteDigits || fc.cpf_cnpj_emitente || '')).pem;}
+    catch(e){return {sucesso:false,cStat:"CERTIFICADO_A1",xMotivo:e instanceof Error ? e.message : "Não foi possível validar o certificado A1."};}
+  }
 
   // Antes de reservar o número: sem o código do município a SEFAZ devolve só "Falha no Schema" e o número se perde
   const ibgeEmitente = fc.municipio_ibge || confg.municipio_ibge || "";
@@ -424,6 +429,13 @@ export async function emitirCTe(
     ? "IBS/CBS NÃO foi destacado neste CT-e. Emitente Lucro Presumido/Real é obrigado desde 05/01/2026 (LC 214/2025, NT 2025.001). Configure em Parâmetros → CT-e → \"Destacar IBS/CBS no CT-e\" (confirme as alíquotas com o contador)."
     : undefined;
   buildCTe({...inputBase,emitente,ibscbs});
+  if (options.previa) {
+    // Espelho: o mesmo XML que iria para a SEFAZ, com o próximo número da série (o definitivo é reservado na transmissão)
+    const proximo = parseInt(String(confg.numero_inicial ?? ""), 10);
+    emitente.numero_cte = Number.isFinite(proximo) && proximo > 0 ? proximo : 1;
+    const esp = buildCTe({ ...inputBase, emitente, ibscbs });
+    return { sucesso: true, cStat: "PREVIA", xMotivo: "Espelho gerado. Nada foi transmitido à SEFAZ.", chave: esp.chave, numero: String(emitente.numero_cte), xmlPrevia: esp.xml, aviso: avisoIbsCbs };
+  }
   const operacao=await abrirOperacaoFiscal(sb(),{id:options.requisicao_id,fazenda:fazendaId,modelo:57,documento:emitente.cpf_cnpj,serie:emitente.serie,ambiente:emitente.ambiente,
     dados:dadosOperacao,modulo:resolved.cteModulo,proximo:confg.numero_inicial,registro:options.cte_id});
   if(!operacao.executar)return retornoOperacaoExistente(operacao) as ResultadoEmissaoCTe;
