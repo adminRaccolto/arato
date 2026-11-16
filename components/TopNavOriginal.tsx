@@ -773,7 +773,7 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
           </div>
         )}
 
-        {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (
+        {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
             {raccotloGestor && (
               <Link
@@ -790,7 +790,7 @@ function TopNavContent({ automacoesAtivas }: { automacoesAtivas: number }) {
                 ⚙ Gestão Arato
               </Link>
             )}
-            {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (
+            {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") && (
               <>
                 <Link
                   href="/bi"

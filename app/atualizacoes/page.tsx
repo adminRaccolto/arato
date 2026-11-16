@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-i",
+    data: "16/11/2026",
+    titulo: "Gestão Arato: limpeza completa e papel Operacional",
+    modulos: ["Gestão Arato"],
+    itens: [
+      { tipo: "melhoria", texto: "Dados & Limpeza passa a apagar também transferências de estoque, faturas de fornecedor, movimentos do LCDPR, notas próprias de outro sistema, registros de operações fiscais, CIOT, tarefas, simulações e regras de rateio. Antes ficavam para trás ou travavam a limpeza de MDF-e, NF-e emitidas, recomendações, produtores e anos safra." },
+      { tipo: "novidade", texto: "Usuários & Permissões da equipe: novo acesso Operacional — Seletor de Clientes e BI, sem a Gestão Arato. A tela e as rotas só aceitam os quatro tipos de acesso da lista." },
+      { tipo: "melhoria", texto: "Todas as rotas da Gestão Arato passam a conferir o administrador pela mesma regra." },
+    ],
+    onde: "Gestão Arato → Dados & Limpeza / Usuários & Permissões",
+  },
+  {
     versao: "2026.11.16-h",
     data: "16/11/2026",
     titulo: "CFOP editável na NF de remessa",

@@ -642,6 +642,7 @@ export default function AdminUsuarios() {
                     {usuarios.map((u, i) => {
                       const hub = (u as any).hub_acesso as string | null;
                       const hubCfg = hub === "raccotlo_gestor"  ? { label: "Hub Completo",   cor: "#111111", bg: "#E8E8E8" }
+                                   : hub === "raccotlo_operacional" ? { label: "Operacional", cor: "#1A4870", bg: "#D5E8F5" }
                                    : hub === "raccotlo_seletor" ? { label: "Seletor",         cor: "#444444", bg: "#F2F2F2" }
                                    : hub === "raccotlo"         ? { label: "Superadmin",      cor: "#7A5A12", bg: "#FBF3E0" }
                                    :                             { label: "Sem Acesso",        cor: "var(--text-3)",    bg: "#F3F4F6" };
@@ -815,11 +816,13 @@ export default function AdminUsuarios() {
                   <label data-arato-label="true" style={lbl}>Acesso HUB Raccotlo *</label>
                   <SelectField style={inp} value={fUser.hub_acesso} onChange={e => setFUser(p => ({ ...p, hub_acesso: e.target.value }))}>
                     <option value="raccotlo_gestor">Hub Completo (Gestão Arato + Seletor de Clientes)</option>
+                    <option value="raccotlo_operacional">Operacional (Seletor de Clientes + BI, sem Gestão Arato)</option>
                     <option value="raccotlo_seletor">Seletor de Clientes apenas</option>
                     <option value="client">Sem Acesso Interno</option>
                   </SelectField>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
                     {fUser.hub_acesso === "raccotlo_gestor" && "Acessa o painel admin (Gestão Arato) e pode visualizar ambientes de clientes."}
+                    {fUser.hub_acesso === "raccotlo_operacional" && "Acessa os ambientes de clientes pelo Seletor e o BI (análises da consultoria). Não acessa o painel admin."}
                     {fUser.hub_acesso === "raccotlo_seletor" && "Pode acessar ambientes de clientes via Seletor, mas não acessa o painel admin."}
                     {fUser.hub_acesso === "client" && "Nenhum acesso especial Raccotlo. Usuário comum sem painel administrativo."}
                   </div>

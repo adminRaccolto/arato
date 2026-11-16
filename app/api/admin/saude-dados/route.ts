@@ -10,6 +10,7 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { executarAuditoria } from "../../../../lib/auditoria/saude/executar";
 import { REGRAS } from "../../../../lib/auditoria/saude/regras";
 import { descreverEvento, type EventoAud } from "../../../../lib/auditoria/descrever";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -24,7 +25,7 @@ async function exigirRaccolto(): Promise<{ nome: string } | NextResponse> {
   const { data: { user } } = await sbUser.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   const { data: perfil } = await admin().from("perfis").select("role, nome").eq("user_id", user.id).maybeSingle();
-  if (perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") return NextResponse.json({ error: "Acesso restrito à equipe Raccolto" }, { status: 403 });
+  if (!isRaccotloAdmin(perfil?.role, user.email)) return NextResponse.json({ error: "Acesso restrito à equipe Raccolto" }, { status: 403 });
   return { nome: (perfil?.nome as string | null) ?? user.email ?? "Raccolto" };
 }
 

@@ -10,10 +10,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 
 export const dynamic = "force-dynamic";
 
-const RACCOTLO_ROLES = ["raccotlo", "raccotlo_gestor", "raccotlo_seletor"];
+const RACCOTLO_ROLES = ["raccotlo", "raccotlo_gestor", "raccotlo_operacional", "raccotlo_seletor"];
 
 function adminClient() {
   return createClient(
@@ -35,8 +36,7 @@ async function verificarAcesso() {
 
   const admin = adminClient();
   const { data: perfil } = await admin.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-  const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
-  if (!isGino && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") return null;
+  if (!isRaccotloAdmin(perfil?.role, user.email)) return null;
   return user;
 }
 

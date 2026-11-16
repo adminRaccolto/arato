@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { seedOperacoesGerenciaisTemplate } from "../../../../lib/seedOperacoesGerenciais";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   const email = user.email ?? "";
-  const isGino = email.toLowerCase() === "gino@raccolto.com.br";
-  const isRaccolto = isGino || perfil?.role === "raccotlo" || perfil?.role === "raccotlo_gestor";
+  const isRaccolto = isRaccotloAdmin(perfil?.role, email);
 
   if (!isRaccolto) return NextResponse.json({ error: "Acesso restrito" }, { status: 403 });
 

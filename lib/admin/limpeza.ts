@@ -23,7 +23,7 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
   {
     id: "financeiro", label: "Financeiro", icon: "💰", cor: "#E24B4A", bg: "#FFF0F0",
     subitens: [
-      { id: "lancamentos", label: "Lançamentos CP/CR do produtor", icon: "📄", contar: "lancamentos", tabelas: ["pagamento_lote_itens", "lancamentos", "pagamento_lotes"], aviso: "Faça antes de limpar contratos, folha e cartões, se eles também forem sair." },
+      { id: "lancamentos", label: "Lançamentos CP/CR do produtor", icon: "📄", contar: "lancamentos", tabelas: ["pagamento_lote_itens", "pagamento_lote_baixas", "lancamentos", "pagamento_lotes", "faturas_fornecedor", "lcdpr_movimentos"], aviso: "Faça antes de limpar contratos, folha e cartões, se eles também forem sair." },
       { id: "empresa_lancamentos", label: "Lançamentos CP/CR de Empresa", icon: "🏢", contar: "empresa_lancamentos", tabelas: ["empresa_lancamentos"] },
       { id: "extrato", label: "Extratos e conciliação bancária", icon: "🏦", contar: "extrato_transacoes", tabelas: ["conciliacao_pendencias", "historico_conciliacao", "extrato_transacoes", "extratos_bancarios"] },
       { id: "contratos_fin", label: "Contratos Financeiros", icon: "🏦", contar: "contratos_financeiros", tabelas: ["parcelas_pagamento", "parcelas_liberacao", "garantias_contrato", "aditivos_contrato", "contrato_cessao_debitos", "contratos_refinanciamento", "contratos_financeiros"] },
@@ -37,6 +37,7 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
       { id: "adiantamentos", label: "Adiantamentos a fornecedor e de cliente", icon: "💸", contar: "adiantamentos_fornecedor", tabelas: ["aplicacoes_adiantamento", "adiantamentos_aplicacoes", "adiantamentos_fornecedor", "adiantamentos_cliente"] },
       { id: "tesouraria", label: "Tesouraria e Aplicações Financeiras", icon: "📊", contar: "operacoes_tesouraria", tabelas: ["aplicacao_movimentos", "aplicacoes_financeiras", "operacoes_tesouraria"] },
       { id: "apoio", label: "Apoio Financeiro", icon: "💼", contar: "apoio_lancamentos", tabelas: ["apoio_baixas", "apoio_lancamentos"] },
+      { id: "simulacoes", label: "Simulações e cenários de capacidade de pagamento", icon: "🧮", contar: "simulacoes", tabelas: ["simulacoes", "capacidade_cenarios"] },
     ],
   },
   {
@@ -44,8 +45,8 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
     subitens: [
       { id: "contratos", label: "Contratos de Venda/Compra", icon: "📝", contar: "contratos", tabelas: ["contratos_aditivos", "contrato_faturamentos", "barter_compromissos", "fixacoes_hedge", "contrato_itens", "contratos"] },
       { id: "romaneios", label: "Romaneios e pesagens avulsas", icon: "⚖️", contar: "romaneios", tabelas: ["pesagens_avulsas", "romaneios"] },
-      { id: "notas_saida", label: "Notas de saída (NF-e emitidas)", icon: "🧾", contar: "notas_fiscais", tabelas: ["nfe_cartas_correcao", "gnre_guias", "notas_fiscais"], aviso: "NF-e autorizada na SEFAZ continua lá: isto só apaga o registro no sistema." },
-      { id: "expedicao", label: "Expedição · CT-e · MDF-e", icon: "🚛", contar: "cargas_expedicao", tabelas: ["acertos_frete", "cte_cartas_correcao", "cte_entradas", "cte_recebidos", "cargas_expedicao", "ctes", "mdfes", "mdfe"] },
+      { id: "notas_saida", label: "Notas de saída (NF-e emitidas)", icon: "🧾", contar: "notas_fiscais", tabelas: ["fiscal_eventos_operacoes", "nfe_cartas_correcao", "gnre_guias", "notas_fiscais", "fiscal_operacoes", "fiscal_alteracoes", "fiscal_distribuicao_documentos"], aviso: "NF-e autorizada na SEFAZ continua lá: isto só apaga o registro no sistema." },
+      { id: "expedicao", label: "Expedição · CT-e · MDF-e", icon: "🚛", contar: "cargas_expedicao", tabelas: ["acertos_frete", "cte_cartas_correcao", "cte_entradas", "cte_recebidos", "cargas_expedicao", "ciots", "ctes", "mdfes", "mdfe"] },
       { id: "compra_terra", label: "Compra de Terra", icon: "🏞️", contar: "contratos_compra_terra", tabelas: ["cct_pagamentos", "contratos_compra_terra"] },
     ],
   },
@@ -59,9 +60,9 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
       { id: "colheitas", label: "Colheitas", icon: "🚜", contar: "colheitas", tabelas: ["colheita_romaneios", "romaneios_entrada", "colheitas"] },
       { id: "adubacoes", label: "Adubações de Base", icon: "🌿", contar: "adubacoes_base", tabelas: ["adubacoes_base_itens", "adubacoes_base"] },
       { id: "correcoes", label: "Correções de Solo", icon: "🪨", contar: "correcoes_solo", tabelas: ["correcoes_solo_itens", "correcoes_solo"] },
-      { id: "orcamentos", label: "Orçamentos de Safra", icon: "📊", contar: "orcamentos", tabelas: ["orcamento_itens", "orcamentos"] },
+      { id: "orcamentos", label: "Orçamentos de Safra", icon: "📊", contar: "orcamentos", tabelas: ["orcamento_itens", "orcamentos", "planejamento_tarefas"] },
       { id: "monitoramento", label: "Monitoramento de Pragas", icon: "🐛", contar: "monitoramento_pragas", tabelas: ["monitoramento_pragas"] },
-      { id: "recomendacoes", label: "Recomendações Agronômicas", icon: "📝", contar: "recomendacoes", tabelas: ["recomendacoes_adubacao", "recomendacoes_corretivo", "recomendacoes_plantio", "recomendacoes_pulverizacao", "recomendacoes_tecnicas", "recomendacoes"] },
+      { id: "recomendacoes", label: "Recomendações Agronômicas", icon: "📝", contar: "recomendacoes", tabelas: ["tarefas", "recomendacoes_adubacao", "recomendacoes_corretivo", "recomendacoes_plantio", "recomendacoes_pulverizacao", "recomendacoes_tecnicas", "recomendacoes"] },
       { id: "algodao", label: "Algodão", icon: "🌱", contar: "algodao_modulos", tabelas: ["algodao_laudos_hvi", "algodao_beneficiamentos", "algodao_modulos", "algodao_operacoes_especiais", "bicudo_capturas", "bicudo_armadilhas"] },
       { id: "pluviometria", label: "Pluviometria", icon: "🌧️", contar: "leituras_pluviometricas", tabelas: ["leituras_pluviometricas"] },
     ],
@@ -78,7 +79,8 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
       { id: "nf_entradas", label: "NFs de Entrada", icon: "🧾", contar: "nf_entradas", tabelas: ["nf_remessas_logisticas", "migracoes_nf", "nf_entrada_itens", "nf_entradas"] },
       { id: "nf_servicos", label: "NFs de Serviço", icon: "🧾", contar: "nf_servicos", tabelas: ["nf_servicos"] },
       { id: "sieg", label: "Notas capturadas do SIEG", icon: "📥", contar: "nf_importadas_sieg", tabelas: ["nf_importadas_sieg"] },
-      { id: "movimentacoes", label: "Movimentações de Estoque", icon: "📈", contar: "movimentacoes_estoque", tabelas: ["estoque_terceiros_baixas", "estoque_terceiros", "movimentacoes_pa", "pa_saldos", "movimentacoes_estoque"], aviso: "Apagar as movimentações zera o saldo dos itens, porque o saldo é a soma delas." },
+      { id: "movimentacoes", label: "Movimentações de Estoque", icon: "📈", contar: "movimentacoes_estoque", tabelas: ["estoque_terceiros_baixas", "estoque_terceiros", "movimentacoes_pa", "pa_saldos", "movimentacoes_estoque", "transferencias_estoque"], aviso: "Apagar as movimentações zera o saldo dos itens, porque o saldo é a soma delas." },
+      { id: "notas_proprias", label: "Notas próprias emitidas em outro sistema", icon: "🧾", contar: "notas_proprias_externas", tabelas: ["notas_proprias_externas"] },
       { id: "pedidos", label: "Pedidos de Compra", icon: "🛒", contar: "pedidos_compra", tabelas: ["pedidos_compra_entregas", "pedidos_compra_itens", "pedidos_compra"] },
       { id: "zeramento", label: "Zeramento de Estoque", icon: "🔢", contar: "insumos", tabelas: [], aviso: "Lança um ajuste por item e depósito até o saldo ficar zero. O cadastro e o histórico continuam, e os ajustes aparecem no Kardex." },
     ],
@@ -102,11 +104,12 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
   {
     id: "auxiliares", label: "Tabelas Auxiliares", icon: "📋", cor: "#6366F1", bg: "#EEF2FF",
     subitens: [
-      { id: "grupos_insumos", label: "Grupos & Subgrupos de Insumo", icon: "📂", contar: "grupos_insumos", tabelas: ["subgrupos_insumos", "grupos_insumos"] },
+      { id: "grupos_insumos", label: "Grupos & Subgrupos de Insumo", icon: "📂", contar: "grupos_insumos", tabelas: ["subgrupos_insumos", "grupos_insumos", "subgrupos_insumo", "grupos_insumo"] },
       { id: "centros_custo", label: "Centros de Custo", icon: "🎯", contar: "centros_custo", tabelas: ["centros_custo"] },
       { id: "categorias_lancamento", label: "Categorias de Lançamento", icon: "🏷️", contar: "categorias_lancamento", tabelas: ["categorias_lancamento"] },
       { id: "tipos_pessoa", label: "Tipos de Pessoa", icon: "👤", contar: "tipos_pessoa", tabelas: ["tipos_pessoa"] },
       { id: "operacoes_gerenciais", label: "Operações Gerenciais (plano)", icon: "⚙️", contar: "operacoes_gerenciais", tabelas: ["operacoes_gerenciais"], aviso: "O plano é do cliente: só é apagado com \"Todas as fazendas\" escolhido." },
+      { id: "regras_rateio", label: "Regras de Rateio", icon: "➗", contar: "regras_rateio", tabelas: ["regras_rateio_global", "regras_rateio"], aviso: "Limpe antes de apagar Anos Safra: as regras apontam para o ano safra." },
       { id: "padroes_classificacao", label: "Padrões de Classificação", icon: "⚖️", contar: "padroes_classificacao", tabelas: ["padroes_classificacao"] },
     ],
   },
@@ -115,7 +118,7 @@ export const GRUPOS_LIMPEZA: GrupoLimpeza[] = [
     subitens: [
       { id: "talhoes", label: "Talhões", icon: "📐", contar: "talhoes", tabelas: ["ciclo_talhoes", "talhoes"], aviso: "Exclua Lavoura antes: operações de lavoura dependem de talhões." },
       { id: "ciclos", label: "Ciclos de Produção", icon: "🔄", contar: "ciclos", tabelas: ["ciclo_talhoes", "ciclos"], aviso: "Exclua Lavoura antes: operações dependem de ciclos." },
-      { id: "anos_safra", label: "Anos Safra", icon: "📅", contar: "anos_safra", tabelas: ["anos_safra"] },
+      { id: "anos_safra", label: "Anos Safra", icon: "📅", contar: "anos_safra", tabelas: ["anos_safra"], aviso: "Limpe as Regras de Rateio (Tabelas Auxiliares) antes." },
       { id: "matriculas", label: "Matrículas de Imóvel", icon: "🏛️", contar: "matriculas_imoveis", tabelas: ["matriculas_imoveis"] },
     ],
   },

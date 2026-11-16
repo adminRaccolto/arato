@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { isRaccotloAdmin, RACCOTLO_SUPERADMIN, ehHubAcessoValido } from "../../../../lib/raccotlo-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +29,15 @@ export async function POST(req: Request) {
     );
 
     const { data: perfil } = await admin.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-    const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
-    if (!isGino && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
+    if (!isRaccotloAdmin(perfil?.role, user.email)) {
       return NextResponse.json({ ok: false, error: "Acesso restrito" }, { status: 403 });
     }
 
     const { email, hub_acesso } = await req.json() as { email: string; hub_acesso: string };
-    if (!email || !hub_acesso) return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
+    if (!email || !ehHubAcessoValido(hub_acesso)) return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
 
     // Não permite rebaixar o superadmin gino
-    if (email.toLowerCase() === "gino@raccolto.com.br") {
+    if (email.toLowerCase() === RACCOTLO_SUPERADMIN) {
       return NextResponse.json({ ok: false, error: "Não é possível alterar o acesso do superadmin." }, { status: 403 });
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 
 export async function POST(req: Request) {
   try {
@@ -29,8 +30,7 @@ export async function POST(req: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const isRaccoltoEmail = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
-    if (!isRaccoltoEmail && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
+    if (!isRaccotloAdmin(perfil?.role, user.email)) {
       return NextResponse.json({ ok: false, error: "Acesso restrito" }, { status: 403 });
     }
 

@@ -181,7 +181,7 @@ export default function OperationalContext({automacoesAtivas=5}:{automacoesAtiva
   actions.push({id:'bpo-admin',label:'Admin BPO',href:'/bpo/admin'});
   actions.push({id:'bpo-client',label:'Selecionar cliente BPO',href:'/bpo/seletor-cliente'});
  }
- if(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor"){
+ if(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional"){
   if(raccotloGestor)actions.push({id:'admin',label:'Gestão Arato',href:'/admin'});
   actions.push({id:'bi',label:'BI Raccolto',href:'/bi'});
   actions.push({id:'hub',label:'Hub',href:'/raccotlo'});

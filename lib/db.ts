@@ -136,7 +136,7 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
     if (!user) return [];
     const { data: perfil } = await supabase.from("perfis").select("conta_id, role").eq("user_id", user.id).maybeSingle();
     const role = perfil?.role ?? "";
-    const isRaccotlo = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor";
+    const isRaccotlo = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor" || role === "raccotlo_operacional";
 
     if (isRaccotlo) {
       // IMPORTANTE: verifica role ANTES de conta_id — raccotlo staff pode ter conta_id

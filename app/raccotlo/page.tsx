@@ -16,7 +16,7 @@ export default function RaccotloHub() {
 
   useEffect(() => {
     if (!userRole) return;
-    if (userRole === "raccotlo_seletor") { router.replace("/seletor-cliente"); return; }
+    if (userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional") { router.replace("/seletor-cliente"); return; }
     if (userRole !== "raccotlo" && userRole !== "raccotlo_gestor") router.replace("/");
   }, [userRole, router]);
 

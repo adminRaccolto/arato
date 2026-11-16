@@ -3,6 +3,7 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend } from "resend";
 import { exigirAcessoFazenda, exigirAcessoConta, exigirRaccoltoAdmin } from "../../../../lib/api-auth";
 import { PLANOS_DEFAULT, type PlanoId } from "../../../../lib/planos";
+import { RACCOTLO_SUPERADMIN, ehHubAcessoValido } from "../../../../lib/raccotlo-auth";
 
 function adminClient() {
   return createClient(
@@ -30,6 +31,9 @@ export async function POST(req: Request) {
 
     if (!fazenda_id || !user_nome || !user_email || !user_senha) {
       return NextResponse.json({ ok: false, error: "Campos obrigatórios faltando" }, { status: 400 });
+    }
+    if (hub_acesso != null && !ehHubAcessoValido(hub_acesso)) {
+      return NextResponse.json({ ok: false, error: "Acesso interno inválido" }, { status: 400 });
     }
 
     // Segurança (23/10/2026): a rota aceitava pedido sem login — dava para criar usuário com acesso interno
@@ -70,7 +74,7 @@ export async function POST(req: Request) {
 
     // Determinar role antes da criação para incluir no user_metadata
     const emailLower = (user_email ?? "").toLowerCase();
-    const isGino = emailLower === "gino@raccolto.com.br";
+    const isGino = emailLower === RACCOTLO_SUPERADMIN;
     const roleMeta = isGino ? "raccotlo" : (hub_acesso ?? "client");
 
     // ── 1. Criar ou recuperar usuário no Supabase Auth ──

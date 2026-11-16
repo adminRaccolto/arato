@@ -3,6 +3,7 @@ import { createClient } from "../../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { gerarEmailUnico, gerarPin } from "@/lib/campo-operador";
+import { isRaccotloAdmin } from "../../../../../lib/raccotlo-auth";
 
 function adminClient() {
   return createClient(
@@ -24,8 +25,7 @@ async function verificarAcesso(): Promise<{ ok: boolean; status?: number }> {
 
   const admin = adminClient();
   const { data: perfil } = await admin.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-  const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
-  if (!isGino && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
+  if (!isRaccotloAdmin(perfil?.role, user.email)) {
     return { ok: false, status: 403 };
   }
   return { ok: true };

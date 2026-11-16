@@ -12,16 +12,22 @@ export function isRaccotloAdmin(role: string | null | undefined, email: string |
   return role === "raccotlo" || role === "raccotlo_gestor";
 }
 
-/** true = qualquer nível de acesso raccotlo (inclui seletor) */
+/** true = qualquer nível de acesso raccotlo (inclui seletor e operacional) */
 export function isRaccotloAny(role: string | null | undefined, email: string | null | undefined): boolean {
   if ((email ?? "").toLowerCase() === RACCOTLO_SUPERADMIN) return true;
-  return role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor";
+  return role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor" || role === "raccotlo_operacional";
 }
 
-export type HubAcesso = "raccotlo_gestor" | "raccotlo_seletor" | "client";
+export type HubAcesso = "raccotlo_gestor" | "raccotlo_operacional" | "raccotlo_seletor" | "client";
 
 export const HUB_ACESSO_LABEL: Record<HubAcesso, string> = {
-  raccotlo_gestor:  "Hub Completo (Gestão + Seletor)",
-  raccotlo_seletor: "Seletor de Clientes",
-  client:           "Sem Acesso Interno",
+  raccotlo_gestor:      "Hub Completo (Gestão + Seletor)",
+  raccotlo_operacional: "Operacional (Seletor + BI, sem Gestão)",
+  raccotlo_seletor:     "Seletor de Clientes",
+  client:               "Sem Acesso Interno",
 };
+
+/** Papéis que a tela de equipe pode dar. "raccotlo" (superadmin) nunca é atribuído por tela ou rota. */
+export function ehHubAcessoValido(v: unknown): v is HubAcesso {
+  return typeof v === "string" && v in HUB_ACESSO_LABEL;
+}

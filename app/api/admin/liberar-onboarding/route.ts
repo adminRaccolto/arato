@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { isRaccotloAdmin } from "../../../../lib/raccotlo-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,11 @@ async function isRaccotlo(): Promise<boolean> {
   );
   const { data: { user }, error } = await sb.auth.getUser();
   if (error || !user) return false;
-  if ((user.email ?? "").toLowerCase() === "gino@raccolto.com.br") return true;
+  if (isRaccotloAdmin(null, user.email)) return true;
   const db = adminDb();
   const { data } = await db.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
   const role = (data as { role?: string } | null)?.role;
-  return role === "raccotlo" || role === "raccotlo_gestor";
+  return isRaccotloAdmin(role, user.email);
 }
 
 export async function POST(req: Request) {

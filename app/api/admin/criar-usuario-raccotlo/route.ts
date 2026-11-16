@@ -8,6 +8,7 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { Resend } from "resend";
+import { isRaccotloAdmin, RACCOTLO_SUPERADMIN, ehHubAcessoValido } from "../../../../lib/raccotlo-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +34,7 @@ export async function POST(req: Request) {
 
     const admin = adminClient();
     const { data: perfil } = await admin.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-    const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
-    if (!isGino && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
+    if (!isRaccotloAdmin(perfil?.role, user.email)) {
       return NextResponse.json({ ok: false, error: "Acesso restrito" }, { status: 403 });
     }
 
@@ -46,6 +46,9 @@ export async function POST(req: Request) {
 
     if (!user_nome || !user_email || !user_senha) {
       return NextResponse.json({ ok: false, error: "Campos obrigatórios faltando" }, { status: 400 });
+    }
+    if (hub_acesso != null && !ehHubAcessoValido(hub_acesso)) {
+      return NextResponse.json({ ok: false, error: "Acesso interno inválido" }, { status: 400 });
     }
 
     // ── 1. Criar ou recuperar usuário no Supabase Auth ──
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
 
     // ── 2. Criar/atualizar perfil (sem fazenda_id) ──
     const emailLower  = user_email.toLowerCase();
-    const isGinoNew   = emailLower === "gino@raccolto.com.br";
+    const isGinoNew   = emailLower === RACCOTLO_SUPERADMIN;
     const roleFinal   = isGinoNew ? "raccotlo" : (hub_acesso ?? "client");
     const { data: perfilExist } = await admin.from("perfis").select("role").eq("user_id", authUserId).maybeSingle();
 

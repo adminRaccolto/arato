@@ -276,8 +276,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(role);
 
       // raccotlo / raccotlo_gestor = acesso ao admin panel + seletor
-      // raccotlo_seletor = apenas seletor de clientes
-      const isRaccotloAny = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor";
+      // raccotlo_seletor = apenas seletor de clientes; raccotlo_operacional = seletor + BI, sem admin panel
+      const isRaccotloAny = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor" || role === "raccotlo_operacional";
       const isGestor = role === "raccotlo" || role === "raccotlo_gestor";
       setRaccotloGestor(isGestor);
 
