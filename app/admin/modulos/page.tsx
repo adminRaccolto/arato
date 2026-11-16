@@ -3,6 +3,7 @@ import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
 import { PLANOS_DEFAULT } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
+import { MODULOS, ehAddon, gruposContrataveis, nomeModulo } from "../../../lib/modulos";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -14,78 +15,18 @@ interface ContaSimples {
 }
 
 // ─── Definição dos módulos por grupo ─────────────────────────────────────────
+// Vem do catálogo único (lib/modulos.ts): módulos de plano e add-ons vendidos à parte. Configurações (decididas pelo
+// grupo de usuários) e módulos exclusivos da Raccolto (ex.: BI) não aparecem aqui.
 
-const MODULOS_LABEL: Record<string, string> = {
-  cadastros:       "Cadastros",
-  propriedades:    "Fazendas & Talhões",
-  lavoura_plantio: "Plantio",
-  lavoura_pulv:    "Pulverização",
-  lavoura_colheita:"Colheita",
-  lavoura_plan:    "Planejamento de Safra",
-  estoque:         "Estoque",
-  contratos:       "Contratos de Grãos",
-  expedicao:       "Expedição",
-  arrendamento:    "Arrendamentos",
-  compras:         "Pedidos de Compra",
-  nf_entrada:      "NF de Entrada",
-  nf_servico:      "NF de Serviços",
-  fin_pagar:       "Contas a Pagar",
-  fin_receber:     "Contas a Receber",
-  custos:          "DRE Agrícola",
-  fin_relatorios:  "Rel. Financeiros",
-  fin_contratos:   "Contratos Financeiros",
-  fin_tesouraria:  "Tesouraria",
-  fin_seguros:     "Seguros",
-  transporte:      "CT-e / MDF-e",
-  usuarios:        "Gestão de Usuários",
-  fiscal_nfe:      "Emissão NF-e (SEFAZ)",
-  fiscal_sped:     "SPED ECD / LCDPR",
-  bi:              "BI — Raccolto Intelligence",
-  // ── Add-ons opcionais (vendidos separadamente) ──
-  empresas:         "🏢 Módulo Empresas (cadastro, Folha e DRE por empresa; incluso no Performance)",
-  algodao:          "🌱 Módulo Algodão (Add-on)",
-  cerealista:       "🌾 Módulo Cerealista (em breve)",
-  sementes:         "🫘 Módulo Sementes (em breve)",
-  pecuaria:         "🐄 Módulo Pecuário (em breve)",
-  apoio_financeiro: "💼 Apoio Financeiro (Add-on)",
-  ia_cedula:             "🤖 IA — Extração de Cédula (Add-on)",
-  ia_contrato_venda:     "🤖 IA — Extração de Contrato de Venda (Add-on)",
-  ia_pedido_compra:      "🤖 IA — Lançamento de Pedido de Compra (Add-on)",
-  ia_consorcio:          "🤖 IA — Importar Extrato de Consórcio (Add-on)",
-  ia_apolice:            "🤖 IA — Lançar Apólice de Seguro (Add-on)",
-  protecao_margem:       "📊 Proteção de Margem & Hedge (Add-on)",
-  nf_confirmacao_entrega: "📦 NF de Entrada — Enviar para Aprovação (estoque só após confirmar a entrega)",
-};
+const GRUPOS_MODULOS: { label: string; modulos: string[] }[] =
+  gruposContrataveis().map(g => ({ label: g.label, modulos: g.modulos.map(x => x.id) }));
+
+const MODULOS_LABEL: Record<string, string> = Object.fromEntries(
+  GRUPOS_MODULOS.flatMap(g => g.modulos).map(id => [id, (ehAddon(id) ? "Add-on — " : "") + nomeModulo(id)]),
+);
 
 // Ainda sem tela no sistema: a chave aparece desligada e não pode ser ligada.
-const MODULOS_EM_BREVE = new Set(["cerealista", "sementes", "pecuaria"]);
-
-const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
-  {
-    label: "Campo",
-    modulos: ["cadastros", "propriedades", "lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "estoque"],
-  },
-  {
-    label: "Comercial",
-    modulos: ["contratos", "expedicao", "arrendamento", "compras", "nf_entrada", "nf_servico"],
-  },
-  {
-    label: "Financeiro",
-    modulos: ["fin_pagar", "fin_receber", "custos", "fin_relatorios", "fin_contratos", "fin_tesouraria", "fin_seguros"],
-  },
-  {
-    label: "Fiscal",
-    modulos: ["fiscal_nfe", "fiscal_sped", "transporte"],
-  },
-  {
-    label: "Sistema",
-    modulos: ["usuarios", "bi"],
-  },
-  {
-    label: "Add-ons Opcionais",
-    modulos: ["empresas", "algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "ia_pedido_compra", "ia_consorcio", "ia_apolice", "protecao_margem", "nf_confirmacao_entrega"],
-  },
-];
+const MODULOS_EM_BREVE = new Set(MODULOS.filter(x => x.emBreve).map(x => x.id));
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 

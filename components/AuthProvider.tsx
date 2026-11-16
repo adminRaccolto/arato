@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { instalarFetchComToken } from "../lib/fetch-com-token";
 import { calcularStepsCompletos } from "../lib/onboarding";
 import { planoInclui } from "../lib/planos";
+import { ehAddon, ehExclusivoRaccolto } from "../lib/modulos";
 import { ehConfiguracaoPorGrupo, grupoLiberaConfiguracao } from "../lib/permissoes-configuracao";
 import type { PlanoId } from "../lib/planos";
 import { useRouter } from "next/navigation";
@@ -628,6 +629,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // Raccotlo staff e BPO têm acesso irrestrito — inclusive ao visualizar contexto de cliente
     if (userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor" || userRole === "raccotlo_operacional" || userRole === "bpo") return true;
 
+    // Exclusivo da equipe Raccolto (ex.: BI): cliente nunca, nem com plano ou chave ligada
+    if (ehExclusivoRaccolto(modulo)) return false;
     // Configuração não depende de plano: quem decide é o grupo de usuários (podeAcessar)
     if (ehConfiguracaoPorGrupo(modulo)) return true;
     // Override explícito false bloqueia o cliente (mas não raccotlo, já tratado acima)
@@ -641,8 +644,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // Add-ons opcionais são opt-in: sem override explícito true em conta_modulos = bloqueado.
     // Isso garante que desabilitar um add-on no painel admin sempre remove o item do TopNav,
     // mesmo que a conta não tenha plano configurado (trial/implantação sem pacote).
-    const ADDON_MODULES = ["algodao", "cerealista", "sementes", "pecuaria", "ia_cedula", "nf_confirmacao_entrega"];
-    if (ADDON_MODULES.includes(modulo)) return false;
+    // A lista de add-ons vem do catálogo único (lib/modulos.ts) — antes era repetida aqui e faltavam Proteção de Margem,
+    // Apoio Financeiro e as IAs novas.
+    if (ehAddon(modulo)) return false;
     // Sem plano configurado na conta: acesso liberado (implantação inicial / trial sem pacote)
     if (!planoAtual) return true;
     // Plano desconhecido (ID inválido ou legado) → não bloquear para evitar sumiço de menus

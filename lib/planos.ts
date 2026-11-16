@@ -1,5 +1,7 @@
 // Definição dos planos SaaS do Arato
-// Fonte de verdade dos preços e módulos: este arquivo. A tabela `planos` no banco só repete os preços (Seção 416).
+// Fonte de verdade dos preços: este arquivo. A tabela `planos` no banco só repete os preços (Seção 416).
+// Os módulos de cada plano vêm do catálogo único (lib/modulos.ts, campo `planos`) — não liste módulos aqui.
+import { modulosDoPlano } from "./modulos";
 
 export type PlanoId = "essencial" | "gestao" | "performance";
 
@@ -25,11 +27,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     trial_dias: 14,
     limite_usuarios: 2,
     destaque: false,
-    modulos: [
-      "cadastros","propriedades",
-      "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
-      "fin_pagar","fin_receber","configuracoes",
-    ],
+    modulos: modulosDoPlano("essencial"),
     features_marketing: [
       "Cadastros completos (fazendas, talhões, insumos)",
       "Lavoura completa (plantio, pulverização, colheita)",
@@ -47,15 +45,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     trial_dias: 14,
     limite_usuarios: 5,
     destaque: true,
-    modulos: [
-      "cadastros","propriedades",
-      "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
-      "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
-      "contratos","expedicao","arrendamento",
-      "estoque","compras","nf_entrada","nf_servico",
-      "fin_contratos","fin_tesouraria","fin_seguros","apoio_financeiro",
-      "transporte","usuarios",
-    ],
+    modulos: modulosDoPlano("gestao"),
     features_marketing: [
       "Tudo do Essencial",
       "Comercialização de Grãos (contratos + expedição)",
@@ -77,16 +67,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     trial_dias: 14,
     limite_usuarios: null,
     destaque: false,
-    modulos: [
-      "cadastros","propriedades",
-      "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
-      "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
-      "contratos","expedicao","arrendamento",
-      "compras","nf_entrada","nf_servico",
-      "fin_contratos","fin_tesouraria","fin_seguros","apoio_financeiro",
-      "transporte","usuarios","estoque","empresas",
-      "fiscal_nfe","fiscal_sped","automacoes","whatsapp_agente",
-    ],
+    modulos: modulosDoPlano("performance"),
     features_marketing: [
       "Tudo do Gestão",
       "Emissão de NF-e (integração SEFAZ)",

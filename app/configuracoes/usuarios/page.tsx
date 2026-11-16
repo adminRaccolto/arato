@@ -7,10 +7,11 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { GrupoUsuario, Usuario } from "../../../lib/supabase";
+import { MODULOS_PERMISSAO, type AcaoModulo } from "../../../lib/modulos";
 import { listarUsuarios } from "../../../lib/db";
 
 // ── Estrutura de permissões ────────────────────────────────────────────────────
-type Acao = "visualizar" | "criar" | "editar" | "excluir" | "exportar" | "aprovar" | "reprocessar";
+type Acao = AcaoModulo;
 
 interface ModuloPermissao {
   id: string;
@@ -19,49 +20,10 @@ interface ModuloPermissao {
   acoes: Acao[];
 }
 
-const MODULOS_PERM: ModuloPermissao[] = [
-  { id: "propriedades",     label: "Propriedades & Talhões",    grupo: "Campo",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "lavoura_plantio",  label: "Lavoura — Plantio",         grupo: "Campo",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "lavoura_pulv",     label: "Lavoura — Pulverização",    grupo: "Campo",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "lavoura_colheita", label: "Lavoura — Colheita",        grupo: "Campo",      acoes: ["visualizar","criar","editar","excluir","aprovar"] },
-  { id: "lavoura_plan",     label: "Lavoura — Planejamento",    grupo: "Campo",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "contratos",        label: "Comercialização de Grãos",  grupo: "Comercial",  acoes: ["visualizar","criar","editar","excluir","aprovar"] },
-  { id: "expedicao",        label: "Expedição de Grãos",        grupo: "Comercial",  acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "arrendamento",     label: "Contratos de Arrendamento", grupo: "Comercial",  acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "estoque",          label: "Estoque",                   grupo: "Estoque",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "compras",          label: "Pedidos de Compra",         grupo: "Estoque",    acoes: ["visualizar","criar","editar","excluir","aprovar"] },
-  { id: "nf_entrada",       label: "NF de Entrada (Produtos)",  grupo: "Estoque",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "nf_servico",       label: "NF de Serviços",            grupo: "Estoque",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "fin_receber",      label: "Contas a Receber",          grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","aprovar"] },
-  { id: "fin_pagar",        label: "Contas a Pagar",            grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","aprovar"] },
-  { id: "fin_contratos",    label: "Contratos Financeiros",     grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "folha",            label: "Folha de Pagamento",        grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","reprocessar"] },
-  { id: "fin_tesouraria",   label: "Tesouraria",                grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "fin_seguros",      label: "Seguros",                   grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "fiscal_nfe",       label: "Emissão NF-e",              grupo: "Fiscal",     acoes: ["visualizar","criar","aprovar"] },
-  { id: "fiscal_sped",      label: "SPED / LCDPR",              grupo: "Fiscal",     acoes: ["visualizar","exportar"] },
-  { id: "transporte",       label: "CT-e e MDF-e",              grupo: "Fiscal",     acoes: ["visualizar","criar","editar","excluir","aprovar"] },
-  { id: "custos",           label: "Custos & DRE",              grupo: "Análise",    acoes: ["visualizar","exportar"] },
-  { id: "fin_relatorios",   label: "Relatórios Financeiros",    grupo: "Análise",    acoes: ["visualizar","exportar"] },
-  { id: "bi",               label: "BI — Raccolto Intelligence",grupo: "Análise",    acoes: ["visualizar"] },
-  { id: "algodao",          label: "Algodão",                   grupo: "Add-ons",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "protecao_margem",  label: "Proteção de Margem",        grupo: "Add-ons",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "apoio_financeiro", label: "Apoio Financeiro",          grupo: "Add-ons",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "cerealista",       label: "Cerealista",                grupo: "Add-ons",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "sementes",         label: "Sementes",                  grupo: "Add-ons",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "pecuaria",         label: "Pecuária",                  grupo: "Add-ons",    acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "ia_cedula",        label: "IA — Extração de Cédula",   grupo: "Add-ons",    acoes: ["visualizar","criar"] },
-  { id: "cadastros",           label: "Cadastros (tabelas auxiliares)", grupo: "Admin",         acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "conf_empresa",        label: "Empresa & Certificado A1",       grupo: "Configurações", acoes: ["visualizar","editar"] },
-  { id: "conf_fiscal",         label: "Parâmetros Fiscais (NF-e/MDF-e)",grupo: "Configurações", acoes: ["visualizar","editar"] },
-  { id: "conf_financeiro",     label: "Config. Financeira (Plano/Oper)",grupo: "Configurações", acoes: ["visualizar","editar"] },
-  { id: "conf_contabilidade",  label: "Configuração Contábil",          grupo: "Configurações", acoes: ["visualizar","editar"] },
-  { id: "conf_sistema",        label: "Sistema (Automações/Integrações)",grupo: "Configurações",acoes: ["visualizar","editar"] },
-  { id: "conf_importacao",     label: "Importação de Dados",            grupo: "Configurações", acoes: ["visualizar","criar"] },
-  { id: "usuarios",            label: "Usuários & Permissões",          grupo: "Configurações", acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "logs",                label: "Log do Sistema",                 grupo: "Configurações", acoes: ["visualizar","exportar"] },
-  { id: "conf_raccotlo",      label: "🔒 Gestão Raccolto (WhatsApp Bot / Integrações / Backup / Importação)", grupo: "Configurações", acoes: ["visualizar","editar"] },
-];
+// Lista vem do catálogo único (lib/modulos.ts). Módulo exclusivo da Raccolto (ex.: BI) não aparece para o cliente.
+const MODULOS_PERM: ModuloPermissao[] = MODULOS_PERMISSAO
+  .filter(m => !m.exclusivoRaccolto || m.id === "conf_raccotlo")
+  .map(m => ({ id: m.id, label: m.nome, grupo: m.grupo, acoes: m.acoes }));
 
 const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: string; permissoes: Record<string, Acao[]> }> = {
   admin: {

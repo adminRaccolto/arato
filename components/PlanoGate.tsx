@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { PLANOS_DEFAULT } from "../lib/planos";
 import type { PlanoId } from "../lib/planos";
+import { ehAddon, ehExclusivoRaccolto, nomeModulo } from "../lib/modulos";
 
 // Qual o plano mínimo que inclui cada módulo
 function planoMinimoDoModulo(modulo: string): PlanoId {
@@ -124,6 +125,25 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
 
   // raccotlo tem acesso irrestrito; plano ainda carregando → não bloqueia
   if (podeAcessarPlano(modulo)) return children ? <>{children}</> : null;
+
+  // Add-on (vendido à parte) e área exclusiva da Raccolto não dependem de upgrade de plano
+  if (ehAddon(modulo) || ehExclusivoRaccolto(modulo)) {
+    const exclusivo = ehExclusivoRaccolto(modulo);
+    return (
+      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "32px 28px", maxWidth: 460, width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🔒</div>
+          <h2 data-arato-h2="true" style={{ fontSize: 17, fontWeight: 600, color: "#1A4870", margin: "0 0 10px" }}>
+            {exclusivo ? "Área exclusiva da equipe Raccolto" : `${nomeModulo(modulo)} é um módulo contratado à parte`}
+          </h2>
+          <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6, margin: "0 0 18px" }}>
+            {exclusivo ? "Esta área ainda não está disponível para clientes." : "Ele não faz parte dos planos. Fale com a Raccolto para contratar e liberar na sua conta."}
+          </p>
+          <Link href="/" style={{ fontSize: 13, color: "#1A4870", fontWeight: 600 }}>Voltar ao início</Link>
+        </div>
+      </div>
+    );
+  }
 
   const planoNecessario = planoMinimoDoModulo(modulo);
   const plano           = PLANOS_DEFAULT[planoNecessario];

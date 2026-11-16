@@ -1072,6 +1072,9 @@ Classifica o lançamento como rural, pessoa física, investimento ou não tribut
 
 ---
 
+### Planos e módulos contratados à parte
+Os planos (Essencial, Gestão, Performance) liberam os módulos principais. Ficam fora dos planos e são liberados pela Raccolto, por cliente, em Gestão Arato → Módulos do Sistema: Algodão, Proteção de Margem & Hedge, Apoio Financeiro e as funções de IA (cédula, contrato de venda, pedido de compra, extrato de consórcio, apólice). O BI (Raccolto Intelligence) é exclusivo da equipe Raccolto. Se o cliente abrir um módulo contratado à parte sem tê-lo, aparece "módulo contratado à parte — fale com a Raccolto".
+
 ## DIAGNÓSTICO RÁPIDO DE PROBLEMAS
 
 | Sintoma | Primeira verificação |

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-c",
+    data: "16/11/2026",
+    titulo: "Módulos e planos com uma lista só",
+    modulos: ["Gestão Arato", "Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Planos & Preços, Módulos do Sistema, Visão Geral da Gestão Arato e Usuários e Permissões passam a usar a mesma lista de módulos, com os mesmos nomes. Módulos do Sistema ganha as chaves de Automações e Agente WhatsApp." },
+      { tipo: "melhoria", texto: "Apoio Financeiro passa a ser add-on contratado à parte (liberado em Módulos do Sistema) e deixa de vir nos planos Gestão e Performance. Proteção de Margem também passa a exigir a chave ligada." },
+      { tipo: "melhoria", texto: "BI é exclusivo da equipe Raccolto: cliente não abre o BI nem digitando o endereço. Módulo contratado à parte mostra \"fale com a Raccolto para contratar\" em vez de pedir upgrade de plano." },
+    ],
+    onde: "Gestão Arato → Planos & Preços / Módulos do Sistema · Configurações → Usuários e Permissões",
+  },
+  {
     versao: "2026.11.16-b",
     data: "16/11/2026",
     titulo: "Gestão Arato: excluir cliente volta a funcionar",

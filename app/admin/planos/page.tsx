@@ -1,38 +1,14 @@
 "use client";
 import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
+import { MODULOS } from "../../../lib/modulos";
 
-const TODOS_MODULOS: { id: string; label: string; grupo: string }[] = [
-  { id: "cadastros",         label: "Cadastros",                  grupo: "Campo" },
-  { id: "propriedades",      label: "Fazendas & Talhões",         grupo: "Campo" },
-  { id: "lavoura_plantio",   label: "Lavoura — Plantio",          grupo: "Campo" },
-  { id: "lavoura_pulv",      label: "Lavoura — Pulverização",     grupo: "Campo" },
-  { id: "lavoura_colheita",  label: "Lavoura — Colheita",         grupo: "Campo" },
-  { id: "lavoura_plan",      label: "Lavoura — Planejamento",     grupo: "Campo" },
-  { id: "estoque",           label: "Estoque",                    grupo: "Campo" },
-  { id: "contratos",         label: "Comercialização de Grãos",   grupo: "Comercial" },
-  { id: "expedicao",         label: "Expedição de Grãos",         grupo: "Comercial" },
-  { id: "arrendamento",      label: "Contratos de Arrendamento",  grupo: "Comercial" },
-  { id: "compras",           label: "Pedidos de Compra",          grupo: "Comercial" },
-  { id: "nf_entrada",        label: "NF de Entrada",              grupo: "Comercial" },
-  { id: "nf_servico",        label: "NF de Serviço",              grupo: "Comercial" },
-  { id: "fin_pagar",         label: "Contas a Pagar",             grupo: "Financeiro" },
-  { id: "fin_receber",       label: "Contas a Receber",           grupo: "Financeiro" },
-  { id: "fin_relatorios",    label: "DRE & Relatórios",           grupo: "Financeiro" },
-  { id: "fin_contratos",     label: "Contratos Financeiros",      grupo: "Financeiro" },
-  { id: "fin_tesouraria",    label: "Tesouraria",                 grupo: "Financeiro" },
-  { id: "fin_seguros",       label: "Seguros",                    grupo: "Financeiro" },
-  { id: "custos",            label: "Centro de Custos",           grupo: "Financeiro" },
-  { id: "fiscal_nfe",        label: "Emissão NF-e (SEFAZ)",       grupo: "Fiscal" },
-  { id: "fiscal_sped",       label: "SPED ECD / LCDPR",           grupo: "Fiscal" },
-  { id: "transporte",        label: "CT-e & MDF-e",               grupo: "Fiscal" },
-  { id: "usuarios",          label: "Usuários & Permissões",      grupo: "Sistema" },
-  { id: "automacoes",        label: "Automações",                 grupo: "Sistema" },
-  { id: "whatsapp_agente",   label: "Agente WhatsApp",            grupo: "Sistema" },
-  { id: "configuracoes",     label: "Configurações",              grupo: "Sistema" },
-];
+// Módulos de plano e add-ons vêm do catálogo único (lib/modulos.ts). Add-on aparece com "—" nos três planos: é vendido à parte.
+const TODOS_MODULOS: { id: string; label: string; grupo: string }[] = MODULOS
+  .filter(m => !m.exclusivoRaccolto && (m.planos.length > 0 || m.addon))
+  .map(m => ({ id: m.id, label: m.nome, grupo: m.grupo === "Add-ons" ? "Add-ons (vendidos à parte)" : m.grupo }));
 
-const GRUPOS = ["Campo", "Comercial", "Financeiro", "Fiscal", "Sistema"];
+const GRUPOS = Array.from(new Set(TODOS_MODULOS.map(m => m.grupo)));
 const PLANO_IDS: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR: Record<PlanoId, { label: string; borda: string }> = {

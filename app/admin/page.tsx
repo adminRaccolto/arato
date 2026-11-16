@@ -9,6 +9,7 @@ import type { Conta } from "../../lib/supabase";
 import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
 import InputNumerico from "../../components/InputNumerico";
 import type { PlanoId } from "../../lib/planos";
+import { MODULOS, nomeModulo } from "../../lib/modulos";
 
 // ─── tipos ───────────────────────────────────────────────────────────────────
 
@@ -224,18 +225,10 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
 // ─── Aba Planos ───────────────────────────────────────────────────────────────
 
-const MODULOS_LABEL: Record<string, string> = {
-  cadastros: "Cadastros", propriedades: "Fazendas & Talhões",
-  lavoura_plantio: "Plantio", lavoura_pulv: "Pulverização", lavoura_colheita: "Colheita", lavoura_plan: "Planejamento",
-  estoque: "Estoque", fin_pagar: "Contas a Pagar", fin_receber: "Contas a Receber",
-  custos: "DRE Agrícola", fin_relatorios: "Rel. Financeiros", configuracoes: "Configurações",
-  contratos: "Contratos de Grãos", expedicao: "Expedição", arrendamento: "Arrendamentos",
-  compras: "Pedidos de Compra", nf_entrada: "NF de Entrada", nf_servico: "NF de Serviços",
-  fin_contratos: "Contratos Financeiros", fin_tesouraria: "Tesouraria", fin_seguros: "Seguros",
-  transporte: "CT-e / MDF-e", usuarios: "Gestão de Usuários",
-  fiscal_nfe: "Emissão NF-e (SEFAZ)", fiscal_sped: "SPED ECD / LCDPR",
-  bi: "BI — Raccolto Intelligence",
-};
+// Nomes e lista vêm do catálogo único (lib/modulos.ts): só os módulos que entram em algum plano.
+const MODULOS_LABEL: Record<string, string> = Object.fromEntries(
+  MODULOS.filter(m => m.planos.length > 0).map(m => [m.id, nomeModulo(m.id)]),
+);
 
 const ORDEM_PLANOS: PlanoId[] = ["essencial", "gestao", "performance"];
 
