@@ -824,7 +824,9 @@ function ParametrosSistemaContent() {
   const salvarNcm = async () => {
     const contexto=contextoAtual;
     if (!(await confirmarAcao({titulo:"Confirmar ação",mensagem:"Salvar os dados conferidos?",perigo:false}))) return;
-    if(!modalNcm || !fazendaId || cfgContexto.current!==contexto)return;
+    if(!modalNcm)return;
+    // Antes saía calado (sem gravar e sem avisar) — o usuário fechava achando que tinha salvo (achado 16/11/2026, NCM 84099999).
+    if(!fazendaId || cfgContexto.current!==contexto){alert("O cadastro NÃO foi salvo: os parâmetros do cliente não terminaram de carregar. Recarregue a página e salve de novo.");return;}
     try {
       await salvarCadastroFiscal(supabase,"ncm_tributacoes",{...NCM_MODAL_VAZIO,...modalNcm},fazendaId);
       await recarregarNcms(); if(cfgContexto.current===contexto)setModalNcm(null);
@@ -854,7 +856,8 @@ function ParametrosSistemaContent() {
   const salvarOp = async () => {
     const contexto=contextoAtual;
     if (!(await confirmarAcao({titulo:"Confirmar ação",mensagem:"Salvar os dados conferidos?",perigo:false}))) return;
-    if(!modalOp || !fazendaId || cfgContexto.current!==contexto)return;
+    if(!modalOp)return;
+    if(!fazendaId || cfgContexto.current!==contexto){alert("A operação fiscal NÃO foi salva: os parâmetros do cliente não terminaram de carregar. Recarregue a página e salve de novo.");return;}
     try {
       await salvarCadastroFiscal(supabase,"operacoes_fiscais",{...OP_MODAL_VAZIO,...modalOp},fazendaId);
       await recarregarOps(); if(cfgContexto.current===contexto)setModalOp(null);

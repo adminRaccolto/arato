@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-a",
+    data: "16/11/2026",
+    titulo: "Tributação NCM avisa quando o cadastro não foi salvo",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Parâmetros do Sistema → Tributação NCM e Operações Fiscais: se os dados do cliente ainda não tinham terminado de carregar, o Salvar fechava sem gravar e sem avisar. Agora aparece \"O cadastro NÃO foi salvo\" com a orientação de recarregar a página." },
+    ],
+    onde: "Parâmetros do Sistema → Tributação NCM / Operações Fiscais",
+  },
+  {
     versao: "2026.11.13-j",
     data: "13/11/2026",
     titulo: "IBS/CBS: escolha de contribuinte e novos padrões de NCM",
