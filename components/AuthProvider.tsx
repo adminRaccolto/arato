@@ -6,7 +6,8 @@ import { instalarFetchComToken } from "../lib/fetch-com-token";
 import { calcularStepsCompletos } from "../lib/onboarding";
 import { planoInclui } from "../lib/planos";
 import { ehAddon, ehExclusivoRaccolto } from "../lib/modulos";
-import { ehConfiguracaoPorGrupo, grupoLiberaConfiguracao } from "../lib/permissoes-configuracao";
+import { grupoPermite } from "../lib/permissoes-grupo";
+import { ehConfiguracaoPorGrupo } from "../lib/permissoes-configuracao";
 import type { PlanoId } from "../lib/planos";
 import { useRouter } from "next/navigation";
 
@@ -594,35 +595,25 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     })().catch(() => {});
   }, [fazendaId, fazendaIds, contaId]);
 
+  // Regra das permissões por grupo: lib/permissoes-grupo.ts (grupo legado × grupo v2; usuário sem grupo vê tudo).
   const podeAcessar = useCallback((modulo: string) => {
     const isAnyRaccotlo = ["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "");
     if (isAnyRaccotlo) return true; // raccotlo/bpo vêem tudo, inclusive conf_raccotlo
     if (modulo === "conf_raccotlo") return false;  // clientes bloqueados de páginas raccotlo
-    const p = permissoes[modulo] as unknown;
-    if (ehConfiguracaoPorGrupo(modulo)) return grupoLiberaConfiguracao(p); // configuração: não marcado = sem acesso
-    if (p === undefined) return true;              // não configurado = permitido por padrão
-    if (Array.isArray(p)) {
-      if ((p as string[]).length === 0) return true; // array vazio = não configurado = permitido
-      return (p as string[]).includes("visualizar");
-    }
-    return (p as string) !== "nenhum";             // formato legado
+    return grupoPermite(permissoes as Record<string, unknown>, modulo);
   }, [permissoes, userRole]);
 
-  // Ação específica de um módulo (ex.: "reprocessar" da Folha). Módulo não configurado no grupo = permitido.
+  // Ação específica de um módulo (ex.: "reprocessar" da Folha).
   const podeAcao = useCallback((modulo: string, acao: string) => {
     if (["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "")) return true;
-    const p = permissoes[modulo] as unknown;
-    if (p === undefined) return true;
-    if (Array.isArray(p)) return (p as string[]).length === 0 || (p as string[]).includes(acao);
-    return (p as string) === "escrita";
+    return grupoPermite(permissoes as Record<string, unknown>, modulo, acao);
   }, [permissoes, userRole]);
 
   const podeEscrever = useCallback((modulo: string) => {
-    const p = permissoes[modulo] as unknown;
-    if (p === undefined) return true;
-    if (Array.isArray(p)) return (p as string[]).includes("criar") || (p as string[]).includes("editar");
-    return (p as string) === "escrita";
-  }, [permissoes]);
+    if (["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "")) return true;
+    const p = permissoes as Record<string, unknown>;
+    return grupoPermite(p, modulo, "criar") || grupoPermite(p, modulo, "editar");
+  }, [permissoes, userRole]);
 
   // raccotlo/bpo têm acesso irrestrito a tudo; clientes verificam add-on + permissão de grupo
   const podeAcessarPlano = useCallback((modulo: string) => {

@@ -23,6 +23,7 @@ import { consumirPrevisao, tabelaPrevisoesAusente } from "../../../../lib/financ
 import { acaoSalario, efeitosCorrecao } from "../../../../lib/financeiro/correcao-adiantamento";
 import { alvosFolha } from "../../../../lib/folha/alvos-acesso";
 import { acessoDoUsuario, fazendasDoAcesso } from "../../../../lib/api-auth";
+import { grupoEhV2, grupoPermite } from "../../../../lib/permissoes-grupo";
 
 // Usa a fazenda candidata só se for do mesmo cliente da fazenda que a requisição validou; senão a da requisição.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -345,15 +346,15 @@ async function refazerPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
 }
 
 /** Reprocessar folha fechada é rotina liberada por grupo de usuário (Configurações → Usuários → grupo → Folha de
- *  Pagamento → Reprocessar). Grupo sem a Folha configurada = liberado (regra geral das permissões do sistema). */
+ *  Pagamento → Reprocessar). Regra comum dos grupos em lib/permissoes-grupo.ts (grupo antigo sem a Folha = liberado;
+ *  grupo revisado/v2 = só o que está marcado). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function semPermissaoReprocessar(sb: any, userId: string): Promise<string | null> {
   const { data: perfil } = await sb.from("perfis").select("role").eq("user_id", userId).maybeSingle();
   if (String(perfil?.role ?? "").startsWith("raccotlo") || perfil?.role === "bpo") return null;
   const { data: u } = await sb.from("usuarios").select("grupos_usuarios(permissoes)").eq("auth_user_id", userId).maybeSingle();
   const g = Array.isArray(u?.grupos_usuarios) ? u?.grupos_usuarios[0] : u?.grupos_usuarios;
-  const p = (g?.permissoes ?? {})["folha"];
-  if (Array.isArray(p) && p.length > 0 && !p.includes("reprocessar")) return "Seu grupo de usuário não tem permissão para reprocessar folha fechada (Configurações → Usuários e Permissões).";
+  if (!grupoPermite(g?.permissoes, "folha", "reprocessar")) return "Seu grupo de usuário não tem permissão para reprocessar folha fechada (Configurações → Usuários e Permissões).";
   return null;
 }
 
@@ -414,13 +415,15 @@ export async function POST(req: Request) {
       if (ePerfil) throw ePerfil;
       perfilControle = perfil;
       let permissao: unknown;
+      let grupoV2 = false;
       if (!String(perfil?.role ?? "").startsWith("raccotlo") && perfil?.role !== "bpo") {
         const { data: usuario, error } = await sb.from("usuarios").select("grupos_usuarios(permissoes)").eq("auth_user_id", user.id).maybeSingle();
         if (error) throw error;
         const grupo = Array.isArray(usuario?.grupos_usuarios) ? usuario.grupos_usuarios[0] : usuario?.grupos_usuarios;
         permissao = grupo?.permissoes?.folha;
+        grupoV2 = grupoEhV2(grupo?.permissoes);
       }
-      if (!podeUsarControleFolha(perfil?.role, permissao, !["listar_controle", "listar_divergencias_decisoes"].includes(operacao))) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
+      if (!podeUsarControleFolha(perfil?.role, permissao, !["listar_controle", "listar_divergencias_decisoes"].includes(operacao), grupoV2)) return NextResponse.json({ error: "Seu grupo não tem permissão para esta ação na folha." }, { status: 403 });
     }
 
     if (operacao === "listar_divergencias_decisoes") {

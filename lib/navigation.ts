@@ -38,31 +38,31 @@ export const NAV: NavItem[] = [
     type: "group", id: "cadastros", label: "Cadastros", panel: true, minStep: 0,
     children: [
       { type: "divider", label: "Cadastros — Entidades" },
-      { id: "cad-pessoas",          label: "Pessoas e Entidades",        path: "/cadastros?tab=pessoas"                              },
-      { id: "cad-produtores",       label: "Produtores",                 path: "/cadastros?tab=produtores"                           },
-      { id: "cad-fazendas",         label: "Fazendas e Talhões",         path: "/cadastros?tab=fazendas", planoModulo: "propriedades" },
-      { id: "cad-funcionarios",     label: "Funcionários",               path: "/cadastros?tab=funcionarios"                         },
-      { id: "cad-empresas",         label: "Empresas",                   path: "/cadastros?tab=empresas", planoModulo: "empresas" },
-      { id: "cad-imoveis-urbanos",  label: "Imóveis Urbanos",            path: "/cadastros?tab=imoveis_urbanos"                      },
+      { id: "cad-pessoas",          label: "Pessoas e Entidades",        path: "/cadastros?tab=pessoas", moduleId: "cadastros" },
+      { id: "cad-produtores",       label: "Produtores",                 path: "/cadastros?tab=produtores", moduleId: "cadastros" },
+      { id: "cad-fazendas",         label: "Fazendas e Talhões",         path: "/cadastros?tab=fazendas", planoModulo: "propriedades", moduleId: "propriedades" },
+      { id: "cad-funcionarios",     label: "Funcionários",               path: "/cadastros?tab=funcionarios", moduleId: "cadastros" },
+      { id: "cad-empresas",         label: "Empresas",                   path: "/cadastros?tab=empresas", planoModulo: "empresas", moduleId: "cadastros" },
+      { id: "cad-imoveis-urbanos",  label: "Imóveis Urbanos",            path: "/cadastros?tab=imoveis_urbanos", moduleId: "cadastros" },
       { type: "divider", label: "Cadastros — Agrícola" },
-      { id: "cad-insumos",          label: "Catálogo de Insumos",        path: "/cadastros?tab=insumos"                              },
-      { id: "cad-produtos",         label: "Produtos Agrícolas",         path: "/cadastros?tab=produtos"                             },
-      { id: "cad-itens",            label: "Itens Gerais",               path: "/cadastros?tab=itens"                                },
-      { id: "cad-depositos",        label: "Depósitos & Armazéns",       path: "/cadastros?tab=depositos"                            },
-      { id: "cad-combustivel",      label: "Combustíveis & Bombas",      path: "/cadastros?tab=combustivel"                          },
-      { id: "cad-grupos-insumo",    label: "Grupos de Insumos",          path: "/cadastros?tab=grupos_insumo"                        },
-      { id: "cad-culturas",         label: "Culturas",                   path: "/cadastros?tab=culturas"                             },
-      { id: "cad-principios-ativos",label: "Princípios Ativos (BOT)",    path: "/cadastros?tab=principios_ativos"                    },
-      { id: "cad-unidades-medida",  label: "Unidades de Medida",         path: "/cadastros?tab=unidades_medida"                      },
+      { id: "cad-insumos",          label: "Catálogo de Insumos",        path: "/cadastros?tab=insumos", moduleId: "cadastros" },
+      { id: "cad-produtos",         label: "Produtos Agrícolas",         path: "/cadastros?tab=produtos", moduleId: "cadastros" },
+      { id: "cad-itens",            label: "Itens Gerais",               path: "/cadastros?tab=itens", moduleId: "cadastros" },
+      { id: "cad-depositos",        label: "Depósitos & Armazéns",       path: "/cadastros?tab=depositos", moduleId: "cadastros" },
+      { id: "cad-combustivel",      label: "Combustíveis & Bombas",      path: "/cadastros?tab=combustivel", moduleId: "cadastros" },
+      { id: "cad-grupos-insumo",    label: "Grupos de Insumos",          path: "/cadastros?tab=grupos_insumo", moduleId: "cadastros" },
+      { id: "cad-culturas",         label: "Culturas",                   path: "/cadastros?tab=culturas", moduleId: "cadastros" },
+      { id: "cad-principios-ativos",label: "Princípios Ativos (BOT)",    path: "/cadastros?tab=principios_ativos", moduleId: "cadastros" },
+      { id: "cad-unidades-medida",  label: "Unidades de Medida",         path: "/cadastros?tab=unidades_medida", moduleId: "cadastros" },
       { type: "divider", label: "Cadastros — Patrimônio" },
-      { id: "cad-maquinas",         label: "Máquinas e Veículos",        path: "/cadastros?tab=maquinas"                             },
-      { id: "cad-benfeitorias",     label: "Benfeitorias",               path: "/cadastros?tab=benfeitorias"                         },
-      { id: "cad-bens",             label: "Bens (Alienação)",           path: "/cadastros?tab=bens"                                 },
+      { id: "cad-maquinas",         label: "Máquinas e Veículos",        path: "/cadastros?tab=maquinas", moduleId: "maquinas" },
+      { id: "cad-benfeitorias",     label: "Benfeitorias",               path: "/cadastros?tab=benfeitorias", moduleId: "cadastros" },
+      { id: "cad-bens",             label: "Bens (Alienação)",           path: "/cadastros?tab=bens", moduleId: "cadastros" },
       { type: "divider", label: "Cadastros — Financeiro" },
-      { id: "cad-contas-bancarias", label: "Contas Bancárias",           path: "/cadastros?tab=contas_bancarias"                     },
-      { id: "cad-centros-custo",    label: "Centros de Custo",           path: "/cadastros?tab=centros_custo"                        },
-      { id: "cad-historico-fiscal", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal"                     },
-      { id: "cad-formas-pagamento", label: "Formas de Pagamento",        path: "/cadastros?tab=formas_pagamento"                     },
+      { id: "cad-contas-bancarias", label: "Contas Bancárias",           path: "/cadastros?tab=contas_bancarias", moduleId: "cadastros" },
+      { id: "cad-centros-custo",    label: "Centros de Custo",           path: "/cadastros?tab=centros_custo", moduleId: "cadastros" },
+      { id: "cad-historico-fiscal", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal", moduleId: "cadastros" },
+      { id: "cad-formas-pagamento", label: "Formas de Pagamento",        path: "/cadastros?tab=formas_pagamento", moduleId: "cadastros" },
     ],
   },
 
@@ -70,30 +70,30 @@ export const NAV: NavItem[] = [
     type: "group", id: "producao", label: "Produção", panel: true, minStep: 3,
     children: [
       { type: "divider", label: "Planejamento" },
-      { id: "prod-planejamento",  label: "Planejamento de Safra",           path: "/lavoura/planejamento", planoModulo: "lavoura_plan" },
-      { id: "prod-safras",        label: "Safras e Ciclos",                 path: "/cadastros?tab=safras", planoModulo: "lavoura_plan" },
-      { id: "prod-orcamento",     label: "Orçamento Planejado × Realizado", path: "/lavoura/planejamento?aba=comparativo", planoModulo: "lavoura_plan" },
+      { id: "prod-planejamento",  label: "Planejamento de Safra",           path: "/lavoura/planejamento", planoModulo: "lavoura_plan", moduleId: "lavoura_plan" },
+      { id: "prod-safras",        label: "Safras e Ciclos",                 path: "/cadastros?tab=safras", planoModulo: "lavoura_plan", moduleId: "lavoura_plan" },
+      { id: "prod-orcamento",     label: "Orçamento Planejado × Realizado", path: "/lavoura/planejamento?aba=comparativo", planoModulo: "lavoura_plan", moduleId: "lavoura_plan" },
       { type: "divider", label: "Operações de Campo" },
-      { id: "prod-plantio",       label: "Plantio",                         path: "/lavoura/plantio", planoModulo: "lavoura_plantio" },
-      { id: "prod-adubacao",      label: "Adubação de Base",                path: "/lavoura/adubacao", planoModulo: "lavoura_plantio" },
-      { id: "prod-correcao",      label: "Correção de Solo",                path: "/lavoura/correcao", planoModulo: "lavoura_plantio" },
-      { id: "prod-pulverizacao",  label: "Pulverização Terrestre",          path: "/lavoura/pulverizacao", planoModulo: "lavoura_pulv" },
-      { id: "prod-aerea",         label: "Aplicação Aérea",                 path: "/lavoura/aerea", planoModulo: "lavoura_pulv" },
-      { id: "prod-trat-semente",  label: "Tratamento de Sementes",          path: "/lavoura/tratamento-sementes", planoModulo: "lavoura_plantio" },
+      { id: "prod-plantio",       label: "Plantio",                         path: "/lavoura/plantio", planoModulo: "lavoura_plantio", moduleId: "lavoura_plantio" },
+      { id: "prod-adubacao",      label: "Adubação de Base",                path: "/lavoura/adubacao", planoModulo: "lavoura_plantio", moduleId: "lavoura_plantio" },
+      { id: "prod-correcao",      label: "Correção de Solo",                path: "/lavoura/correcao", planoModulo: "lavoura_plantio", moduleId: "lavoura_plantio" },
+      { id: "prod-pulverizacao",  label: "Pulverização Terrestre",          path: "/lavoura/pulverizacao", planoModulo: "lavoura_pulv", moduleId: "lavoura_pulv" },
+      { id: "prod-aerea",         label: "Aplicação Aérea",                 path: "/lavoura/aerea", planoModulo: "lavoura_pulv", moduleId: "lavoura_pulv" },
+      { id: "prod-trat-semente",  label: "Tratamento de Sementes",          path: "/lavoura/tratamento-sementes", planoModulo: "lavoura_plantio", moduleId: "lavoura_plantio" },
       { type: "divider", label: "Monitoramento" },
-      { id: "prod-mapa",          label: "Mapa de Talhões",                  path: "/mapa", planoModulo: "propriedades" },
-      { id: "prod-recomendacoes", label: "Recomendações Agronômicas",       path: "/lavoura/recomendacoes"                    },
-      { id: "prod-pragas",        label: "Pragas & Doenças",                path: "/lavoura/pragas"                           },
-      { id: "prod-pluviometria",  label: "Pluviometria",                    path: "/lavoura/pluviometria"                     },
+      { id: "prod-mapa",          label: "Mapa de Talhões",                  path: "/mapa", planoModulo: "propriedades", moduleId: "propriedades" },
+      { id: "prod-recomendacoes", label: "Recomendações Agronômicas",       path: "/lavoura/recomendacoes", moduleId: "lavoura_monitoramento" },
+      { id: "prod-pragas",        label: "Pragas & Doenças",                path: "/lavoura/pragas", moduleId: "lavoura_monitoramento" },
+      { id: "prod-pluviometria",  label: "Pluviometria",                    path: "/lavoura/pluviometria", moduleId: "lavoura_monitoramento" },
       { type: "divider", label: "Colheita" },
-      { id: "prod-colheita",      label: "Colheita",                        path: "/lavoura/colheita", planoModulo: "lavoura_colheita" },
-      { id: "prod-rom-producao",  label: "Romaneios de Produção",           path: "/estoque/romaneio-entrada", planoModulo: "lavoura_colheita" },
-      { id: "prod-classificacao", label: "Classificação de Grãos",          path: "/cadastros?tab=padroes_classificacao"      },
+      { id: "prod-colheita",      label: "Colheita",                        path: "/lavoura/colheita", planoModulo: "lavoura_colheita", moduleId: "lavoura_colheita" },
+      { id: "prod-rom-producao",  label: "Romaneios de Produção",           path: "/estoque/romaneio-entrada", planoModulo: "lavoura_colheita", moduleId: "lavoura_colheita" },
+      { id: "prod-classificacao", label: "Classificação de Grãos",          path: "/cadastros?tab=padroes_classificacao", moduleId: "lavoura_colheita" },
       { type: "divider", label: "Máquinas" },
-      { id: "prod-maquinas",      label: "Máquinas e Veículos",         path: "/cadastros?tab=maquinas"                   },
-      { id: "prod-abastecimento", label: "Abastecimento de Máquinas",   path: "/estoque/abastecimento"                    },
-      { id: "prod-manutencoes",   label: "Manutenções",                 path: "/relatorios/manutencao"                    },
-      { id: "prod-custos-maq",    label: "Custos por Máquina",          path: "/relatorios/manutencao?aba=custos"         },
+      { id: "prod-maquinas",      label: "Máquinas e Veículos",         path: "/cadastros?tab=maquinas", moduleId: "maquinas" },
+      { id: "prod-abastecimento", label: "Abastecimento de Máquinas",   path: "/estoque/abastecimento", moduleId: "maquinas" },
+      { id: "prod-manutencoes",   label: "Manutenções",                 path: "/relatorios/manutencao", moduleId: "maquinas" },
+      { id: "prod-custos-maq",    label: "Custos por Máquina",          path: "/relatorios/manutencao?aba=custos", moduleId: "maquinas" },
       { type: "divider", label: "Algodão" },
       { id: "alg-safra",          label: "Safra & Operações",               path: "/algodao?aba=safra",      moduleId: "algodao" },
       { id: "alg-bicudo",         label: "Monitoramento de Bicudo",         path: "/algodao?aba=bicudo",     moduleId: "algodao" },
@@ -123,8 +123,8 @@ export const NAV: NavItem[] = [
       { id: "docfis-cte",        label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",                moduleId: "transporte" },
       { id: "docfis-mdfe",       label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",               moduleId: "transporte" },
       { type: "divider", label: "Classificação" },
-      { id: "docfis-regras-class", label: "Regras de Classificação Automática", path: "/configuracoes/classificacao"                    },
-      { id: "docfis-pend-class", label: "Pendências de Classificação",       path: "/financeiro/pendencias-nf"                              },
+      { id: "docfis-regras-class", label: "Regras de Classificação Automática", path: "/configuracoes/classificacao", moduleId: "nf_entrada" },
+      { id: "docfis-pend-class", label: "Pendências de Classificação",       path: "/financeiro/pendencias-nf", moduleId: "nf_entrada" },
       { type: "divider", label: "Relatórios" },
       { id: "docfis-rel-processamento", label: "Processamento de NF e NFS-e", path: "/fiscal/relatorio-processamento", moduleId: "nf_entrada" },
       { id: "docfis-rel-canceladas", label: "NFs Canceladas pelo Emitente", path: "/fiscal/relatorio-canceladas", moduleId: "nf_entrada" },
@@ -138,10 +138,10 @@ export const NAV: NavItem[] = [
       { type: "divider", label: "Compras" },
       { id: "com-pedidos",        label: "Pedido de Compras",           path: "/compras",                            moduleId: "compras" },
       { type: "divider", label: "Estoque" },
-      { id: "com-transferencias", label: "Transferência entre Fazendas", path: "/estoque/transferencias", planoModulo: "estoque" },
-      { id: "com-rom-terceiros",  label: "Romaneios de Terceiros",      path: "/relatorios/romaneios?aba=entrada"                 },
+      { id: "com-transferencias", label: "Transferência entre Fazendas", path: "/estoque/transferencias", planoModulo: "estoque", moduleId: "estoque" },
+      { id: "com-rom-terceiros",  label: "Romaneios de Terceiros",      path: "/relatorios/romaneios?aba=entrada", moduleId: "estoque" },
       { type: "divider", label: "Integração de Documentos" },
-      { id: "com-ligar-sieg",     label: "⚡ Ligar / Desligar SIEG",    path: "/configuracoes/automacoes"                         },
+      { id: "com-ligar-sieg",     label: "⚡ Ligar / Desligar SIEG",    path: "/configuracoes/automacoes", moduleId: "nf_entrada" },
       { type: "divider", label: "Comercialização" },
       { id: "com-contratos",          label: "Contratos de Grãos",          path: "/contratos",                    moduleId: "contratos"   },
       { id: "com-migrar-nf",          label: "Migração de NF entre Contratos", path: "/contratos/migrar-nf",       moduleId: "contratos"   },
@@ -158,7 +158,7 @@ export const NAV: NavItem[] = [
       { id: "transp-mdfe",            label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",          moduleId: "transporte" },
       { id: "transp-cadastros",       label: "Transportadoras / Veículos",        path: "/transporte/cadastros",     moduleId: "transporte" },
       { type: "divider", label: "Balança" },
-      { id: "com-pesagem-avulsa",     label: "Pesagem Avulsa",                    path: "/balanca/pesagem-avulsa"                           },
+      { id: "com-pesagem-avulsa",     label: "Pesagem Avulsa",                    path: "/balanca/pesagem-avulsa", moduleId: "balanca" },
       // Tudo acima é OPERAÇÃO (lançamento/execução); tudo abaixo é RELATÓRIO
       // (consulta/filtro/exportar) — agrupado numa seção final só, com o
       // mesmo separador horizontal que já existe antes de cada divider.
@@ -166,11 +166,11 @@ export const NAV: NavItem[] = [
       // como única seção final).
       { type: "divider", label: "Relatórios" },
       { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/relatorios/pedidos-compra",                       moduleId: "compras", bloco: "Compras" },
-      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque",                                         bloco: "Estoque", planoModulo: "estoque" },
-      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex",                                  bloco: "Estoque", planoModulo: "estoque" },
-      { id: "com-rel-aud-fiscal", label: "Auditor Fiscal × Físico",     path: "/estoque/auditoria-fiscal",                        bloco: "Estoque", planoModulo: "estoque" },
-      { id: "com-rel-rastreio",   label: "Rastreabilidade do Item",     path: "/estoque/rastreabilidade",                         bloco: "Estoque", planoModulo: "estoque" },
-      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos",                                   bloco: "Comercialização", planoModulo: "estoque" },
+      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque",                                         bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },
+      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex",                                  bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },
+      { id: "com-rel-aud-fiscal", label: "Auditor Fiscal × Físico",     path: "/estoque/auditoria-fiscal",                        bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },
+      { id: "com-rel-rastreio",   label: "Rastreabilidade do Item",     path: "/estoque/rastreabilidade",                         bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },
+      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos",                                   bloco: "Comercialização", planoModulo: "estoque", moduleId: "estoque" },
     ],
   },
 
@@ -181,9 +181,9 @@ export const NAV: NavItem[] = [
       { id: "fin-pagar",           label: "Contas a Pagar",               path: "/financeiro/pagar",                moduleId: "fin_pagar"      },
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
       { id: "fin-adiantamentos",   label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos",        moduleId: "fin_pagar"      },
-      { id: "fin-folha",           label: "Folha de Pagamento",           path: "/financeiro/folha"                                            },
+      { id: "fin-folha",           label: "Folha de Pagamento",           path: "/financeiro/folha", moduleId: "folha" },
       { id: "fin-previsoes",       label: "Previsão de Gastos",           path: "/financeiro/previsoes",            moduleId: "fin_pagar"      },
-      { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha", planoModulo: "empresas" },
+      { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha", planoModulo: "empresas", moduleId: "folha" },
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
       { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",      path: "/financeiro/tesouraria/operacoes", moduleId: "fin_tesouraria" },
@@ -230,17 +230,17 @@ export const NAV: NavItem[] = [
     type: "group", id: "resultados", label: "Resultados", panel: true, minStep: 3,
     children: [
       { type: "divider", label: "Resultado Econômico" },
-      { id: "res-dre",           label: "DRE Agrícola",            path: "/custos?aba=dre", planoModulo: "custos" },
-      { id: "res-margens",       label: "Margens por Safra",       path: "/relatorios/dre", planoModulo: "custos" },
-      { id: "res-dre-empresa",   label: "DRE por Empresa",         path: "/financeiro/empresas", planoModulo: "empresas" },
+      { id: "res-dre",           label: "DRE Agrícola",            path: "/custos?aba=dre", planoModulo: "custos", moduleId: "custos" },
+      { id: "res-margens",       label: "Margens por Safra",       path: "/relatorios/dre", planoModulo: "custos", moduleId: "custos" },
+      { id: "res-dre-empresa",   label: "DRE por Empresa",         path: "/financeiro/empresas", planoModulo: "empresas", moduleId: "custos" },
       { type: "divider", label: "Custos" },
-      { id: "res-custos-totais", label: "Custos Totais",           path: "/custos?aba=custostotais", planoModulo: "custos" },
-      { id: "res-custo-ha",      label: "Custo / ha",              path: "/custos?aba=custoha", planoModulo: "custos" },
-      { id: "res-rateio",        label: "Regras de Rateio",        path: "/configuracoes/rateio", planoModulo: "custos" },
-      { id: "res-aplicacoes",    label: "Aplicações por Ciclo",    path: "/lavoura/relatorios/aplicacoes"        },
-      { id: "res-manutencao",    label: "Manutenção de Máquinas",  path: "/relatorios/manutencao", planoModulo: "custos" },
+      { id: "res-custos-totais", label: "Custos Totais",           path: "/custos?aba=custostotais", planoModulo: "custos", moduleId: "custos" },
+      { id: "res-custo-ha",      label: "Custo / ha",              path: "/custos?aba=custoha", planoModulo: "custos", moduleId: "custos" },
+      { id: "res-rateio",        label: "Regras de Rateio",        path: "/configuracoes/rateio", planoModulo: "custos", moduleId: "custos" },
+      { id: "res-aplicacoes",    label: "Aplicações por Ciclo",    path: "/lavoura/relatorios/aplicacoes", moduleId: "lavoura_plan" },
+      { id: "res-manutencao",    label: "Manutenção de Máquinas",  path: "/relatorios/manutencao", planoModulo: "custos", moduleId: "maquinas" },
       { type: "divider", label: "Desempenho" },
-      { id: "res-produtividade", label: "Produtividade",           path: "/custos?aba=produtividade", planoModulo: "custos" },
+      { id: "res-produtividade", label: "Produtividade",           path: "/custos?aba=produtividade", planoModulo: "custos", moduleId: "custos" },
       { id: "res-fin-classif",   label: "Gastos por Classificação", path: "/relatorios/financeiro-classificacao", moduleId: "fin_relatorios" },
     ],
   },
@@ -258,7 +258,7 @@ export const NAV: NavItem[] = [
       { id: "conf-contabilidade",   label: "Contabilidade",              path: "/configuracoes/contabilidade",                        moduleId: "conf_contabilidade" },
       { type: "divider", label: "Usuários" },
       { id: "conf-usuarios",        label: "Usuários e Permissões",      path: "/configuracoes/usuarios",                             moduleId: "usuarios"          },
-      { id: "conf-auditoria",       label: "Auditoria",                  path: "/configuracoes/auditoria"                                                           },
+      { id: "conf-auditoria",       label: "Auditoria",                  path: "/configuracoes/auditoria", moduleId: "auditoria" },
       { type: "divider", label: "Raccolto" },
       { id: "conf-integracoes",     label: "Integrações",                path: "/configuracoes/integracoes",                          moduleId: "conf_raccotlo" },
       { id: "conf-bot",             label: "Bot IA — WhatsApp",          path: "/configuracoes/bot",                                  moduleId: "conf_raccotlo" },
@@ -284,16 +284,26 @@ export const NAV: NavItem[] = [
 ];
 
 // ─── Mapeamento nav-id → módulos de permissão ───────────────
-// Grupo visível se pelo menos 1 dos módulos for acessível.
-// IDs batem com MODULOS_PERM em admin/usuarios/page.tsx
-// Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
-export const NAV_MODULE_MAP: Record<string, string[]> = {
-  "producao":      ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades", "lavoura", "lavoura_planejamento", "lavoura_relatorios"],
-  "documentos-fiscais": ["nf_entrada", "nf_servico", "fiscal_nfe", "transporte", "contratos"],
-  "comercial":     ["contratos", "expedicao", "arrendamento", "transporte", "compras", "fin_relatorios"],
-  "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros", "apoio_financeiro", "fin_relatorios"],
-  "fiscal":        ["fiscal_nfe", "fiscal_sped"],
-  "resultados":    ["custos", "fin_relatorios", "bi"],
-  "cadastros":     ["cadastros"],
-  "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs"],
-};
+// Grupo visível se pelo menos 1 dos módulos for acessível. Montado a partir dos próprios itens (moduleId), para não
+// ficar para trás quando entra tela nova — antes era uma lista à mão e faltavam módulos. Grupo com algum item sem
+// moduleId (ex.: Ajuda) não entra no mapa: fica sempre visível e cada item decide por si.
+function modulosDoGrupo(children: NavChild[]): string[] | null {
+  const ids = new Set<string>();
+  for (const c of children) {
+    if (c.type === "divider") continue;
+    const itens = c.type === "subgroup" ? c.children : [c as NavLink];
+    for (const i of itens) {
+      if (!i.moduleId) return null;
+      ids.add(i.moduleId);
+    }
+  }
+  return ids.size ? [...ids] : null;
+}
+
+export const NAV_MODULE_MAP: Record<string, string[]> = Object.fromEntries(
+  NAV.flatMap(item => {
+    if (item.type !== "group") return [];
+    const mods = modulosDoGrupo(item.children);
+    return mods ? [[item.id, mods]] : [];
+  }),
+);

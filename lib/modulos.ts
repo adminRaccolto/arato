@@ -7,7 +7,8 @@
 //                      (conta_modulos). Não entra em plano nenhum.
 //  exclusivoRaccolto → só a equipe Raccolto/BPO vê; cliente nunca, nem com plano ou chave.
 //  emBreve           → ainda sem tela: aparece desligado em Módulos do Sistema e não pode ser ligado.
-//  permissao         → aparece em Configurações → Usuários e Permissões (grupos de usuários).
+//  permissao         → aparece em Configurações → Usuários e Permissões (grupos de usuários). Só módulo que controla
+//                      algum item do menu (lib/navigation-permissoes.test.ts confere) — caixa que não muda nada confunde.
 //  contratavel       → aparece em Gestão Arato → Módulos do Sistema (liga/desliga por cliente).
 
 import type { PlanoId } from "./planos";
@@ -48,15 +49,18 @@ export const MODULOS: ModuloDef[] = [
   m("lavoura_pulv",     "Lavoura — Pulverização",       "Campo",      CRUD,         TODOS),
   m("lavoura_colheita", "Lavoura — Colheita",           "Campo",      CRUD_APROVAR, TODOS),
   m("lavoura_plan",     "Lavoura — Planejamento",       "Campo",      CRUD,         TODOS),
+  m("lavoura_monitoramento", "Lavoura — Monitoramento (recomendações, pragas, chuva)", "Campo", CRUD, TODOS),
+  m("maquinas",         "Máquinas, Abastecimento e Manutenção", "Campo", CRUD,       TODOS),
   // ── Comercial ──
   m("contratos",        "Comercialização de Grãos",     "Comercial",  CRUD_APROVAR, GESTAO_PERF),
   m("expedicao",        "Expedição de Grãos",           "Comercial",  CRUD,         GESTAO_PERF),
   m("arrendamento",     "Contratos de Arrendamento",    "Comercial",  CRUD,         GESTAO_PERF),
+  m("balanca",          "Balança — Pesagem Avulsa",     "Comercial",  CRUD,         TODOS),
   // ── Estoque e compras ──
   m("estoque",          "Estoque",                      "Estoque",    CRUD,         GESTAO_PERF),
   m("compras",          "Pedidos de Compra",            "Estoque",    CRUD_APROVAR, GESTAO_PERF),
   m("nf_entrada",       "NF de Entrada (Produtos)",     "Estoque",    CRUD,         GESTAO_PERF),
-  m("nf_servico",       "NF de Serviços",               "Estoque",    CRUD,         GESTAO_PERF),
+  m("nf_servico",       "NF de Serviços",               "Estoque",    CRUD,         GESTAO_PERF, { permissao: false }),
   // ── Financeiro ──
   m("fin_receber",      "Contas a Receber",             "Financeiro", CRUD_APROVAR, TODOS),
   m("fin_pagar",        "Contas a Pagar",               "Financeiro", CRUD_APROVAR, TODOS),
@@ -80,27 +84,28 @@ export const MODULOS: ModuloDef[] = [
   // Empresas vem no Performance e pode ser liberado à parte para os outros planos.
   m("empresas",         "Módulo Empresas (cadastro, Folha e DRE por empresa)", "Add-ons", CRUD, PERF, { permissao: false }),
   m("algodao",          "Algodão",                      "Add-ons",    CRUD,         [], { addon: true }),
-  m("protecao_margem",  "Proteção de Margem & Hedge",   "Add-ons",    CRUD,         [], { addon: true }),
+  m("protecao_margem",  "Proteção de Margem & Hedge",   "Add-ons",    CRUD,         [], { addon: true, permissao: false }),
   // Apoio Financeiro: add-on vendido à parte (decisão do dono, 16/11/2026) — antes vinha nos planos Gestão e Performance.
   m("apoio_financeiro", "Apoio Financeiro",             "Add-ons",    CRUD,         [], { addon: true }),
-  m("cerealista",       "Cerealista",                   "Add-ons",    CRUD,         [], { addon: true, emBreve: true }),
-  m("sementes",         "Sementes",                     "Add-ons",    CRUD,         [], { addon: true, emBreve: true }),
-  m("pecuaria",         "Pecuária",                     "Add-ons",    CRUD,         [], { addon: true, emBreve: true }),
-  m("ia_cedula",        "IA — Extração de Cédula",      "Add-ons",    ["visualizar", "criar"], [], { addon: true }),
+  m("cerealista",       "Cerealista",                   "Add-ons",    CRUD,         [], { addon: true, emBreve: true, permissao: false }),
+  m("sementes",         "Sementes",                     "Add-ons",    CRUD,         [], { addon: true, emBreve: true, permissao: false }),
+  m("pecuaria",         "Pecuária",                     "Add-ons",    CRUD,         [], { addon: true, emBreve: true, permissao: false }),
+  m("ia_cedula",        "IA — Extração de Cédula",      "Add-ons",    ["visualizar", "criar"], [], { addon: true, permissao: false }),
   m("ia_contrato_venda","IA — Extração de Contrato de Venda", "Add-ons", ["visualizar", "criar"], [], { addon: true, permissao: false }),
   m("ia_pedido_compra", "IA — Lançamento de Pedido de Compra", "Add-ons", ["visualizar", "criar"], [], { addon: true, permissao: false }),
   m("ia_consorcio",     "IA — Importar Extrato de Consórcio",  "Add-ons", ["visualizar", "criar"], [], { addon: true, permissao: false }),
   m("ia_apolice",       "IA — Lançar Apólice de Seguro",       "Add-ons", ["visualizar", "criar"], [], { addon: true, permissao: false }),
   m("nf_confirmacao_entrega", "NF de Entrada — Enviar para Aprovação (estoque só após confirmar a entrega)", "Add-ons", ["visualizar"], [], { addon: true, permissao: false }),
   // ── Configurações: quem vê decide o grupo de usuários, não o plano (lib/permissoes-configuracao.ts) ──
-  m("conf_empresa",       "Empresa & Certificado A1",          "Configurações", VER_EDITAR, [], { contratavel: false }),
+  m("conf_empresa",       "Empresa & Certificado A1",          "Configurações", VER_EDITAR, [], { contratavel: false, permissao: false }),
   m("conf_fiscal",        "Parâmetros Fiscais (NF-e/MDF-e)",   "Configurações", VER_EDITAR, [], { contratavel: false }),
   m("conf_financeiro",    "Config. Financeira (Plano/Oper)",   "Configurações", VER_EDITAR, [], { contratavel: false }),
   m("conf_contabilidade", "Configuração Contábil",             "Configurações", VER_EDITAR, [], { contratavel: false }),
-  m("conf_sistema",       "Sistema (Automações/Integrações)",  "Configurações", VER_EDITAR, [], { contratavel: false }),
-  m("conf_importacao",    "Importação de Dados",               "Configurações", ["visualizar", "criar"], [], { contratavel: false }),
+  m("conf_sistema",       "Sistema (Automações/Integrações)",  "Configurações", VER_EDITAR, [], { contratavel: false, permissao: false }),
+  m("conf_importacao",    "Importação de Dados",               "Configurações", ["visualizar", "criar"], [], { contratavel: false, permissao: false }),
   m("usuarios",           "Usuários & Permissões",             "Configurações", CRUD, GESTAO_PERF),
-  m("logs",               "Log do Sistema",                    "Configurações", VER_EXPORTAR, [], { contratavel: false }),
+  m("logs",               "Log do Sistema",                    "Configurações", VER_EXPORTAR, [], { contratavel: false, permissao: false }),
+  m("auditoria",          "Auditoria (conferências do sistema)", "Configurações", ["visualizar"], TODOS, { contratavel: false }),
   m("conf_raccotlo",      "🔒 Gestão Raccolto (WhatsApp Bot / Integrações / Backup / Importação)", "Configurações", VER_EDITAR, [], { exclusivoRaccolto: true, contratavel: false }),
   // ── Recursos de plano sem tela própria de permissão ──
   m("configuracoes",    "Configurações",                "Sistema",    ["visualizar"], TODOS, { permissao: false, contratavel: false }),

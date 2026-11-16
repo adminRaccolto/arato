@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-e",
+    data: "16/11/2026",
+    titulo: "Usuários e Permissões controla o menu inteiro",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Todo item do menu passa a depender do grupo do usuário. Antes, 68 telas (Cadastros, operações de Produção, Máquinas, Estoque, Folha, Custos & DRE e outras) apareciam para qualquer grupo, e metade das caixas da tela de permissões não fazia efeito." },
+      { tipo: "melhoria", texto: "Novos módulos na lista de permissões: Lavoura — Monitoramento, Máquinas/Abastecimento/Manutenção, Balança e Auditoria. Caixas que não controlavam nenhuma tela saíram da lista." },
+      { tipo: "melhoria", texto: "Vale o que está marcado: módulo desmarcado fica escondido e módulo novo do sistema entra desmarcado até o administrador marcar. Os grupos existentes foram convertidos marcando o que cada um já via (ninguém perde acesso). Usuário sem grupo continua vendo tudo." },
+    ],
+    onde: "Configurações → Usuários e Permissões",
+  },
+  {
     versao: "2026.11.16-d",
     data: "16/11/2026",
     titulo: "Recuperação de notas de fornecedores e consultas SIEG mais claras",

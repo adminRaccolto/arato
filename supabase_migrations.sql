@@ -23139,3 +23139,52 @@ NOTIFY pgrst, 'reload schema';
 -- da fazenda continua gravado (dá para cruzar com a cópia guardada em backups/exclusoes/). audit_log já não tinha a ligação.
 ALTER TABLE logs_sistema DROP CONSTRAINT IF EXISTS logs_sistema_fazenda_id_fkey;
 NOTIFY pgrst, 'reload schema';
+
+
+-- =============================================================================
+-- Seção 454 — Grupos de usuários: permissões passam a valer pelo que está marcado (16/11/2026)
+-- =============================================================================
+-- Até aqui, módulo ausente ou com a lista vazia no grupo = LIBERADO (a tela mostrava a caixa desmarcada, mas o usuário
+-- via a tela). Com o menu todo ligado aos módulos (lib/navigation.ts + lib/modulos.ts), o grupo passa a valer pelo que
+-- está marcado e módulo novo entra bloqueado até o administrador marcar (decisão do dono).
+-- Para ninguém perder o que já vê hoje (decisão do dono: "deixe liberado, depois refaço os acessos"), cada grupo ainda
+-- no formato antigo é convertido assim, e ganha a marca "_v2":
+--   • módulo ausente ou lista vazia → todas as ações do módulo;
+--   • texto antigo: leitura → ver; escrita → ver/criar/editar; admin → tudo; nenhum → nada (ou ver, nas áreas abaixo);
+--   • áreas que apareciam para todo mundo até hoje (Cadastros, Produção, Máquinas, Estoque, Folha, Custos, Balança,
+--     Auditoria): se a lista não tinha "ver", ganha "ver";
+--   • configurações (conf_*) não mudam: já valia "não marcado = sem acesso".
+-- Só converte grupo sem "_v2": rodar de novo não desfaz o que o administrador desmarcou depois.
+CREATE OR REPLACE FUNCTION public.fn_permissoes_grupo_v2(p jsonb)
+RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
+DECLARE
+  catalogo jsonb := '{"propriedades":["visualizar","criar","editar","excluir"],"lavoura_plantio":["visualizar","criar","editar","excluir"],"lavoura_pulv":["visualizar","criar","editar","excluir"],"lavoura_colheita":["visualizar","criar","editar","excluir","aprovar"],"lavoura_plan":["visualizar","criar","editar","excluir"],"lavoura_monitoramento":["visualizar","criar","editar","excluir"],"maquinas":["visualizar","criar","editar","excluir"],"contratos":["visualizar","criar","editar","excluir","aprovar"],"expedicao":["visualizar","criar","editar","excluir"],"arrendamento":["visualizar","criar","editar","excluir"],"balanca":["visualizar","criar","editar","excluir"],"estoque":["visualizar","criar","editar","excluir"],"compras":["visualizar","criar","editar","excluir","aprovar"],"nf_entrada":["visualizar","criar","editar","excluir"],"fin_receber":["visualizar","criar","editar","excluir","aprovar"],"fin_pagar":["visualizar","criar","editar","excluir","aprovar"],"fin_contratos":["visualizar","criar","editar","excluir"],"folha":["visualizar","criar","editar","excluir","reprocessar"],"fin_tesouraria":["visualizar","criar","editar","excluir"],"fin_seguros":["visualizar","criar","editar","excluir"],"fiscal_nfe":["visualizar","criar","aprovar"],"fiscal_sped":["visualizar","exportar"],"transporte":["visualizar","criar","editar","excluir","aprovar"],"custos":["visualizar","exportar"],"fin_relatorios":["visualizar","exportar"],"cadastros":["visualizar","criar","editar","excluir"],"algodao":["visualizar","criar","editar","excluir"],"apoio_financeiro":["visualizar","criar","editar","excluir"],"usuarios":["visualizar","criar","editar","excluir"],"auditoria":["visualizar"]}'::jsonb;
+  abertas text[] := ARRAY['cadastros','propriedades','lavoura_plan','lavoura_plantio','lavoura_pulv','lavoura_colheita',
+                          'lavoura_monitoramento','maquinas','estoque','folha','custos','balanca','auditoria'];
+  r jsonb := coalesce(p, '{}'::jsonb);
+  k text; todas jsonb; v jsonb; novo jsonb;
+BEGIN
+  IF r ? '_v2' THEN RETURN r; END IF;
+  FOR k, todas IN SELECT * FROM jsonb_each(catalogo) LOOP
+    v := r -> k;
+    IF v IS NULL OR jsonb_typeof(v) = 'null' OR (jsonb_typeof(v) = 'array' AND jsonb_array_length(v) = 0) THEN
+      novo := todas;
+    ELSIF jsonb_typeof(v) = 'string' THEN
+      novo := CASE v #>> '{}'
+        WHEN 'admin'   THEN todas
+        WHEN 'escrita' THEN '["visualizar","criar","editar"]'::jsonb
+        WHEN 'leitura' THEN '["visualizar"]'::jsonb
+        ELSE CASE WHEN k = ANY(abertas) THEN '["visualizar"]'::jsonb ELSE '[]'::jsonb END END;
+    ELSIF jsonb_typeof(v) = 'array' AND NOT v ? 'visualizar' AND k = ANY(abertas) THEN
+      novo := '["visualizar"]'::jsonb || v;
+    ELSE
+      novo := v;
+    END IF;
+    r := r || jsonb_build_object(k, novo);
+  END LOOP;
+  RETURN r || '{"_v2": true}'::jsonb;
+END $$;
+
+UPDATE grupos_usuarios SET permissoes = public.fn_permissoes_grupo_v2(permissoes)
+ WHERE NOT coalesce(permissoes, '{}'::jsonb) ? '_v2';
+NOTIFY pgrst, 'reload schema';

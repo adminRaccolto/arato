@@ -341,6 +341,7 @@ export function podeUsarControleFolha(
   role: string | null | undefined,
   permissao: unknown,
   conferir = false,
+  grupoV2 = false,
 ): boolean {
   if (
     [
@@ -352,12 +353,15 @@ export function podeUsarControleFolha(
     ].includes(role ?? "")
   )
     return true;
+  // Grupo v2 (lib/permissoes-grupo.ts): Folha não marcada = sem acesso
   if (
-    permissao === undefined ||
-    permissao === null ||
-    (Array.isArray(permissao) && permissao.length === 0)
+    !grupoV2 &&
+    (permissao === undefined ||
+      permissao === null ||
+      (Array.isArray(permissao) && permissao.length === 0))
   )
     return true;
+  if (grupoV2 && !Array.isArray(permissao)) return false;
   if (Array.isArray(permissao))
     return (
       permissao.includes("visualizar") &&

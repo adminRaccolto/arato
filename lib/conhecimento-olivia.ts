@@ -743,7 +743,7 @@ Conta maior que o saldo do adiantamento não aparece. Título do adiantamento em
 
 **Linhas da folha fechada:** linha com salário já pago (pago, parcial, em borderô ou conciliado) fica cinza e travada: não dá para mudar gratificação nem outros descontos, nem tirar da folha. Nos salários em aberto, gratificação, outros descontos e observação ficam editáveis, e o Reprocessar Folha atualiza o título no CP. Se salário, complemento ou benefícios mudaram no cadastro após o fechamento, as linhas não pagas já vêm com o valor novo (um aviso lista quem mudou); clique em ⟳ Reprocessar Folha para gravar no CP.
 
-**Permissão de reprocessar:** Configurações → Usuários e Permissões → Folha de Pagamento → Reprocessar. Grupo sem a Folha configurada pode reprocessar; grupo configurado sem Reprocessar vê a folha fechada travada.
+**Permissão de reprocessar:** Configurações → Usuários e Permissões → Folha de Pagamento → Reprocessar. Grupo com a Folha marcada sem Reprocessar vê a folha fechada travada; usuário sem grupo pode reprocessar.
 
 **Reabrir:** ↩ Reabrir (refazer do zero) é opção secundária: volta a folha para rascunho, apaga os títulos reais e relança como previsão.
 
@@ -905,6 +905,8 @@ Valores saem como número (somáveis), negativos em vermelho.
 **Telas de configuração:** Parâmetros Fiscais, Operações Fiscais, Operações Gerenciais, Plano de Contas, Regras de Rateio, Taxas de Referência e Contabilidade só aparecem para o usuário cujo grupo tem a permissão marcada, em Configurações → Usuários e Permissões. Não depende do plano. Usuário sem grupo não vê essas telas. A equipe Raccolto vê tudo.
 
 **Usuários e grupos de permissão:** usuários e grupos de permissão são do cliente e valem para todas as fazendas. O botão de acesso da equipe Raccolto (Configurações → Usuários e Permissões) liga/desliga o acesso em todas as fazendas de uma vez.
+
+**O que o grupo controla:** cada item do menu pertence a um módulo da lista de permissões (por exemplo Plantio, Máquinas, Monitoramento, Estoque, Folha, Custos & DRE, Cadastros, Balança, Auditoria). O usuário só vê o item se o grupo dele tiver "Ver" marcado no módulo. Vale o que está marcado: módulo desmarcado fica escondido, e módulo que entrar no sistema depois aparece desmarcado até o administrador marcar. Usuário sem grupo vê tudo — atribua um grupo a cada usuário. Os grupos que já existiam foram convertidos em 16/11/2026 marcando o que cada um já via, para ninguém perder acesso. Por enquanto a permissão esconde o item do menu; Criar, Editar e Excluir só são conferidos na Folha e no lançamento de Contratos de Grãos.
 
 **Acesso aos dados:** cada usuário só vê os dados do próprio cliente. Se uma tela ficar vazia para quem via os dados, ou aparecer "Acesso negado" em tela usada normalmente, encaminhe à equipe Raccolto informando a tela e o usuário.
 

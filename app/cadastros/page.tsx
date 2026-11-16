@@ -305,8 +305,11 @@ function CadastrosInner() {
   // Sincroniza a aba sempre que o query param ?tab= mudar na URL
   useEffect(() => {
     const tab = params.get("tab") as TabCad | null;
+    // A aba antiga de Usuários & Permissões gravava os grupos no formato antigo (desfazia a regra de 16/11/2026):
+    // grupos e usuários ficam só em Configurações → Usuários e Permissões.
+    if ((tab as string) === "usuarios") { router.replace("/configuracoes/usuarios"); return; }
     if (tab) setAba(tab);
-  }, [params]);
+  }, [params, router]);
 
   // ── Estado global ──
   const [salvando, setSalvando] = useState(false);

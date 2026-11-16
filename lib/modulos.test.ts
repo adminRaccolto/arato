@@ -14,10 +14,11 @@ const ANTES = {
     "transporte","usuarios","estoque","empresas","fiscal_nfe","fiscal_sped","automacoes","whatsapp_agente"],
 } as const;
 
-test("planos: mesmos módulos de antes, sem Apoio Financeiro e com Folha", () => {
+test("planos: mesmos módulos de antes, sem Apoio Financeiro e com as áreas que todos já viam", () => {
   for (const pid of ["essencial", "gestao", "performance"] as const) {
     const esperado = new Set<string>(ANTES[pid].filter(x => x !== "apoio_financeiro"));
-    esperado.add("folha");
+    // Fase 2 (16/11/2026): áreas que apareciam para todos ganharam módulo próprio e entram em todos os planos
+    for (const id of ["folha", "lavoura_monitoramento", "maquinas", "balanca", "auditoria"]) esperado.add(id);
     assert.deepEqual(new Set(modulosDoPlano(pid)), esperado, pid);
     assert.deepEqual(PLANOS_DEFAULT[pid].modulos, modulosDoPlano(pid));
   }

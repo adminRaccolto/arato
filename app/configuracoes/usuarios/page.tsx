@@ -8,6 +8,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { GrupoUsuario, Usuario } from "../../../lib/supabase";
 import { MODULOS_PERMISSAO, type AcaoModulo } from "../../../lib/modulos";
+import { MARCA_V2, converterGrupoParaV2 } from "../../../lib/permissoes-grupo";
 import { listarUsuarios } from "../../../lib/db";
 
 // ── Estrutura de permissões ────────────────────────────────────────────────────
@@ -98,22 +99,19 @@ type PermMap = Record<string, Acao[]>;
 const permEmpty = (): PermMap =>
   Object.fromEntries(MODULOS_PERM.map(m => [m.id, [] as Acao[]]));
 
+// Grupo antigo (sem "_v2") é mostrado já convertido pela mesma regra da Seção 454: a caixa marcada é o que o usuário vê
+// de verdade. Antes, módulo ausente aparecia desmarcado, mas o usuário via a tela. Ver lib/permissoes-grupo.ts.
+const ACOES_POR_MODULO: Record<string, string[]> = Object.fromEntries(
+  MODULOS_PERM.filter(m => !m.id.startsWith("conf_")).map(m => [m.id, m.acoes as string[]]),
+);
+
 const permFromGrupo = (g: GrupoUsuario): PermMap => {
   const base = permEmpty();
-  if (g.permissoes && typeof g.permissoes === "object") {
-    for (const [mod, val] of Object.entries(g.permissoes)) {
-      if (typeof val === "string") {
-        const modInfo = MODULOS_PERM.find(m => m.id === mod || m.id.startsWith(mod));
-        if (modInfo) {
-          if (val === "admin")    base[modInfo.id] = [...modInfo.acoes];
-          else if (val === "escrita") base[modInfo.id] = ["visualizar","criar","editar"] as Acao[];
-          else if (val === "leitura") base[modInfo.id] = ["visualizar"] as Acao[];
-          else base[modInfo.id] = [];
-        }
-      } else if (Array.isArray(val)) {
-        base[mod] = val as Acao[];
-      }
-    }
+  const perms = converterGrupoParaV2(g.permissoes as Record<string, unknown> | null, ACOES_POR_MODULO);
+  for (const [mod, val] of Object.entries(perms)) {
+    if (!(mod in base)) continue;
+    if (Array.isArray(val)) base[mod] = val.filter((x): x is Acao => typeof x === "string") as Acao[];
+    else if (typeof val === "string") base[mod] = val === "leitura" ? ["visualizar"] : val === "escrita" ? ["visualizar", "editar"] : [];
   }
   return base;
 };
@@ -356,7 +354,8 @@ export default function UsuariosPermissoes() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar grupo)", perigo: false }))) return;
     if (!fGrupo.nome.trim() || !fazendaId) return;
     setSalvando(true);
-    const payload = { fazenda_id: fazendaId, nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: permGrupo };
+    // "_v2": vale o que está marcado; módulo não marcado (ou criado depois) fica bloqueado — lib/permissoes-grupo.ts
+    const payload = { fazenda_id: fazendaId, nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: { ...permGrupo, [MARCA_V2]: true } };
 
     const res = editGrupo
       ? await fetch("/api/grupos-usuarios", { method: "PUT",    headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editGrupo.id, ...payload }) })
