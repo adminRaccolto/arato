@@ -147,6 +147,8 @@ function RemessasConteudo() {
   const [cfopXml, setCfopXml] = useState("");
   const [opsFiscais, setOpsFiscais] = useState<(OperacaoFiscalCadastro & { fazenda_id: string })[]>([]);
   const [cstRem, setCstRem] = useState("");   // CST do ICMS escolhido à mão ("" = automático pelo CFOP)
+  // CFOP trocado à mão ("" = o sugerido pela operação/UF; " " = campo apagado pelo usuário, ainda sem número)
+  const [cfopManual, setCfopManual] = useState("");
   const [natureza, setNatureza] = useState("Remessa para depósito em armazém geral");
   const [dataRem, setDataRem] = useState(hojeLocal());
   const [obs, setObs] = useState("");
@@ -164,10 +166,13 @@ function RemessasConteudo() {
   // Fiscais da fazenda emitente quando houver, senão da regra do CFOP
   const opRem = OPERACOES_REMESSA.find(o => o.chave === tipoRem);
   const fiscal = opRem ? infoFiscalRemessa(opRem, ufFazenda.get(fazendaRem ?? "") ?? "", armazem?.estado ?? "", opsFiscais.filter(o => o.fazenda_id === fazendaRem)) : null;
-  const cfopEfetivo = modo === "externa" && cfopXml ? cfopXml : tipoRem === "outro" ? cfopOutro.replace(/\D/g, "").slice(0, 4) : fiscal?.cfop ?? "";
+  const cfopSugerido = modo === "externa" && cfopXml ? cfopXml : tipoRem === "outro" ? cfopOutro.replace(/\D/g, "").slice(0, 4) : fiscal?.cfop ?? "";
+  const cfopEfetivo = modo === "arato" && cfopManual ? cfopManual : cfopSugerido;
+  // CFOP trocado à mão: CST automático e texto legal deixam de vir da operação sugerida e seguem a regra do CFOP digitado
+  const fiscalUso = tipoRem !== "outro" && !(modo === "arato" && cfopManual && cfopManual !== fiscal?.cfop) ? fiscal : null;
   useEffect(() => { setCfop(cfopEfetivo); }, [cfopEfetivo]);
   function escolherTipoRem(chave: string) {
-    setTipoRem(chave); setCfopXml("");
+    setTipoRem(chave); setCfopXml(""); setCfopManual("");
     const op = OPERACOES_REMESSA.find(o => o.chave === chave);
     if (op) setNatureza(op.natureza);
   }
@@ -181,7 +186,7 @@ function RemessasConteudo() {
 
   function abrirNova() {
     setModo("arato"); setNfOrigem(null); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
-    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setTipoRem("armazem"); setCfopOutro(""); setCfopXml(""); setCstRem(""); setNatureza("Remessa para depósito em armazém geral");
+    setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setTipoRem("armazem"); setCfopOutro(""); setCfopXml(""); setCstRem(""); setCfopManual(""); setNatureza("Remessa para depósito em armazém geral");
     setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
     setErro(""); setModal(true);
   }
@@ -323,8 +328,8 @@ function RemessasConteudo() {
               municipio_ibge: armazem.municipio_ibge || undefined, municipio_nome: armazem.municipio || undefined, uf: armazem.estado || undefined,
               cep: (armazem.cep ?? "").replace(/\D/g, "") || undefined,
             },
-            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, cst_icms: cstRem || (fiscal?.cstDoCadastro ? fiscal.cst : undefined) })),
-            natureza, inf_cpl: [fiscal?.infCpl, obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
+            itens: itensReg.map(i => ({ descricao: i.descricao, ncm: i.ncm || "00000000", cfop: cf, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, cst_icms: cstRem || (fiscalUso?.cstDoCadastro ? fiscalUso.cst : undefined) })),
+            natureza, inf_cpl: [fiscalUso?.infCpl, obs, nfOrigem ? `Ref. NF de compra ${nfOrigem.numero} — ${nfOrigem.emitente_nome ?? ""}` : "", motorista].filter(Boolean).join(" | ") || undefined,
             frete: tr.frete, transporte, tipo: "1",
           }),
         });
@@ -623,19 +628,28 @@ function RemessasConteudo() {
               </div>
               {cfop && (
                 <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "8px 12px", background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)" }}>
-                  <span><strong style={{ color: "#0B2D50" }}>CFOP {cfop}</strong>{tipoRem !== "outro" && fiscal ? (fiscal.ufIndefinida ? " · interno (informe a UF do destinatário para conferir)" : fiscal.interestadual ? " · interestadual" : " · dentro do estado") : ""}</span>
-                  <span>CST ICMS <strong>{cstRem || (tipoRem !== "outro" && fiscal ? fiscal.cst : cstExibicaoPorCfop(cfop))}</strong>{cstRem ? " (escolhido à mão)" : tipoRem !== "outro" && fiscal?.cstDoCadastro ? ` (Operação Fiscal "${fiscal.operacaoFiscal}")` : " (regra do CFOP)"}</span>
-                  {tipoRem !== "outro" && fiscal?.infCpl && <span title={fiscal.infCpl}>Texto legal: {fiscal.infCpl.length > 70 ? fiscal.infCpl.slice(0, 70) + "…" : fiscal.infCpl}</span>}
-                  {tipoRem !== "outro" && fiscal && !fiscal.operacaoFiscal && <span style={{ color: "#7A5500" }}>Sem Operação Fiscal com este CFOP no cadastro: CST pela regra, sem texto legal. Cadastre em Fiscal → Operações Fiscais.</span>}
+                  <span><strong style={{ color: "#0B2D50" }}>CFOP {cfop}</strong>{fiscalUso ? (fiscalUso.ufIndefinida ? " · interno (informe a UF do destinatário para conferir)" : fiscalUso.interestadual ? " · interestadual" : " · dentro do estado") : ""}</span>
+                  <span>CST ICMS <strong>{cstRem || (fiscalUso ? fiscalUso.cst : cstExibicaoPorCfop(cfop))}</strong>{cstRem ? " (escolhido à mão)" : fiscalUso?.cstDoCadastro ? ` (Operação Fiscal "${fiscalUso.operacaoFiscal}")` : " (regra do CFOP)"}</span>
+                  {fiscalUso?.infCpl && <span title={fiscalUso.infCpl}>Texto legal: {fiscalUso.infCpl.length > 70 ? fiscalUso.infCpl.slice(0, 70) + "…" : fiscalUso.infCpl}</span>}
+                  {fiscalUso && !fiscalUso.operacaoFiscal && <span style={{ color: "#7A5500" }}>Sem Operação Fiscal com este CFOP no cadastro: CST pela regra, sem texto legal. Cadastre em Fiscal → Operações Fiscais.</span>}
                 </div>
               )}
               {modo === "arato" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 12 }}>
                   <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
+                  <div>
+                    <label style={lbl}>CFOP</label>
+                    <input value={cfopManual ? cfopManual.trim() : cfopSugerido} inputMode="numeric" placeholder="ex.: 5905"
+                      onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 4); setCfopManual(v === cfopSugerido ? "" : v || " "); }}
+                      style={inp} />
+                    {cfopManual
+                      ? <button type="button" onClick={() => setCfopManual("")} style={{ marginTop: 4, background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 11, textDecoration: "underline", padding: 0 }}>voltar ao sugerido{cfopSugerido ? ` (${cfopSugerido})` : ""}</button>
+                      : <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Sugerido pela operação{cfopSugerido ? "" : " — escolha a operação ou digite"}</div>}
+                  </div>
                   <div>
                     <label style={lbl}>CST do ICMS</label>
                     <select value={cstRem} onChange={e => setCstRem(e.target.value)} style={inp}>
-                      <option value="">Automático — {tipoRem !== "outro" && fiscal ? fiscal.cst : cstExibicaoPorCfop(cfop)}</option>
+                      <option value="">Automático — {fiscalUso ? fiscalUso.cst : cstExibicaoPorCfop(cfop)}</option>
                       <option value="40">040 — Isenta</option>
                       <option value="41">041 — Não tributada</option>
                       <option value="50">050 — Suspensão (industrialização, conserto…)</option>

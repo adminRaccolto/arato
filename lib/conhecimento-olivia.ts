@@ -341,6 +341,8 @@ Como cada área funciona hoje. Para o passo a passo das tarefas comuns, use ante
 
 **Emitir NF Remessa:** o botão na NF de entrada processada abre Documentos Fiscais → Saídas → Remessas com a + Nova Remessa ligada a essa NF (itens, depósito de origem e valor vêm dela). Na NF de entrada, o tipo "Entrega de compra futura" é entrega de compra para entrega futura (VEF) já faturada, não remessa para armazém.
 
+**CFOP da remessa:** ao lado do CST do ICMS há o campo CFOP, já preenchido com o sugerido pela operação escolhida e pela UF do armazém (ex.: 5905). Pode trocar digitando outro CFOP; "voltar ao sugerido" desfaz. Com o CFOP trocado, o CST automático e o texto legal seguem a regra do CFOP digitado (não os da Operação Fiscal da operação sugerida) — confira o CST antes de emitir.
+
 **Valor com desconto:** com a NF de compra de origem escolhida, o valor unitário vem líquido do desconto: o desconto do cabeçalho é rateado pelos itens, proporcional ao valor de cada um.
 
 **Remessa para industrialização:** CFOP 5901/6901 (por encomenda) ou 5924/6924 (por conta e ordem do adquirente) sai com CST 50 — ICMS suspenso —, sem base nem imposto; os retornos do industrializador (5902/6902, 5903/6903, 5925/6925) também. Ao digitar o CFOP, a natureza é sugerida (ex.: 5901 → "Remessa para industrialização por encomenda"; 5915 → conserto). O campo "CST do ICMS" tem Automático pelo CFOP (mostra qual será) ou 040, 041, 050, 051 à mão. O CST 050 também existe na Venda Avulsa. O industrializador precisa ter IE no cadastro de Pessoas.

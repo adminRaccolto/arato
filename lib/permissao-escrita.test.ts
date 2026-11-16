@@ -28,7 +28,7 @@ test("cliente protegido: gravação bloqueada não chega ao banco e devolve erro
   const chamadas: string[] = [];
   const builder = (tabela: string) => ({
     select: () => ({ eq: () => Promise.resolve({ data: [tabela], error: null }) }),
-    insert: () => { chamadas.push("insert " + tabela); return { select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }; },
+    insert: (_v?: unknown) => { void _v; chamadas.push("insert " + tabela); return { select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }; },
     delete: () => { chamadas.push("delete " + tabela); return { eq: () => Promise.resolve({ data: null, error: null }) }; },
   });
   const cliente = protegerEscritas({ from: builder, outro: 1 });

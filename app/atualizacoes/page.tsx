@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.16-h",
+    data: "16/11/2026",
+    titulo: "CFOP editável na NF de remessa",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Remessas (inclusive a aberta pelo botão Emitir NF Remessa da NF processada): o CFOP ganhou campo próprio ao lado do CST do ICMS. Vem com o sugerido pela operação (ex.: 5905) e pode ser trocado; \"voltar ao sugerido\" desfaz." },
+    ],
+    onde: "Documentos Fiscais → Saídas → Remessas → + Nova Remessa",
+  },
+  {
     versao: "2026.11.16-g",
     data: "16/11/2026",
     titulo: "Permissões valem também pelo endereço e no salvar/excluir",
