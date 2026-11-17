@@ -42,3 +42,21 @@ export const fmtNcm = (v: string | null | undefined) => {
   const d = (v ?? "").replace(/\D/g, "");
   return d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6)}` : (v ?? "");
 };
+
+/** Unidades do item da NF de venda (seletor da tela de faturamento). */
+export const UNIDADES_ITEM_VENDA = ["sc", "kg", "ton", "@", "cx", "un"] as const;
+
+/**
+ * Item da NF de venda a partir do produto agrícola do cadastro (17/11/2026 — a NF avulsa tinha o produto digitado à mão,
+ * sempre começando em "Soja"): nome e unidade do cadastro; NCM do cadastro, senão o de referência pelo nome (com aviso).
+ */
+export function itemDoProdutoAgricola(p: { nome: string; ncm?: string | null; unidade?: string | null }): { item: string; ncm: string; unidade: string; aviso: string } {
+  const ncmCad = fmtNcm(p.ncm);
+  const ref = ncmPadraoDoProduto(p.nome)?.ncm ?? "";
+  const u = String(p.unidade ?? "").trim().toLowerCase();
+  const unidade = u === "t" ? "ton" : u || "kg";
+  const aviso = ncmCad ? "" : ref
+    ? `"${p.nome}" está sem NCM no cadastro: usado ${ref} de referência. Preencha o NCM em Cadastros → Produtos Agrícolas.`
+    : `"${p.nome}" está sem NCM no cadastro e não há NCM de referência: informe o NCM no item ou em Cadastros → Produtos Agrícolas.`;
+  return { item: p.nome, ncm: ncmCad || ref, unidade, aviso };
+}

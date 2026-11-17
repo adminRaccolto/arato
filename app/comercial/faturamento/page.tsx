@@ -8,6 +8,7 @@ import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDoProdutor } from "../../../lib/fazenda-de";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
+import SelectBusca from "../../../components/SelectBusca";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
@@ -22,7 +23,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo, ProdutorIE } from "../../../lib/supabase";
 import ProdutorCombo from "../../../components/ProdutorCombo";
-import { fmtNcm, ncmPadraoDoProduto, produtoDoContrato } from "../../../lib/fiscal/ncm-produtos";
+import { UNIDADES_ITEM_VENDA, fmtNcm, itemDoProdutoAgricola, ncmPadraoDoProduto, produtoDoContrato } from "../../../lib/fiscal/ncm-produtos";
 import { ehRascunho, montarRascunhoDuplicado, podeDuplicarNota } from "../../../lib/fiscal/duplicar-nota";
 import { precoKgDoContrato } from "../../../lib/contratos/preco-nf";
 import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
@@ -134,6 +135,8 @@ type NFeItem = {
   id: string; tipo_item: string; item: string; ncm: string;
   quantidade: string; unidade: string; valor_unitario: string;
   valor_total: number; valor_financeiro: number; cclass_trib: string;
+  /** Produto agrícola do cadastro escolhido no item (NF avulsa): dele vêm nome, NCM e unidade */
+  produto_id?: string;
 };
 type TabNFe = "produtor" | "destinatario" | "operacoes" | "transportador" | "retirada" | "fiscal" | "obs" | "pontualidade";
 type Passo  = "origem" | "contrato" | "romaneio" | "retorno_origem" | "form" | "nf_vinculada";
@@ -734,6 +737,7 @@ function FaturamentoInner() {
     if (!rascunhoId) return;
     if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
     if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
+    if (nfeItens.some(i => !i.item.trim())) { setErroForm("Escolha o produto de todos os itens da nota."); return; }
     setSalvandoRascunho(true); setErroForm(null);
     try {
       const { payload } = await montarPayloadNota();
@@ -828,11 +832,23 @@ function FaturamentoInner() {
     }));
   };
 
+  // Item novo: com produtos agrícolas cadastrados, começa vazio para escolher do cadastro (antes vinha "Soja" fixo)
   const addItem = () => setNfeItens(p => [...p, {
-    id: crypto.randomUUID(), tipo_item: "Produto", item: "Soja",
-    ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "",
+    id: crypto.randomUUID(), tipo_item: "Produto", item: prodAgricolas.length ? "" : "Soja",
+    ncm: prodAgricolas.length ? "" : "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "",
     valor_total: 0, valor_financeiro: 0, cclass_trib: "",
   }]);
+  // Produto agrícola escolhido no item: nome, NCM e unidade do cadastro (NCM de referência quando o cadastro não tem)
+  const escolherProdutoItem = (idx: number, produtoId: string) => {
+    const p = prodAgricolas.find(x => x.id === produtoId);
+    if (!p) return;
+    const d = itemDoProdutoAgricola(p);
+    setNfeItens(prev => prev.map((it, i) => i !== idx ? it : { ...it, produto_id: p.id, item: d.item, ncm: d.ncm, unidade: d.unidade }));
+    setAvisoProdutoNf(d.aviso);
+  };
+  // Item escolhido do cadastro: venda/remessa avulsa de produto (contrato, complementar, devolução e retorno trazem o item da origem)
+  const itemPeloCadastro = (it: NFeItem) => it.tipo_item === "Produto" && prodAgricolas.length > 0
+    && !fVenda.contrato_numero && !fVenda.complementar_de && tipoAvulsa !== "devolucao" && tipoAvulsa !== "retorno";
 
   // ── Emitir nota ───────────────────────────────────────────────────────────
   // Mesma nota para emitir e para salvar o rascunho
@@ -1006,6 +1022,7 @@ function FaturamentoInner() {
     if (iesProdutor.length > 1 && !fVenda.ie_id) { setErroForm("Selecione a IE do produtor — ela define a fazenda que emite a nota."); return; }
     if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
     if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
+    if (nfeItens.some(i => !i.item.trim())) { setErroForm("Escolha o produto de todos os itens da nota."); return; }
     if (ehDevolucaoBem(fVenda.cfop) && fVenda.nf_ref_chave.length !== 44) { setErroForm("Devolução de bem: informe na aba Fiscal a chave da NF de remessa (44 dígitos)."); return; }
     if (!fVenda.dest_municipio_ibge) { setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
     setEmitindo(true); setErroForm(null);
@@ -2252,7 +2269,15 @@ function FaturamentoInner() {
                             </SelectField>
                           </td>
                           <td style={{ padding:"5px 8px", minWidth:120 }}>
-                            <input style={{ ...inp, fontSize:12 }} value={it.item} onChange={e => atualizarItem(idx, "item", e.target.value)} />
+                            {itemPeloCadastro(it) ? (() => {
+                              const atual = it.produto_id || produtoDoContrato(prodAgricolas, null, it.item)?.id || (it.item ? "__texto" : "");
+                              const opcoes = prodAgricolas.map(p => ({ value: p.id, label: p.ncm ? `${p.nome} — NCM ${fmtNcm(p.ncm)}` : p.nome }));
+                              if (atual === "__texto") opcoes.unshift({ value: "__texto", label: `${it.item} (fora do cadastro)` });
+                              return <SelectBusca value={atual} options={opcoes} placeholder="— Produto agrícola —" style={{ ...inp, fontSize:12 }}
+                                onChange={v => { if (v !== "__texto") escolherProdutoItem(idx, v); }} />;
+                            })() : (
+                              <input style={{ ...inp, fontSize:12 }} value={it.item} onChange={e => atualizarItem(idx, "item", e.target.value)} />
+                            )}
                           </td>
                           <td style={{ padding:"5px 8px", width:110 }}>
                             <input style={{ ...inp, fontSize:11 }} value={it.ncm} onChange={e => atualizarItem(idx, "ncm", e.target.value)} placeholder="0000.00.00" />
@@ -2262,7 +2287,7 @@ function FaturamentoInner() {
                           </td>
                           <td style={{ padding:"5px 8px", width:60 }}>
                             <SelectField style={{ ...inp, fontSize:11 }} value={it.unidade} onChange={e => atualizarItem(idx, "unidade", e.target.value)}>
-                              {["sc","kg","ton","@","cx","un"].map(u => <option key={u}>{u}</option>)}
+                              {[...UNIDADES_ITEM_VENDA, ...((UNIDADES_ITEM_VENDA as readonly string[]).includes(it.unidade) || !it.unidade ? [] : [it.unidade])].map(u => <option key={u}>{u}</option>)}
                             </SelectField>
                           </td>
                           <td style={{ padding:"5px 8px", width:110 }}>

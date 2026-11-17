@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-p",
+    data: "17/11/2026",
+    titulo: "Venda Avulsa: produto escolhido do cadastro",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "Na NF-e Avulsa de venda, o Item / Produto deixou de ser texto livre (que começava sempre em \"Soja\"): agora é uma lista com busca dos Produtos Agrícolas cadastrados. Ao escolher, nome, NCM e unidade vêm do cadastro; produto sem NCM usa o de referência e aparece um aviso. A nota não é emitida com item sem produto." },
+    ],
+    onde: "Documentos Fiscais → Venda Avulsa → Itens da Nota",
+  },
+  {
     versao: "2026.11.17-o",
     data: "17/11/2026",
     titulo: "Custos Totais: linha Previsto e previsões efetivadas",
