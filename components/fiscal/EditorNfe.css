@@ -1,0 +1,282 @@
+/* Escopo local aos editores: as variáveis acompanham os layouts Padrão e Novo. */
+.nfe-editor {
+  width: min(96vw, 1280px);
+  height: 92vh;
+  height: 92dvh;
+  max-height: 980px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+  color: var(--text-1);
+  border: 1px solid var(--border-table);
+  border-radius: 16px;
+  box-shadow: 0 16px 60px #0b2d5026;
+}
+.nfe-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-table);
+  flex-shrink: 0;
+}
+.nfe-editor-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-2);
+}
+.nfe-editor-header h2 {
+  margin: 5px 0 0;
+  font-size: 20px;
+  line-height: 1.3;
+}
+.nfe-editor-header p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.nfe-editor .nfe-editor-close {
+  border: 1px solid var(--border-table);
+  background: transparent;
+  color: var(--text-2);
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 22px;
+}
+.nfe-editor-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-table);
+}
+.nfe-editor-tabs [role="tab"] {
+  min-width: 0;
+  padding: 10px 8px;
+  border: 1px solid var(--border-table);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.nfe-editor-tabs [aria-selected="true"] {
+  border-color: var(--text-1);
+  background: var(--bg-page);
+  color: var(--text-1);
+  font-weight: 700;
+  box-shadow: inset 0 -2px var(--text-1);
+}
+.nfe-editor :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--text-1);
+  outline-offset: 2px;
+}
+.nfe-editor-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 22px;
+  overscroll-behavior: contain;
+}
+.nfe-editor-section + .nfe-editor-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-table);
+}
+.nfe-editor-section-heading {
+  margin-bottom: 14px;
+}
+.nfe-editor-section-heading h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.nfe-editor-section-heading p,
+.nfe-editor-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 5px 0 0;
+}
+.nfe-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.nfe-editor-fields > * {
+  min-width: 0;
+}
+.nfe-editor-wide {
+  grid-column: 1/-1;
+}
+.nfe-editor-grid {
+  border: 1px solid var(--border-table);
+  border-radius: 8px;
+  overflow: auto;
+}
+.nfe-editor-grid table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+.nfe-editor-grid th {
+  padding: 8px 10px;
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+  background: var(--bg-page);
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border-table);
+}
+.nfe-editor-grid td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border-row);
+  font-size: 12px;
+}
+.nfe-editor details {
+  margin-top: 16px;
+  border: 1px solid var(--border-table);
+  border-radius: 8px;
+  padding: 12px;
+}
+.nfe-editor summary {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.nfe-editor-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-table);
+  padding: 12px 20px;
+  background: var(--bg-card);
+  max-height: 40vh;
+  overflow: auto;
+}
+.nfe-editor-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 12px;
+}
+.nfe-editor-summary strong {
+  font-size: 15px;
+  color: var(--text-1);
+  margin-left: 6px;
+}
+.nfe-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.nfe-editor-actions button {
+  border: 1px solid var(--border-table);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nfe-editor-actions [data-arato-button="primary"] {
+  background: #1a4870;
+  border-color: #1a4870;
+  color: #fff;
+}
+.nfe-editor button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.nfe-editor-navigation,
+.nfe-editor-commands {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.nfe-editor-commands {
+  margin-left: auto;
+}
+.nfe-editor-error {
+  padding: 10px 12px;
+  border: 1px solid #e24b4a50;
+  border-radius: 8px;
+  background: #fcebeb;
+  color: #791f1f;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.nfe-editor-progress {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+@media (max-width: 800px) {
+  .nfe-editor-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 8px;
+  }
+  .nfe-editor-content,
+  .nfe-editor-header {
+    padding: 14px;
+  }
+  .nfe-editor-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .nfe-editor-commands {
+    margin-left: 0;
+  }
+  .nfe-editor-header h2 {
+    font-size: 17px;
+  }
+}
+@media (max-width: 540px) {
+  .nfe-editor {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+  .nfe-editor-tabs [role="tab"] {
+    font-size: 11px;
+    padding: 8px 4px;
+  }
+  .nfe-editor-content [data-arato-fields="true"],
+  .nfe-editor-fields {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .nfe-editor-content [data-arato-fields="true"] > *,
+  .nfe-editor-fields > * {
+    grid-column: auto !important;
+  }
+  .nfe-editor-footer {
+    padding: 10px 12px;
+  }
+}
+.nfe-editor .nfe-editor-back {
+  align-self: center;
+  white-space: nowrap;
+  border: 1px solid var(--border-table);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-1);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.nfe-editor-header > div { min-width: 0; flex: 1; }
+.nfe-editor-header h2 { overflow-wrap: anywhere; }
+.nfe-editor-section > .nfe-editor-fields + div { margin-top: 12px; }

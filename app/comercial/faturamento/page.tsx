@@ -1,4 +1,7 @@
 "use client";
+import { EditorNfe, SecaoNfe } from "../../../components/fiscal/EditorNfe";
+import "../../../components/fiscal/EditorNfe.css";
+import type { AbaEmissaoNfe } from "../../../lib/fiscal/editor-nfe";
 import OperacaoFiscalSelect from "../../../components/fiscal/OperacaoFiscalSelect";
 import EmissoesConferencia from "../../../components/fiscal/EmissoesConferencia";
 import { ehRetornoBemTerceiro, finalidadeDoRetorno } from "../../../lib/fiscal/retorno-bem-terceiro";
@@ -139,7 +142,7 @@ type NFeItem = {
   /** Produto agrícola do cadastro escolhido no item (NF avulsa): dele vêm nome, NCM e unidade */
   produto_id?: string;
 };
-type TabNFe = "produtor" | "destinatario" | "operacoes" | "transportador" | "retirada" | "fiscal" | "obs" | "pontualidade";
+type TabCamposNFe = "produtor" | "destinatario" | "operacoes" | "transportador" | "retirada" | "fiscal" | "obs" | "pontualidade";
 type Passo  = "origem" | "contrato" | "romaneio" | "retorno_origem" | "form" | "nf_vinculada";
 type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 
@@ -239,7 +242,7 @@ function FaturamentoInner() {
   const [buscaContrato,        setBuscaContrato]       = useState("");
   const [contratoSelecionado,  setContratoSelecionado] = useState<Contrato | null>(null);
   const [romaneios,            setRomaneios]           = useState<Romaneio[]>([]);
-  const [tabNFe,       setTabNFe]      = useState<TabNFe>("produtor");
+  const [tabNFe,       setTabNFe]      = useState<AbaEmissaoNfe>("emitente");
   const [operacaoFiscalId,setOperacaoFiscalId]=useState("");
   const [variaveisFiscais,setVariaveisFiscais]=useState<Record<string,string>>({});
   useEffect(()=>{if(!modalAberto){setOperacaoFiscalId("");setVariaveisFiscais({});}},[modalAberto]);
@@ -394,7 +397,7 @@ function FaturamentoInner() {
         const agora = new Date().toTimeString().slice(0, 8);
         setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
         setNfeItens([]); setAvisoProdutoNf("");
-        setTabNFe("produtor");
+        setTabNFe("emitente");
         setModalAberto(true);
         // O contrato vai como argumento: o estado recém-definido ainda não está disponível aqui
         void preencherDoContrato(contrato, { romaneio: rom as Romaneio, kg: rom.peso_classificado_kg ?? rom.peso_liquido_kg ?? 0 });
@@ -444,7 +447,7 @@ function FaturamentoInner() {
     const agora = new Date().toTimeString().slice(0, 8);
     setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
     setNfeItens([]); setAvisoProdutoNf("");
-    setTabNFe("produtor");
+    setTabNFe("emitente");
     setPasso("origem");
     setTipoAvulsa("");
     setBuscaContrato("");
@@ -691,7 +694,7 @@ function FaturamentoInner() {
       valor_total: i.valor_total, valor_financeiro: i.valor_total, cclass_trib: "",
     })));
     setAvisoProdutoNf("");
-    setTabNFe("produtor");
+    setTabNFe("emitente");
     setErroForm(null);
     setPasso("form");
     setModalAberto(true);
@@ -739,7 +742,7 @@ function FaturamentoInner() {
       valor_total: valor, valor_financeiro: valor, cclass_trib: "",
     })));
     setAvisoProdutoNf(dif > 0 ? "" : "Informe a quantidade e o valor do complemento na aba de itens.");
-    setTabNFe("produtor");
+    setTabNFe("emitente");
     setErroForm(null);
     setPasso("form");
     setModalAberto(true);
@@ -747,9 +750,9 @@ function FaturamentoInner() {
 
   async function salvarRascunhoNota() {
     if (salvandoRascunhoRef.current || emitindo) return;
-    if (!fVenda.produtor_id || !fVenda.ie_id) { setErroForm("Selecione o produtor e a inscrição estadual."); return; }
-    if (!fVenda.destinatario.trim()) { setErroForm("Informe o destinatário."); return; }
-    if (!nfeItens.length || nfeItens.some(i => !i.item.trim())) { setErroForm("Escolha pelo menos um produto para a nota."); return; }
+    if (!fVenda.produtor_id || !fVenda.ie_id) { setTabNFe("emitente"); setErroForm("Selecione o produtor e a inscrição estadual."); return; }
+    if (!fVenda.destinatario.trim()) { setTabNFe("destinatario"); setErroForm("Informe o destinatário."); return; }
+    if (!nfeItens.length || nfeItens.some(i => !i.item.trim())) { setTabNFe("itens"); setErroForm("Escolha pelo menos um produto para a nota."); return; }
     salvandoRascunhoRef.current = true;
     setSalvandoRascunho(true); setErroForm(null);
     try {
@@ -826,7 +829,7 @@ function FaturamentoInner() {
       valor_unitario: i.valor_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
       valor_total: i.valor_total, valor_financeiro: i.valor_total, cclass_trib: "",
     })));
-    setTabNFe("produtor");
+    setTabNFe("emitente");
     setErroForm(null);
     setPasso("form");
     setModalAberto(true);
@@ -1095,14 +1098,14 @@ function FaturamentoInner() {
   async function emitirNota(espelho?: JanelaEspelho) {
     if (!espelho && !(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir nota)", perigo: false }))) return;
     const fazEmissao = fazNFe || fazendaId || "";
-    if (!fazEmissao) { setErroForm("Selecione a fazenda emitente."); return; }
-    if (!fVenda.produtor_id) { setErroForm("Selecione o produtor."); return; }
-    if (iesProdutor.length > 1 && !fVenda.ie_id) { setErroForm("Selecione a IE do produtor — ela define a fazenda que emite a nota."); return; }
-    if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
-    if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
-    if (nfeItens.some(i => !i.item.trim())) { setErroForm("Escolha o produto de todos os itens da nota."); return; }
-    if (ehDevolucaoBem(fVenda.cfop) && fVenda.nf_ref_chave.length !== 44) { setErroForm("Devolução de bem: informe na aba Fiscal a chave da NF de remessa (44 dígitos)."); return; }
-    if (!fVenda.dest_municipio_ibge) { setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
+    if (!fazEmissao) { setTabNFe("emitente"); setErroForm("Selecione a fazenda emitente."); return; }
+    if (!fVenda.produtor_id) { setTabNFe("emitente"); setErroForm("Selecione o produtor."); return; }
+    if (iesProdutor.length > 1 && !fVenda.ie_id) { setTabNFe("emitente"); setErroForm("Selecione a IE do produtor — ela define a fazenda que emite a nota."); return; }
+    if (!fVenda.destinatario) { setTabNFe("destinatario"); setErroForm("Informe o destinatário."); return; }
+    if (nfeItens.length === 0) { setTabNFe("itens"); setErroForm("Adicione pelo menos um item."); return; }
+    if (nfeItens.some(i => !i.item.trim())) { setTabNFe("itens"); setErroForm("Escolha o produto de todos os itens da nota."); return; }
+    if (ehDevolucaoBem(fVenda.cfop) && fVenda.nf_ref_chave.length !== 44) { setTabNFe("referencias"); setErroForm("Devolução de bem: informe na aba Referências e observações a chave da NF de remessa (44 dígitos)."); return; }
+    if (!fVenda.dest_municipio_ibge) { setTabNFe("destinatario"); setErroForm("Código IBGE do município do destinatário é obrigatório. Selecione o comprador pelo cadastro (o sistema busca automaticamente pelo CEP) ou preencha o campo 'Cód. IBGE' na aba Destinatário."); return; }
     setEmitindo(true); setErroForm(null);
     try {
       const { payload, moduloFiscal } = await montarPayloadNota();
@@ -1262,20 +1265,9 @@ function FaturamentoInner() {
     (c.produto ?? "").toLowerCase().includes(buscaContrato.toLowerCase())
   );
 
-  const ABAS_NOTA: { id: TabNFe; label: string }[] = [
-    { id: "produtor",      label: "Produtor"        },
-    { id: "destinatario",  label: "Destinatário"    },
-    { id: "operacoes",     label: "Operações/CFOP"  },
-    { id: "transportador", label: "Transportador"   },
-    { id: "retirada",      label: "Retirada/Entrega"},
-    { id: "fiscal",        label: "Fiscal"          },
-    { id: "obs",           label: "Obs./Adic."      },
-    { id: "pontualidade",  label: "Pontualidade"    },
-  ];
-
   // ── Conteúdo por aba ──────────────────────────────────────────────────────
-  function renderAba() {
-    switch (tabNFe) {
+  function renderCampos(aba: TabCamposNFe) {
+    switch (aba) {
       case "produtor": return (
         <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           <div>
@@ -1322,6 +1314,21 @@ function FaturamentoInner() {
               <option value="">— selecione —</option>
               {anosSafra.map(s => <option key={s.id} value={s.id}>{s.descricao}</option>)}
             </SelectField>
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>Modelo</label>
+            <SelectField style={inp} value={fVenda.modelo_nf} onChange={e => fv({ modelo_nf: e.target.value })}>
+              <option value="55">55 — NF-e</option>
+              <option value="65">65 — NFC-e</option>
+            </SelectField>
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>Série</label>
+            <input style={{ ...inp, background:"var(--bg-page)" }} value="Auto" disabled title="A série e o número vêm de Parâmetros → Fiscal do emitente (e da IE) escolhido" />
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>Data Emissão</label>
+            <InputData style={inp} type="date" value={fVenda.data_emissao} onChange={e => fv({ data_emissao: e.target.value })} />
           </div>
           {fVenda.contrato_numero && (
             <div style={{ gridColumn:"1/-1" }}>
@@ -1437,7 +1444,7 @@ function FaturamentoInner() {
       );
 
       case "operacoes": return (
-        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 100px 80px 80px 120px 120px", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:12 }}>
           <OperacaoFiscalSelect cfop={fVenda.cfop} data={fVenda.data_emissao} value={operacaoFiscalId} onChange={setOperacaoFiscalId} variaveis={variaveisFiscais} onVariaveis={setVariaveisFiscais} nfReferencia={fVenda.nf_ref_chave}/>
           <div style={{ gridColumn:"1/3" }}>
             <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
@@ -1484,29 +1491,6 @@ function FaturamentoInner() {
               <input style={inp} value={fVenda.aliq_icms} onChange={e => fv({ aliq_icms: e.target.value })} placeholder={fVenda.cfop === "5.556" ? "17" : "12"} />
             </div>
           )}
-          <div>
-            <label data-arato-label="true" style={lbl}>Modelo</label>
-            <SelectField style={inp} value={fVenda.modelo_nf} onChange={e => fv({ modelo_nf: e.target.value })}>
-              <option value="55">55 — NF-e</option>
-              <option value="65">65 — NFC-e</option>
-            </SelectField>
-          </div>
-          <div>
-            <label data-arato-label="true" style={lbl}>Série</label>
-            <input style={{ ...inp, background:"var(--bg-page)" }} value="Auto" disabled title="A série e o número vêm de Parâmetros → Fiscal do emitente (e da IE) escolhido" />
-          </div>
-          <div>
-            <label data-arato-label="true" style={lbl}>Data Emissão</label>
-            <InputData style={inp} type="date" value={fVenda.data_emissao} onChange={e => fv({ data_emissao: e.target.value })} />
-          </div>
-          <div>
-            <label data-arato-label="true" style={lbl}>Data Saída</label>
-            <InputData style={inp} type="date" value={fVenda.data_saida} onChange={e => fv({ data_saida: e.target.value })} />
-          </div>
-          <div>
-            <label data-arato-label="true" style={lbl}>Hora Saída</label>
-            <input style={inp} type="time" step="1" value={fVenda.hora_saida} onChange={e => fv({ hora_saida: e.target.value })} />
-          </div>
           <div style={{ gridColumn:"1/-1" }}>
             <label data-arato-label="true" style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
               <input type="checkbox" checked={fVenda.uso_imediato} onChange={e => fv({ uso_imediato: e.target.checked })} />
@@ -1574,6 +1558,26 @@ function FaturamentoInner() {
           <div>
             <label data-arato-label="true" style={lbl}>Qtd. Volumes</label>
             <input style={inp} value={fVenda.qt_volumes} onChange={e => fv({ qt_volumes: e.target.value })} placeholder="0" />
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>Data Saída</label>
+            <InputData style={inp} type="date" value={fVenda.data_saida} onChange={e => fv({ data_saida: e.target.value })} />
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>Hora Saída</label>
+            <input style={inp} type="time" step="1" value={fVenda.hora_saida} onChange={e => fv({ hora_saida: e.target.value })} />
+          </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label data-arato-label="true" style={lbl}>Endereço da transportadora</label>
+            <input style={inp} value={fVenda.transp_endereco} onChange={e => fv({ transp_endereco: e.target.value })} />
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>Número</label>
+            <input style={inp} value={fVenda.transp_numero} onChange={e => fv({ transp_numero: e.target.value })} />
+          </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label data-arato-label="true" style={lbl}>Município da transportadora</label>
+            <input style={inp} value={fVenda.transp_cidade} onChange={e => fv({ transp_cidade: e.target.value })} />
           </div>
         </div>
       );
@@ -1712,9 +1716,7 @@ function FaturamentoInner() {
             <label data-arato-label="true" style={lbl}>Referência de Contrato</label>
             <input style={inp} value={fVenda.contrato_numero} onChange={e => fv({ contrato_numero: e.target.value })} placeholder="Nº do contrato de venda" />
           </div>
-          <div style={{ gridColumn:"1/-1", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, padding:"10px 14px", fontSize:11, color:"var(--text-2)" }}>
-            Esta aba registra informações de pontualidade e antecipação de pagamento. Campos adicionais de desconto financeiro e condições especiais podem ser configurados nos Parâmetros do Sistema.
-          </div>
+
         </div>
       );
 
@@ -1958,7 +1960,7 @@ function FaturamentoInner() {
                     style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", gridColumn:"1 / -1" }}>
                     <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
                     <div style={{ fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:4 }}>Devolução</div>
-                    <div style={{ fontSize:12, color:"var(--text-2)" }}>Retorno de bem de terceiro: comodato (5.909/6.909), bem recebido para uso (5.555/6.555), demonstração (5.913) ou conserto (5.916). Escolha a natureza no formulário e informe na aba Fiscal a chave da NF de remessa recebida.</div>
+                    <div style={{ fontSize:12, color:"var(--text-2)" }}>Retorno de bem de terceiro: comodato (5.909/6.909), bem recebido para uso (5.555/6.555), demonstração (5.913) ou conserto (5.916). Escolha a natureza no formulário e informe na aba Referências e observações a chave da NF de remessa recebida.</div>
                   </OperationalButton>
                 )}
                 {(!modo || modo === "contrato" || modo === "avulsa") && <>
@@ -2231,146 +2233,372 @@ function FaturamentoInner() {
             </div>
           )}
 
-          {/* ── PASSO 3: Formulário 8 abas ── */}
+          {/* Formulário compartilhado com a emissão de remessas. */}
           {passo === "form" && (
-            <div style={{ background:"var(--bg-card)", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
-
-              {/* Barra de título */}
-              <div style={{ background:"#111111", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => rascunhoId || fVenda.complementar_de ? setModalAberto(false) : setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</OperationalButton>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:15, fontWeight:700 }}>
-                    {fVenda.complementar_de ? `NF-e Complementar — NF ${fVenda.nf_ref_numero}` : fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
-                  </div>
-                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
-                    {fVenda.destinatario ? `Destinatário: ${fVenda.destinatario}` : "Preencha os dados da nota"}
-                    {fVenda.contrato_numero && " · dados pré-carregados do contrato"}
-                    {fVenda.faturamento_direto && (fVenda.peso_aproximado ? " · sem romaneio, peso aproximado" : " · sem romaneio")}
-                    {rascunhoId && ` · Rascunho${rascunhoOrigem ? ` duplicado da NF ${rascunhoOrigem}` : ""}: nada foi transmitido à SEFAZ`}
-                  </div>
-                </div>
-                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"0.5px solid rgba(255,255,255,0.3)", color:"rgba(255,255,255,0.7)", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer" }} onClick={() => setModalAberto(false)}>✕ Fechar</OperationalButton>
-              </div>
-
-              {/* Abas */}
-              <div data-arato-tabs="true" data-arato-grid-container="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
-                {ABAS_NOTA.map(a => (
-                  <OperationalButton data-arato-tab-active={tabNFe === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setTabNFe(a.id)}
-                    style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #2A2A2A" : "2.5px solid transparent", background:"transparent",
-                      color: tabNFe === a.id ? "#2A2A2A" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
-                    {a.label}
-                  </OperationalButton>
-                ))}
-              </div>
-
-              {/* Conteúdo da aba */}
-              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-                {renderAba()}
-              </div>
-
-              {/* Grid de itens */}
-              <div style={{ borderTop:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0 }}>
-                <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota{avisoProdutoNf && <span style={{ marginLeft:10, fontWeight:400, fontSize:11, color:"#7A5200", background:"#FBF3E0", padding:"2px 8px", borderRadius:6 }}>⚠ {avisoProdutoNf}</span>}</span>
-                  <OperationalButton data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</OperationalButton>
-                </div>
-                <div data-arato-grid-container="true" style={{ overflowX:"auto", maxHeight:160 }}>
-                  <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
-                    <thead>
-                      <tr style={{ background:"#F0F4F8" }}>
-                        {["Tipo","Item / Produto","NCM","Qtd","Unid","Valor Unit.","Valor Total",""].map((h, i) => (
-                          <th key={i} style={{ padding:"5px 10px", fontSize:10, fontWeight:600, color:"var(--text-2)", textAlign: i>=3&&i<=6?"center":"left", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {nfeItens.length === 0 ? (
-                        <tr><td colSpan={8} style={{ padding:"12px 14px", textAlign:"center", fontSize:11, color:"var(--text-muted)" }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
-                      ) : nfeItens.map((it, idx) => (
-                        <tr key={it.id} style={{ borderBottom:"0.5px solid #eee" }}>
-                          <td style={{ padding:"5px 8px", width:80 }}>
-                            <SelectField style={{ ...inp, fontSize:11 }} value={it.tipo_item} onChange={e => atualizarItem(idx, "tipo_item", e.target.value)}>
-                              <option>Produto</option><option>Serviço</option>
-                            </SelectField>
-                          </td>
-                          <td style={{ padding:"5px 8px", minWidth:120 }}>
-                            {itemPeloCadastro(it) ? (() => {
-                              const atual = it.produto_id || produtoDoContrato(prodAgricolas, null, it.item)?.id || (it.item ? "__texto" : "");
-                              const opcoes = prodAgricolas.map(p => ({ value: p.id, label: p.ncm ? `${p.nome} — NCM ${fmtNcm(p.ncm)}` : p.nome }));
-                              if (atual === "__texto") opcoes.unshift({ value: "__texto", label: `${it.item} (fora do cadastro)` });
-                              return <SelectBusca value={atual} options={opcoes} placeholder="— Produto agrícola —" style={{ ...inp, fontSize:12 }}
-                                onChange={v => { if (v !== "__texto") escolherProdutoItem(idx, v); }} />;
-                            })() : (
-                              <input style={{ ...inp, fontSize:12 }} value={it.item} onChange={e => atualizarItem(idx, "item", e.target.value)} />
+            <EditorNfe
+              titulo={
+                fVenda.complementar_de
+                  ? `NF-e Complementar — NF ${fVenda.nf_ref_numero}`
+                  : fVenda.contrato_numero
+                    ? `NF-e por Contrato — ${fVenda.contrato_numero}`
+                    : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? "Retorno de Armazém" : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`
+              }
+              subtitulo={`${fVenda.destinatario || "Preencha os dados da nota"}${rascunhoId ? " · Rascunho" : ""}${rascunhoOrigem ? ` · Cópia da NF ${rascunhoOrigem}` : ""}`}
+              aba={tabNFe}
+              onAba={setTabNFe}
+              onFechar={() => setModalAberto(false)}
+              onVoltar={
+                !rascunhoId && !fVenda.complementar_de
+                  ? () => setPasso(tipoAvulsa ? "origem" : "romaneio")
+                  : undefined
+              }
+              ocupado={emitindo || salvandoRascunho}
+              total={fmtR$(totalItens)}
+              financeiro={fmtR$(totalFinanceiro)}
+              erro={erroForm}
+              onEspelho={() => comJanelaEspelho((j) => emitirNota(j))}
+              onSalvar={() => void salvarRascunhoNota()}
+              onEmitir={() => void emitirNota()}
+            >
+              {tabNFe === "emitente" && (
+                <SecaoNfe
+                  titulo="Emitente"
+                  descricao="Selecione o produtor e o estabelecimento que emitirá a nota."
+                >
+                  {renderCampos("produtor")}
+                </SecaoNfe>
+              )}
+              {tabNFe === "destinatario" && (
+                <SecaoNfe
+                  titulo="Destinatário"
+                  descricao="Confira documento, inscrição estadual e endereço."
+                >
+                  {renderCampos("destinatario")}
+                </SecaoNfe>
+              )}
+              {tabNFe === "itens" && (
+                <>
+                  <SecaoNfe titulo="Operação e tributos">
+                    {renderCampos("operacoes")}
+                  </SecaoNfe>
+                  <SecaoNfe titulo="Itens da nota">
+                    {/* Grid de itens */}
+                    <div
+                      style={{
+                        borderTop: "0.5px solid var(--border-table)",
+                        background: "var(--bg-card)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "8px 16px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "var(--text-2)",
+                          }}
+                        >
+                          Itens da Nota
+                          {avisoProdutoNf && (
+                            <span
+                              style={{
+                                marginLeft: 10,
+                                fontWeight: 400,
+                                fontSize: 11,
+                                color: "#7A5200",
+                                background: "#FBF3E0",
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                              }}
+                            >
+                              ⚠ {avisoProdutoNf}
+                            </span>
+                          )}
+                        </span>
+                        <OperationalButton
+                          data-arato-button="secondary"
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 10px",
+                            border: "0.5px solid #2A2A2A",
+                            borderRadius: 5,
+                            background: "#E6F1FB",
+                            color: "#2A2A2A",
+                            cursor: "pointer",
+                          }}
+                          onClick={addItem}
+                        >
+                          + Item
+                        </OperationalButton>
+                      </div>
+                      <div
+                        data-arato-grid-container="true"
+                        className="nfe-editor-grid"
+                        style={{ overflowX: "auto" }}
+                      >
+                        <OperationalGrid
+                          data-arato-grid="true"
+                          style={{ width: "100%", borderCollapse: "collapse" }}
+                        >
+                          <thead>
+                            <tr style={{ background: "#F0F4F8" }}>
+                              {[
+                                "Tipo",
+                                "Item / Produto",
+                                "NCM",
+                                "Qtd",
+                                "Unid",
+                                "Valor Unit.",
+                                "Valor Total",
+                                "",
+                              ].map((h, i) => (
+                                <th
+                                  key={i}
+                                  style={{
+                                    padding: "5px 10px",
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    color: "var(--text-2)",
+                                    textAlign: i >= 3 && i <= 6 ? "center" : "left",
+                                    borderBottom: "0.5px solid var(--border-table)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {nfeItens.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={8}
+                                  style={{
+                                    padding: "12px 14px",
+                                    textAlign: "center",
+                                    fontSize: 11,
+                                    color: "var(--text-muted)",
+                                  }}
+                                >
+                                  Nenhum item. Clique em &quot;+ Item&quot; para
+                                  adicionar.
+                                </td>
+                              </tr>
+                            ) : (
+                              nfeItens.map((it, idx) => (
+                                <tr
+                                  key={it.id}
+                                  style={{ borderBottom: "0.5px solid #eee" }}
+                                >
+                                  <td style={{ padding: "5px 8px", width: 80 }}>
+                                    <SelectField
+                                      style={{ ...inp, fontSize: 11 }}
+                                      value={it.tipo_item}
+                                      onChange={(e) =>
+                                        atualizarItem(idx, "tipo_item", e.target.value)
+                                      }
+                                    >
+                                      <option>Produto</option>
+                                      <option>Serviço</option>
+                                    </SelectField>
+                                  </td>
+                                  <td style={{ padding: "5px 8px", minWidth: 120 }}>
+                                    {itemPeloCadastro(it) ? (
+                                      (() => {
+                                        const atual =
+                                          it.produto_id ||
+                                          produtoDoContrato(prodAgricolas, null, it.item)
+                                            ?.id ||
+                                          (it.item ? "__texto" : "");
+                                        const opcoes = prodAgricolas.map((p) => ({
+                                          value: p.id,
+                                          label: p.ncm
+                                            ? `${p.nome} — NCM ${fmtNcm(p.ncm)}`
+                                            : p.nome,
+                                        }));
+                                        if (atual === "__texto")
+                                          opcoes.unshift({
+                                            value: "__texto",
+                                            label: `${it.item} (fora do cadastro)`,
+                                          });
+                                        return (
+                                          <SelectBusca
+                                            value={atual}
+                                            options={opcoes}
+                                            placeholder="— Produto agrícola —"
+                                            style={{ ...inp, fontSize: 12 }}
+                                            onChange={(v) => {
+                                              if (v !== "__texto")
+                                                escolherProdutoItem(idx, v);
+                                            }}
+                                          />
+                                        );
+                                      })()
+                                    ) : (
+                                      <input
+                                        style={{ ...inp, fontSize: 12 }}
+                                        value={it.item}
+                                        onChange={(e) =>
+                                          atualizarItem(idx, "item", e.target.value)
+                                        }
+                                      />
+                                    )}
+                                  </td>
+                                  <td style={{ padding: "5px 8px", width: 110 }}>
+                                    <input
+                                      style={{ ...inp, fontSize: 11 }}
+                                      value={it.ncm}
+                                      onChange={(e) =>
+                                        atualizarItem(idx, "ncm", e.target.value)
+                                      }
+                                      placeholder="0000.00.00"
+                                    />
+                                  </td>
+                                  <td style={{ padding: "5px 8px", width: 90 }}>
+                                    <input
+                                      style={{ ...inp, textAlign: "right", fontSize: 12 }}
+                                      value={it.quantidade}
+                                      onChange={(e) =>
+                                        atualizarItem(idx, "quantidade", e.target.value)
+                                      }
+                                      placeholder="0"
+                                    />
+                                  </td>
+                                  <td style={{ padding: "5px 8px", width: 60 }}>
+                                    <SelectField
+                                      style={{ ...inp, fontSize: 11 }}
+                                      value={it.unidade}
+                                      onChange={(e) =>
+                                        atualizarItem(idx, "unidade", e.target.value)
+                                      }
+                                    >
+                                      {[
+                                        ...UNIDADES_ITEM_VENDA,
+                                        ...((
+                                          UNIDADES_ITEM_VENDA as readonly string[]
+                                        ).includes(it.unidade) || !it.unidade
+                                          ? []
+                                          : [it.unidade]),
+                                      ].map((u) => (
+                                        <option key={u}>{u}</option>
+                                      ))}
+                                    </SelectField>
+                                  </td>
+                                  <td style={{ padding: "5px 8px", width: 110 }}>
+                                    <input
+                                      style={{ ...inp, textAlign: "right", fontSize: 12 }}
+                                      value={it.valor_unitario}
+                                      onChange={(e) =>
+                                        atualizarItem(
+                                          idx,
+                                          "valor_unitario",
+                                          aplicarMascara4(
+                                            e.target.value.replace(/\D/g, ""),
+                                          ),
+                                        )
+                                      }
+                                      placeholder="0,0000"
+                                    />
+                                  </td>
+                                  <td style={{ padding: "5px 8px", width: 120 }}>
+                                    <input
+                                      style={{
+                                        ...inp,
+                                        background: "var(--bg-page)",
+                                        textAlign: "right",
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: "#111111",
+                                      }}
+                                      value={fmtR$(it.valor_total)}
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td style={{ padding: "5px 8px", width: 30 }}>
+                                    <OperationalButton
+                                      data-arato-button="danger"
+                                      style={{
+                                        padding: "2px 7px",
+                                        border: "0.5px solid #E24B4A50",
+                                        borderRadius: 5,
+                                        background: "#FCEBEB",
+                                        cursor: "pointer",
+                                        fontSize: 11,
+                                        color: "#791F1F",
+                                      }}
+                                      onClick={() =>
+                                        setNfeItens((p) => p.filter((_, i) => i !== idx))
+                                      }
+                                    >
+                                      ✕
+                                    </OperationalButton>
+                                  </td>
+                                </tr>
+                              ))
                             )}
-                          </td>
-                          <td style={{ padding:"5px 8px", width:110 }}>
-                            <input style={{ ...inp, fontSize:11 }} value={it.ncm} onChange={e => atualizarItem(idx, "ncm", e.target.value)} placeholder="0000.00.00" />
-                          </td>
-                          <td style={{ padding:"5px 8px", width:90 }}>
-                            <input style={{ ...inp, textAlign:"right", fontSize:12 }} value={it.quantidade} onChange={e => atualizarItem(idx, "quantidade", e.target.value)} placeholder="0" />
-                          </td>
-                          <td style={{ padding:"5px 8px", width:60 }}>
-                            <SelectField style={{ ...inp, fontSize:11 }} value={it.unidade} onChange={e => atualizarItem(idx, "unidade", e.target.value)}>
-                              {[...UNIDADES_ITEM_VENDA, ...((UNIDADES_ITEM_VENDA as readonly string[]).includes(it.unidade) || !it.unidade ? [] : [it.unidade])].map(u => <option key={u}>{u}</option>)}
-                            </SelectField>
-                          </td>
-                          <td style={{ padding:"5px 8px", width:110 }}>
-                            <input style={{ ...inp, textAlign:"right", fontSize:12 }} value={it.valor_unitario}
-                              onChange={e => atualizarItem(idx, "valor_unitario", aplicarMascara4(e.target.value.replace(/\D/g,"")))} placeholder="0,0000" />
-                          </td>
-                          <td style={{ padding:"5px 8px", width:120 }}>
-                            <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }} value={fmtR$(it.valor_total)} readOnly />
-                          </td>
-                          <td style={{ padding:"5px 8px", width:30 }}>
-                            <OperationalButton data-arato-button="danger" style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
-                              onClick={() => setNfeItens(p => p.filter((_, i) => i !== idx))}>✕</OperationalButton>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </OperationalGrid>
-                </div>
-                <div style={{ padding:"8px 16px", display:"flex", justifyContent:"flex-end", gap:24, borderTop:"0.5px solid var(--border-table)" }}>
-                  <span style={{ fontSize:12, color:"var(--text-2)" }}>Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong></span>
-                  <span style={{ fontSize:13, fontWeight:700, color:"#111111" }}>Total: {fmtR$(totalItens)}</span>
-                </div>
-              </div>
-
-              {/* Rodapé do modal */}
-              <div style={{ padding:"12px 20px", borderTop:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:12, flexShrink:0, background:"var(--bg-card)" }}>
-                {erroForm && (
-                  <div style={{ flex:1, background:"#FCEBEB", border:"0.5px solid #E24B4A50", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#791F1F" }}>
-                    ⚠ {erroForm}
-                  </div>
-                )}
-                <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
-                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</OperationalButton>
-                  <OperationalButton data-arato-button="toggle"
-                    style={{ ...btnR, borderColor:"#2A2A2A", color:"#2A2A2A" }}
-                    onClick={() => {
-                      const tabs: TabNFe[] = ["produtor","destinatario","operacoes","transportador","retirada","fiscal","obs","pontualidade"];
-                      const idx = tabs.indexOf(tabNFe);
-                      if (idx < tabs.length - 1) setTabNFe(tabs[idx + 1]);
-                    }}>
-                    Próxima aba →
-                  </OperationalButton>
-                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={salvarRascunhoNota} disabled={salvandoRascunho || emitindo}
-                    title="Salva como rascunho no Painel de Notas, onde você poderá editar, conferir o espelho e transmitir.">
-                    {salvandoRascunho ? "Salvando…" : "Salvar e enviar ao painel"}
-                  </OperationalButton>
-                  {/* Espelho — o DANFE montado como será transmitido, sem valor fiscal, para conferir antes */}
-                  <OperationalButton data-arato-button="secondary" style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600 }}
-                    onClick={() => comJanelaEspelho(j => emitirNota(j))} disabled={emitindo || salvandoRascunho}
-                    title="Gera o DANFE exatamente como será transmitido, marcado como espelho (sem valor fiscal). Nada é gravado nem enviado à SEFAZ.">
-                    📄 Espelho
-                  </OperationalButton>
-                  <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={() => emitirNota()} disabled={emitindo || salvandoRascunho}>
-                    {emitindo ? "Emitindo…" : "Emitir NF-e"}
-                  </OperationalButton>
-                </div>
-              </div>
-            </div>
+                          </tbody>
+                        </OperationalGrid>
+                      </div>
+                      <div
+                        style={{
+                          padding: "8px 16px",
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: 24,
+                          borderTop: "0.5px solid var(--border-table)",
+                        }}
+                      >
+                        <span style={{ fontSize: 12, color: "var(--text-2)" }}>
+                          Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong>
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#111111" }}>
+                          Total: {fmtR$(totalItens)}
+                        </span>
+                      </div>
+                    </div>
+                  </SecaoNfe>
+                </>
+              )}
+              {tabNFe === "transporte" && (
+                <>
+                  <SecaoNfe titulo="Transporte">{renderCampos("transportador")}</SecaoNfe>
+                </>
+              )}
+              {tabNFe === "referencias" && (
+                <>
+                  <SecaoNfe titulo="Referências fiscais">
+                    {renderCampos("fiscal")}
+                  </SecaoNfe>
+                  <SecaoNfe titulo="Observações e classificação">
+                    {renderCampos("obs")}
+                  </SecaoNfe>
+                </>
+              )}
+              {tabNFe === "origem" && (
+                <>
+                  <SecaoNfe
+                    titulo="Origem da operação"
+                    descricao={
+                      contratoSelecionado
+                        ? `Contrato ${contratoSelecionado.numero ?? ""}${fVenda.romaneio_numero ? ` · Romaneio ${fVenda.romaneio_numero}` : fVenda.faturamento_direto ? " · Faturamento sem romaneio" : ""}`
+                        : "Nota avulsa, sem vínculo obrigatório com contrato."
+                    }
+                  >
+                    {renderCampos("pontualidade")}
+                  </SecaoNfe>
+                  <SecaoNfe titulo="Locais de retirada e entrega">
+                    {renderCampos("retirada")}
+                  </SecaoNfe>
+                </>
+              )}
+            </EditorNfe>
           )}
 
           {/* ── PASSO 4: Conclusão — NF vinculada (Venda a Ordem / Entrega Futura) ── */}
@@ -2392,11 +2620,11 @@ function FaturamentoInner() {
                       A NF simbólica <strong>6.101</strong> foi emitida para o comprador original. Agora você precisa emitir a <strong>NF de remessa física 6.923</strong> que acompanhará o transporte para o destinatário final.
                     </p>
                     <div style={{ background:"white", border:"0.5px solid #BFDBFE", borderRadius:8, padding:"10px 14px", fontSize:11, fontFamily:"monospace", wordBreak:"break-all", color:"#1E3A8A" }}>
-                      <div style={{ fontSize:10, color:"#64748B", marginBottom:4, fontFamily:"sans-serif" }}>Chave da NF 6.101 — copie para a aba Fiscal da próxima NF:</div>
+                      <div style={{ fontSize:10, color:"#64748B", marginBottom:4, fontFamily:"sans-serif" }}>Chave da NF 6.101 — copie para a aba Referências e observações da próxima NF:</div>
                       {nfEmitida.chave ?? "— (chave disponível após autorização SEFAZ) —"}
                     </div>
                     <div style={{ fontSize:11, color:"#64748B", marginTop:8 }}>
-                      Na NF 6.923: selecione CFOP 6.923 · informe o destinatário final · cole a chave acima na aba Fiscal como NFref obrigatória.
+                      Na NF 6.923: selecione CFOP 6.923 · informe o destinatário final · cole a chave acima na aba Referências e observações como NFref obrigatória.
                     </div>
                   </div>
                 )}
@@ -2408,11 +2636,11 @@ function FaturamentoInner() {
                       A NF simbólica <strong>6.117</strong> foi emitida na contratação. Quando ocorrer a remessa física dos grãos, emita a <strong>NF 6.101</strong> referenciando esta nota.
                     </p>
                     <div style={{ background:"white", border:"0.5px solid #FDE68A", borderRadius:8, padding:"10px 14px", fontSize:11, fontFamily:"monospace", wordBreak:"break-all", color:"#78350F" }}>
-                      <div style={{ fontSize:10, color:"#64748B", marginBottom:4, fontFamily:"sans-serif" }}>Chave da NF 6.117 — copie para a aba Fiscal da NF de saída física:</div>
+                      <div style={{ fontSize:10, color:"#64748B", marginBottom:4, fontFamily:"sans-serif" }}>Chave da NF 6.117 — copie para a aba Referências e observações da NF de saída física:</div>
                       {nfEmitida.chave ?? "— (chave disponível após autorização SEFAZ) —"}
                     </div>
                     <div style={{ fontSize:11, color:"#64748B", marginTop:8 }}>
-                      Na NF 6.101 de saída física: selecione CFOP 6.101 · cole a chave acima na aba Fiscal como NFref obrigatória.
+                      Na NF 6.101 de saída física: selecione CFOP 6.101 · cole a chave acima na aba Referências e observações como NFref obrigatória.
                     </div>
                   </div>
                 )}

@@ -1,4 +1,7 @@
 "use client";
+import { EditorNfe, SecaoNfe } from "../../../components/fiscal/EditorNfe";
+import "../../../components/fiscal/EditorNfe.css";
+import type { AbaEmissaoNfe } from "../../../lib/fiscal/editor-nfe";
 import Link from "next/link";
 // Remessas — tela própria para a remessa de mercadoria a armazém geral, depósito ou condomínio logístico (ex.: LUFT).
 // Diretriz do dono 27/10/2026: compra, remessa e retorno em telas separadas, cada uma com as suas variáveis.
@@ -35,7 +38,6 @@ const paraCampo = (n: number | null | undefined) => n == null || !Number.isFinit
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const th: React.CSSProperties = { padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-page)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "8px 12px", fontSize: 12, borderBottom: "0.5px solid var(--border-row)", verticalAlign: "top" };
 const ehDepTerceiro = (d: Deposito) => ["terceiro", "armazem_terceiro"].includes(d.tipo);
@@ -135,6 +137,8 @@ function RemessasConteudo() {
 
   // ── Nova remessa ─────────────────────────────────────────────────────────────
   const [modal, setModal] = useState(false);
+  const [abaEmissao, setAbaEmissao] = useState<AbaEmissaoNfe>("emitente");
+  useEffect(() => { if (modal) setAbaEmissao("emitente"); }, [modal]);
   const [modo, setModo] = useState<"arato" | "externa">("arato");
   const [nfOrigem, setNfOrigem] = useState<NfOrigem | null>(null);
   const [buscaNf, setBuscaNf] = useState("");
@@ -422,11 +426,11 @@ function RemessasConteudo() {
   async function salvar(acao: "agora" | "painel" | JanelaEspelho = "agora") {
     const espelho = typeof acao === "object" ? acao : null;
     const cf = cfop.replace(/\D/g, "");
-    if (!armazem) { setErro("Escolha o armazém (destinatário)."); return; }
-    if (!depOrigem || !depTerceiro) { setErro("Escolha o depósito de origem e o depósito do armazém."); return; }
-    if (itens.some(i => !i.insumo_id || !(numBR(i.quantidade) > 0))) { setErro("Todo item precisa estar ligado a um produto do cadastro e ter quantidade."); return; }
-    if (!/^\d{4}$/.test(cf)) { setErro("Informe o CFOP da remessa (ex.: 5905)."); return; }
-    if (modo === "externa" && !ext.numero.trim()) { setErro("Informe o número da NF emitida."); return; }
+    if (!armazem) { setAbaEmissao("destinatario"); setErro("Escolha o armazém (destinatário)."); return; }
+    if (!depOrigem || !depTerceiro) { setAbaEmissao("origem"); setErro("Escolha o depósito de origem e o depósito do armazém."); return; }
+    if (itens.some(i => !i.insumo_id || !(numBR(i.quantidade) > 0))) { setAbaEmissao("itens"); setErro("Todo item precisa estar ligado a um produto do cadastro e ter quantidade."); return; }
+    if (!/^\d{4}$/.test(cf)) { setAbaEmissao("itens"); setErro("Informe o CFOP da remessa (ex.: 5905)."); return; }
+    if (modo === "externa" && !ext.numero.trim()) { setAbaEmissao("origem"); setErro("Informe o número da NF emitida."); return; }
     if (!espelho && modo === "arato" && armazemSemIe && !(await confirmarAcao({ titulo: "Destinatário sem Inscrição Estadual", perigo: true, textoConfirmar: "Emitir sem a IE",
       mensagem: `O cadastro de ${armazem.nome} está sem Inscrição Estadual: a NF-e sai sem a IE do destinatário. Use "Buscar IE na SEFAZ" abaixo do armazém para preencher antes. Emitir assim mesmo?` }))) return;
     const deDepositos = `O estoque passa de "${depositos.find(d => d.id === depOrigem)?.nome}" para "${depositos.find(d => d.id === depTerceiro)?.nome}"`;
@@ -454,9 +458,9 @@ function RemessasConteudo() {
         if (nfOrigem?.produtor_id) { const { data: pr } = await supabase.from("produtores").select("cpf_cnpj").eq("id", nfOrigem.produtor_id).maybeSingle(); cpfHint = pr?.cpf_cnpj ?? undefined; }
         // A IE escolhida define o titular (CPF/CNPJ) do emitente; sem IE, cai na regra antiga (dono da NF de origem)
         const ie = dados.inscricoes.find(i => i.id === ieSel);
-        if (ie && !ie.serie) { setErro(`A IE ${ie.ie} não tem série NF-e configurada. Configure em Parâmetros → Fiscal → Inscrições Estaduais ou escolha outra IE.`); setSalvando(false); return; }
+        if (ie && !ie.serie) { setAbaEmissao("emitente"); setErro(`A IE ${ie.ie} não tem série NF-e configurada. Configure em Parâmetros → Fiscal → Inscrições Estaduais ou escolha outra IE.`); setSalvando(false); return; }
         const em = resolverEmitente(dados.emitentes, emitenteSel, ie?.cpf ?? cpfHint);
-        if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
+        if ("erro" in em) { setAbaEmissao("emitente"); setErro(em.erro); setSalvando(false); return; }
         fazEmissao = em.fazenda_id;
         const { transporte, motorista } = montarTransporte(dados, tr);
         const corpo = {
@@ -712,206 +716,775 @@ function RemessasConteudo() {
 
       {modal && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "min(96vw, 980px)", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{editNota ? `Editar NF-e de remessa pendente${editNota.numero && editNota.numero !== "PREVIA" ? ` (prévia nº ${editNota.numero})` : ""}` : "Nova Remessa"}</div>
-              <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
-            </div>
-            <div style={{ padding: "16px 22px", overflowY: "auto", flex: 1, display: "grid", gap: 14 }}>
-              {!editNota && <div style={{ display: "flex", gap: 8 }}>
-                {([["arato", "Emitir NF-e de remessa pelo Arato"], ["externa", "NF de remessa já emitida em outro sistema"]] as const).map(([m, t]) => (
-                  <button key={m} type="button" onClick={() => setModo(m)} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: modo === m ? 700 : 500,
-                    border: modo === m ? "1.5px solid #1A4870" : "0.5px solid var(--border)", background: modo === m ? "#D5E8F5" : "var(--bg-card)", color: modo === m ? "#0B2D50" : "var(--text-2)" }}>{t}</button>
-                ))}
-              </div>}
-
-              {modo === "externa" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 2fr 1fr", gap: 10, alignItems: "end" }}>
-                  <div><label style={lbl}>Número *</label><input value={ext.numero} onChange={e => setExt(p => ({ ...p, numero: e.target.value }))} style={inp} /></div>
-                  <div><label style={lbl}>Série</label><input value={ext.serie} onChange={e => setExt(p => ({ ...p, serie: e.target.value }))} style={inp} /></div>
-                  <div><label style={lbl}>Chave de acesso</label><input value={ext.chave} onChange={e => setExt(p => ({ ...p, chave: e.target.value }))} style={inp} /></div>
+          <EditorNfe
+            titulo={
+              editNota
+                ? `NF-e de remessa — Rascunho${editNota.numero && editNota.numero !== "PREVIA" ? ` (prévia nº ${editNota.numero})` : ""}`
+                : "NF-e de remessa"
+            }
+            subtitulo={
+              modo === "externa"
+                ? "Registro de nota emitida em outro sistema"
+                : armazem
+                  ? `Destinatário: ${armazem.nome}`
+                  : "Preencha os dados da nota"
+            }
+            aba={abaEmissao}
+            onAba={setAbaEmissao}
+            onFechar={() => setModal(false)}
+            onVoltar={() => setAbaEmissao("origem")}
+            ocupado={salvando}
+            total={fmtBRL(totalItens)}
+            erro={erro}
+            onEspelho={
+              modo === "arato" ? () => comJanelaEspelho((j) => salvar(j)) : undefined
+            }
+            onSalvar={modo === "arato" ? () => void salvar("painel") : undefined}
+            onEmitir={
+              modo === "arato" && !editNota ? () => void salvar("agora") : undefined
+            }
+            onRegistrarExterno={modo === "externa" ? () => void salvar() : undefined}
+          >
+            {abaEmissao === "emitente" && (
+              <SecaoNfe
+                titulo="Emitente"
+                descricao="Confira o titular, a inscrição estadual e o estabelecimento da nota."
+              >
+                <div className="nfe-editor-fields">
+                  {modo === "arato" && (
+                    <div>
+                      <label style={lbl}>Emitente da NF</label>
+                      <select
+                        value={emitenteSel}
+                        onChange={(e) => setEmitenteSel(e.target.value)}
+                        style={inp}
+                      >
+                        <option value="">
+                          {dados.emitentes.length === 1
+                            ? dados.emitentes[0].nome
+                            : "Automático (dono da NF de origem)"}
+                        </option>
+                        {dados.emitentes.length > 1 &&
+                          dados.emitentes.map((e) => (
+                            <option
+                              key={`${e.modulo}|${e.fazenda_id}`}
+                              value={`${e.modulo}|${e.fazenda_id}`}
+                            >
+                              {e.nome} — {e.cpf}
+                              {e.ie ? ` · IE ${e.ie}` : ""}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                  {modo === "arato" && (
+                    <>
+                      <div>
+                        {iesRemessa.length === 1 && iesRemessa[0].serie && (
+                          <div>
+                            <label style={lbl}>IE emitente (estabelecimento)</label>
+                            <input style={inp} readOnly value={`IE ${iesRemessa[0].ie} · série ${iesRemessa[0].serie}`} />
+                          </div>
+                        )}
+                        <SeletorIE
+                          ies={iesRemessa}
+                          value={ieSel}
+                          onChange={setIeSel}
+                          inp={inp}
+                          lbl={lbl}
+                        />
+                        {ieRefNf && !ieDaReferencia && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: "#7A4800" }}>
+                            A NF de referência foi emitida para a IE {ieRefNf}, que não
+                            está entre as IEs ativas cadastradas do emitente. Confira a
+                            IE.
+                          </div>
+                        )}
+                        {ieRefNf && ieDaReferencia && ieSel !== ieDaReferencia.id && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: "#7A4800" }}>
+                            A NF de referência foi emitida para a IE {ieDaReferencia.ie}
+                            ; a IE escolhida é outra.
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}{" "}
                   <div>
-                    <label style={lbl}>XML (opcional)</label>
-                    <input type="file" accept=".xml" onChange={async e => { const f = e.target.files?.[0]; if (f) lerXmlExterno(await f.text()); }} style={{ fontSize: 11 }} />
+                    <label style={lbl}>Data da remessa</label>
+                    <input
+                      type="date"
+                      value={dataRem}
+                      onChange={(e) => setDataRem(e.target.value)}
+                      style={inp}
+                    />
                   </div>
                 </div>
-              )}
-
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>NF de entrada de origem (opcional — traz os itens)</label>
-                  {nfOrigem ? (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", fontSize: 12 }}>
-                      <span><strong>NF {nfOrigem.numero}</strong> · {nfOrigem.emitente_nome ?? "—"} · {fmtData(nfOrigem.data_emissao)} · {fmtBRL(nfOrigem.valor_total)}</span>
-                      <button type="button" onClick={() => { setNfOrigem(null); setIeRefNf(""); }} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>trocar</button>
-                    </div>
-                  ) : (
+                {modo === "externa" && (
+                  <p className="nfe-editor-note">
+                    Os dados fiscais do emitente são os da nota já emitida. Informe o
+                    número, a série e a chave em Origem da operação.
+                  </p>
+                )}
+              </SecaoNfe>
+            )}
+            {abaEmissao === "destinatario" && (
+              <SecaoNfe
+                titulo="Destinatário"
+                descricao="Selecione o armazém e confira seu cadastro."
+              >
+                <div className="nfe-editor-fields">
+                  <div>
+                    <label style={lbl}>Armazém (destinatário) *</label>
+                    <SelectBusca
+                      value={armazemId}
+                      onChange={escolherArmazem}
+                      placeholder="— selecionar —"
+                      options={pessoas.map((p) => ({
+                        value: p.id,
+                        label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}`,
+                      }))}
+                    />
+                    {armazemSemIe && modo === "arato" && (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          padding: "6px 10px",
+                          background: "#FBF3E0",
+                          border: "0.5px solid #C9921B",
+                          borderRadius: 8,
+                          fontSize: 11,
+                          color: "#7A4800",
+                        }}
+                      >
+                        Cadastro do armazém sem Inscrição Estadual: a NF-e sairia sem a
+                        IE do destinatário.{" "}
+                        <button
+                          type="button"
+                          onClick={buscarIeArmazem}
+                          disabled={buscandoIe}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            color: "#1A4870",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            padding: 0,
+                            fontSize: 11,
+                            textDecoration: "underline",
+                          }}
+                        >
+                          {buscandoIe ? "Consultando SEFAZ…" : "Buscar IE na SEFAZ"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {armazem && (
                     <>
-                      <input value={buscaNf} onChange={e => buscarNfsOrigem(e.target.value)} style={inp} placeholder="Nº da NF ou fornecedor" />
-                      {nfsOrigem.length > 0 && (
-                        <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, marginTop: 4, maxHeight: 160, overflowY: "auto" }}>
-                          {nfsOrigem.map(n => (
-                            <button key={n.id} type="button" onClick={() => escolherNfOrigem(n)} style={{ display: "flex", justifyContent: "space-between", width: "100%", padding: "6px 10px", background: "none", border: "none", borderBottom: "0.5px solid var(--border-table)", cursor: "pointer", fontSize: 12, color: "var(--text-1)", textAlign: "left" }}>
-                              <span>NF {n.numero} · {n.emitente_nome ?? "—"} · {fmtData(n.data_emissao)}</span><span>{fmtBRL(n.valor_total)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <div>
+                        <label style={lbl}>CPF/CNPJ</label>
+                        <input style={inp} value={armazem.cpf_cnpj ?? ""} readOnly />
+                      </div>
+                      <div>
+                        <label style={lbl}>Inscrição estadual</label>
+                        <input
+                          style={inp}
+                          value={armazem.inscricao_est ?? ""}
+                          readOnly
+                        />
+                      </div>
+                      <div className="nfe-editor-wide">
+                        <label style={lbl}>Endereço do cadastro</label>
+                        <input
+                          style={inp}
+                          value={[
+                            armazem.logradouro,
+                            armazem.numero,
+                            armazem.bairro,
+                            armazem.municipio,
+                            armazem.estado,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          readOnly
+                        />
+                      </div>
                     </>
                   )}
                 </div>
-                <div><label style={lbl}>Data da remessa</label><input type="date" value={dataRem} onChange={e => setDataRem(e.target.value)} style={inp} /></div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Armazém (destinatário) *</label>
-                  <SelectBusca value={armazemId} onChange={escolherArmazem} placeholder="— selecionar —" options={pessoas.map(p => ({ value: p.id, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}` }))} />
-                  {armazemSemIe && modo === "arato" && (
-                    <div style={{ marginTop: 6, padding: "6px 10px", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 11, color: "#7A4800" }}>
-                      Cadastro do armazém sem Inscrição Estadual: a NF-e sairia sem a IE do destinatário.{" "}
-                      <button type="button" onClick={buscarIeArmazem} disabled={buscandoIe}
-                        style={{ border: "none", background: "none", color: "#1A4870", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 11, textDecoration: "underline" }}>
-                        {buscandoIe ? "Consultando SEFAZ…" : "Buscar IE na SEFAZ"}
-                      </button>
+              </SecaoNfe>
+            )}
+            {abaEmissao === "itens" && (
+              <>
+                <SecaoNfe titulo="Operação e tributos">
+                  <div className="nfe-editor-fields">
+                    <div>
+                      <label style={lbl}>Operação da remessa *</label>
+                      <select
+                        value={tipoRem}
+                        onChange={(e) => escolherTipoRem(e.target.value)}
+                        style={inp}
+                      >
+                        {OPERACOES_REMESSA.map((o) => (
+                          <option key={o.chave} value={o.chave}>
+                            {o.nome} — {o.interno}/{o.externo}
+                          </option>
+                        ))}
+                        <option value="outro">Outro CFOP (digitar)</option>
+                      </select>
+                      {tipoRem === "outro" && (
+                        <input
+                          value={cfopOutro}
+                          onChange={(e) =>
+                            setCfopOutro(e.target.value.replace(/\D/g, "").slice(0, 4))
+                          }
+                          placeholder="CFOP, ex.: 5949"
+                          style={{ ...inp, marginTop: 6 }}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label style={lbl}>Natureza da operação</label>
+                      <input
+                        value={natureza}
+                        onChange={(e) => setNatureza(e.target.value)}
+                        style={inp}
+                      />
+                    </div>
+                  </div>
+                  {modo === "arato" && (
+                    <>
+                      <div className="nfe-editor-fields">
+                        <div>
+                          <label style={lbl}>CFOP</label>
+                          <select
+                            value={cfopManual || cfopSugerido}
+                            style={inp}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setCfopManual(v === cfopSugerido ? "" : v);
+                              const natureza = opcoesCfop.find(
+                                (o) => o.cfop === v,
+                              )?.natureza;
+                              if (v === cfopSugerido && opRem)
+                                setNatureza(opRem.natureza);
+                              else if (natureza) setNatureza(natureza);
+                            }}
+                          >
+                            {!cfopSugerido && !cfopManual && (
+                              <option value="">Selecionar…</option>
+                            )}
+                            {opcoesCfop.map((o) => (
+                              <option key={o.cfop} value={o.cfop}>
+                                {o.cfop} — {o.nome}
+                                {o.cfop === cfopSugerido ? " (sugerido)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-3)",
+                              marginTop: 4,
+                            }}
+                          >
+                            {cfopManual
+                              ? "CST e texto legal da Operação Fiscal escolhida"
+                              : "Operações Fiscais da fazenda (Fiscal → Operações Fiscais)"}
+                          </div>
+                        </div>
+                        <div>
+                          <label style={lbl}>CST do ICMS</label>
+                          <select
+                            value={cstRem}
+                            onChange={(e) => setCstRem(e.target.value)}
+                            style={inp}
+                          >
+                            <option value="">
+                              Automático —{" "}
+                              {fiscalUso ? fiscalUso.cst : cstExibicaoPorCfop(cfop)}
+                            </option>
+                            <option value="40">040 — Isenta</option>
+                            <option value="41">041 — Não tributada</option>
+                            <option value="50">
+                              050 — Suspensão (industrialização, conserto…)
+                            </option>
+                            <option value="51">051 — Diferimento</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {cfop && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 14,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        background: "#F4F6FA",
+                        border: "0.5px solid var(--border-table)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        color: "var(--text-2)",
+                      }}
+                    >
+                      <span>
+                        <strong style={{ color: "#0B2D50" }}>CFOP {cfop}</strong>
+                        {fiscalUso
+                          ? fiscalUso.ufIndefinida
+                            ? " · interno (informe a UF do destinatário para conferir)"
+                            : fiscalUso.interestadual
+                              ? " · interestadual"
+                              : " · dentro do estado"
+                          : ""}
+                      </span>
+                      <span>
+                        CST ICMS{" "}
+                        <strong>
+                          {cstRem ||
+                            (fiscalUso ? fiscalUso.cst : cstExibicaoPorCfop(cfop))}
+                        </strong>
+                        {cstRem
+                          ? " (escolhido à mão)"
+                          : fiscalUso?.cstDoCadastro
+                            ? ` (Operação Fiscal "${fiscalUso.operacaoFiscal}")`
+                            : " (regra do CFOP)"}
+                      </span>
+                      {fiscalUso?.infCpl && (
+                        <span title={fiscalUso.infCpl}>
+                          Texto legal:{" "}
+                          {fiscalUso.infCpl.length > 70
+                            ? fiscalUso.infCpl.slice(0, 70) + "…"
+                            : fiscalUso.infCpl}
+                        </span>
+                      )}
+                      {fiscalUso && !fiscalUso.operacaoFiscal && (
+                        <span style={{ color: "#7A5500" }}>
+                          Sem Operação Fiscal com este CFOP no cadastro: CST pela regra,
+                          sem texto legal. Cadastre em Fiscal → Operações Fiscais.
+                        </span>
+                      )}
                     </div>
                   )}
-                </div>
-                <div>
-                  <label style={lbl}>Depósito de origem *</label>
-                  <select value={depOrigem} onChange={e => setDepOrigem(e.target.value)} style={inp}>
-                    <option value="">Selecionar…</option>
-                    {depsProprios.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>Depósito do armazém *</label>
-                  <select value={depTerceiro} onChange={e => setDepTerceiro(e.target.value)} style={inp}>
-                    <option value="">Selecionar…</option>
-                    {depsTerceiros.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                  </select>
-                  {armazem && !depTerceiro && <button type="button" onClick={criarDepositoArmazem} style={{ marginTop: 4, background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 11, textDecoration: "underline", padding: 0 }}>+ criar depósito &quot;Armazém {armazem.nome}&quot;</button>}
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Operação da remessa *</label>
-                  <select value={tipoRem} onChange={e => escolherTipoRem(e.target.value)} style={inp}>
-                    {OPERACOES_REMESSA.map(o => <option key={o.chave} value={o.chave}>{o.nome} — {o.interno}/{o.externo}</option>)}
-                    <option value="outro">Outro CFOP (digitar)</option>
-                  </select>
-                  {tipoRem === "outro" && <input value={cfopOutro} onChange={e => setCfopOutro(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="CFOP, ex.: 5949" style={{ ...inp, marginTop: 6 }} />}
-                </div>
-                <div><label style={lbl}>Natureza da operação</label><input value={natureza} onChange={e => setNatureza(e.target.value)} style={inp} /></div>
-                {modo === "arato" ? (
+                </SecaoNfe>
+                <SecaoNfe
+                  titulo="Itens da nota"
+                  descricao="Mantenha o produto e a unidade vinculados ao estoque da remessa."
+                >
                   <div>
-                    <label style={lbl}>Emitente da NF</label>
-                    <select value={emitenteSel} onChange={e => setEmitenteSel(e.target.value)} style={inp}>
-                      <option value="">{dados.emitentes.length === 1 ? dados.emitentes[0].nome : "Automático (dono da NF de origem)"}</option>
-                      {dados.emitentes.length > 1 && dados.emitentes.map(e => <option key={`${e.modulo}|${e.fazenda_id}`} value={`${e.modulo}|${e.fazenda_id}`}>{e.nome} — {e.cpf}{e.ie ? ` · IE ${e.ie}` : ""}</option>)}
-                    </select>
-                  </div>
-                ) : <div />}
-              </div>
-              {cfop && (
-                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", padding: "8px 12px", background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)" }}>
-                  <span><strong style={{ color: "#0B2D50" }}>CFOP {cfop}</strong>{fiscalUso ? (fiscalUso.ufIndefinida ? " · interno (informe a UF do destinatário para conferir)" : fiscalUso.interestadual ? " · interestadual" : " · dentro do estado") : ""}</span>
-                  <span>CST ICMS <strong>{cstRem || (fiscalUso ? fiscalUso.cst : cstExibicaoPorCfop(cfop))}</strong>{cstRem ? " (escolhido à mão)" : fiscalUso?.cstDoCadastro ? ` (Operação Fiscal "${fiscalUso.operacaoFiscal}")` : " (regra do CFOP)"}</span>
-                  {fiscalUso?.infCpl && <span title={fiscalUso.infCpl}>Texto legal: {fiscalUso.infCpl.length > 70 ? fiscalUso.infCpl.slice(0, 70) + "…" : fiscalUso.infCpl}</span>}
-                  {fiscalUso && !fiscalUso.operacaoFiscal && <span style={{ color: "#7A5500" }}>Sem Operação Fiscal com este CFOP no cadastro: CST pela regra, sem texto legal. Cadastre em Fiscal → Operações Fiscais.</span>}
-                </div>
-              )}
-              {modo === "arato" && (
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 12 }}>
-                  <div>
-                    <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
-                    {ieRefNf && !ieDaReferencia && (
-                      <div style={{ marginTop: 4, fontSize: 11, color: "#7A4800" }}>A NF de referência foi emitida para a IE {ieRefNf}, que não está entre as IEs ativas cadastradas do emitente. Confira a IE.</div>
-                    )}
-                    {ieRefNf && ieDaReferencia && ieSel !== ieDaReferencia.id && (
-                      <div style={{ marginTop: 4, fontSize: 11, color: "#7A4800" }}>A NF de referência foi emitida para a IE {ieDaReferencia.ie}; a IE escolhida é outra.</div>
-                    )}
-                  </div>
-                  <div>
-                    <label style={lbl}>CFOP</label>
-                    <select value={cfopManual || cfopSugerido} style={inp}
-                      onChange={e => {
-                        const v = e.target.value;
-                        setCfopManual(v === cfopSugerido ? "" : v);
-                        const natureza = opcoesCfop.find(o => o.cfop === v)?.natureza;
-                        if (v === cfopSugerido && opRem) setNatureza(opRem.natureza); else if (natureza) setNatureza(natureza);
-                      }}>
-                      {!cfopSugerido && !cfopManual && <option value="">Selecionar…</option>}
-                      {opcoesCfop.map(o => <option key={o.cfop} value={o.cfop}>{o.cfop} — {o.nome}{o.cfop === cfopSugerido ? " (sugerido)" : ""}</option>)}
-                    </select>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-                      {cfopManual ? "CST e texto legal da Operação Fiscal escolhida" : "Operações Fiscais da fazenda (Fiscal → Operações Fiscais)"}
+                    <label style={lbl}>
+                      Itens (no cadastro e na unidade do estoque)
+                    </label>
+                    <div className="nfe-editor-grid">
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          minWidth: 760,
+                        }}
+                      >
+                        <thead>
+                          <tr>
+                            {[
+                              "Produto do cadastro",
+                              "NCM",
+                              "Un.",
+                              "Quantidade",
+                              "Valor unit.",
+                              "Total",
+                              "",
+                            ].map((h) => (
+                              <th key={h} style={th}>
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itens.map((i) => (
+                            <tr key={i.key}>
+                              <td style={{ ...td, minWidth: 260 }}>
+                                <SelectBusca
+                                  value={i.insumo_id}
+                                  onChange={(v) => escolherInsumo(i.key, v)}
+                                  placeholder={i.descricao || "Produto…"}
+                                  options={insumos.map((s) => ({
+                                    value: s.id,
+                                    label: `${s.nome} (${s.unidade})`,
+                                  }))}
+                                />
+                              </td>
+                              <td style={td}>
+                                <input
+                                  value={i.ncm}
+                                  onChange={(e) =>
+                                    setItem(i.key, {
+                                      ncm: e.target.value
+                                        .replace(/\D/g, "")
+                                        .slice(0, 8),
+                                    })
+                                  }
+                                  style={{ ...inp, width: 100 }}
+                                />
+                              </td>
+                              <td style={td}>
+                                {i.unidade || "—"}
+                                {i.insumo_id &&
+                                  i.unidade_xml &&
+                                  i.unidade_xml.toLowerCase() !==
+                                    i.unidade.toLowerCase() && (
+                                    <div
+                                      style={{ fontSize: 10, color: "var(--text-3)" }}
+                                      title="Unidade escrita no XML da remessa. A quantidade entra no estoque na unidade do cadastro — confira se precisa converter."
+                                    >
+                                      XML: {i.unidade_xml}
+                                    </div>
+                                  )}
+                              </td>
+                              <td style={td}>
+                                <input
+                                  value={i.quantidade}
+                                  onChange={(e) =>
+                                    setItem(i.key, { quantidade: e.target.value })
+                                  }
+                                  style={{ ...inp, width: 110 }}
+                                />
+                              </td>
+                              <td style={td}>
+                                <input
+                                  value={i.valor_unitario}
+                                  onChange={(e) =>
+                                    setItem(i.key, { valor_unitario: e.target.value })
+                                  }
+                                  style={{ ...inp, width: 110 }}
+                                />
+                              </td>
+                              <td
+                                style={{
+                                  ...td,
+                                  textAlign: "right",
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
+                                {fmtBRL(numBR(i.quantidade) * numBR(i.valor_unitario))}
+                              </td>
+                              <td style={td}>
+                                {itens.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setItens((p) => p.filter((x) => x.key !== i.key))
+                                    }
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      color: "#B91C1C",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginTop: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setItens((p) => [...p, novoItem()])}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#1A4870",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          padding: 0,
+                        }}
+                      >
+                        + item
+                      </button>
+                      <strong>Total {fmtBRL(totalItens)}</strong>
                     </div>
                   </div>
-                  <div>
-                    <label style={lbl}>CST do ICMS</label>
-                    <select value={cstRem} onChange={e => setCstRem(e.target.value)} style={inp}>
-                      <option value="">Automático — {fiscalUso ? fiscalUso.cst : cstExibicaoPorCfop(cfop)}</option>
-                      <option value="40">040 — Isenta</option>
-                      <option value="41">041 — Não tributada</option>
-                      <option value="50">050 — Suspensão (industrialização, conserto…)</option>
-                      <option value="51">051 — Diferimento</option>
-                    </select>
-                  </div>
+                </SecaoNfe>
+              </>
+            )}
+            {abaEmissao === "transporte" && (
+              <SecaoNfe titulo="Transporte">
+                {modo === "arato" ? (
+                  <BlocoTransporte d={dados} t={tr} set={setTr} inp={inp} lbl={lbl} />
+                ) : (
+                  <p className="nfe-editor-note">
+                    O transporte permanece conforme a NF-e emitida em outro sistema.
+                  </p>
+                )}
+              </SecaoNfe>
+            )}
+            {abaEmissao === "referencias" && (
+              <SecaoNfe titulo="Referências e observações">
+                {nfOrigem && (
+                  <p className="nfe-editor-note">
+                    NF de entrada {nfOrigem.numero} · {nfOrigem.emitente_nome ?? ""}.
+                    Para trocar o documento, abra Origem da operação.
+                  </p>
+                )}
+                <div>
+                  <label style={lbl}>Observação / informações complementares</label>
+                  <textarea
+                    rows={4}
+                    value={obs}
+                    onChange={(e) => setObs(e.target.value)}
+                    style={inp}
+                  />
                 </div>
-              )}
-
-              <div>
-                <label style={lbl}>Itens (no cadastro e na unidade do estoque)</label>
-                <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
-                    <thead><tr>{["Produto do cadastro", "NCM", "Un.", "Quantidade", "Valor unit.", "Total", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {itens.map(i => (
-                        <tr key={i.key}>
-                          <td style={{ ...td, minWidth: 260 }}>
-                            <SelectBusca value={i.insumo_id} onChange={v => escolherInsumo(i.key, v)} placeholder={i.descricao || "Produto…"} options={insumos.map(s => ({ value: s.id, label: `${s.nome} (${s.unidade})` }))} />
-                          </td>
-                          <td style={td}><input value={i.ncm} onChange={e => setItem(i.key, { ncm: e.target.value.replace(/\D/g, "").slice(0, 8) })} style={{ ...inp, width: 100 }} /></td>
-                          <td style={td}>{i.unidade || "—"}{i.insumo_id && i.unidade_xml && i.unidade_xml.toLowerCase() !== i.unidade.toLowerCase() && <div style={{ fontSize: 10, color: "var(--text-3)" }} title="Unidade escrita no XML da remessa. A quantidade entra no estoque na unidade do cadastro — confira se precisa converter.">XML: {i.unidade_xml}</div>}</td>
-                          <td style={td}><input value={i.quantidade} onChange={e => setItem(i.key, { quantidade: e.target.value })} style={{ ...inp, width: 110 }} /></td>
-                          <td style={td}><input value={i.valor_unitario} onChange={e => setItem(i.key, { valor_unitario: e.target.value })} style={{ ...inp, width: 110 }} /></td>
-                          <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(numBR(i.quantidade) * numBR(i.valor_unitario))}</td>
-                          <td style={td}>{itens.length > 1 && <button type="button" onClick={() => setItens(p => p.filter(x => x.key !== i.key))} style={{ background: "none", border: "none", color: "#B91C1C", cursor: "pointer" }}>×</button>}</td>
-                        </tr>
+              </SecaoNfe>
+            )}
+            {abaEmissao === "origem" && (
+              <>
+                <SecaoNfe
+                  titulo="Origem da operação"
+                  descricao="Defina se a nota será emitida pelo Arato ou se já foi emitida em outro sistema."
+                >
+                  {!editNota && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {(
+                        [
+                          ["arato", "Emitir NF-e de remessa pelo Arato"],
+                          ["externa", "NF de remessa já emitida em outro sistema"],
+                        ] as const
+                      ).map(([m, t]) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setModo(m)}
+                          style={{
+                            flex: 1,
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            cursor: "pointer",
+                            fontWeight: modo === m ? 700 : 500,
+                            border:
+                              modo === m
+                                ? "1.5px solid #1A4870"
+                                : "0.5px solid var(--border)",
+                            background: modo === m ? "#D5E8F5" : "var(--bg-card)",
+                            color: modo === m ? "#0B2D50" : "var(--text-2)",
+                          }}
+                        >
+                          {t}
+                        </button>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12 }}>
-                  <button type="button" onClick={() => setItens(p => [...p, novoItem()])} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, padding: 0 }}>+ item</button>
-                  <strong>Total {fmtBRL(totalItens)}</strong>
-                </div>
-              </div>
-
-              {modo === "arato" && <BlocoTransporte d={dados} t={tr} set={setTr} inp={inp} lbl={lbl} />}
-              <div><label style={lbl}>Observação / informações complementares</label><input value={obs} onChange={e => setObs(e.target.value)} style={inp} /></div>
-              {erro && <div style={{ padding: 10, background: "#FCEBEB", color: "#791F1F", borderRadius: 8, fontSize: 13 }}>{erro}</div>}
-            </div>
-            <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={btnR}>Cancelar</OperationalButton>
-              {modo === "arato" ? <>
-                {/* Espelho: o DANFE como será transmitido, sem valor fiscal. Painel: fica pendente para conferir e transmitir de lá. */}
-                <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => salvar(j))} disabled={salvando}
-                  title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
-                  style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600, opacity: salvando ? 0.6 : 1 }}>📄 Espelho</OperationalButton>
-                {/* Editando a pendente: só salva por cima; transmitir continua sendo pelo painel (a nota é a mesma) */}
-                {!editNota && <OperationalButton data-arato-button="secondary" onClick={() => salvar("agora")} disabled={salvando} style={{ ...btnR, opacity: salvando ? 0.6 : 1 }}
-                  title="Transmite à SEFAZ agora, sem passar pelo painel">Emitir agora</OperationalButton>}
-                <OperationalButton data-arato-button="primary" onClick={() => salvar("painel")} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}
-                  title={editNota ? "Regrava a NF-e pendente no Painel de Notas com as alterações" : "Grava a NF-e como pendente de transmissão no Painel de Notas, para conferir no espelho e transmitir de lá"}>
-                  {salvando ? "Salvando…" : editNota ? "Salvar alterações" : "Enviar ao painel (pendente)"}</OperationalButton>
-              </> : (
-                <OperationalButton data-arato-button="primary" onClick={() => salvar()} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}>{salvando ? "Salvando…" : "Registrar remessa"}</OperationalButton>
-              )}
-            </div>
-          </div>
+                    </div>
+                  )}
+                  {modo === "externa" && (
+                    <div className="nfe-editor-fields">
+                      <div>
+                        <label style={lbl}>Número *</label>
+                        <input
+                          value={ext.numero}
+                          onChange={(e) =>
+                            setExt((p) => ({ ...p, numero: e.target.value }))
+                          }
+                          style={inp}
+                        />
+                      </div>
+                      <div>
+                        <label style={lbl}>Série</label>
+                        <input
+                          value={ext.serie}
+                          onChange={(e) =>
+                            setExt((p) => ({ ...p, serie: e.target.value }))
+                          }
+                          style={inp}
+                        />
+                      </div>
+                      <div>
+                        <label style={lbl}>Chave de acesso</label>
+                        <input
+                          value={ext.chave}
+                          onChange={(e) =>
+                            setExt((p) => ({ ...p, chave: e.target.value }))
+                          }
+                          style={inp}
+                        />
+                      </div>
+                      <div>
+                        <label style={lbl}>XML (opcional)</label>
+                        <input
+                          type="file"
+                          accept=".xml"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (f) lerXmlExterno(await f.text());
+                          }}
+                          style={{ fontSize: 11 }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="nfe-editor-fields">
+                    <div>
+                      <label style={lbl}>
+                        NF de entrada de origem (opcional — traz os itens)
+                      </label>
+                      {nfOrigem ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "7px 10px",
+                            border: "0.5px solid #1A4870",
+                            borderRadius: 8,
+                            background: "#D5E8F5",
+                            fontSize: 12,
+                          }}
+                        >
+                          <span>
+                            <strong>NF {nfOrigem.numero}</strong> ·{" "}
+                            {nfOrigem.emitente_nome ?? "—"} ·{" "}
+                            {fmtData(nfOrigem.data_emissao)} ·{" "}
+                            {fmtBRL(nfOrigem.valor_total)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNfOrigem(null);
+                              setIeRefNf("");
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#1A4870",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              textDecoration: "underline",
+                            }}
+                          >
+                            trocar
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            value={buscaNf}
+                            onChange={(e) => buscarNfsOrigem(e.target.value)}
+                            style={inp}
+                            placeholder="Nº da NF ou fornecedor"
+                          />
+                          {nfsOrigem.length > 0 && (
+                            <div
+                              style={{
+                                border: "0.5px solid var(--border-table)",
+                                borderRadius: 8,
+                                marginTop: 4,
+                                maxHeight: 160,
+                                overflowY: "auto",
+                              }}
+                            >
+                              {nfsOrigem.map((n) => (
+                                <button
+                                  key={n.id}
+                                  type="button"
+                                  onClick={() => escolherNfOrigem(n)}
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    padding: "6px 10px",
+                                    background: "none",
+                                    border: "none",
+                                    borderBottom: "0.5px solid var(--border-table)",
+                                    cursor: "pointer",
+                                    fontSize: 12,
+                                    color: "var(--text-1)",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  <span>
+                                    NF {n.numero} · {n.emitente_nome ?? "—"} ·{" "}
+                                    {fmtData(n.data_emissao)}
+                                  </span>
+                                  <span>{fmtBRL(n.valor_total)}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </SecaoNfe>
+                <SecaoNfe
+                  titulo="Depósitos da remessa"
+                  descricao="O estoque é transferido somente após a autorização da NF-e, ou ao registrar uma nota externa já emitida."
+                >
+                  <div className="nfe-editor-fields">
+                    <div>
+                      <label style={lbl}>Depósito de origem *</label>
+                      <select
+                        value={depOrigem}
+                        onChange={(e) => setDepOrigem(e.target.value)}
+                        style={inp}
+                      >
+                        <option value="">Selecionar…</option>
+                        {depsProprios.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Depósito do armazém *</label>
+                      <select
+                        value={depTerceiro}
+                        onChange={(e) => setDepTerceiro(e.target.value)}
+                        style={inp}
+                      >
+                        <option value="">Selecionar…</option>
+                        {depsTerceiros.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.nome}
+                          </option>
+                        ))}
+                      </select>
+                      {armazem && !depTerceiro && (
+                        <button
+                          type="button"
+                          onClick={criarDepositoArmazem}
+                          style={{
+                            marginTop: 4,
+                            background: "none",
+                            border: "none",
+                            color: "#1A4870",
+                            cursor: "pointer",
+                            fontSize: 11,
+                            textDecoration: "underline",
+                            padding: 0,
+                          }}
+                        >
+                          + criar depósito &quot;Armazém {armazem.nome}&quot;
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </SecaoNfe>
+              </>
+            )}
+          </EditorNfe>
         </div>
       )}
     </>

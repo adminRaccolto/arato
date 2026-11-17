@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-s",
+    data: "17/11/2026",
+    titulo: "Emissão de NF-e com o mesmo padrão de telas",
+    modulos: ["Documentos Fiscais", "Comercial"],
+    itens: [
+      { tipo: "melhoria", texto: "Venda avulsa, faturamento por contrato e remessa agora usam a mesma organização: Emitente, Destinatário, Itens e tributos, Transporte, Referências e observações e Origem da operação. As abas têm contornos visíveis e navegação Anterior e Próxima." },
+      { tipo: "melhoria", texto: "O total da nota e os comandos Espelho, Salvar e enviar ao painel e Emitir agora ficam no mesmo rodapé. Os itens passaram para sua própria aba, com mais espaço para conferir e editar. A apresentação se adapta a telas menores nos layouts Padrão e Novo." },
+      { tipo: "melhoria", texto: "Contrato e romaneio continuam na origem da venda; depósitos e NF de entrada ficam na origem da remessa. O registro de nota emitida em outro sistema e a edição de rascunhos permanecem disponíveis. Quando faltam dados básicos, a tela abre a aba correspondente para facilitar o ajuste." },
+    ],
+    onde: "Documentos Fiscais → Venda Avulsa / Venda por Contrato / Remessas",
+  },
+  {
     versao: "2026.11.17-r",
     data: "17/11/2026",
     titulo: "NF avulsa e por contrato: rascunho e transmissão pelo painel",

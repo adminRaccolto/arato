@@ -2,6 +2,8 @@
 
 Data: 17/11/2026 — America/Cuiaba.
 
+Continuação: a padronização das telas foi implementada na entrega descrita em [PADRONIZACAO.md](PADRONIZACAO.md).
+
 ## Diagnóstico
 
 A venda avulsa e a venda por contrato já usam `app/comercial/faturamento/page.tsx`, com as mesmas abas. O contrato acrescenta uma etapa de escolha da origem e preenche produtor, destinatário, preço, produto e romaneio. A tela de remessa (`app/fiscal/remessas/page.tsx`) é independente, com seleção de depósitos e registro logístico após autorização.
