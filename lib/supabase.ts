@@ -2304,6 +2304,10 @@ export type OperacaoGerencial = {
 
   // ── Aba Principal — Lançamentos nas telas ──
   permite_notas_fiscais?: boolean;
+  // Seção 455: marca por documento de entrada (NULL = regra antiga, ver lib/og-documentos.ts)
+  permite_nf_produtos?: boolean | null;
+  permite_nfs?: boolean | null;
+  permite_cte?: boolean | null;
   permite_cp_cr?: boolean;
   permite_adiantamentos?: boolean;
   permite_tesouraria?: boolean;

@@ -381,7 +381,7 @@ export default function DocumentosFiscaisPage() {
     setPopover(null);
     const nf = nfDetalhe[d.id];
     const [ops, ccs] = await Promise.all([
-      listarOperacoesGerenciaisAtivasDaConta({ permite: "notas_fiscais" }, d.fazenda_id),
+      listarOperacoesGerenciaisAtivasDaConta({ permite: "nf_produtos" }, d.fazenda_id),
       listarCentrosCustoGeralDaConta(d.fazenda_id),
     ]);
     setReclass({ d, op: nf?.operacao_gerencial_id ?? "", cc: nf?.centro_custo_id ?? "", err: "", salvando: false, ops, ccs });

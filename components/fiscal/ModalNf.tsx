@@ -655,15 +655,10 @@ export default function ModalNf({
     try { setMotoristas((await listarFuncionarios(idsParaNf)).filter(f => f.ativo !== false).map(f => ({ id: f.id, nome: f.nome }))); } catch {}
     if (contaId) { try { setProdutoresAbast((await listarProdutoresDaConta(contaId)).map(p => ({ id: p.id, nome: p.nome })).sort((a, b) => a.nome.localeCompare(b.nome))); } catch {} }
     try { setRegrasClass(await listarRegrasClassificacao(fazendaIds.length ? fazendaIds : fazendaId)); } catch {}
-    // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (antes só CP/CR: OG só de NF nem aparecia)
+    // OGs marcadas para NF de Produtos (Seção 455; sem a marca vale a regra antiga: Notas Fiscais ou Contas a Pagar)
     try {
-      const [ogNf, ogCp] = await Promise.all([
-        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "notas_fiscais" }, fazendaId).catch(() => [] as OperacaoGerencial[]),
-        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).catch(() => [] as OperacaoGerencial[]),
-      ]);
-      const porClass = new Map<string, OperacaoGerencial>();
-      for (const o of [...ogCp, ...ogNf]) if (!porClass.has(o.classificacao ?? o.id)) porClass.set(o.classificacao ?? o.id, o);
-      setReclassOps([...porClass.values()].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "")));
+      const ogs = await listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "nf_produtos" }, fazendaId).catch(() => [] as OperacaoGerencial[]);
+      setReclassOps([...ogs].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "")));
     } catch {}
     try { setAnosSafra(await listarAnosSafra(fazendaId)); } catch {}
     try {

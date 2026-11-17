@@ -173,15 +173,9 @@ export default function ModalProcessarLote({
       const [ccData, depData, opsData, anosData] = await Promise.all([
         listarCentrosCustoGeralDaConta(batchFazendaId).catch(() => [] as CentroCusto[]),
         listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
-        // OGs habilitadas para Notas Fiscais de Entrada OU Contas a Pagar/Receber (as só de NF entram sem CP)
-        Promise.all([
-          listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "notas_fiscais" }, batchFazendaId).catch(() => [] as OperacaoGerencial[]),
-          listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, batchFazendaId).catch(() => [] as OperacaoGerencial[]),
-        ]).then(([nf, cp]) => {
-          const m = new Map<string, OperacaoGerencial>();
-          for (const o of [...nf, ...cp]) if (!m.has(o.classificacao)) m.set(o.classificacao, o);
-          return [...m.values()].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: true }));
-        }),
+        // OGs marcadas para NF de Produtos (Seção 455; as sem Contas a Pagar entram sem CP)
+        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "nf_produtos" }, batchFazendaId).catch(() => [] as OperacaoGerencial[])
+          .then(ogs => [...ogs].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: true }))),
         listarAnosSafra(batchFazendaId).catch(() => [] as AnoSafra[]),
         // A função recebe a FAZENDA (resolve a conta por ela); passar o contaId deixava a lista vazia e o pedido sem fornecedor
         listarPessoasDaConta(batchFazendaId).then(setPessoas).catch(() => setPessoas([])),

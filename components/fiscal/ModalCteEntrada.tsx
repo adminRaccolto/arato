@@ -67,7 +67,8 @@ export default function ModalCteEntrada({ id, fazendaIds, contaId, onClose, onSa
       const [prods, emps, ops, as, cs, ccs] = await Promise.all([
         contaId ? listarProdutoresDaConta(contaId).catch(() => []) : Promise.resolve([] as Produtor[]),
         listarEmpresasDaConta(fazendaIds.length ? fazendaIds : [faz]).catch(() => []),
-        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, faz).catch(() => []),
+        // OGs marcadas para CT-e (Seção 455; sem a marca vale a regra antiga: Contas a Pagar)
+        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cte" }, faz).catch(() => []),
         listarAnosSafra(faz).catch(() => []),
         listarCiclosDasFazendas(fazendaIds.length ? fazendaIds : [faz]).catch(() => []),
         listarCentrosCustoGeralDaConta(faz).catch(() => []),

@@ -23188,3 +23188,37 @@ END $$;
 UPDATE grupos_usuarios SET permissoes = public.fn_permissoes_grupo_v2(permissoes)
  WHERE NOT coalesce(permissoes, '{}'::jsonb) ? '_v2';
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 455 — Operação Gerencial por tipo de documento de entrada (17/11/2026)
+--   A marca única "Notas Fiscais de Entrada" vira três: NF de Produtos, NF de Serviços (NFS-e) e CT-e (frete).
+--   O preenchimento reproduz EXATAMENTE o que cada tela lista hoje, para nada sumir na virada:
+--     NF de Produtos = marcada em Notas Fiscais, ou despesa marcada em Contas a Pagar/Receber
+--     NFS-e          = despesa marcada em Notas Fiscais ou em Contas a Pagar/Receber
+--     CT-e           = despesa marcada em Contas a Pagar/Receber
+--   permite_notas_fiscais NÃO muda (Pedido de Compra e classificador de NF continuam lendo). A arrumação por uso real
+--   (tirar das notas o que não tem afinidade) é feita depois, revisada pelo dono (scripts/og-marcas-documentos.mjs).
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+ALTER TABLE operacoes_gerenciais
+  ADD COLUMN IF NOT EXISTS permite_nf_produtos boolean,
+  ADD COLUMN IF NOT EXISTS permite_nfs boolean,
+  ADD COLUMN IF NOT EXISTS permite_cte boolean;
+
+UPDATE operacoes_gerenciais SET
+  permite_nf_produtos = coalesce(permite_notas_fiscais, false) OR (coalesce(tipo, '') = 'despesa' AND coalesce(permite_cp_cr, false)),
+  permite_nfs         = coalesce(tipo, '') = 'despesa' AND (coalesce(permite_notas_fiscais, false) OR coalesce(permite_cp_cr, false)),
+  permite_cte         = coalesce(tipo, '') = 'despesa' AND coalesce(permite_cp_cr, false)
+ WHERE permite_nf_produtos IS NULL AND permite_nfs IS NULL AND permite_cte IS NULL;
+
+-- Sem DEFAULT de propósito: OG criada por outro caminho (modelo de cliente novo, importação) fica com NULL e o sistema
+-- aplica a regra acima (lib/og-documentos.ts) — nunca some das notas por falta da marca.
+ALTER TABLE operacoes_gerenciais
+  ALTER COLUMN permite_nf_produtos DROP DEFAULT,
+  ALTER COLUMN permite_nfs DROP DEFAULT,
+  ALTER COLUMN permite_cte DROP DEFAULT;
+
+-- Conferência: quantas OGs passam a aparecer em cada documento (deve bater com as listas de hoje)
+SELECT count(*) FILTER (WHERE permite_nf_produtos) AS nf_produtos, count(*) FILTER (WHERE permite_nfs) AS nfs,
+       count(*) FILTER (WHERE permite_cte) AS cte, count(*) AS total
+  FROM operacoes_gerenciais;
+NOTIFY pgrst, 'reload schema';

@@ -1,4 +1,5 @@
 "use client";
+import { bancoTemMarcasPorDocumento, ogAceitaDocumento } from "../../lib/og-documentos";
 import OpcoesUnidade from "../../components/OpcoesUnidade";
 import {useOperationalPresentation} from '../../components/arato-layout/presentation-mode';
 import NativeRowActions from '../../components/arato-layout/NativeRowActions';
@@ -573,6 +574,7 @@ function CadastrosInner() {
     classificacao: "", descricao: "", tipo: "despesa" as OperacaoGerencial["tipo"],
     tipo_lcdpr: "",
     permite_notas_fiscais: false, permite_cp_cr: false, permite_adiantamentos: false,
+    permite_nf_produtos: false, permite_nfs: false, permite_cte: false,
     permite_tesouraria: false, permite_baixas: false, permite_custo_produto: false,
     permite_contrato_financeiro: false, permite_estoque: false, permite_pedidos_venda: false,
     permite_manutencao: false, marcar_fiscal_padrao: false, permite_energia_eletrica: false,
@@ -4488,7 +4490,11 @@ function CadastrosInner() {
                   {[...opGers].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: false })).map((o, i, arr) => {
                     const nivel = (o.classificacao.match(/\./g) || []).length;
                     const telas: string[] = [];
-                    if (o.permite_notas_fiscais)  telas.push("NF");
+                    if (bancoTemMarcasPorDocumento(opGers)) {
+                      if (ogAceitaDocumento(o, "nf_produtos")) telas.push("NF");
+                      if (ogAceitaDocumento(o, "nfs"))         telas.push("NFS");
+                      if (ogAceitaDocumento(o, "cte"))         telas.push("CT-e");
+                    } else if (o.permite_notas_fiscais)  telas.push("NF");
                     if (o.permite_cp_cr)          telas.push("CP/CR");
                     if (o.permite_tesouraria)     telas.push("Tesouraria");
                     if (o.permite_baixas)         telas.push("Baixas");
@@ -4563,6 +4569,10 @@ function CadastrosInner() {
                                 classificacao: o.classificacao, descricao: o.descricao, tipo: o.tipo,
                                 tipo_lcdpr: o.tipo_lcdpr ?? "",
                                 permite_notas_fiscais: o.permite_notas_fiscais ?? false,
+                                // Valor efetivo (Seção 455): sem marca própria, o que a tela do documento mostra hoje
+                                permite_nf_produtos: ogAceitaDocumento(o, "nf_produtos"),
+                                permite_nfs: ogAceitaDocumento(o, "nfs"),
+                                permite_cte: ogAceitaDocumento(o, "cte"),
                                 permite_cp_cr: o.permite_cp_cr ?? false,
                                 permite_adiantamentos: o.permite_adiantamentos ?? false,
                                 permite_tesouraria: o.permite_tesouraria ?? false,
@@ -9742,8 +9752,24 @@ function CadastrosInner() {
             <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 8, textTransform: "uppercase" }}>Lançamentos nas Telas</div>
+                {/* Documentos de entrada (Seção 455). NF de Produtos acompanha a marca antiga "Notas Fiscais" (Pedido de Compra e classificador). */}
+                {bancoTemMarcasPorDocumento(opGers) && (
+                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px 0", marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase" }}>Documentos de entrada</div>
+                    {([
+                      { key: "permite_nf_produtos", label: "NF de Produtos" },
+                      { key: "permite_nfs",         label: "NF de Serviços (NFS-e)" },
+                      { key: "permite_cte",         label: "CT-e (Frete)" },
+                    ] as const).map(({ key, label }) => (
+                      <label data-arato-label="true" key={key} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7, cursor: "pointer", fontSize: 13 }}>
+                        <input type="checkbox" checked={!!fOG[key]} onChange={e => { const v = e.target.checked; setFOG(p => ({ ...p, [key]: v, ...(key === "permite_nf_produtos" ? { permite_notas_fiscais: v } : {}) })); }} />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                )}
                 {([
-                  { key: "permite_notas_fiscais",      label: "Notas Fiscais"          },
+                  ...(bancoTemMarcasPorDocumento(opGers) ? [] : [{ key: "permite_notas_fiscais" as keyof typeof fOG, label: "Notas Fiscais" }]),
                   { key: "permite_cp_cr",              label: "Contas a Pagar/Receber" },
                   { key: "permite_adiantamentos",      label: "Adiantamentos"          },
                   { key: "permite_tesouraria",         label: "Tesouraria"             },
@@ -10159,6 +10185,8 @@ function CadastrosInner() {
                     tipo_lcdpr: fOG.tipo_lcdpr || undefined,
                     inativo: fOG.inativo, informa_complemento: fOG.informa_complemento,
                     permite_notas_fiscais: fOG.permite_notas_fiscais,
+                    // Marcas por documento só depois da Seção 455 (antes a coluna não existe e a gravação falharia)
+                    ...(bancoTemMarcasPorDocumento(opGers) ? { permite_nf_produtos: fOG.permite_nf_produtos, permite_nfs: fOG.permite_nfs, permite_cte: fOG.permite_cte } : {}),
                     permite_cp_cr: fOG.permite_cp_cr,
                     permite_adiantamentos: fOG.permite_adiantamentos,
                     permite_tesouraria: fOG.permite_tesouraria,

@@ -1,3 +1,4 @@
+import { ogAceitaDocumento, type DocEntrada } from "./og-documentos";
 import { lerPaginas } from "./paginar";
 import { confirmarEmissaoPersistida } from "./fiscal/requisicao";
 import { fetchFinanceiro } from "./financeiro/requisicao";
@@ -6294,7 +6295,7 @@ export async function listarOperacoesGerenciaisAtivas(
 
 // Carrega operações gerenciais ativas: global + conta + TODAS as fazendas (Option A)
 export async function listarOperacoesGerenciaisAtivasDaConta(
-  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque"; semDedup?: boolean },
+  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" | DocEntrada; semDedup?: boolean },
   fazenda_id_fallback?: string | null,
 ): Promise<OperacaoGerencial[]> {
   return cached(`operacoesGerenciais:ativasConta:${JSON.stringify(filtro ?? {})}:${fazenda_id_fallback ?? ""}`, async () => {
@@ -6332,6 +6333,8 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
       if (filtro?.permite === "cp_cr" && !op.permite_cp_cr) return false;
       if (filtro?.permite === "tesouraria" && !op.permite_tesouraria) return false;
       if (filtro?.permite === "estoque" && !op.permite_estoque) return false;
+      // Documento de entrada (NF de Produtos / NFS-e / CT-e): só a marca do documento decide (Seção 455)
+      if (filtro?.permite === "nf_produtos" || filtro?.permite === "nfs" || filtro?.permite === "cte") return ogAceitaDocumento(op, filtro.permite);
       return !!(op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria || op.permite_adiantamentos || op.permite_baixas || op.permite_estoque);
     };
 

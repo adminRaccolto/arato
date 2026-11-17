@@ -1,4 +1,5 @@
 "use client";
+import { bancoTemMarcasPorDocumento, ogAceitaDocumento } from "../../../lib/og-documentos";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -38,6 +39,9 @@ const OG_VAZIO = {
   inativo:                 false,
   informa_complemento:     false,
   permite_notas_fiscais:   false,
+  permite_nf_produtos:     false,
+  permite_nfs:             false,
+  permite_cte:             false,
   permite_cp_cr:           false,
   permite_adiantamentos:   false,
   permite_tesouraria:      false,
@@ -88,6 +92,8 @@ function OperacoesGerenciaisContent() {
   const searchParams = useSearchParams();
 
   const [ops,       setOps]       = useState<OperacaoGerencial[]>([]);
+  // Banco já com a Seção 455 (marcas por documento de entrada)? Antes dela, a tela mantém a marca única de Notas Fiscais.
+  const marcasDoc = bancoTemMarcasPorDocumento(ops);
   const [plano,     setPlano]     = useState<ContaContabil[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [seeding,   setSeeding]   = useState(false);
@@ -158,6 +164,10 @@ function OperacoesGerenciaisContent() {
       inativo:                 o.inativo ?? false,
       informa_complemento:     o.informa_complemento ?? false,
       permite_notas_fiscais:   o.permite_notas_fiscais ?? false,
+      // Valor efetivo (Seção 455): sem marca própria, o que a tela do documento mostra hoje
+      permite_nf_produtos:     ogAceitaDocumento(o, "nf_produtos"),
+      permite_nfs:             ogAceitaDocumento(o, "nfs"),
+      permite_cte:             ogAceitaDocumento(o, "cte"),
       permite_cp_cr:           o.permite_cp_cr ?? false,
       permite_adiantamentos:   o.permite_adiantamentos ?? false,
       permite_tesouraria:      o.permite_tesouraria ?? false,
@@ -212,7 +222,7 @@ function OperacoesGerenciaisContent() {
       setErro("Classificação e Descrição são obrigatórios.");
       return;
     }
-    const nenhumaSela = !form.permite_notas_fiscais && !form.permite_cp_cr && !form.permite_adiantamentos &&
+    const nenhumaSela = !form.permite_notas_fiscais && !(marcasDoc && (form.permite_nf_produtos || form.permite_nfs || form.permite_cte)) && !form.permite_cp_cr && !form.permite_adiantamentos &&
       !form.permite_tesouraria && !form.permite_baixas && !form.permite_custo_produto &&
       !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
       !form.permite_manutencao && !form.permite_combustivel;
@@ -236,6 +246,8 @@ function OperacoesGerenciaisContent() {
         inativo:                 form.inativo,
         informa_complemento:     form.informa_complemento,
         permite_notas_fiscais:   form.permite_notas_fiscais,
+        // Marcas por documento só depois da Seção 455 (antes a coluna não existe e a gravação falharia)
+        ...(marcasDoc ? { permite_nf_produtos: form.permite_nf_produtos, permite_nfs: form.permite_nfs, permite_cte: form.permite_cte } : {}),
         permite_cp_cr:           form.permite_cp_cr,
         permite_adiantamentos:   form.permite_adiantamentos,
         permite_tesouraria:      form.permite_tesouraria,
@@ -308,7 +320,11 @@ function OperacoesGerenciaisContent() {
       "Descrição":     o.descricao,
       "Tipo":          o.tipo,
       "CP/CR":         o.permite_cp_cr ? "Sim" : "",
-      "NF":            o.permite_notas_fiscais ? "Sim" : "",
+      ...(marcasDoc ? {
+        "NF Produtos": ogAceitaDocumento(o, "nf_produtos") ? "Sim" : "",
+        "NFS-e":       ogAceitaDocumento(o, "nfs") ? "Sim" : "",
+        "CT-e":        ogAceitaDocumento(o, "cte") ? "Sim" : "",
+      } : { "NF": o.permite_notas_fiscais ? "Sim" : "" }),
       "Tesouraria":    o.permite_tesouraria ? "Sim" : "",
       "Estoque":       o.permite_estoque ? "Sim" : "",
       "Conta Débito":  o.conta_debito ?? "",
@@ -476,7 +492,11 @@ function OperacoesGerenciaisContent() {
                     const nivel   = (o.classificacao?.match(/\./g) || []).length;
                     const isGrupo = nivel <= 1;
                     const telas: { label: string; bg: string; cl: string }[] = [];
-                    if (o.permite_notas_fiscais)       telas.push({ label: "NF",         bg: "#EDE9FB", cl: "#4B3B9B" });
+                    if (marcasDoc) {
+                      if (ogAceitaDocumento(o, "nf_produtos")) telas.push({ label: "NF",    bg: "#EDE9FB", cl: "#4B3B9B" });
+                      if (ogAceitaDocumento(o, "nfs"))         telas.push({ label: "NFS",   bg: "#EDE9FB", cl: "#4B3B9B" });
+                      if (ogAceitaDocumento(o, "cte"))         telas.push({ label: "CT-e",  bg: "#EDE9FB", cl: "#4B3B9B" });
+                    } else if (o.permite_notas_fiscais) telas.push({ label: "NF",         bg: "#EDE9FB", cl: "#4B3B9B" });
                     if (o.permite_cp_cr)               telas.push({ label: "CP/CR",      bg: "#E8E8E8", cl: "#0D0D0D" });
                     if (o.permite_tesouraria)          telas.push({ label: "Tesouraria", bg: "#FBF3E0", cl: "#7A5A10" });
                     if (o.permite_estoque)             telas.push({ label: "Estoque",    bg: "#EAF3DE", cl: "#1A5C38" });
@@ -631,7 +651,11 @@ function OperacoesGerenciaisContent() {
             {/* Resumo de visibilidade — alerta quando OG não aparece em nenhum seletor */}
             {(() => {
               const telas: string[] = [];
-              if (form.permite_notas_fiscais) telas.push("NF Entrada");
+              if (marcasDoc) {
+                if (form.permite_nf_produtos) telas.push("NF de Produtos");
+                if (form.permite_nfs) telas.push("NF de Serviços");
+                if (form.permite_cte) telas.push("CT-e");
+              } else if (form.permite_notas_fiscais) telas.push("NF Entrada");
               if (form.permite_cp_cr) telas.push(form.tipo === "receita" ? "Contas a Receber" : "Contas a Pagar");
               if (form.permite_adiantamentos) telas.push("Adiantamentos");
               if (form.permite_tesouraria) telas.push("Tesouraria");
@@ -666,7 +690,7 @@ function OperacoesGerenciaisContent() {
                 { key: "contabilidade", label: "Contabilidade"      },
               ] as { key: AbaModal; label: string }[]).map(a => {
                 const nenhumaTela = a.key === "telas" &&
-                  !form.permite_notas_fiscais && !form.permite_cp_cr && !form.permite_adiantamentos &&
+                  !form.permite_notas_fiscais && !(marcasDoc && (form.permite_nf_produtos || form.permite_nfs || form.permite_cte)) && !form.permite_cp_cr && !form.permite_adiantamentos &&
                   !form.permite_tesouraria && !form.permite_baixas && !form.permite_custo_produto &&
                   !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
                   !form.permite_manutencao && !form.permite_combustivel;
@@ -695,8 +719,25 @@ function OperacoesGerenciaisContent() {
                 <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Gerais</div>
+                    {/* Documentos de entrada (Seção 455): uma marca por documento. Marcar/desmarcar NF de Produtos acompanha a
+                        marca antiga "Notas Fiscais", que o Pedido de Compra e o classificador de NF ainda leem. */}
+                    {marcasDoc && (
+                      <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 10px 2px", marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase" }}>Documentos de entrada</div>
+                        {([
+                          { key: "permite_nf_produtos", label: "NF de Produtos" },
+                          { key: "permite_nfs",         label: "NF de Serviços (NFS-e)" },
+                          { key: "permite_cte",         label: "CT-e (Frete)" },
+                        ] as const).map(({ key, label }) => (
+                          <label data-arato-label="true" key={key} style={chkRow(!!form[key])}>
+                            <input type="checkbox" checked={!!form[key]} onChange={e => { const v = e.target.checked; setForm(p => ({ ...p, [key]: v, ...(key === "permite_nf_produtos" ? { permite_notas_fiscais: v } : {}) })); }} />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
                     {([
-                      { key: "permite_notas_fiscais",       label: "Notas Fiscais de Entrada"    },
+                      ...(marcasDoc ? [] : [{ key: "permite_notas_fiscais" as keyof typeof form, label: "Notas Fiscais de Entrada" }]),
                       { key: "permite_cp_cr",               label: "Contas a Pagar / Receber"    },
                       { key: "permite_adiantamentos",       label: "Adiantamentos"               },
                       { key: "permite_tesouraria",          label: "Tesouraria"                  },
@@ -709,9 +750,9 @@ function OperacoesGerenciaisContent() {
                         {label}
                       </label>
                     ))}
-                    {form.permite_notas_fiscais && !form.permite_cp_cr && (
+                    {(marcasDoc ? (form.permite_nf_produtos || form.permite_nfs || form.permite_cte) : form.permite_notas_fiscais) && !form.permite_cp_cr && (
                       <div style={{ marginTop: 8, padding: "8px 10px", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 11, color: "#555555" }}>
-                        NF processada com esta OG entra no estoque e nos custos, mas <strong>não gera Contas a Pagar/Receber</strong>.
+                        Nota processada com esta OG entra no estoque e nos custos, mas <strong>não gera Contas a Pagar/Receber</strong>.
                       </div>
                     )}
                   </div>

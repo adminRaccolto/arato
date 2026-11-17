@@ -183,15 +183,9 @@ export default function ModalNfServico({
     const as = await listarAnosSafra(fazendaId).catch(() => []);
     setAnos(as);
     try {
-      // Mesma lista da NF de produtos: OGs de Notas Fiscais + de Contas a Pagar. Antes só as de Contas a Pagar: OG marcada
-      // só para "Notas Fiscais de Entrada" (ex.: despesa particular sem financeiro) não aparecia na NFS (achado 17/11/2026).
-      const [ogNf, ogCp] = await Promise.all([
-        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "notas_fiscais" }, fazendaId).catch(() => []),
-        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).catch(() => []),
-      ]);
-      const porClass = new Map<string, OpGerencial>();
-      for (const o of [...ogCp, ...ogNf] as OpGerencial[]) if (!porClass.has(o.classificacao ?? o.id)) porClass.set(o.classificacao ?? o.id, o);
-      setOpsGer([...porClass.values()].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "")));
+      // OGs marcadas para NF de Serviços (Seção 455; sem a marca vale a regra antiga: Notas Fiscais ou Contas a Pagar)
+      const ogs = await listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "nfs" }, fazendaId).catch(() => []);
+      setOpsGer([...(ogs as OpGerencial[])].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "")));
     } catch {}
     try {
       const { data } = await supabase

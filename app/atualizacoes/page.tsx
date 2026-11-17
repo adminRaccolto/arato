@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-b",
+    data: "17/11/2026",
+    titulo: "Operação Gerencial por documento de entrada: NF de Produtos, NFS-e e CT-e",
+    modulos: ["Fiscal", "Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Na configuração da Operação Gerencial, \"Notas Fiscais de Entrada\" vira três marcas: NF de Produtos, NF de Serviços (NFS-e) e CT-e (Frete). Cada tela de entrada lista só as OGs da sua marca, e uma OG pode ter mais de uma." },
+      { tipo: "melhoria", texto: "Na virada, cada OG recebeu exatamente as telas em que já aparecia, então nenhuma lista mudou. A arrumação por afinidade (tirar das notas salários, impostos, juros…) será aplicada depois de revisada." },
+    ],
+    onde: "Configurações → Operações Gerenciais (aba Telas / Módulos)",
+  },
+  {
     versao: "2026.11.17-a",
     data: "17/11/2026",
     titulo: "NFS-e: sem escolha de fazenda, Centro de Custo obrigatório e OGs de Notas Fiscais",
