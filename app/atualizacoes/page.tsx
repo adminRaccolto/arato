@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-j",
+    data: "17/11/2026",
+    titulo: "Nova Operação Gerencial: Silo Bag",
+    modulos: ["Configurações", "Fiscal"],
+    itens: [
+      { tipo: "novidade", texto: "Nova OG 2.01.01.04.016 — SILO BAG (ARMAZENAGEM EM BOLSA), em Despesas Agricultura: custo de armazenagem da safra (entra no custo por hectare do ciclo). Aparece na NF de Produtos (compra das bolsas), na NFS (embolsamento/extração terceirizados) e no Contas a Pagar, para todos os clientes." },
+    ],
+    onde: "Configurações → Operações Gerenciais",
+  },
+  {
     versao: "2026.11.17-i",
     data: "17/11/2026",
     titulo: "Contas a Pagar: coluna Parcela",

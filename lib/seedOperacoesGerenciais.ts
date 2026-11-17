@@ -694,6 +694,14 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     conta_debito: "5.5", conta_credito: "2.1.1.2",
     ref_id: 905,
   }),
+  // Silo bag: bolsa de uso único para armazenar grão na fazenda = custo de armazenagem do ciclo (17/11/2026).
+  // Compra das bolsas na NF de Produtos; embolsamento/extração terceirizados na NFS.
+  desp("2.01.01.04.016", "SILO BAG (ARMAZENAGEM EM BOLSA)", {
+    permite_notas_fiscais: true, permite_cp_cr: true,
+    permite_nf_produtos: true, permite_nfs: true, permite_cte: false,
+    tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
+    conta_debito: "5.5", conta_credito: "2.1.1.2",
+  }),
   desp("2.01.01.04.099", "OUTRAS DESPESAS DE PRODUÇÃO", {
     permite_notas_fiscais: true, permite_cp_cr: true,
     tipo_lcdpr: "5", custo_absorcao: true, informa_complemento: true,
