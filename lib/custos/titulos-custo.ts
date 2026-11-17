@@ -8,11 +8,20 @@ export type TituloCusto = { status?: string | null; categoria?: string | null; o
 // Principal de empréstimo e movimentos de caixa: não são custo de produção (juros e IOF continuam como custo financeiro)
 const NAO_CUSTO = /^(pagamento de (custeio|financiamento|securitiza|cpr|egf|empr)|capta[cç][aã]o|ajuste de saldo|transfer|adiantamento)/i;
 
-/** O título entra como custo? Fora: cancelado, previsão, tesouraria, principal de empréstimo e movimentos de caixa. */
+/**
+ * O título entra como custo? Fora: cancelado, previsão, tesouraria, principal de empréstimo e movimentos de caixa.
+ * Previsão é pela natureza: a previsão efetivada no CP vira o mesmo título com natureza "real" e continua com origem
+ * "previsao" — é gasto feito e entra (antes a origem tirava esses títulos do custo).
+ */
 export function entraNoCusto(t: TituloCusto): boolean {
   if (t.status === "cancelado") return false;
-  if (t.natureza === "previsao" || t.origem_lancamento === "previsao" || t.origem_lancamento === "tesouraria") return false;
+  if (t.natureza === "previsao" || t.origem_lancamento === "tesouraria") return false;
   return !NAO_CUSTO.test((t.categoria ?? "").trim());
+}
+
+/** Previsão ainda a realizar (linha "Previsto" de Custos Totais, fora do custo): natureza previsão, não cancelada nem paga. */
+export function ehPrevisaoAberta(t: TituloCusto): boolean {
+  return t.natureza === "previsao" && !["cancelado", "baixado", "pago", "parcial"].includes(String(t.status ?? ""));
 }
 
 const INSUMO_CATS = new Set([

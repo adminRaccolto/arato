@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-o",
+    data: "17/11/2026",
+    titulo: "Custos Totais: linha Previsto e previsões efetivadas",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "melhoria", texto: "Custos Totais ganhou o bloco \"Previsto (ainda não realizado)\": as previsões de gastos em aberto dos ciclos escolhidos e as gerais da safra, por categoria. Elas não entram no Custo Total; quando o gasto acontece, ele passa a aparecer no custo." },
+      { tipo: "correcao", texto: "Previsão efetivada no Contas a Pagar é gasto feito e volta a entrar no custo. Ela ficava de fora por ter vindo de uma previsão." },
+    ],
+    onde: "Resultados → Custos Totais",
+  },
+  {
     versao: "2026.11.17-n",
     data: "17/11/2026",
     titulo: "Editar NF-e de remessa pendente no Painel de Notas",

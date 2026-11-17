@@ -11,7 +11,7 @@ import type { Safra } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import { valorDoContrato } from "../../lib/contratos/aditivos";
 import { lerPaginas } from "../../lib/paginar";
-import { ehCompraDeInsumo, entraNoCusto } from "../../lib/custos/titulos-custo";
+import { ehCompraDeInsumo, ehPrevisaoAberta, entraNoCusto } from "../../lib/custos/titulos-custo";
 
 type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 
@@ -257,6 +257,9 @@ function CustosInner() {
   const [insumos, setInsumos]       = useState<InsSimples[]>([]);
   const [lanDir, setLanDir]         = useState<LanSimples[]>([]);
   const [lanOvh, setLanOvh]         = useState<LanSimples[]>([]);
+  // Previsões de gastos em aberto (orçamento, não gasto): linha "Previsto" separada, fora do custo (17/11/2026)
+  const [prevDir, setPrevDir]       = useState<LanSimples[]>([]);
+  const [prevOvh, setPrevOvh]       = useState<LanSimples[]>([]);
   const [ratLinhas, setRatLinhas]   = useState<RatLinha[]>([]);
   const [ratRegras, setRatRegras]   = useState<RatRegra[]>([]);
 
@@ -292,7 +295,7 @@ function CustosInner() {
   useEffect(() => {
     if (!fazendaId || cicloIds.length === 0) {
       setContratos([]); setMovs([]); setInsumos([]);
-      setLanDir([]); setLanOvh([]); setRatLinhas([]); setRatRegras([]);
+      setLanDir([]); setLanOvh([]); setPrevDir([]); setPrevOvh([]); setRatLinhas([]); setRatRegras([]);
       return;
     }
     setDreLoading(true);
@@ -317,13 +320,13 @@ function CustosInner() {
       // Paginado (o Supabase corta em 1.000 linhas) e sem cancelado/previsão/principal de empréstimo (lib/custos)
       lerPaginas<LanSimples>((a, b) => supabase.from("lancamentos").select(camposLan)
         .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds).eq("tipo", "pagar").neq("status", "cancelado").order("id").range(a, b))
-        .then(data => ({ data: data.filter(entraNoCusto) })).catch(() => ({ data: [] as LanSimples[] })),
+        .then(data => ({ data: data.filter(entraNoCusto), prev: data.filter(ehPrevisaoAberta) })).catch(() => ({ data: [] as LanSimples[], prev: [] as LanSimples[] })),
       // Despesas gerais (sem ciclo): só as da safra escolhida — antes vinham todas, de todos os anos
       lerPaginas<LanSimples>((a, b) => {
         let q = supabase.from("lancamentos").select(camposLan).in("fazenda_id", fazendaIds).is("ciclo_id", null).eq("tipo", "pagar").neq("status", "cancelado");
         if (idsDoGrupo.length) q = q.in("ano_safra_id", idsDoGrupo);
         return q.order("id").range(a, b);
-      }).then(data => ({ data: data.filter(l => entraNoCusto(l) && !ehCompraDeInsumo(l.categoria)) })).catch(() => ({ data: [] as LanSimples[] })),
+      }).then(data => ({ data: data.filter(l => entraNoCusto(l) && !ehCompraDeInsumo(l.categoria)), prev: data.filter(ehPrevisaoAberta) })).catch(() => ({ data: [] as LanSimples[], prev: [] as LanSimples[] })),
       supabase.from("regras_rateio_linhas")
         .select("id,regra_id,ciclo_id,percentual")
         .in("ciclo_id", cicloIds),
@@ -334,6 +337,7 @@ function CustosInner() {
       setInsumos((iR.data ?? []) as InsSimples[]);
       setLanDir((ldR.data ?? []) as LanSimples[]);
       setLanOvh((loR.data ?? []) as LanSimples[]);
+      setPrevDir(ldR.prev ?? []); setPrevOvh(loR.prev ?? []);
       setRatLinhas((rlR.data ?? []) as RatLinha[]);
       setRatRegras((rrR.data ?? []) as RatRegra[]);
     }).finally(() => setDreLoading(false));
@@ -411,6 +415,12 @@ function CustosInner() {
   const overheadSemRateio = ratLinhas.length === 0
     ? lanOvh.reduce((s, l) => s + l.valor, 0)
     : 0;
+
+  // 5b. PREVISTO — previsões de gastos ainda em aberto; só informativo, não entra no custo
+  const previstoDir = prevDir.reduce((s, l) => s + l.valor, 0);
+  const previstoOvh = prevOvh.reduce((s, l) => s + l.valor, 0);
+  const previstoPorCat: Record<string, number> = {};
+  for (const l of [...prevDir, ...prevOvh]) previstoPorCat[l.categoria || "Sem categoria"] = (previstoPorCat[l.categoria || "Sem categoria"] ?? 0) + l.valor;
 
   // 6. TOTAIS
   const custoTotal     = cpvTotal + despDirTotal + despIndirTotal + overheadSemRateio;
@@ -896,6 +906,28 @@ function CustosInner() {
                               {fmtBRL(overheadSemRateio)} — Configure regras de rateio em <strong>Configurações → Regras de Rateio</strong>
                             </div>
                           }
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Previsto: orçamento ainda não realizado, fora do Custo Total */}
+                    {(previstoDir + previstoOvh) > 0 && (
+                      <div style={{ marginTop: 20 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "#0C447C" }}>Previsto (ainda não realizado)</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#0C447C" }}>{fmtBRL(previstoDir + previstoOvh)}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10 }}>
+                          Previsões de gastos em aberto. Não entram no Custo Total; quando o gasto acontece, ele aparece acima.
+                          {" "}Dos ciclos selecionados: {fmtBRL(previstoDir)}{previstoOvh > 0 ? ` · Gerais da safra (sem ciclo): ${fmtBRL(previstoOvh)}` : ""}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {Object.entries(previstoPorCat).sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
+                            <div key={cat} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "#E6F1FB", borderRadius: 8, fontSize: 12 }}>
+                              <span style={{ color: "var(--text-2)" }}>{cat}</span>
+                              <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{fmtBRL(v)}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
