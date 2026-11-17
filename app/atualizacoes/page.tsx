@@ -13,7 +13,7 @@ const RELEASES = [
     modulos: ["Fiscal", "Configurações"],
     itens: [
       { tipo: "melhoria", texto: "Na configuração da Operação Gerencial, \"Notas Fiscais de Entrada\" vira três marcas: NF de Produtos, NF de Serviços (NFS-e) e CT-e (Frete). Cada tela de entrada lista só as OGs da sua marca, e uma OG pode ter mais de uma." },
-      { tipo: "melhoria", texto: "Na virada, cada OG recebeu exatamente as telas em que já aparecia, então nenhuma lista mudou. A arrumação por afinidade (tirar das notas salários, impostos, juros…) será aplicada depois de revisada." },
+      { tipo: "melhoria", texto: "Marcas arrumadas por afinidade: insumos, combustível, peças e investimentos em NF de Produtos; serviços, assessorias e análises em NFS-e; manutenção, obras e despesas particulares nas duas; fretes em CT-e. Salários, impostos, juros e financiamentos saíram das notas. Nenhuma OG saiu de um documento em que já foi usada. Se faltar uma OG numa tela, marque o documento nela." },
     ],
     onde: "Configurações → Operações Gerenciais (aba Telas / Módulos)",
   },
