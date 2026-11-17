@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-k",
+    data: "17/11/2026",
+    titulo: "Custos Totais: só o que é custo da safra escolhida",
+    modulos: ["Custos"],
+    itens: [
+      { tipo: "correcao", texto: "Custos Totais deixou de somar títulos cancelados, previsões de gastos, pagamento do principal de custeio/financiamento (é dívida, não custo) e movimentos de tesouraria. Compra de insumo com a categoria \"Insumos\" não soma mais em dobro com o consumo do estoque." },
+      { tipo: "correcao", texto: "As despesas gerais (títulos sem ciclo) passam a ser só as da safra escolhida; antes vinham as de todos os anos e cortadas em 1.000 títulos." },
+    ],
+    onde: "Custos → Custos Totais",
+  },
+  {
     versao: "2026.11.17-j",
     data: "17/11/2026",
     titulo: "Nova Operação Gerencial: Silo Bag",

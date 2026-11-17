@@ -10,6 +10,8 @@ import { supabase } from "../../lib/supabase";
 import type { Safra } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import { valorDoContrato } from "../../lib/contratos/aditivos";
+import { lerPaginas } from "../../lib/paginar";
+import { ehCompraDeInsumo, entraNoCusto } from "../../lib/custos/titulos-custo";
 
 type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 
@@ -19,17 +21,11 @@ interface FazendaMin { id: string; nome: string }
 interface CntSimples { id: string; ciclo_id?: string; produto: string; moeda: string; preco: number; quantidade_sc: number; confirmado?: boolean; status: string }
 interface MovSimples { id: string; insumo_id: string; quantidade: number; ciclo_id?: string; motivo?: string }
 interface InsSimples { id: string; custo_medio: number; categoria: string; nome: string }
-interface LanSimples { id: string; categoria: string; valor: number; ciclo_id?: string; descricao: string; status: string; data_vencimento: string }
+interface LanSimples { id: string; categoria: string; valor: number; ciclo_id?: string; descricao: string; status: string; data_vencimento: string; origem_lancamento?: string | null; natureza?: string | null }
 interface RatLinha   { id: string; regra_id: string; ciclo_id: string; percentual: number }
 interface RatRegra   { id: string; nome: string; tipos?: string[]; ano_safra_id?: string }
 
-// Categorias de insumo — já apuradas via movimentações, não duplicar em despesas diretas
-const INSUMO_CATS = [
-  "Insumos — Sementes","Insumos — Fertilizantes","Insumos — Defensivos",
-  "Insumos — Inoculantes","Insumos — Corretivos",
-  "Custo de Sementes","Defensivos Agrícolas","Insumos / Fertilizantes",
-  "Insumos / Corretivos","Fertilizantes","Insumos Agrícolas",
-];
+// Categorias de insumo (já apuradas via movimentações, não duplicar em despesas): lib/custos/titulos-custo.ts
 
 function catToGrupo(cat: string): string {
   if (/sement/i.test(cat)) return "Sementes";
@@ -301,13 +297,12 @@ function CustosInner() {
     }
     setDreLoading(true);
     let rateioQ = supabase.from("regras_rateio").select("id,nome,tipos,ano_safra_id").in("fazenda_id", fazendaIds);
-    if (anoSafraId) {
-      // Mesmo agrupamento por descrição do FiltroBar — sem isso, a regra de
-      // rateio de uma fazenda-irmã com o mesmo rótulo de safra ficava de fora.
-      const descricaoAtual = anosSafra.find(a => a.id === anoSafraId)?.descricao;
-      const idsDoGrupo = descricaoAtual ? anosSafra.filter(a => a.descricao === descricaoAtual).map(a => a.id) : [anoSafraId];
-      rateioQ = rateioQ.in("ano_safra_id", idsDoGrupo);
-    }
+    // Mesmo agrupamento por descrição do FiltroBar — sem isso, a regra de rateio (e as despesas gerais) de uma
+    // fazenda-irmã com o mesmo rótulo de safra ficavam de fora.
+    const descricaoAtual = anoSafraId ? anosSafra.find(a => a.id === anoSafraId)?.descricao : undefined;
+    const idsDoGrupo = anoSafraId ? (descricaoAtual ? anosSafra.filter(a => a.descricao === descricaoAtual).map(a => a.id) : [anoSafraId]) : [];
+    if (anoSafraId) rateioQ = rateioQ.in("ano_safra_id", idsDoGrupo);
+    const camposLan = "id,categoria,valor,ciclo_id,descricao,status,data_vencimento,origem_lancamento,natureza";
     Promise.all([
       supabase.from("contratos")
         .select("*")
@@ -319,12 +314,16 @@ function CustosInner() {
       supabase.from("insumos")
         .select("id,custo_medio,categoria,nome")
         .in("fazenda_id", fazendaIds),
-      supabase.from("lancamentos")
-        .select("id,categoria,valor,ciclo_id,descricao,status,data_vencimento")
-        .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds).eq("tipo", "pagar"),
-      supabase.from("lancamentos")
-        .select("id,categoria,valor,ciclo_id,descricao,status,data_vencimento")
-        .in("fazenda_id", fazendaIds).is("ciclo_id", null).eq("tipo", "pagar"),
+      // Paginado (o Supabase corta em 1.000 linhas) e sem cancelado/previsão/principal de empréstimo (lib/custos)
+      lerPaginas<LanSimples>((a, b) => supabase.from("lancamentos").select(camposLan)
+        .in("fazenda_id", fazendaIds).in("ciclo_id", cicloIds).eq("tipo", "pagar").neq("status", "cancelado").order("id").range(a, b))
+        .then(data => ({ data: data.filter(entraNoCusto) })).catch(() => ({ data: [] as LanSimples[] })),
+      // Despesas gerais (sem ciclo): só as da safra escolhida — antes vinham todas, de todos os anos
+      lerPaginas<LanSimples>((a, b) => {
+        let q = supabase.from("lancamentos").select(camposLan).in("fazenda_id", fazendaIds).is("ciclo_id", null).eq("tipo", "pagar").neq("status", "cancelado");
+        if (idsDoGrupo.length) q = q.in("ano_safra_id", idsDoGrupo);
+        return q.order("id").range(a, b);
+      }).then(data => ({ data: data.filter(l => entraNoCusto(l) && !ehCompraDeInsumo(l.categoria)) })).catch(() => ({ data: [] as LanSimples[] })),
       supabase.from("regras_rateio_linhas")
         .select("id,regra_id,ciclo_id,percentual")
         .in("ciclo_id", cicloIds),
@@ -380,7 +379,7 @@ function CustosInner() {
   const despDirPorCat: Record<string, number> = {};
   let despDirTotal = 0;
   for (const l of lanDir) {
-    if (INSUMO_CATS.includes(l.categoria)) continue;
+    if (ehCompraDeInsumo(l.categoria)) continue;
     despDirPorCat[l.categoria] = (despDirPorCat[l.categoria] ?? 0) + l.valor;
     despDirTotal += l.valor;
   }
