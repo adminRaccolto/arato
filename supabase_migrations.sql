@@ -23304,3 +23304,52 @@ UPDATE parcelas_pagamento p
           AND l.data_vencimento = p.data_vencimento AND l.descricao LIKE '%— Parcela %'
           AND l.status NOT IN ('baixado', 'cancelado'));
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 458 — Rascunho de NF-e: criação sem duplicar e edição protegida da transmissão
+-- Não reserva numeração fiscal, não transmite e não cria financeiro ou estoque.
+-- =============================================================================
+BEGIN;
+CREATE OR REPLACE FUNCTION public.fiscal_rascunho_nfe(p_id uuid,p_acao text,p_dados jsonb DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=public AS $$
+DECLARE n notas_fiscais%ROWTYPE; v_existe boolean; v_dados jsonb; v_cols text; v_ret jsonb;
+BEGIN
+ IF p_id IS NULL OR p_acao NOT IN ('salvar','excluir') OR p_acao IS NULL THEN RAISE EXCEPTION 'Comando de rascunho inválido.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('rascunho-nfe:'||p_id::text,0));
+ SELECT * INTO n FROM notas_fiscais WHERE id=p_id FOR UPDATE;
+ v_existe:=FOUND;
+ IF v_existe THEN
+  IF n.status NOT IN ('em_digitacao','rejeitada') OR (n.chave_acesso IS NOT NULL AND n.status<>'rejeitada') THEN
+   RAISE EXCEPTION 'Esta NF-e já foi transmitida ou não está disponível para edição. Consulte o painel.';
+  END IF;
+  IF EXISTS(SELECT 1 FROM fiscal_operacoes WHERE modelo=55 AND registro_id=p_id
+   AND estado IN ('reservada','enviada','pendente','autorizada','sincronizada')) THEN
+   RAISE EXCEPTION 'Esta NF-e possui transmissão em andamento ou concluída. Consulte Emissões em conferência.';
+  END IF;
+ END IF;
+ IF p_acao='excluir' THEN
+  IF NOT v_existe OR n.status<>'em_digitacao' OR n.chave_acesso IS NOT NULL THEN RAISE EXCEPTION 'Rascunho não disponível para exclusão.'; END IF;
+  DELETE FROM notas_fiscais WHERE id=p_id;
+  RETURN jsonb_build_object('id',p_id,'excluida',true);
+ END IF;
+ IF coalesce(jsonb_typeof(p_dados),'')<>'object' OR nullif(p_dados->>'fazenda_id','') IS NULL THEN RAISE EXCEPTION 'Informe os dados e a fazenda do rascunho.'; END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_dados) x(key) WHERE key IN ('id','created_at','chave_acesso','xml_url')
+  OR NOT EXISTS(SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name='notas_fiscais' AND c.column_name=key)) THEN
+  RAISE EXCEPTION 'Campo de rascunho inválido.';
+ END IF;
+ v_dados:=p_dados||jsonb_build_object('status','em_digitacao','tipo','saida','chave_acesso',NULL,'xml_url',NULL);
+ SELECT string_agg(quote_ident(key),',' ORDER BY key) INTO v_cols FROM jsonb_object_keys(v_dados) x(key);
+ IF v_existe THEN
+  EXECUTE format('UPDATE notas_fiscais SET (%1$s)=(SELECT %1$s FROM jsonb_populate_record(NULL::notas_fiscais,$1)) WHERE id=$2 RETURNING to_jsonb(notas_fiscais)',v_cols)
+   INTO v_ret USING v_dados,p_id;
+ ELSE
+  EXECUTE format('INSERT INTO notas_fiscais(id,%1$s) SELECT $2,%1$s FROM jsonb_populate_record(NULL::notas_fiscais,$1) RETURNING to_jsonb(notas_fiscais)',v_cols)
+   INTO v_ret USING v_dados,p_id;
+ END IF;
+ IF v_ret IS NULL THEN RAISE EXCEPTION 'O rascunho não foi confirmado no banco.'; END IF;
+ RETURN v_ret;
+END $$;
+REVOKE ALL ON FUNCTION public.fiscal_rascunho_nfe(uuid,text,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.fiscal_rascunho_nfe(uuid,text,jsonb) TO authenticated,service_role;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

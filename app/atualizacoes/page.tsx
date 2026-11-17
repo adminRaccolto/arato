@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-r",
+    data: "17/11/2026",
+    titulo: "NF avulsa e por contrato: rascunho e transmissão pelo painel",
+    modulos: ["Documentos Fiscais", "Comercial"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao preparar uma NF-e avulsa ou por contrato, use Salvar e enviar ao painel. A nota fica em digitação no Painel de Notas, onde é possível conferir o espelho, editar, excluir o rascunho ou transmitir quando estiver pronta." },
+      { tipo: "correcao", texto: "A edição dos novos rascunhos retorna ao mesmo formulário e preserva os campos preenchidos, incluindo datas, CST, transporte e referências. A transmissão pelo painel usa os dados fiscais guardados; salvar o rascunho não transmite a nota nem gera financeiro ou movimentação de estoque." },
+    ],
+    onde: "Documentos Fiscais → Venda Avulsa / Venda por Contrato → Salvar e enviar ao painel",
+  },
+  {
     versao: "2026.11.17-q",
     data: "17/11/2026",
     titulo: "CST do ICMS editável na emissão da NF avulsa",

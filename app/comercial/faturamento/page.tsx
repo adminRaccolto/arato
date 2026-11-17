@@ -12,7 +12,7 @@ import SelectBusca from "../../../components/SelectBusca";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
   criarNotaFiscal, atualizarStatusNFe,
@@ -27,6 +27,7 @@ import { UNIDADES_ITEM_VENDA, fmtNcm, itemDoProdutoAgricola, ncmPadraoDoProduto,
 import { ehRascunho, montarRascunhoDuplicado, podeDuplicarNota } from "../../../lib/fiscal/duplicar-nota";
 import { precoKgDoContrato } from "../../../lib/contratos/preco-nf";
 import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
+import { camposDoRascunho, corpoDaVendaPendente, excluirRascunhoVenda, salvarRascunhoVenda, vendaPendenteDe, vendaPendenteEditavel } from "../../../lib/fiscal/venda-pendente";
 import { notaAguardaRomaneio, pesoDaNota } from "../../../lib/contratos/romaneio-nf";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
@@ -217,6 +218,7 @@ const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(
 function FaturamentoInner() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
   const searchParams   = useSearchParams();
+  const router = useRouter();
   // Modo vindo do menu Documentos Fiscais → Saídas (contrato / avulsa) ou da tela Remessas (remessa de grãos)
   const modo = lerModoFaturamento(searchParams.get("modo"));
 
@@ -266,6 +268,8 @@ function FaturamentoInner() {
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
   // Rascunho aberto no formulário (cópia de NF emitida): salvar e emitir gravam nesta mesma linha, sem criar outra
   const [rascunhoId, setRascunhoId] = useState<string | null>(null);
+  const novoRascunhoId = useRef<string | null>(null);
+  const salvandoRascunhoRef = useRef(false);
   const [rascunhoOrigem, setRascunhoOrigem] = useState("");
   const [salvandoRascunho, setSalvandoRascunho] = useState(false);
   // Faturar direto, sem romaneio
@@ -403,12 +407,16 @@ function FaturamentoInner() {
   useEffect(() => {
     const idComplemento = searchParams.get("complementar");
     const idCorrigir = searchParams.get("corrigir");
-    const id = searchParams.get("duplicar") ?? idComplemento ?? idCorrigir;
+    const idEditar = searchParams.get("editar_nota");
+    const id = searchParams.get("duplicar") ?? idComplemento ?? idCorrigir ?? idEditar;
     if (!id || loading || duplicarFeito.current) return;
     duplicarFeito.current = true;
     window.history.replaceState(null, "", "/comercial/faturamento");
     supabase.from("notas_fiscais").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      if (data && idCorrigir && (data as NotaFiscal).status === "rejeitada") abrirRascunho(data as NotaFiscal);
+      if (idEditar) {
+        if (data && vendaPendenteEditavel(data as NotaFiscal)) abrirRascunho(data as NotaFiscal);
+        else alert("Rascunho indisponível para edição. Consulte o Painel de Notas.");
+      } else if (data && idCorrigir && (data as NotaFiscal).status === "rejeitada") abrirRascunho(data as NotaFiscal);
       else if (data && idComplemento && (data as NotaFiscal).status === "autorizada") abrirComplemento(data as NotaFiscal);
       else if (data && !idComplemento && !idCorrigir && podeDuplicarNota(data as NotaFiscal)) void duplicarNota(data as NotaFiscal);
     });
@@ -445,7 +453,7 @@ function FaturamentoInner() {
     setErroForm(null);
     setFazNFe(fazendaId ?? ""); // provisório: passa a ser a fazenda da IE escolhida
     setRetornoOrigemId(null);
-    setRascunhoId(null); setRascunhoOrigem("");
+    setRascunhoId(null); setRascunhoOrigem(""); novoRascunhoId.current = null;
     setPesoDireto(""); setPesoAproximado(true); setPrecoContrato(null);
     setModalAberto(true);
   }
@@ -642,6 +650,7 @@ function FaturamentoInner() {
     const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const guardado = vendaPendenteDe(dj);
     const txt = (k: string) => String(dj[k] ?? "");
     const num = (k: string) => aplicarMascara(String(Math.round(Number(dj[k] ?? 0) * 100))) || "0,00";
     const emitDoc = txt("emit_cnpj").replace(/\D/g, "");
@@ -650,8 +659,8 @@ function FaturamentoInner() {
     const contrato = contratos.find(c => c.id === dj.contrato_id) ?? null;
     setContratoSelecionado(contrato);
     setFazNFe(nota.fazenda_id);
-    setTipoAvulsa("venda");
-    setRetornoOrigemId(null);
+    setTipoAvulsa(txt("retorno_origem_id") ? "retorno" : modoDaNota(nota) === "devolucao" ? "devolucao" : "venda");
+    setRetornoOrigemId(txt("retorno_origem_id") || null);
     setOperacaoFiscalId(txt("operacao_fiscal_id"));setVariaveisFiscais((dj.variaveis_fiscais ?? {}) as Record<string,string>);
     setRascunhoId(nota.id);
     setRascunhoOrigem(txt("duplicada_de_numero"));
@@ -673,8 +682,9 @@ function FaturamentoInner() {
       local_entrega: txt("local_entrega"), contrato_numero: txt("contrato_numero"),
       nf_ref_chave: txt("nf_ref_chave"), nf_ref_numero: txt("nf_ref_numero"),
       faturamento_direto: dj.faturamento_direto === true, peso_aproximado: dj.peso_aproximado === true,
+      ...(guardado ? camposDoRascunho(FVENDA_INICIAL, guardado.formulario) : {}),
     });
-    setNfeItens((nota.itens_json ?? []).map(i => ({
+    setNfeItens(guardado ? guardado.itens as NFeItem[] : (nota.itens_json ?? []).map(i => ({
       id: crypto.randomUUID(), tipo_item: "Produto", item: i.item, ncm: i.ncm,
       quantidade: String(i.quantidade), unidade: i.unidade.toLowerCase(),
       valor_unitario: i.valor_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 10 }),
@@ -704,7 +714,7 @@ function FaturamentoInner() {
     setFazNFe(nota.fazenda_id);
     setTipoAvulsa("venda");
     setRetornoOrigemId(null);
-    setRascunhoId(null); setRascunhoOrigem("");
+    setRascunhoId(null); setRascunhoOrigem(""); novoRascunhoId.current = null;
     setFVenda({
       ...FVENDA_INICIAL,
       produtor_id: txt("produtor_id") || produtores.find(p => emitDoc && p.cpf_cnpj?.replace(/\D/g, "") === emitDoc)?.id || "",
@@ -736,31 +746,34 @@ function FaturamentoInner() {
   }
 
   async function salvarRascunhoNota() {
-    if (!rascunhoId) return;
-    if (!fVenda.destinatario) { setErroForm("Informe o destinatário."); return; }
-    if (nfeItens.length === 0) { setErroForm("Adicione pelo menos um item."); return; }
-    if (nfeItens.some(i => !i.item.trim())) { setErroForm("Escolha o produto de todos os itens da nota."); return; }
+    if (salvandoRascunhoRef.current || emitindo) return;
+    if (!fVenda.produtor_id || !fVenda.ie_id) { setErroForm("Selecione o produtor e a inscrição estadual."); return; }
+    if (!fVenda.destinatario.trim()) { setErroForm("Informe o destinatário."); return; }
+    if (!nfeItens.length || nfeItens.some(i => !i.item.trim())) { setErroForm("Escolha pelo menos um produto para a nota."); return; }
+    salvandoRascunhoRef.current = true;
     setSalvandoRascunho(true); setErroForm(null);
     try {
       const { payload } = await montarPayloadNota();
-      const { data, error } = await supabase.from("notas_fiscais").update({
-        ...payload,
-        dados_nf_json: { ...payload.dados_nf_json, rascunho: true, duplicada_de_numero: rascunhoOrigem || undefined },
-      }).eq("id", rascunhoId).in("status", ["em_digitacao", "rejeitada"]).select().single();
-      if (error) throw error;
-      setNotas(p => p.map(n => n.id === rascunhoId ? data as NotaFiscal : n));
+      const id = rascunhoId ?? (novoRascunhoId.current ??= crypto.randomUUID());
+      const nota = await salvarRascunhoVenda(supabase, id, {
+        ...payload, dados_nf_json: { ...payload.dados_nf_json, duplicada_de_numero: rascunhoOrigem || undefined },
+      });
+      setRascunhoId(nota.id);
+      setNotas(p => [nota, ...p.filter(n => n.id !== nota.id)]);
       setModalAberto(false);
+      router.push(modoDaNota(nota) === "devolucao" ? "/fiscal?aba=devolucao" : "/fiscal");
     } catch (e) {
       setErroForm((e as { message?: string })?.message ?? "Erro ao salvar o rascunho.");
-    } finally { setSalvandoRascunho(false); }
+    } finally { salvandoRascunhoRef.current = false; setSalvandoRascunho(false); }
   }
 
   async function excluirRascunho(nota: NotaFiscal) {
     if (!ehRascunho(nota)) return;
-    if (!(await confirmarAcao({ titulo: "Excluir rascunho", mensagem: `Excluir o rascunho da NF para ${nota.destinatario ?? "este destinatário"}? Ele nunca foi transmitido à SEFAZ.`, perigo: true, textoConfirmar: "Excluir" }))) return;
-    const { error } = await supabase.from("notas_fiscais").delete().eq("id", nota.id).eq("status", "em_digitacao");
-    if (error) { alert(`Não foi possível excluir: ${error.message}`); return; }
-    setNotas(p => p.filter(n => n.id !== nota.id));
+    if (!(await confirmarAcao({ titulo: "Excluir rascunho", mensagem: `Excluir o rascunho da NF para ${nota.destinatario ?? "este destinatário"}?`, perigo: true, textoConfirmar: "Excluir" }))) return;
+    try {
+      await excluirRascunhoVenda(supabase, nota.id);
+      setNotas(p => p.filter(n => n.id !== nota.id));
+    } catch (e) { alert(`Não foi possível excluir: ${(e as { message?: string }).message ?? String(e)}`); }
   }
 
   // ── Retorno de Armazém Geral — a partir de uma NF de Remessa já autorizada ──
@@ -781,7 +794,7 @@ function FaturamentoInner() {
     setContratoSelecionado(null);
     setTipoAvulsa("retorno");
     setRetornoOrigemId(nota.id);
-    setRascunhoId(null); setRascunhoOrigem("");
+    setRascunhoId(null); setRascunhoOrigem(""); novoRascunhoId.current = null;
     setFVenda({
       ...FVENDA_INICIAL,
       produtor_id:         produtorMatch?.id ?? "",
@@ -853,6 +866,59 @@ function FaturamentoInner() {
     && !fVenda.contrato_numero && !fVenda.complementar_de && tipoAvulsa !== "devolucao" && tipoAvulsa !== "retorno";
 
   // ── Emitir nota ───────────────────────────────────────────────────────────
+  // Corpo único: emissão imediata, espelho e transmissão posterior pelo painel.
+  function montarCorpoEmissao(fazEmissao: string, moduloKey?: string, notaId?: string) {
+    return {
+      fazenda_id:      fazEmissao,
+      nota_id:notaId,
+      modulo_key:      moduloKey,
+      data_emissao: fVenda.data_emissao,
+      operacao_fiscal_id:operacaoFiscalId || undefined,variaveis_fiscais:variaveisFiscais,
+      emit_ie_override: fVenda.ie_id
+        ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual
+        : undefined,
+      destinatario: {
+        nome:            fVenda.destinatario,
+        cpf_cnpj:        fVenda.cnpj || undefined,
+        ie:              fVenda.dest_ie || undefined,
+        logradouro:      fVenda.dest_endereco || undefined,
+        numero:          fVenda.dest_numero || undefined,
+        bairro:          fVenda.dest_bairro || undefined,
+        cep:             fVenda.dest_cep || undefined,
+        telefone:        fVenda.dest_fone || undefined,
+        municipio_ibge:  fVenda.dest_municipio_ibge || undefined,
+        municipio_nome:  fVenda.dest_cidade || undefined,
+        uf:              fVenda.dest_uf || undefined,
+      },
+      itens: nfeItens.map(i => ({
+        descricao:      i.item,
+        ncm:            i.ncm,
+        cfop:           fVenda.cfop,
+        unidade:        i.unidade.toUpperCase(),
+        quantidade:     parseFloat(i.quantidade) || 0,
+        valor_unitario: desmascarar(i.valor_unitario),
+        ...icmsDaEmissao(fVenda),
+      })),
+      natureza:  fVenda.natureza_texto,
+      inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
+      frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
+      nfe_ref:   fVenda.nf_ref_chave || undefined,
+      // Devolução de compra/venda (x2xx, x41x, x556/x553): finalidade 4, senão a SEFAZ rejeita (328)
+      fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? finalidadeDoRetorno([fVenda.cfop]) : /^[1256](2\d\d|41\d|55[36])$/.test(fVenda.cfop.replace(/\D/g, "")) ? "4" : undefined,
+      tipo:      "1" as const,
+      // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
+      transporte: fVenda.transportadora || fVenda.placa ? {
+        nome:       fVenda.transportadora || undefined,
+        cpf_cnpj:   fVenda.transp_cpf_cnpj || undefined,
+        ie:         fVenda.transp_ie || undefined,
+        endereco:   [fVenda.transp_endereco, fVenda.transp_numero].filter(Boolean).join(", ") || undefined,
+        municipio:  fVenda.transp_cidade || undefined,
+        placa:      fVenda.placa || undefined,
+        uf_veiculo: fVenda.uf_placa || undefined,
+      } : undefined,
+    };
+  }
+
   // Mesma nota para emitir e para salvar o rascunho
   async function montarPayloadNota() {
     const fazEmissao = fazNFe || fazendaId || "";
@@ -915,6 +981,9 @@ function FaturamentoInner() {
         valor_total:    i.valor_total,
       })),
       dados_nf_json: {
+        rascunho: true,
+        venda_pendente: { corpo: montarCorpoEmissao(fazEmissao, moduloFiscal?.modulo), formulario: { ...fVenda }, itens: nfeItens },
+        retorno_origem_id: retornoOrigemId || undefined,
         cst_icms: fVenda.cst_icms, aliq_icms: fVenda.aliq_icms, red_bc: fVenda.red_bc,
         operacao_fiscal_id:operacaoFiscalId || null,variaveis_fiscais:variaveisFiscais,
         modulo_key:      moduloFiscal?.modulo ?? "",
@@ -984,6 +1053,7 @@ function FaturamentoInner() {
 
   // Nota pendente no grid (em digitação, não rascunho): mesmo corpo para o espelho e para o botão Transmitir
   function corpoTransmissaoPendente(nota: NotaFiscal) {
+    if (vendaPendenteDe(nota.dados_nf_json)) return corpoDaVendaPendente(nota);
     const dj = nota.dados_nf_json as Record<string, string> ?? {};
     // modulo_key: usa o salvo no dados_nf_json (vazio = servidor resolve via fallback)
     const moduloKey = dj.modulo_key ?? "";
@@ -1037,65 +1107,17 @@ function FaturamentoInner() {
     try {
       const { payload, moduloFiscal } = await montarPayloadNota();
       if ((contratoSelecionado || fVenda.complementar_de) && nfeItens.some(i => !(i.valor_total > 0))) { setErroForm("Item da nota sem valor: confira o preço e a quantidade."); return; }
-      const corpoEmissao = (notaId?: string) => ({
-              fazenda_id:      fazEmissao,
-              nota_id:notaId,
-              modulo_key:      moduloFiscal?.modulo,
-              data_emissao: fVenda.data_emissao,
-              operacao_fiscal_id:operacaoFiscalId || undefined,variaveis_fiscais:variaveisFiscais,
-              emit_ie_override: fVenda.ie_id
-                ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual
-                : undefined,
-              destinatario: {
-                nome:            fVenda.destinatario,
-                cpf_cnpj:        fVenda.cnpj || undefined,
-                ie:              fVenda.dest_ie || undefined,
-                logradouro:      fVenda.dest_endereco || undefined,
-                numero:          fVenda.dest_numero || undefined,
-                bairro:          fVenda.dest_bairro || undefined,
-                cep:             fVenda.dest_cep || undefined,
-                telefone:        fVenda.dest_fone || undefined,
-                municipio_ibge:  fVenda.dest_municipio_ibge || undefined,
-                municipio_nome:  fVenda.dest_cidade || undefined,
-                uf:              fVenda.dest_uf || undefined,
-              },
-              itens: nfeItens.map(i => ({
-                descricao:      i.item,
-                ncm:            i.ncm,
-                cfop:           fVenda.cfop,
-                unidade:        i.unidade.toUpperCase(),
-                quantidade:     parseFloat(i.quantidade) || 0,
-                valor_unitario: desmascarar(i.valor_unitario),
-                ...icmsDaEmissao(fVenda),
-              })),
-              natureza:  fVenda.natureza_texto,
-              inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
-              frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
-              nfe_ref:   fVenda.nf_ref_chave || undefined,
-              // Devolução de compra/venda (x2xx, x41x, x556/x553): finalidade 4, senão a SEFAZ rejeita (328)
-              fin_nfe:   fVenda.complementar_de ? "2" : ehDevolucaoBem(fVenda.cfop) ? finalidadeDoRetorno([fVenda.cfop]) : /^[1256](2\d\d|41\d|55[36])$/.test(fVenda.cfop.replace(/\D/g, "")) ? "4" : undefined,
-              tipo:      "1" as const,
-              // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
-              transporte: fVenda.transportadora || fVenda.placa ? {
-                nome:       fVenda.transportadora || undefined,
-                cpf_cnpj:   fVenda.transp_cpf_cnpj || undefined,
-                ie:         fVenda.transp_ie || undefined,
-                endereco:   [fVenda.transp_endereco, fVenda.transp_numero].filter(Boolean).join(", ") || undefined,
-                municipio:  fVenda.transp_cidade || undefined,
-                placa:      fVenda.placa || undefined,
-                uf_veiculo: fVenda.uf_placa || undefined,
-              } : undefined,
-      });
+      const corpoEmissao = (notaId?: string) => montarCorpoEmissao(fazEmissao, moduloFiscal?.modulo, notaId);
       if (espelho) { await mostrarEspelhoNfe(corpoEmissao(), espelho); return; }
 
       // Rascunho (cópia de NF emitida): grava na mesma linha, sem deixar o rascunho para trás
       let nova: NotaFiscal;
       if (rascunhoId) {
-        const { data: atual, error: eRasc } = await supabase.from("notas_fiscais").update(payload).eq("id", rascunhoId).select().single();
-        if (eRasc) throw eRasc;
-        nova = atual as NotaFiscal;
+        nova = await salvarRascunhoVenda(supabase, rascunhoId, payload);
       } else {
-        nova = await criarNotaFiscal(payload);
+        const id = novoRascunhoId.current ??= crypto.randomUUID();
+        nova = await salvarRascunhoVenda(supabase, id, payload);
+        setRascunhoId(nova.id);
       }
 
       // Atualiza o romaneio com o nfe_numero para que o DANFE possa reconstruir os itens
@@ -1127,7 +1149,7 @@ function FaturamentoInner() {
               // Mescla campos do resultado (protocolo + emit_) no dados_nf_json existente
               const djAtual = (nova.dados_nf_json ?? {}) as Record<string, unknown>;
               const djAtualizado = {
-                ...djAtual,
+                ...djAtual, rascunho: undefined,
                 protocolo_autorizacao: res.protocolo ?? djAtual.protocolo_autorizacao,
                 ambiente:res.ambiente,fiscal_operacao_id:res.operacao_id,tributacao_itens:res.tributacao_itens,...(res.totais ?? {}),
                 emit_razao:      res.emit_razao ?? djAtual.emit_razao,
@@ -1195,7 +1217,7 @@ function FaturamentoInner() {
 
       const ehVendaOrdem    = contratoSelecionado?.venda_a_ordem === true;
       const ehEntregaFutura = fVenda.cfop === "6.117";
-      if (nova.status === "autorizada") { setRascunhoId(null); setRascunhoOrigem(""); }
+      if (nova.status === "autorizada") { setRascunhoId(null); setRascunhoOrigem(""); novoRascunhoId.current = null; }
       // Complementar autorizada: a NF de origem deixa de pedir complemento
       if (nova.status === "autorizada" && fVenda.complementar_de) {
         const { data: origem } = await supabase.from("notas_fiscais").select("dados_nf_json").eq("id", fVenda.complementar_de).maybeSingle();
@@ -2333,11 +2355,10 @@ function FaturamentoInner() {
                     }}>
                     Próxima aba →
                   </OperationalButton>
-                  {rascunhoId && (
-                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={salvarRascunhoNota} disabled={salvandoRascunho || emitindo}>
-                      {salvandoRascunho ? "Salvando…" : "Salvar rascunho"}
-                    </OperationalButton>
-                  )}
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={salvarRascunhoNota} disabled={salvandoRascunho || emitindo}
+                    title="Salva como rascunho no Painel de Notas, onde você poderá editar, conferir o espelho e transmitir.">
+                    {salvandoRascunho ? "Salvando…" : "Salvar e enviar ao painel"}
+                  </OperationalButton>
                   {/* Espelho — o DANFE montado como será transmitido, sem valor fiscal, para conferir antes */}
                   <OperationalButton data-arato-button="secondary" style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600 }}
                     onClick={() => comJanelaEspelho(j => emitirNota(j))} disabled={emitindo || salvandoRascunho}

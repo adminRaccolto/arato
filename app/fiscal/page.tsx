@@ -1,4 +1,5 @@
 "use client";
+import { corpoDaVendaPendente, excluirRascunhoVenda, transmitirVendaPendente, vendaPendenteDe, vendaPendenteEditavel } from "../../lib/fiscal/venda-pendente";
 import OperacaoFiscalSelect from "../../components/fiscal/OperacaoFiscalSelect";
 import EmissoesConferencia from "../../components/fiscal/EmissoesConferencia";
 import { imprimirCce } from "../../lib/fiscal/imprimir-cce";
@@ -550,8 +551,12 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa, onEditarRemessa }: {
+function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa, onEditarRemessa, onEspelhoVenda, onEditarVenda, onExcluirVenda, onTransmitirVenda }: {
   notas: NotaFiscal[];
+  onTransmitirVenda?: (n: NotaFiscal) => void;
+  onEspelhoVenda?: (n: NotaFiscal) => void;
+  onEditarVenda?: (n: NotaFiscal) => void;
+  onExcluirVenda?: (n: NotaFiscal) => void;
   /** IE do estabelecimento que emitiu (lib/fiscal/ie-nota.ts) — coluna IE Emitente */
   ieEmitente?: (n: NotaFiscal) => string | null;
   /** Remessa pendente de transmissão (vinda de Documentos Fiscais → Remessas): espelho, registrar depois de autorizada, excluir */
@@ -771,29 +776,34 @@ function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarS
                       )}
                       {nota.status === "em_digitacao" && (() => {
                         const isRascunho = (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
-                        if (isRascunho && onRetransmitir && remessaPendenteDe(nota.dados_nf_json)) {
+                        const venda = vendaPendenteDe(nota.dados_nf_json);
+                        const transmitir = venda ? onTransmitirVenda : onRetransmitir;
+                        const espelho = venda ? onEspelhoVenda : onEspelhoRemessa;
+                        const editar = venda ? onEditarVenda : onEditarRemessa;
+                        const excluir = venda ? onExcluirVenda : onExcluirRemessa;
+                        if (isRascunho && transmitir && (venda || remessaPendenteDe(nota.dados_nf_json))) {
                           return (
                             <>
-                              {onEspelhoRemessa && (
-                                <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onEspelhoRemessa(nota); }}
+                              {espelho && (
+                                <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); espelho(nota); }}
                                   title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal)"
                                   style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                                   📄 Espelho
                                 </OperationalButton>
                               )}
-                              {onEditarRemessa && remessaEditavel(nota) && (
-                                <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onEditarRemessa(nota); }}
-                                  title="Reabre a remessa na tela de Remessas para corrigir antes de transmitir"
+                              {editar && (venda ? vendaPendenteEditavel(nota) : remessaEditavel(nota)) && (
+                                <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); editar(nota); }}
+                                  title="Reabre o formulário de origem para conferir antes de transmitir"
                                   style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                                   ✏ Editar
                                 </OperationalButton>
                               )}
-                              <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
+                              <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); transmitir(nota); }}
                                 style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                                 ▶ Transmitir
                               </OperationalButton>
-                              {onExcluirRemessa && !nota.chave_acesso && (
-                                <OperationalButton data-arato-button="danger" onClick={(e) => { e.stopPropagation(); onExcluirRemessa(nota); }}
+                              {excluir && !nota.chave_acesso && (
+                                <OperationalButton data-arato-button="danger" onClick={(e) => { e.stopPropagation(); excluir(nota); }}
                                   style={{ padding: "5px 12px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11 }}>
                                   Excluir
                                 </OperationalButton>
@@ -1470,7 +1480,30 @@ function FiscalInner() {
     if (p) void comJanelaEspelho(async j => mostrarEspelhoNfe(await corpoComDestinatarioAtual(supabase, p), j));
   }
 
+  async function transmitirVendaDoPainel(nota: NotaFiscal) {
+    if (!(await confirmarAcao({ titulo: "Transmitir NF-e?", perigo: false,
+      mensagem: `Transmitir a NF-e para ${nota.destinatario}, ${fmtMoeda(nota.valor_total)}? Confira o espelho antes de confirmar.` }))) return;
+    setSalvando(true);
+    try {
+      const r = await transmitirVendaPendente(supabase, nota);
+      await carregar();
+      alert(r.ok ? r.aviso ?? `NF-e ${r.numero} autorizada.` : r.erro);
+    } catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+    finally { setSalvando(false); }
+  }
+  function espelhoVendaDoPainel(nota: NotaFiscal) {
+    void comJanelaEspelho(j => mostrarEspelhoNfe(corpoDaVendaPendente(nota), j));
+  }
+  async function excluirVendaDoPainel(nota: NotaFiscal) {
+    if (!(await confirmarAcao({ titulo: "Excluir rascunho", perigo: true, textoConfirmar: "Excluir",
+      mensagem: `Excluir o rascunho para ${nota.destinatario}?` }))) return;
+    try { await excluirRascunhoVenda(supabase, nota.id); await carregar(); }
+    catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+  }
+
   function abrirRetransmit(nota: NotaFiscal) {
+    if (vendaPendenteDe(nota.dados_nf_json) && nota.status === "rejeitada") { router.push(`/comercial/faturamento?corrigir=${nota.id}`); return; }
+    if (vendaPendenteDe(nota.dados_nf_json) && nota.status === "em_digitacao") { void transmitirVendaDoPainel(nota); return; }
     if (remessaPendenteDe(nota.dados_nf_json) && nota.status === "em_digitacao") { void transmitirRemessaDoPainel(nota); return; }
     if (ehDevolucaoBemTerceiro(nota.cfop)) { router.push(`/comercial/faturamento?corrigir=${nota.id}`); return; }
     const hoje  = hojeLocal();
@@ -2245,7 +2278,7 @@ function FiscalInner() {
                       { label: "Todas", count: notasVenda.length, filter: null },
                       { label: "Autorizadas", count: totalAutorizadas, filter: "autorizada" },
                       { label: "Rejeitadas", count: totalRejeitadas, filter: "rejeitada" },
-                      { label: "Processando", count: totalProcessando, filter: "em_digitacao" },
+                      { label: "Em digitação", count: totalProcessando, filter: "em_digitacao" },
                     ].map(f => {
                       const ativo = filtroStatusVenda === f.filter;
                       return (
@@ -2258,6 +2291,10 @@ function FiscalInner() {
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{notas.filter(n => n.auto).length}/{notasVenda.length} emitidas automaticamente</span>
                   </div>
                   <TabelaNFe ieEmitente={ieDaNota}
+                      onTransmitirVenda={n => void transmitirVendaDoPainel(n)}
+                      onEspelhoVenda={espelhoVendaDoPainel}
+                      onEditarVenda={n => router.push(`/comercial/faturamento?editar_nota=${n.id}`)}
+                      onExcluirVenda={excluirVendaDoPainel}
                     notas={filtroStatusVenda ? notasVenda.filter(n => n.status === filtroStatusVenda || (filtroStatusVenda === "rejeitada" && n.status === "denegada")) : notasVenda}
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => router.push(`/comercial/faturamento?complementar=${n.id}`)}
@@ -2310,6 +2347,10 @@ function FiscalInner() {
                     </div>
                   ) : (
                     <TabelaNFe ieEmitente={ieDaNota}
+                      onTransmitirVenda={n => void transmitirVendaDoPainel(n)}
+                      onEspelhoVenda={espelhoVendaDoPainel}
+                      onEditarVenda={n => router.push(`/comercial/faturamento?editar_nota=${n.id}`)}
+                      onExcluirVenda={excluirVendaDoPainel}
                       notas={notasDevolucao}
                       onCancelar={n => setModalCancelamento(n)}
                       onImprimirDanfe={n => n.chave_acesso
@@ -2342,7 +2383,11 @@ function FiscalInner() {
                       </OperationalButton>
                     </div>
                   ) : (
-                    <TabelaNFe ieEmitente={ieDaNota} notas={notasTransferencia} />
+                    <TabelaNFe ieEmitente={ieDaNota}
+                      onTransmitirVenda={n => void transmitirVendaDoPainel(n)}
+                      onEspelhoVenda={espelhoVendaDoPainel}
+                      onEditarVenda={n => router.push(`/comercial/faturamento?editar_nota=${n.id}`)}
+                      onExcluirVenda={excluirVendaDoPainel} notas={notasTransferencia} />
                   )}
                 </div>
               )}
@@ -2399,7 +2444,11 @@ function FiscalInner() {
                       <div style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-row)", borderTop: "0.5px solid var(--border-row)" }}>
                         NOTAS CANCELADAS
                       </div>
-                      <TabelaNFe ieEmitente={ieDaNota} notas={notasCanceladas} />
+                      <TabelaNFe ieEmitente={ieDaNota}
+                      onTransmitirVenda={n => void transmitirVendaDoPainel(n)}
+                      onEspelhoVenda={espelhoVendaDoPainel}
+                      onEditarVenda={n => router.push(`/comercial/faturamento?editar_nota=${n.id}`)}
+                      onExcluirVenda={excluirVendaDoPainel} notas={notasCanceladas} />
                     </div>
                   )}
 
