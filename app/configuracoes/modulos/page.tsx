@@ -300,6 +300,8 @@ const OPERACOES_PRESETS: OpPreset[] = [
     icms_cst_interno: "051", icms_cst_externo: "051",
     icms_aliq: 12, icms_base_reduzida_pct: 100,
     pis_cst: "08", pis_aliq: 0, cofins_cst: "08", cofins_aliq: 0,
+    // Sem cobrança: operação não onerosa — CST 410 / cClassTrib 410999 (matriz da Costa; decisão do dono 17/11/2026)
+    ibs_cbs_cst: "410", ibs_cbs_cclasstrib: "410999",
     ibs_cbs_imune: false, ibs_cbs_reducao_pct: 100,
     inf_cpl_template: "Remessa para depósito em armazém geral. Não constitui fato gerador de receita. ICMS diferido — RICMS/MT.",
     ativa: true,
@@ -311,6 +313,8 @@ const OPERACOES_PRESETS: OpPreset[] = [
     icms_cst_interno: "041", icms_cst_externo: "041",
     icms_aliq: 0, icms_base_reduzida_pct: 100,
     pis_cst: "08", pis_aliq: 0, cofins_cst: "08", cofins_aliq: 0,
+    // Sem cobrança: operação não onerosa — CST 410 / cClassTrib 410999 (matriz da Costa; decisão do dono 17/11/2026)
+    ibs_cbs_cst: "410", ibs_cbs_cclasstrib: "410999",
     ibs_cbs_imune: false, ibs_cbs_reducao_pct: 100,
     inf_cpl_template: "Remessa simbólica de mercadoria depositada em armazém geral. Não constitui fato gerador de receita. ICMS não tributado (CST 41).",
     ativa: true,
@@ -355,6 +359,8 @@ const OPERACOES_PRESETS: OpPreset[] = [
     icms_cst_interno: "051", icms_cst_externo: "051",
     icms_aliq: 12, icms_base_reduzida_pct: 100,
     pis_cst: "08", pis_aliq: 0, cofins_cst: "08", cofins_aliq: 0,
+    // Sem cobrança: operação não onerosa — CST 410 / cClassTrib 410999 (matriz da Costa; decisão do dono 17/11/2026)
+    ibs_cbs_cst: "410", ibs_cbs_cclasstrib: "410999",
     ibs_cbs_imune: false, ibs_cbs_reducao_pct: 100,
     inf_cpl_template: "Retorno de depósito em armazém geral ao estabelecimento de origem.",
     ativa: true,

@@ -13,6 +13,7 @@ const RELEASES = [
     modulos: ["Fiscal"],
     itens: [
       { tipo: "melhoria", texto: "Quando a Operação Fiscal da nota já define o CST e a classificação do IBS/CBS (ex.: remessa não onerosa), a NF-e emite sem o NCM estar na Tributação NCM. Sem isso, o aviso agora diz onde cadastrar (Carregar padrões do agro ou + Adicionar NCM)." },
+      { tipo: "correcao", texto: "Remessa para Armazém / Depósito, Remessa Simbólica para Armazenagem e Retorno de Armazém / Depósito passam a sair com IBS/CBS 410/410999 (operação não onerosa), em todos os clientes e nos modelos de cliente novo." },
     ],
     onde: "Documentos Fiscais → toda emissão de NF-e; Parâmetros do Sistema → Tributação NCM",
   },

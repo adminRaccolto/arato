@@ -907,7 +907,7 @@ Valores saem como número (somáveis), negativos em vermelho.
 
 **Devolução de compra de uso ou consumo (5.556/6.556):** fica no grupo Devoluções e sai com ICMS CST 20, que exige redução da base de cálculo. Ao escolher esse CFOP, na emissão ou no item da janela Devolver, aparecem os campos Redução da base (%), obrigatório, e Alíquota ICMS (%), que assume 17% na operação interna ou 12% na interestadual quando fica vazio.
 
-**Modelos de operação:** os modelos Remessa Simbólica para Armazenagem e Devolução de Compra, Uso/Consumo ficam em Configurações, Operações Fiscais.
+**Modelos de operação:** os modelos Remessa Simbólica para Armazenagem e Devolução de Compra, Uso/Consumo ficam em Configurações, Operações Fiscais. As operações Remessa para Armazém / Depósito (5905/6905), Remessa Simbólica para Armazenagem (5934/6934) e Retorno de Armazém / Depósito (5906/6906) definem IBS/CBS CST 410 / cClassTrib 410999 (operação não onerosa): a nota com elas não depende do NCM estar na Tributação NCM.
 
 **Emitente fiscal:** CPF/CNPJ, nome e endereço do emitente vêm do cadastro do produtor ou da empresa. Em Configurações → Sistema → Parâmetros Fiscais (NF-e) → aba Fiscal ficam certificado, série, numeração e tributação; os campos que vêm do cadastro aparecem travados. Para corrigir nome ou endereço na nota, altere em Cadastros. O endereço da IE escolhida tem prioridade sobre o endereço geral do cadastro. Se a nota disser que o titular não está cadastrado, cadastre-o em Produtores ou Empresas. Se a nota pedir para escolher o emitente, é porque o cliente tem mais de um.
 
