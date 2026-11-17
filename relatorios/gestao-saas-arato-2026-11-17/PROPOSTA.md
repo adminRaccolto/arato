@@ -4,7 +4,9 @@ Data: 17/11/2026 — America/Cuiaba.
 
 Estado: proposta de escopo e arquitetura, baseada em leitura do código do Arato. Não representa uma aplicação implementada ou uma migração executada.
 
-Decisão confirmada pelo usuário: **aplicação separada, conectada ao Arato**. O nome “Arato Gestão” abaixo é provisório. A localização do projeto, os canais prioritários, o provedor financeiro efetivamente usado hoje e a origem dos dados do MentoraSys ainda precisam ser definidos.
+Decisões confirmadas pelo usuário: **aplicação separada, conectada ao Arato**; canais de aquisição **Instagram, site, WhatsApp e Google**; cobranças atuais no **Asaas vinculado ao MentoraSys**. O nome “Arato Gestão” abaixo é provisório. A localização do projeto, o formato de uso de cada canal e o acesso ao histórico/exportação do MentoraSys ainda precisam ser definidos.
+
+O detalhamento dos conectores e da transição financeira está em [INTEGRACOES.md](INTEGRACOES.md).
 
 ## 1. Objetivo e fronteiras
 
@@ -37,7 +39,7 @@ Aceite comercial, assinatura do contrato, liberação do ambiente, geração de 
 | Módulo | Controles necessários | Primeira etapa |
 |---|---|---|
 | Painel executivo | Receita recorrente, recebimentos, atrasos, funil, renovações, tarefas e alertas | Sim, com números derivados das fontes conciliadas |
-| Aquisição | Formulários, origem/campanha/UTM, referência do canal, indicação e parceiro; prevenção de duplicidade | Adaptador inicial conforme canais confirmados |
+| Aquisição | Formulários, origem/campanha/UTM, referência do canal, indicação e parceiro; prevenção de duplicidade | Site e atribuição de origem primeiro; Instagram/WhatsApp/Google por seus conectores oficiais |
 | CRM | Leads, empresas/pessoas, contatos, decisores, responsáveis, etapas, motivos de perda, atividades e agenda | Sim |
 | Propostas e vendas | Itens, plano/módulos, implantação, desconto, validade, versões, negociação e aceite | Sim |
 | Contratos | Documento e versões, vigência, condições, contatos, assinatura/aceite, aditivos e cancelamento | Sim; integração de assinatura conforme provedor |
@@ -161,7 +163,7 @@ Critério de aceite: proposta aceita, versão contratual e preço vigente são r
 
 ### Etapa 3 — Faturamento e cobrança
 
-Faturas, gateway confirmado pelo usuário, importação das cobranças existentes, confirmação de pagamentos, envios, inadimplência e conciliação. Testes de falha/repetição antes da transferência do emissor de cobrança.
+Faturas, Asaas atual ligado ao MentoraSys, importação das cobranças existentes, confirmação de pagamentos, envios, inadimplência e conciliação. Testes de falha/repetição antes da transferência do emissor de cobrança.
 
 Critério de aceite: cobrança repetida não duplica fatura nem gateway; evento atrasado não apaga recebimento confirmado; falha de envio aparece como pendência; migração não cobra novamente um período quitado.
 
@@ -185,8 +187,8 @@ A nova aplicação não deve começar a faturar apenas porque uma conta existent
 
 ## 12. Pontos ainda a confirmar
 
-- Canais de aquisição prioritários e quem administra suas contas.
-- Serviço que emite as cobranças hoje e sua vinculação ao MentoraSys.
+- Formato dos canais confirmados: Instagram profissional/Direct/anúncios, WhatsApp Business/API e Google orgânico/Ads; responsáveis e permissões das contas.
+- Conta Asaas atual, identificação das cobranças exclusivas do Arato e responsável pela geração de cada recorrência (MentoraSys ou Asaas).
 - Acesso ao projeto/exportação do MentoraSys para mapear dados; nenhuma necessidade de compartilhar segredos no chat.
 - Entidade que contrata/fatura o serviço, ciclos comerciais usados e política de implantação, trial, reajuste, renovação, inadimplência e cancelamento.
 - Equipe inicial e separação de permissões.
@@ -201,4 +203,4 @@ Essas definições fecham conectores e regras comerciais; não impedem a organiz
 - Documentação oficial Asaas — [Eventos para assinaturas](https://docs.asaas.com/docs/eventos-para-assinaturas): possibilidade de repetição de eventos.
 - Documentação oficial Asaas — [NFS-e automática para assinaturas](https://docs.asaas.com/docs/emitir-notas-fiscais-automaticamente-para-assinaturas): habilitação e configuração fiscal necessárias.
 
-O Asaas é uma integração encontrada no código atual, não uma decisão confirmada sobre o provedor do novo sistema ou do MentoraSys.
+O usuário confirmou que as cobranças atuais do Arato usam o Asaas vinculado ao MentoraSys. A proposta é aproveitar essa integração e seus registros existentes, com transferência controlada da gestão das cobranças do Arato. Não foi alterada nenhuma configuração do provedor.
