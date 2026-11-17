@@ -84,3 +84,20 @@ test("autorizada mas o registro falhou: avisa para não emitir outra e guarda o 
   assert.match(!r.ok ? r.erro : "", /autorizada[\s\S]*Registrar remessa[\s\S]*Não emita outra/);
   assert.equal((updates[1].dados_nf_json as Record<string, unknown>).remessa_registro_erro, "depósito inválido");
 });
+
+test("painel: espelho e transmissão usam o cadastro atual do armazém (IE corrigida depois de ir para o painel)", async () => {
+  const { corpoComDestinatarioAtual } = await import("./remessa-pendente");
+  const p = { corpo: { fazenda_id: "f1", destinatario: { nome: "LUFT", cpf_cnpj: "87689402010005", logradouro: "RODOVIA RODOVIA BR 242", uf: "MT" } },
+    registro: { acao: "registrar", destinatario: { pessoa_id: "pes-1" } } };
+  const atual = { nome: "LUFT LOGISTICS LTDA", cpf_cnpj: "87.689.402/0100-05", inscricao_est: " 00137865210", logradouro: "RODOVIA BR 242", numero: "S/N", bairro: "ZONA RURAL",
+    municipio_ibge: "5107065", municipio: "QUERENCIA", estado: "MT", cep: "78643-000" };
+  const db = { from: () => { const q = { select: () => q, eq: () => q, maybeSingle: () => Promise.resolve({ data: atual, error: null }) }; return q; } } as unknown as SupabaseClient;
+  const c = await corpoComDestinatarioAtual(db, p);
+  const d = c.destinatario as Record<string, unknown>;
+  assert.equal(d.ie, "00137865210");
+  assert.equal(d.logradouro, "RODOVIA BR 242");
+  assert.equal(d.cep, "78643000");
+  assert.equal(c.fazenda_id, "f1");
+  // Sem armazém no registro: corpo guardado
+  assert.equal(await corpoComDestinatarioAtual(db, { ...p, registro: { acao: "registrar" } }), p.corpo);
+});

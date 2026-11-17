@@ -12,6 +12,7 @@ const RELEASES = [
     titulo: "Remessa: aviso de armazém sem Inscrição Estadual e busca na SEFAZ",
     modulos: ["Fiscal"],
     itens: [
+      { tipo: "correcao", texto: "Remessa pendente no Painel de Notas: o espelho e a transmissão usam o cadastro atual do armazém. Antes usavam a cópia do momento em que a nota foi para o painel, e a IE ou o endereço corrigidos depois não entravam na NF-e." },
       { tipo: "melhoria", texto: "Quando o armazém escolhido na Remessa não tem Inscrição Estadual no cadastro, a tela avisa e oferece \"Buscar IE na SEFAZ\": consulta o cadastro de contribuintes pelo CNPJ e grava a IE no cadastro, com confirmação. Emitir sem a IE pede confirmação." },
     ],
     onde: "Documentos Fiscais → Remessas → Nova Remessa",

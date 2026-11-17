@@ -11,7 +11,7 @@ import { confirmarAcao } from "../../components/ConfirmarAcao";
 import ModalRecusaDevolucao from "../../components/fiscal/ModalRecusaDevolucao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../lib/fiscal/espelho-cliente";
-import { registrarRemessaAutorizada, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "../../lib/fiscal/remessa-pendente";
+import { corpoComDestinatarioAtual, registrarRemessaAutorizada, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "../../lib/fiscal/remessa-pendente";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
 import { modoDaNota } from "../../lib/fiscal/modo-faturamento";
@@ -1444,7 +1444,8 @@ function FiscalInner() {
   }
   function espelhoRemessaDoPainel(nota: NotaFiscal) {
     const p = remessaPendenteDe(nota.dados_nf_json);
-    if (p) void comJanelaEspelho(j => mostrarEspelhoNfe(p.corpo, j));
+    // Destinatário do cadastro atual (correção feita depois de ir para o painel entra no espelho)
+    if (p) void comJanelaEspelho(async j => mostrarEspelhoNfe(await corpoComDestinatarioAtual(supabase, p), j));
   }
 
   function abrirRetransmit(nota: NotaFiscal) {

@@ -82,12 +82,33 @@ export async function registrarRemessaAutorizada(db: SupabaseClient, n: NotaReme
   return { ok: true, numero: String(n.numero ?? "") };
 }
 
+/**
+ * Corpo da emissão com o destinatário (armazém) lido do cadastro ATUAL. A remessa pendente guarda uma cópia do cadastro
+ * do momento em que foi para o painel; corrigido o cadastro depois (ex.: IE que faltava — LUFT no Cleber, 17/11/2026),
+ * o espelho e a transmissão usavam a cópia antiga. Sem cadastro (excluído), vale a cópia guardada.
+ */
+export async function corpoComDestinatarioAtual(db: SupabaseClient, p: RemessaPendente): Promise<Record<string, unknown>> {
+  const pessoaId = (p.registro.destinatario as { pessoa_id?: string } | undefined)?.pessoa_id;
+  if (!pessoaId) return p.corpo;
+  const { data: a } = await db.from("pessoas").select("nome, cpf_cnpj, inscricao_est, logradouro, numero, bairro, municipio_ibge, municipio, estado, cep").eq("id", pessoaId).maybeSingle();
+  if (!a) return p.corpo;
+  const t = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : undefined);
+  const d = (p.corpo.destinatario ?? {}) as Record<string, unknown>;
+  return { ...p.corpo, destinatario: { ...d,
+    nome: t(a.nome) ?? d.nome, cpf_cnpj: String(a.cpf_cnpj ?? "").replace(/\D/g, "") || d.cpf_cnpj, ie: t(a.inscricao_est),
+    logradouro: t(a.logradouro) ?? d.logradouro, numero: t(a.numero) ?? d.numero, bairro: t(a.bairro) ?? d.bairro,
+    municipio_ibge: t(a.municipio_ibge) ?? d.municipio_ibge, municipio_nome: t(a.municipio) ?? d.municipio_nome, uf: t(a.estado) ?? d.uf,
+    cep: String(a.cep ?? "").replace(/\D/g, "") || d.cep,
+  } };
+}
+
 /** Transmite a remessa pendente do painel: emite com o corpo guardado e, autorizada, atualiza a nota e registra a remessa. */
 export async function transmitirRemessaPendente(db: SupabaseClient, n: NotaRemessa, hoje: string): Promise<ResultadoRemessaPendente> {
   const p = remessaPendenteDe(n.dados_nf_json);
   if (!p) return { ok: false, erro: "Esta NF não veio de uma remessa pendente." };
   const dados = (n.dados_nf_json ?? {}) as Record<string, unknown>;
-  const resp = await fetch("/api/fiscal/emitir-nfe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...p.corpo, nota_id: n.id }) });
+  const corpo = await corpoComDestinatarioAtual(db, p);
+  const resp = await fetch("/api/fiscal/emitir-nfe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...corpo, nota_id: n.id }) });
   const res = await resp.json().catch(() => ({})) as Resposta;
   if (res.pendente || res.sincronizacao_pendente) {
     return { ok: false, pendenteSefaz: true, erro: "A SEFAZ ainda não confirmou o resultado. Consulte em Emissões em conferência antes de transmitir de novo — não emita outra NF.\n\n" + (res.xMotivo ?? "") };
@@ -98,8 +119,12 @@ export async function transmitirRemessaPendente(db: SupabaseClient, n: NotaRemes
     return { ok: false, erro: `NF-e não autorizada — continua pendente no painel.\n\n${motivo}` };
   }
   const { sefaz_erro: _s, rascunho: _r, ...resto } = dados; void _s; void _r;
+  const dAtual = (corpo.destinatario ?? {}) as Record<string, string | undefined>;
   const novosDados = {
     ...resto, ...(res.totais ?? {}), ambiente: res.ambiente, protocolo_autorizacao: res.protocolo || undefined,
+    // Painel mostra o destinatário como foi na nota (cadastro atual na transmissão)
+    dest_ie: dAtual.ie || undefined, dest_endereco: dAtual.logradouro || resto.dest_endereco, dest_numero: dAtual.numero || resto.dest_numero,
+    dest_bairro: dAtual.bairro || resto.dest_bairro, dest_cidade: dAtual.municipio_nome || resto.dest_cidade, dest_cep: dAtual.cep || resto.dest_cep,
     fiscal_operacao_id: res.operacao_id, tributacao_itens: res.tributacao_itens,
     ...Object.fromEntries(EMIT.map(k => [k, (res[k] as string | undefined) || undefined])),
   };
