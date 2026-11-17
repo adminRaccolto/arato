@@ -465,8 +465,8 @@ export default function ContasAReceberPage() {
     safra: "safra", ciclo: "ciclo", cc: "centro de custo", lancamento: "dd/mm", vencimento: "dd/mm", venc_orig: "dd/mm",
     baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
-  const passaColunas = (l: RelLancamento) => Object.entries(filtrosCol).every(([k, f]) => {
-    if (!f.trim() || k === "pessoa") return true;   // Cliente: pela busca no banco (nome e descrição)
+  const passaColunas = (l: RelLancamento, emBordero = false) => Object.entries(filtrosCol).every(([k, f]) => {
+    if (!f.trim() || k === "pessoa" || (emBordero && k === "numero")) return true;   // Cliente: pela busca no banco (nome e descrição)
     if (k === "valor" || k === "pago" || k === "saldo") {
       if (k === "valor") return casaFiltroNumero(l.valor, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, l.valor), f));
       return casaFiltroNumero(k === "pago" ? l.valor_pago : saldoBRL(l), f);
@@ -476,8 +476,8 @@ export default function ContasAReceberPage() {
   });
   const semDataTela = !periodoManual && (!!fBusca.trim() || !!(filtrosCol.nf ?? "").trim() || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho));
   // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
-  const passaExtras = (l: RelLancamento) => {
-    if (!passaColunas(l)) return false;
+  const passaExtras = (l: RelLancamento, emBordero = false) => {
+    if (!passaColunas(l, emBordero)) return false;
     if (fMoeda.size > 0 && !fMoeda.has(l.moeda ?? "BRL")) return false;
     if (fProdutor.size > 0 && !fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")) return false;
     if (fAtalho) {
@@ -490,9 +490,9 @@ export default function ContasAReceberPage() {
     return true;
   };
   const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
-  const filtrosCR = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: semDataTela ? "" : fDataDe, ate: semDataTela ? "" : fDataAte, hoje: hojeISO() };
+  const filtrosCR = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", numero: filtrosCol.numero ?? "", de: semDataTela ? "" : fDataDe, ate: semDataTela ? "" : fDataAte, hoje: hojeISO() };
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCR)
-    && (!temExtras || itensDoBordero(b, resultado ?? []).some(passaExtras)));
+    && (!temExtras || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
   const linhas = (resultado ?? []).filter(l => {
     if (tituloVinculado(l, vinculos)) return false;
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
@@ -2172,9 +2172,9 @@ export default function ContasAReceberPage() {
                   style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div data-arato-dialog-body="true">
-                <label data-arato-label="true" style={lbl}>Nº do título (opcional)</label>
+                <label data-arato-label="true" style={lbl}>Nº do documento (automático se vazio)</label>
                 <input value={borderoNumeroTitulo} onChange={e => setBorderoNumeroTitulo(e.target.value)}
-                  placeholder="Ex: nº do boleto"
+                  placeholder="Gerado ao criar: BD000001…"
                   style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
             </div>

@@ -13,6 +13,7 @@ export type FiltrosCP = {
   /** Só nome do fornecedor/cliente (a NF tem filtro próprio no cabeçalho da coluna Nº NF). */
   busca: string;
   nf?: string;
+  numero?: string;
   de: string; ate: string; hoje: string;
 };
 export const chaveTitulo = (origem: string, id: string) => `${origem}:${id}`;
@@ -71,6 +72,7 @@ export function vencimentoBordero(b: PagamentoLote, titulos: TituloGrid[]) {
     .filter((d): d is string => !!d).sort().at(-1) || b.data_pagamento || null;
 }
 export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: FiltrosCP) {
+  if (f.numero?.trim() && !texto(b.numero_titulo).includes(texto(f.numero.trim()))) return false;
   if (f.origens.size && !(b.itens ?? []).some(i => f.origens.has(i.origem_tabela ?? "lancamentos"))) return false;
   const itens = itensDoBordero(b, titulos);
   const resumo = resumoBordero(b);

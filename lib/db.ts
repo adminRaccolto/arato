@@ -1248,8 +1248,7 @@ export async function criarPagamentoLote(
   // Data alvo do borderô (ex: "vou pagar isso dia 15") — independente da
   // data_pagamento real, que só existe depois, na confirmação.
   data_vencimento: string | null = null,
-  // Referência do documento agregador (ex: nº do boleto) — distinta da
-  // descrição livre.
+  // Referência opcional do documento agregador. Sem ela, o banco gera o número de controle do borderô.
   numero_titulo: string | null = null,
 ): Promise<import("./supabase").PagamentoLote> {
   validarItensBordero(itens);
@@ -1258,7 +1257,7 @@ export async function criarPagamentoLote(
   // 1. Cria o lote
   const { data: lote, error: le } = await supabase
     .from("pagamento_lotes")
-    .insert({ fazenda_id, tipo, conta_bancaria: null, data_pagamento: null, data_vencimento, numero_titulo, valor_total, descricao, status: "pendente" })
+    .insert({ fazenda_id, tipo, conta_bancaria: null, data_pagamento: null, data_vencimento, numero_titulo: numero_titulo?.trim() || null, valor_total, descricao, status: "pendente" })
     .select()
     .single();
   if (le) throw le;

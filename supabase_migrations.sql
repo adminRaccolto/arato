@@ -23222,3 +23222,50 @@ SELECT count(*) FILTER (WHERE permite_nf_produtos) AS nf_produtos, count(*) FILT
        count(*) FILTER (WHERE permite_cte) AS cte, count(*) AS total
   FROM operacoes_gerenciais;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 456 — Número automático e curto do borderô
+-- Novos borderôs sem número recebem BD000001, BD000002... no próprio banco.
+-- Preserva referências manuais e não renumera históricos ou fotografias de baixas.
+-- =============================================================================
+BEGIN;
+LOCK TABLE public.pagamento_lotes IN SHARE ROW EXCLUSIVE MODE;
+CREATE SEQUENCE IF NOT EXISTS public.pagamento_lotes_numero_seq AS bigint START WITH 1;
+
+-- Reexecutar a seção não volta o contador nem reutiliza números de lotes excluídos.
+DO $$
+DECLARE v_maior bigint; v_atual bigint; v_usada boolean;
+BEGIN
+  SELECT max(substring(numero_titulo FROM 3)::bigint) INTO v_maior
+    FROM public.pagamento_lotes WHERE numero_titulo ~ '^BD[0-9]{6,18}$';
+  SELECT last_value,is_called INTO v_atual,v_usada FROM public.pagamento_lotes_numero_seq;
+  IF v_maior IS NOT NULL AND (v_maior>v_atual OR (v_maior=v_atual AND NOT v_usada)) THEN
+    PERFORM setval('public.pagamento_lotes_numero_seq',v_maior,true);
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.fn_numero_bordero() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_numero text;
+BEGIN
+  IF TG_OP='UPDATE' THEN
+    -- O controle automático acompanha o borderô durante pagamento e estorno.
+    IF OLD.numero_titulo ~ '^BD[0-9]{6,18}$' THEN NEW.numero_titulo:=OLD.numero_titulo; END IF;
+    RETURN NEW;
+  END IF;
+  -- Um saldo parcial é um novo borderô. A cópia do número automático da origem recebe outro número.
+  IF nullif(trim(NEW.numero_titulo),'') IS NULL OR NEW.numero_titulo ~ '^BD[0-9]{6,18}$' THEN
+    v_numero:=nextval('public.pagamento_lotes_numero_seq')::text;
+    NEW.numero_titulo:='BD'||lpad(v_numero,greatest(6,length(v_numero)),'0');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.fn_numero_bordero() FROM PUBLIC,anon,authenticated;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pagamento_lotes_numero_automatico ON public.pagamento_lotes(numero_titulo)
+  WHERE numero_titulo ~ '^BD[0-9]{6,18}$';
+DROP TRIGGER IF EXISTS trg_numero_bordero ON public.pagamento_lotes;
+CREATE TRIGGER trg_numero_bordero BEFORE INSERT OR UPDATE OF numero_titulo ON public.pagamento_lotes
+  FOR EACH ROW EXECUTE FUNCTION public.fn_numero_bordero();
+COMMIT;
+NOTIFY pgrst, 'reload schema';

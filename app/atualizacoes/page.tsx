@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-e",
+    data: "17/11/2026",
+    titulo: "Número automático para borderôs",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao criar um borderô sem preencher o número do documento, o sistema gera um controle curto, como BD000001. O número aparece na coluna Nº Documento do CP e do CR e nos relatórios. A opção de informar uma referência manual continua disponível." },
+      { tipo: "melhoria", texto: "O controle automático é preservado nas baixas e estornos. Quando um pagamento parcial gera outro borderô para o saldo, esse novo borderô recebe seu próprio número. O filtro da coluna também localiza o número do borderô." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Criar Borderô",
+  },
+  {
     versao: "2026.11.17-d",
     data: "17/11/2026",
     titulo: "Pedido de Compra: fazenda opcional",

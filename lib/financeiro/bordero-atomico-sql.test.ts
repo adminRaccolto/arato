@@ -42,6 +42,9 @@ test("borderô atômico conserva valores e restaura a situação anterior", asyn
     await db.exec(`CREATE TRIGGER trg_parcial BEFORE UPDATE ON lancamentos FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();
       CREATE TRIGGER trg_parcial BEFORE UPDATE ON empresa_lancamentos FOR EACH ROW EXECUTE FUNCTION fn_dividir_titulo_parcial();`);
     await db.exec(sql); await db.exec(sql);
+    const numeroInicio = source.indexOf("-- Seção 456 —");
+    const numeroFim = source.indexOf("\n-- Seção ", numeroInicio + 10);
+    await db.exec(source.slice(numeroInicio, numeroFim < 0 ? undefined : numeroFim));
     const fixture = async () => db.exec(`
       INSERT INTO pagamento_lotes(id,fazenda_id,tipo,status,valor_total,data_vencimento) VALUES('${id(20)}','${id(1)}','pagar','pendente',300,'2026-11-15');
       INSERT INTO lancamentos(id,fazenda_id,lote_id,status,valor,data_vencimento) VALUES('${id(30)}','${id(1)}','${id(20)}','em_aberto',100,'2026-11-15');
@@ -57,6 +60,17 @@ test("borderô atômico conserva valores e restaura a situação anterior", asyn
       await fixture(); try { await run(); } finally {
         await db.exec("DELETE FROM extrato_transacoes; DELETE FROM pagamento_lote_itens; DELETE FROM lancamentos; DELETE FROM empresa_lancamentos; DELETE FROM pagamento_lotes;");
       }
+    });
+    await scenario("controle automático acompanha baixa, saldo parcial e estorno", async () => {
+      const numero = (await db.query<{numero_titulo:string}>("SELECT numero_titulo FROM pagamento_lotes WHERE id=$1",[id(20)])).rows[0].numero_titulo;
+      assert.match(numero, /^BD\d{6}$/);
+      await action('confirmar',{valor_pago:150});
+      const partes = (await db.query<{numero_titulo:string}>("SELECT numero_titulo FROM pagamento_lotes ORDER BY numero_titulo")).rows;
+      assert.equal(partes.length, 2);
+      assert.equal(new Set(partes.map(x=>x.numero_titulo)).size, 2);
+      await action('estornar');
+      assert.deepEqual((await db.query("SELECT numero_titulo FROM pagamento_lotes")).rows,[{numero_titulo:numero}]);
+      assert.deepEqual((await values()).map(x=>x.valor),['100','200']);
     });
     await scenario("A100 + B200: quita 300 com 100/200, sem média", async () => {
       await action("confirmar", {valor_pago:300,principal_anterior:0});

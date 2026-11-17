@@ -3,6 +3,13 @@ import test from "node:test";
 import type { PagamentoLote } from "../supabase";
 import { filtrarBordero, filtrarTitulo, itensDoBordero, numeroNF, tituloVinculado, vinculosBorderos, type FiltrosCP, type TituloGrid } from "./cp-grid.ts";
 
+test("filtro de documento encontra o controle automático do borderô", () => {
+  const b = { id:"b1",numero_titulo:"BD000123",valor_total:100,status:"pendente",itens:[] } as unknown as PagamentoLote;
+  const f: FiltrosCP = {origens:new Set(),status:new Set(),busca:"",numero:"bd000123",de:"",ate:"",hoje:"2026-11-17"};
+  assert.equal(filtrarBordero(b,[],f),true);
+  assert.equal(filtrarBordero(b,[],{...f,numero:"BD000999"}),false);
+});
+
 const titulo: TituloGrid = { id: "nf1", origem_tabela: "lancamentos", lote_id: null,
   status_normalizado: "em_aberto", data_vencimento: "2026-10-01", descricao: "Insumos",
   pessoa_nome: "Dípagro", empresa_nome: null, nfe_numero: "123" };
