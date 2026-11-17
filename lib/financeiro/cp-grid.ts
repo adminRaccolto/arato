@@ -6,11 +6,13 @@ export type TituloGrid = {
   status_normalizado: string | null; data_vencimento: string | null;
   descricao: string | null; pessoa_nome: string | null; empresa_nome: string | null;
   nfe_numero: string | null;
+  /** Nº do documento lido da origem (contrato, apólice, pedido…) — o filtro da coluna Nº Documento também procura nele */
+  documento_origem?: string | null;
   valor_pago?: number | null;
 };
 export type FiltrosCP = {
   origens: Set<string>; status: Set<string>;
-  /** Só nome do fornecedor/cliente (a NF tem filtro próprio no cabeçalho da coluna Nº NF). */
+  /** Só nome do fornecedor/cliente (o documento tem filtro próprio no cabeçalho da coluna Nº Documento). */
   busca: string;
   nf?: string;
   numero?: string;
@@ -60,7 +62,7 @@ export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   if (t.status_normalizado === "cartao") return false;
   return (!f.origens.size || f.origens.has(t.origem_tabela)) && corresponde(
     t.status_normalizado ?? "", t.data_vencimento,
-    nomesDoTitulo(t), [t.nfe_numero], f, t.valor_pago ?? 0);
+    nomesDoTitulo(t), [t.nfe_numero, t.documento_origem], f, t.valor_pago ?? 0);
 }
 export function itensDoBordero<T extends TituloGrid>(b: PagamentoLote, titulos: T[]) {
   const vinculos = vinculosBorderos([b]);
@@ -77,7 +79,7 @@ export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: Filtr
   const itens = itensDoBordero(b, titulos);
   const resumo = resumoBordero(b);
   return corresponde(resumo.status, vencimentoBordero(b, titulos),
-    itens.flatMap(nomesDoTitulo), itens.map(t => t.nfe_numero), f, resumo.liquidado);
+    itens.flatMap(nomesDoTitulo), itens.flatMap(t => [t.nfe_numero, t.documento_origem]), f, resumo.liquidado);
 }
 
 // O número sequencial do lançamento e documentos de contratos não são números de NF.

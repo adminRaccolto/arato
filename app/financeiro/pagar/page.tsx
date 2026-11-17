@@ -78,6 +78,7 @@ import { statusExibido } from "../../../lib/financeiro/titulos";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
 import { arredondarMoeda, ratearMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
+import { carregarOrigemTitulos, juntarObservacoes } from "../../../lib/financeiro/origem-titulos";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import SelectBusca from "../../../components/SelectBusca";
@@ -125,6 +126,9 @@ type RelLancamento = {
   conta_bancaria: string | null;
   conta_bancaria_nome: string | null;
   observacao: string | null;
+  // Lidos da tela que criou o título (lib/financeiro/origem-titulos.ts): nº do documento e observação de lá
+  documento_origem?: string | null;
+  observacao_origem?: string | null;
   natureza?: string | null;   // "previsao" = Previsão de Gastos ou folha em rascunho (Seção 376); sem a seção, vale a origem
 };
 
@@ -256,7 +260,7 @@ const COLS_GRID_CP: ColDef[] = [
   { key: "saldo", label: "Saldo" },
   { key: "moeda", label: "Moeda" },
   { key: "conta", label: "Conta" },
-  { key: "nf", label: "Nº NF" },
+  { key: "nf", label: "Nº Documento" },
   { key: "lancado", label: "Lançado via" },
   { key: "usuario", label: "Usuário" },
   { key: "observacao", label: "Observação" },
@@ -392,17 +396,20 @@ export default function ContasAPagarPage() {
       // Número fiscal e usuário são detalhes: não retêm a abertura dos títulos e dos saldos.
       setCarregandoDetalhes(true);
       const visiveis = classificados.filter(exibirNoCP);
-      void Promise.allSettled([carregarNumerosNF(supabase, visiveis), carregarUsuariosTitulos(supabase, visiveis)]).then(([numeros, usuarios]) => {
+      void Promise.allSettled([carregarNumerosNF(supabase, visiveis), carregarUsuariosTitulos(supabase, visiveis), carregarOrigemTitulos(supabase, visiveis)]).then(([numeros, usuarios, origens]) => {
         if (seq !== cargaSeq.current) return;
         const porNumero = new Map(numeros.status === "fulfilled" ? numeros.value.map(t => [`${t.origem_tabela}:${t.id}`,t.nfe_numero]) : []);
         const porUsuario = new Map(usuarios.status === "fulfilled" ? usuarios.value.map(t => [`${t.origem_tabela}:${t.id}`,t.usuario_origem]) : []);
+        const porOrigem = origens.status === "fulfilled" ? origens.value : new Map();
         setResultado(atuais => atuais?.map(t => {
           const chave = `${t.origem_tabela}:${t.id}`;
+          const o = porOrigem.get(chave);
           return { ...t, ...(porNumero.has(chave) ? { nfe_numero: porNumero.get(chave)! } : {}),
-            ...(porUsuario.has(chave) ? { usuario_origem: porUsuario.get(chave) } : {}) };
+            ...(porUsuario.has(chave) ? { usuario_origem: porUsuario.get(chave) } : {}),
+            ...(o ? { documento_origem: o.documento, observacao_origem: o.observacao_origem } : {}) };
         }) ?? null);
         setCarregandoDetalhes(false);
-        if (numeros.status === "rejected" || usuarios.status === "rejected") setErroDetalhes("Os títulos foram carregados, mas não foi possível atualizar todos os números fiscais ou usuários. Clique em Atualizar para tentar novamente.");
+        if (numeros.status === "rejected" || usuarios.status === "rejected" || origens.status === "rejected") setErroDetalhes("Os títulos foram carregados, mas não foi possível atualizar todos os números de documento, observações ou usuários. Clique em Atualizar para tentar novamente.");
       });
     } catch (e: unknown) {
       if (seq !== cargaSeq.current) return;
@@ -494,15 +501,15 @@ export default function ContasAPagarPage() {
     descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
-    baixa: fmtData(l.data_baixa), moeda: l.moeda ?? "", conta: l.conta_bancaria_nome ?? "", nf: l.nfe_numero ?? "",
-    usuario: l.usuario_origem ?? "", lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
+    baixa: fmtData(l.data_baixa), moeda: l.moeda ?? "", conta: l.conta_bancaria_nome ?? "", nf: l.nfe_numero ?? l.documento_origem ?? "",
+    usuario: l.usuario_origem ?? "", lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: juntarObservacoes(l.observacao, l.observacao_origem) ?? "",
     status: STATUS_OPCOES.find(x => x.v === statusExibido(l.status_normalizado, l.data_vencimento))?.label ?? "",
   } as Record<string, string>)[k] ?? "";
   // Colunas com filtro de texto no cabeçalho (as mesmas que textoColuna sabe ler) e o exemplo de cada uma
   const COLUNAS_TEXTO_FILTRO: Record<string, string> = {
     origem: "PF / PJ", produtor: "produtor", numero: "nº", pessoa: "nome", descricao: "descrição", operacao: "operação",
     safra: "safra", ciclo: "ciclo", cc: "centro de custo", lancamento: "dd/mm", vencimento: "dd/mm", venc_orig: "dd/mm",
-    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
+    baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº doc.", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
   const passaColunas = (l: RelLancamento, emBordero = false) => Object.entries(filtrosCol).every(([k, f]) => {
     if (!f.trim() || k === "pessoa" || (emBordero && k === "numero")) return true;   // Fornecedor/Cliente: pela busca (nome, emitente da NF, descrição)
@@ -2120,9 +2127,9 @@ export default function ContasAPagarPage() {
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Pago em</div>
                     <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
                   </div>}
-                  {(l.numero || l.nfe_numero) && <div>
+                  {(l.numero || l.nfe_numero || l.documento_origem) && <div>
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
-                    <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.numero}</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.documento_origem ?? l.numero}</div>
                   </div>}
                   {l.adiantamento_fornecedor && <div><div style={{ color: "#888", fontSize: 10 }}>Adiantamento a fornecedor</div><strong>{l.pedido_compra_id ? `Pedido nº ${l.pedido_numero ?? l.pedido_compra_id.slice(0, 8)}` : "Sem pedido vinculado"}</strong><div>O pagamento deste título gera crédito; a compensação na NF não gera nova saída bancária.</div></div>}
                   {l.origem_lancamento && <div>
@@ -2131,9 +2138,9 @@ export default function ContasAPagarPage() {
                   </div>}
                 </div>
 
-                {l.observacao && (
+                {juntarObservacoes(l.observacao, l.observacao_origem) && (
                   <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#555", borderLeft: "3px solid #DDE2EE" }}>
-                    {l.observacao}
+                    {juntarObservacoes(l.observacao, l.observacao_origem)}
                   </div>
                 )}
               </div>
@@ -2436,14 +2443,14 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px" }}>{l.conta_bancaria_nome ?? "—"}</td>
                   ),
                   nf: (
-                    <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? l.documento_origem ?? "—"}</td>
                   ),
                   usuario: (<td style={{ padding: "7px 10px" }}>{l.usuario_origem ?? (carregandoDetalhes ? "Carregando…" : erroDetalhes ? "Indisponível" : "—")}</td>),
                   lancado: (
                     <td style={{ padding: "7px 10px", color: "#888" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "—"}</td>
                   ),
                   observacao: (
-                    <td style={{ padding: "7px 10px", color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.observacao ?? undefined}>{l.observacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={juntarObservacoes(l.observacao, l.observacao_origem) ?? undefined}>{juntarObservacoes(l.observacao, l.observacao_origem) ?? "—"}</td>
                   ),
                   acoes: (
                     <td style={{ textAlign: "right" }}>
@@ -2637,9 +2644,9 @@ export default function ContasAPagarPage() {
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Pago em</div>
                     <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
                   </div>}
-                  {(l.numero || l.nfe_numero) && <div>
+                  {(l.numero || l.nfe_numero || l.documento_origem) && <div>
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
-                    <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.numero}</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.documento_origem ?? l.numero}</div>
                   </div>}
                   {l.adiantamento_fornecedor && <div><div style={{ color: "#888", fontSize: 10 }}>Adiantamento a fornecedor</div><strong>{l.pedido_compra_id ? `Pedido nº ${l.pedido_numero ?? l.pedido_compra_id.slice(0, 8)}` : "Sem pedido vinculado"}</strong><div>O pagamento deste título gera crédito; a compensação na NF não gera nova saída bancária.</div></div>}
                   {l.origem_lancamento && <div>
@@ -2648,9 +2655,9 @@ export default function ContasAPagarPage() {
                   </div>}
                 </div>
 
-                {l.observacao && (
+                {juntarObservacoes(l.observacao, l.observacao_origem) && (
                   <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#555", borderLeft: "3px solid #DDE2EE" }}>
-                    {l.observacao}
+                    {juntarObservacoes(l.observacao, l.observacao_origem)}
                   </div>
                 )}
               </div>

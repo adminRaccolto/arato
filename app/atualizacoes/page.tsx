@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-g",
+    data: "17/11/2026",
+    titulo: "Contas a Pagar: Nº Documento e Observação vindos da origem",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A coluna Nº NF virou Nº Documento e mostra o número do documento de onde o título veio: NF, NFS-e, CT-e, contrato financeiro, cota de consórcio, apólice de seguro, pedido de compra ou contrato de compra de terra. O filtro da coluna procura em todos eles." },
+      { tipo: "melhoria", texto: "A Observação junta a do título com a observação digitada na tela de origem (NF, NFS-e, CT-e, contrato, consórcio, apólice, pedido, previsão), sem o texto automático da importação do SIEG. Vale também na ficha do título e no PDF/Excel." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.11.17-f",
     data: "17/11/2026",
     titulo: "Contratos financeiros: parcela paga em parte continua editável",
