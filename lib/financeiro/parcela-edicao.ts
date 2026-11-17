@@ -78,3 +78,44 @@ export function parcelaJaPaga(
   if (!dela.length) return false;
   return Math.abs(dela.reduce((soma, t) => soma + Number(t.valor), 0) - Number(parcela.valor_parcela)) < 0.05;
 }
+
+export type Componente = "amortizacao" | "juros" | "encargos";
+export type PagamentoParcela = { total: boolean; pagos: Set<Componente> };
+
+/**
+ * O que da parcela já foi pago no CP, por componente (títulos "— Parcela N — Amortização/Juros/Encargos" baixados).
+ * Achado 17/11/2026 (Cleber, Sicredi, parcela 2): só os juros pagos faziam a parcela inteira contar como paga — a edição
+ * da amortização em aberto era descartada e o próximo salvamento apagava o título da amortização sem recriar.
+ * `total`: título único da parcela pago, título legado sem componente na mesma data, ou (data mudou depois do pagamento)
+ * títulos com o número da parcela que somam o valor dela — mesma proteção de parcelaJaPaga.
+ */
+export function componentesPagos(
+  parcela: { num_parcela: number; data_vencimento: string; valor_parcela: number },
+  titulosPagos: { data_vencimento: string; descricao?: string | null; valor: number }[],
+): PagamentoParcela {
+  const pagos = new Set<Componente>();
+  let total = false;
+  for (const t of titulosPagos.filter(x => x.data_vencimento === parcela.data_vencimento)) {
+    const m = /— Parcela \d+\s*—\s*(Amortiza|Juros|Encargos)/i.exec(t.descricao ?? "");
+    if (!m) { total = true; continue; }
+    const c = m[1].toLowerCase();
+    pagos.add(c.startsWith("amortiza") ? "amortizacao" : c === "juros" ? "juros" : "encargos");
+  }
+  if (!total && pagos.size === 0) {
+    const dela = titulosPagos.filter(t => Number(/— Parcela (\d+)/.exec(t.descricao ?? "")?.[1]) === parcela.num_parcela);
+    if (dela.length && Math.abs(dela.reduce((s, t) => s + Number(t.valor), 0) - Number(parcela.valor_parcela)) < 0.05) total = true;
+  }
+  return { total, pagos };
+}
+
+/** Componentes que a parcela tem (os que geram título no CP). */
+export function componentesDaParcela(p: { amortizacao: number; juros: number; despesas_acessorios?: number | null }): Componente[] {
+  return [...(p.amortizacao > 0 ? ["amortizacao" as const] : []), ...(p.juros > 0 ? ["juros" as const] : []), ...(Number(p.despesas_acessorios ?? 0) > 0 ? ["encargos" as const] : [])];
+}
+
+/** Parcela inteiramente paga: título único pago, ou todos os componentes dela pagos. */
+export function parcelaQuitada(p: { amortizacao: number; juros: number; despesas_acessorios?: number | null }, c: PagamentoParcela): boolean {
+  if (c.total) return true;
+  const precisa = componentesDaParcela(p);
+  return precisa.length > 0 && precisa.every(k => c.pagos.has(k));
+}

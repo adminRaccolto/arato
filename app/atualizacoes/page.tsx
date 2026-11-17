@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-f",
+    data: "17/11/2026",
+    titulo: "Contratos financeiros: parcela paga em parte continua editável",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Pagar só os juros (ou só a amortização) de uma parcela fazia a parcela inteira contar como paga. A edição do que estava em aberto era descartada ao salvar, e um novo Salvar Parcelas e Lançar no CP podia apagar o título em aberto. Agora a parcela aparece como Parcial: trava só o que foi pago e a data, e o resto é editável e relançado." },
+      { tipo: "correcao", texto: "Edição de parcela quitada não some mais sem aviso: a tela informa que não foi aplicada." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → aba Pagamento",
+  },
+  {
     versao: "2026.11.17-e",
     data: "17/11/2026",
     titulo: "Número automático para borderôs",

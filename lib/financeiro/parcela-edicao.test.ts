@@ -58,3 +58,20 @@ test("parcelaJaPaga: mesma data, data alterada depois do pagamento e cronograma 
   assert.equal(parcelaJaPaga({ num_parcela: 3, data_vencimento: "2027-04-30", valor_parcela: 291304.81 }, pagos), false);
   assert.equal(parcelaJaPaga({ num_parcela: 4, data_vencimento: "2027-04-30", valor_parcela: 60000 }, pagos), false);
 });
+
+test("componentesPagos: só os juros pagos não quitam a parcela; amortização segue editável e relançável", async () => {
+  const { componentesPagos, parcelaQuitada } = await import("./parcela-edicao");
+  const P2 = { num_parcela: 2, data_vencimento: "2026-11-13", valor_parcela: 638637.57, amortizacao: 485333.33, juros: 153304.24, despesas_acessorios: 0 };
+  const soJuros = [{ data_vencimento: "2026-11-13", descricao: "Sicredi — Parcela 2 — Juros", valor: 153304.24 }];
+  const c = componentesPagos(P2, soJuros);
+  assert.equal(c.total, false);
+  assert.deepEqual([...c.pagos], ["juros"]);
+  assert.equal(parcelaQuitada(P2, c), false);
+  const ambos = [...soJuros, { data_vencimento: "2026-11-13", descricao: "Sicredi — Parcela 2 — Amortização", valor: 485333.33 }];
+  assert.equal(parcelaQuitada(P2, componentesPagos(P2, ambos)), true);
+  // Título único da parcela, ou legado sem componente na mesma data: parcela inteira paga
+  assert.equal(componentesPagos(P2, [{ data_vencimento: "2026-11-13", descricao: "Sicredi — Parcela 2", valor: 638637.57 }]).total, true);
+  // Data mudou depois do pagamento: número da parcela + soma igual ao valor continua quitando (proteção do Banco DLL)
+  assert.equal(componentesPagos({ ...P2, data_vencimento: "2026-11-20" }, [{ data_vencimento: "2026-11-13", descricao: "X — Parcela 2", valor: 638637.57 }]).total, true);
+  assert.equal(componentesPagos({ ...P2, data_vencimento: "2026-11-20" }, soJuros).total, false);
+});

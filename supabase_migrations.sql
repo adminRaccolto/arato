@@ -23269,3 +23269,38 @@ CREATE TRIGGER trg_numero_bordero BEFORE INSERT OR UPDATE OF numero_titulo ON pu
   FOR EACH ROW EXECUTE FUNCTION public.fn_numero_bordero();
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 456 — Parcela de contrato financeiro só fica "pago" quando todos os títulos dela foram baixados (17/11/2026)
+--   A baixa de UM título da parcela (ex.: só os juros) marcava a parcela inteira como paga: a amortização em aberto
+--   ficava travada na edição e o próximo "Salvar Parcelas e Lançar no CP" apagava o título dela sem recriar (achado:
+--   Cleber, Sicredi, parcela 2). Esta trava vale para qualquer caminho que grave o status (baixa, conciliação, borderô).
+--   A tela mostra "Parcial" pelos títulos; a coluna status continua só em_aberto/pago/vencido.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION public.fn_parcela_pago_so_quitada() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.status = 'pago' AND OLD.status IS DISTINCT FROM 'pago' AND EXISTS (
+       SELECT 1 FROM lancamentos l
+        WHERE l.contrato_financeiro_id = NEW.contrato_id AND l.tipo = 'pagar' AND coalesce(l.auto, false)
+          AND l.data_vencimento = NEW.data_vencimento AND l.descricao LIKE '%— Parcela %'
+          AND l.status NOT IN ('baixado', 'cancelado')) THEN
+    NEW.status := CASE WHEN NEW.data_vencimento < (now() AT TIME ZONE 'America/Cuiaba')::date THEN 'vencido' ELSE 'em_aberto' END;
+    NEW.data_pagamento := OLD.data_pagamento;
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_parcela_pago_so_quitada ON parcelas_pagamento;
+CREATE TRIGGER trg_parcela_pago_so_quitada BEFORE UPDATE OF status ON parcelas_pagamento
+  FOR EACH ROW EXECUTE FUNCTION public.fn_parcela_pago_so_quitada();
+
+-- Corrige as que já estão assim (em 17/11/2026: 1 parcela — Sicredi do Cleber, parcela 2, amortização em aberto)
+UPDATE parcelas_pagamento p
+   SET status = CASE WHEN p.data_vencimento < (now() AT TIME ZONE 'America/Cuiaba')::date THEN 'vencido' ELSE 'em_aberto' END,
+       data_pagamento = NULL
+ WHERE p.status = 'pago' AND EXISTS (
+       SELECT 1 FROM lancamentos l
+        WHERE l.contrato_financeiro_id = p.contrato_id AND l.tipo = 'pagar' AND coalesce(l.auto, false)
+          AND l.data_vencimento = p.data_vencimento AND l.descricao LIKE '%— Parcela %'
+          AND l.status NOT IN ('baixado', 'cancelado'));
+NOTIFY pgrst, 'reload schema';
