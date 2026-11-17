@@ -2,7 +2,7 @@
 import OperacaoFiscalSelect from "../../../components/fiscal/OperacaoFiscalSelect";
 import EmissoesConferencia from "../../../components/fiscal/EmissoesConferencia";
 import { ehRetornoBemTerceiro, finalidadeDoRetorno } from "../../../lib/fiscal/retorno-bem-terceiro";
-import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../../lib/nfe/cst-por-cfop";
+import { icmsDaEmissao, OPCOES_CST_EMISSAO } from "../../../lib/fiscal/icms-emissao";
 import { MODOS_FATURAMENTO, lerModoFaturamento, modoDaNota } from "../../../lib/fiscal/modo-faturamento";
 import { hojeLocal } from "../../../lib/data-local";
 import { fazendaDoProdutor } from "../../../lib/fazenda-de";
@@ -664,6 +664,7 @@ function FaturamentoInner() {
       dest_ie: txt("dest_ie"), dest_endereco: txt("dest_endereco"), dest_numero: txt("dest_numero"), dest_bairro: txt("dest_bairro"),
       dest_cep: txt("dest_cep"), dest_fone: txt("dest_fone"), dest_cidade: txt("dest_cidade"), dest_uf: txt("dest_uf"), dest_municipio_ibge: txt("dest_municipio_ibge"),
       cfop: nota.cfop, natureza_texto: nota.natureza ?? "", observacao: nota.observacao ?? "",
+      cst_icms: txt("cst_icms"), aliq_icms: txt("aliq_icms"), red_bc: txt("red_bc"),
       data_emissao: hoje, data_saida: hoje, hora_saida: agora,
       frete_conta: txt("frete_conta") || FVENDA_INICIAL.frete_conta,
       transportadora: txt("transportadora"), transp_cpf_cnpj: txt("transp_cpf_cnpj"), transp_ie: txt("transp_ie"),
@@ -713,6 +714,7 @@ function FaturamentoInner() {
       dest_ie: txt("dest_ie"), dest_endereco: txt("dest_endereco"), dest_numero: txt("dest_numero"), dest_bairro: txt("dest_bairro"),
       dest_cep: txt("dest_cep"), dest_fone: txt("dest_fone"), dest_cidade: txt("dest_cidade"), dest_uf: txt("dest_uf"), dest_municipio_ibge: txt("dest_municipio_ibge"),
       cfop: nota.cfop, natureza_texto: nota.natureza ?? "",
+      cst_icms: txt("cst_icms"), aliq_icms: txt("aliq_icms"), red_bc: txt("red_bc"),
       observacao: `NF-e complementar à NF-e ${nota.numero}${dj.romaneio_numero ? `, por diferença de peso apurada no romaneio ${dj.romaneio_numero}` : ""}.`,
       data_emissao: hoje, data_saida: hoje, hora_saida: agora,
       frete_conta: txt("frete_conta") || FVENDA_INICIAL.frete_conta,
@@ -903,6 +905,7 @@ function FaturamentoInner() {
       observacao:        [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
       auto:              false,
       itens_json: nfeItens.map(i => ({
+        ...icmsDaEmissao(fVenda),
         item:           i.item,
         ncm:            i.ncm,
         cfop:           fVenda.cfop,
@@ -912,6 +915,7 @@ function FaturamentoInner() {
         valor_total:    i.valor_total,
       })),
       dados_nf_json: {
+        cst_icms: fVenda.cst_icms, aliq_icms: fVenda.aliq_icms, red_bc: fVenda.red_bc,
         operacao_fiscal_id:operacaoFiscalId || null,variaveis_fiscais:variaveisFiscais,
         modulo_key:      moduloFiscal?.modulo ?? "",
         emit_razao:      emit.razao_social ?? "",
@@ -987,6 +991,9 @@ function FaturamentoInner() {
     return {
       fazenda_id: nota.fazenda_id,
       modulo_key: moduloKey,
+      data_emissao: nota.data_emissao,
+      operacao_fiscal_id: dj.operacao_fiscal_id || undefined,
+      variaveis_fiscais: (nota.dados_nf_json as Record<string, unknown> | null)?.variaveis_fiscais,
       destinatario: {
         nome:           nota.destinatario,
         cpf_cnpj:       nota.cnpj_destinatario || undefined,
@@ -1000,7 +1007,8 @@ function FaturamentoInner() {
         municipio_nome: dj.dest_cidade || undefined,
         uf:             dj.dest_uf || undefined,
       },
-      itens: itens.map((i, idx) => ({
+      itens: itens.map(i => ({
+        ...icmsDaEmissao({ cfop: i.cfop ?? nota.cfop, cst_icms: dj.cst_icms ?? "", aliq_icms: dj.aliq_icms ?? "", red_bc: dj.red_bc ?? "" }),
         descricao:      i.item,
         ncm:            i.ncm,
         cfop:           i.cfop ?? nota.cfop,
@@ -1058,12 +1066,7 @@ function FaturamentoInner() {
                 unidade:        i.unidade.toUpperCase(),
                 quantidade:     parseFloat(i.quantidade) || 0,
                 valor_unitario: desmascarar(i.valor_unitario),
-                ...(["5.556","6.556"].includes(fVenda.cfop) ? {
-                  pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
-                  pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
-                } : {}),
-                // CST escolhido na devolução (vazio = automático pelo CFOP; 5.411 → 060)
-                ...(fVenda.cst_icms && NATUREZAS_DEVOLUCAO.some(n => n.codigo === fVenda.cfop) && !["5.556","6.556"].includes(fVenda.cfop) ? { cst_icms: fVenda.cst_icms.slice(-2) } : {}),
+                ...icmsDaEmissao(fVenda),
               })),
               natureza:  fVenda.natureza_texto,
               inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
@@ -1440,25 +1443,25 @@ function FaturamentoInner() {
             <label data-arato-label="true" style={lbl}>CFOP</label>
             <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
-          {NATUREZAS_DEVOLUCAO.some(n => n.codigo === fVenda.cfop) && !["5.556","6.556"].includes(fVenda.cfop) && (
-            <div>
-              <label data-arato-label="true" style={lbl}>CST do ICMS</label>
-              <SelectField style={inp} value={fVenda.cst_icms} onChange={e => fv({ cst_icms: e.target.value })} title="Vale para todos os itens. Automático = regra do CFOP">
-                <option value="">Automático ({cstExibicaoPorCfop(fVenda.cfop)})</option>
-                {OPCOES_CST_ICMS.map(o => <option key={o.v} value={o.v}>{o.rotulo}</option>)}
-              </SelectField>
-            </div>
-          )}
-          {["5.556","6.556"].includes(fVenda.cfop) && (<>
+          <div style={{ gridColumn: "span 2" }}>
+            <label data-arato-label="true" style={lbl}>CST do ICMS</label>
+            <SelectField style={inp} value={fVenda.cst_icms} onChange={e => fv({ cst_icms: e.target.value })} title="Vale para todos os itens desta nota. Automático segue a Operação Fiscal ou o CFOP.">
+              <option value="">Automático — Operação Fiscal / CFOP</option>
+              {OPCOES_CST_EMISSAO.map(o => <option key={o.v} value={o.v}>{o.rotulo}</option>)}
+            </SelectField>
+          </div>
+          {(fVenda.cst_icms === "020" || (!fVenda.cst_icms && ["5.556","6.556"].includes(fVenda.cfop))) && (
             <div>
               <label data-arato-label="true" style={lbl}>Redução da base (%) *</label>
               <input style={inp} value={fVenda.red_bc} onChange={e => fv({ red_bc: e.target.value })} placeholder="Ex.: 41,18" />
             </div>
+          )}
+          {(["000","020","051"].includes(fVenda.cst_icms) || (!fVenda.cst_icms && ["5.556","6.556"].includes(fVenda.cfop))) && (
             <div>
               <label data-arato-label="true" style={lbl}>Alíquota ICMS (%)</label>
               <input style={inp} value={fVenda.aliq_icms} onChange={e => fv({ aliq_icms: e.target.value })} placeholder={fVenda.cfop === "5.556" ? "17" : "12"} />
             </div>
-          </>)}
+          )}
           <div>
             <label data-arato-label="true" style={lbl}>Modelo</label>
             <SelectField style={inp} value={fVenda.modelo_nf} onChange={e => fv({ modelo_nf: e.target.value })}>

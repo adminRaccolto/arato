@@ -7,6 +7,7 @@ type NotaOrigem = {
 };
 
 const CAMPOS_COPIADOS = [
+  "cst_icms", "aliq_icms", "red_bc",
   "modulo_key", "produtor_id", "ie_id", "emit_cnpj", "emit_ie",
   "dest_tipo_pessoa", "dest_ie", "dest_endereco", "dest_numero", "dest_bairro", "dest_cep", "dest_fone", "dest_cidade", "dest_uf", "dest_municipio_ibge",
   "frete_conta", "transportadora", "transp_cpf_cnpj", "transp_ie", "transp_endereco", "transp_numero", "transp_cidade", "placa", "uf_placa",

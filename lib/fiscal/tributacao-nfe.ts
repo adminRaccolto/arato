@@ -28,6 +28,9 @@ export async function resolverTributacaoNFe(db:SupabaseClient,fazendaId:string,i
   const data=input.data_emissao?.slice(0,10) ?? new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Cuiaba"}).format(new Date());
   const vigente=(r:Regra)=>(!r.vigencia_inicio||r.vigencia_inicio<=data)&&(!r.vigencia_fim||r.vigencia_fim>=data);
   return Promise.all(input.itens.map(async item=>{
+    const icmsManual = item.cst_icms_manual === true;
+    if (icmsManual && (!item.cst_icms || ["1","4"].includes(crt)))
+      throw new Error("A escolha de CST do ICMS exige regime normal. Para Simples Nacional ou MEI, utilize o CSOSN da configuração fiscal e mantenha o CST em Automático.");
     const cfop=dig(item.cfop);const interno=["1","5"].includes(cfop[0]);
     const candidatas=ops.filter(r=>vigente(r)&&dig(interno?r.cfop_interno:r.cfop_externo)===cfop);
     const op=input.operacao_fiscal_id?candidatas.find(r=>r.id===input.operacao_fiscal_id):escolher(candidatas,fazendaId,"CFOP "+cfop);
@@ -47,10 +50,10 @@ export async function resolverTributacaoNFe(db:SupabaseClient,fazendaId:string,i
       pisCfop=linhas[0]?.cst_pis;cofinsCfop=linhas[0]?.cst_cofins;
     }
     const out:ItemNFe={...item,
-      cst_icms:input.operacao_fiscal_id?(interno?op?.icms_cst_interno:op?.icms_cst_externo):item.cst_icms ?? (interno?regra?.icms_cst_interno:regra?.icms_cst_externo),
+      cst_icms:icmsManual?item.cst_icms:input.operacao_fiscal_id?(interno?op?.icms_cst_interno:op?.icms_cst_externo):item.cst_icms ?? (interno?regra?.icms_cst_interno:regra?.icms_cst_externo),
       csosn:item.csosn || config.csosn_padrao || undefined,
-      pICMS:(input.operacao_fiscal_id?undefined:item.pICMS) ?? (regra?.icms_aliq!=null?Number(regra.icms_aliq):undefined),
-      pRedBC:(input.operacao_fiscal_id?undefined:item.pRedBC) ?? (regra?.icms_base_reduzida_pct!=null?100-Number(regra.icms_base_reduzida_pct):undefined),
+      pICMS:(input.operacao_fiscal_id&&!icmsManual?undefined:item.pICMS) ?? (regra?.icms_aliq!=null?Number(regra.icms_aliq):undefined),
+      pRedBC:(input.operacao_fiscal_id&&!icmsManual?undefined:item.pRedBC) ?? (regra?.icms_base_reduzida_pct!=null?100-Number(regra.icms_base_reduzida_pct):undefined),
       pis_cst:item.pis_cst ?? pisCfop ?? regra?.pis_cst, pis_aliq:item.pis_aliq ?? (regra?.pis_aliq!=null?Number(regra.pis_aliq):undefined),
       cofins_cst:item.cofins_cst ?? cofinsCfop ?? regra?.cofins_cst,cofins_aliq:item.cofins_aliq ?? (regra?.cofins_aliq!=null?Number(regra.cofins_aliq):undefined),
       regra_fiscal:{data,operacao_id:op?.id ?? null,ncm_id:ncm?.id ?? null,og_id:input.operacao_gerencial_id ?? null,regra:regra ?? null,texto_legal:op?.inf_cpl_template || ncmAplica?.inf_cpl || null},

@@ -56,6 +56,8 @@ export interface IBSCBSItem {
 }
 
 export interface ItemNFe {
+  /** CST explicitamente escolhido na emissão; preserva a escolha sobre o ICMS da operação fiscal. */
+  cst_icms_manual?: boolean;
   codigo: string;
   descricao: string;
   ncm: string;            // ex: "12011000"

@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
         pRedBC?: number;
         pICMS?: number;
         cst_icms?: string;
+        cst_icms_manual?: boolean;
         csosn?: string;
         pis_cst?: string;
         pis_aliq?: number;
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
         pRedBC:        item.pRedBC,
         pICMS:         item.pICMS,
         cst_icms:      item.cst_icms,
+        cst_icms_manual: item.cst_icms_manual === true,
         csosn:item.csosn,pis_cst:item.pis_cst,pis_aliq:item.pis_aliq,cofins_cst:item.cofins_cst,cofins_aliq:item.cofins_aliq,
       })),
       natureza: body.natureza,

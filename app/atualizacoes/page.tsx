@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-q",
+    data: "17/11/2026",
+    titulo: "CST do ICMS editável na emissão da NF avulsa",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "Na emissão da NF-e, a aba Operações passa a mostrar o campo CST do ICMS também na venda avulsa. Mantenha Automático para seguir a Operação Fiscal ou o CFOP, ou escolha o CST para todos os itens da nota. Alíquota e redução de base aparecem conforme a opção escolhida." },
+      { tipo: "correcao", texto: "A escolha manual é usada no XML e no espelho e permanece ao salvar, reabrir ou duplicar o rascunho. A Operação Fiscal continua definindo os demais tributos. Emitentes do Simples Nacional ou MEI mantêm o enquadramento por CSOSN na configuração fiscal." },
+    ],
+    onde: "Documentos Fiscais → Venda Avulsa → Nova NF-e → Operações",
+  },
+  {
     versao: "2026.11.17-p",
     data: "17/11/2026",
     titulo: "Venda Avulsa: produto escolhido do cadastro",
