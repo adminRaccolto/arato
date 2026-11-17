@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-i",
+    data: "17/11/2026",
+    titulo: "Contas a Pagar: coluna Parcela",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Nova coluna Parcela no Contas a Pagar (ex.: 3/10), ao lado da Descrição. Vem dos campos de parcela do título ou do trecho \"Parcela n/m\" da descrição (consórcio, seguro); no contrato financeiro mostra n/total do cronograma. O trecho de parcela sai da Descrição exibida. A coluna tem filtro e entra no PDF/Excel." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.11.17-h",
     data: "17/11/2026",
     titulo: "Remessa: aviso de armazém sem Inscrição Estadual e busca na SEFAZ",

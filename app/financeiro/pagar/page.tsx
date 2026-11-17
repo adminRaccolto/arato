@@ -78,7 +78,7 @@ import { statusExibido } from "../../../lib/financeiro/titulos";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
 import { arredondarMoeda, ratearMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
-import { carregarOrigemTitulos, juntarObservacoes } from "../../../lib/financeiro/origem-titulos";
+import { carregarOrigemTitulos, descricaoSemParcela, juntarObservacoes } from "../../../lib/financeiro/origem-titulos";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import SelectBusca from "../../../components/SelectBusca";
@@ -129,6 +129,7 @@ type RelLancamento = {
   // Lidos da tela que criou o título (lib/financeiro/origem-titulos.ts): nº do documento e observação de lá
   documento_origem?: string | null;
   observacao_origem?: string | null;
+  parcela?: string | null;   // "3/10" — campos de parcela do título ou o trecho "Parcela n/t" da descrição
   natureza?: string | null;   // "previsao" = Previsão de Gastos ou folha em rascunho (Seção 376); sem a seção, vale a origem
 };
 
@@ -246,6 +247,7 @@ const COLS_GRID_CP: ColDef[] = [
   { key: "numero", label: "Nº" },
   { key: "pessoa", label: "Fornecedor" },
   { key: "descricao", label: "Descrição" },
+  { key: "parcela", label: "Parcela" },
   { key: "operacao", label: "Operação" },
   { key: "safra", label: "Safra" },
   { key: "ciclo", label: "Ciclo" },
@@ -406,7 +408,7 @@ export default function ContasAPagarPage() {
           const o = porOrigem.get(chave);
           return { ...t, ...(porNumero.has(chave) ? { nfe_numero: porNumero.get(chave)! } : {}),
             ...(porUsuario.has(chave) ? { usuario_origem: porUsuario.get(chave) } : {}),
-            ...(o ? { documento_origem: o.documento, observacao_origem: o.observacao_origem } : {}) };
+            ...(o ? { documento_origem: o.documento, observacao_origem: o.observacao_origem, parcela: o.parcela } : {}) };
         }) ?? null);
         setCarregandoDetalhes(false);
         if (numeros.status === "rejected" || usuarios.status === "rejected" || origens.status === "rejected") setErroDetalhes("Os títulos foram carregados, mas não foi possível atualizar todos os números de documento, observações ou usuários. Clique em Atualizar para tentar novamente.");
@@ -498,7 +500,7 @@ export default function ContasAPagarPage() {
   const textoColuna = (l: RelLancamento, k: string): string => ({
     origem: l.origem_tabela === "lancamentos" ? "PF Produtor" : "PJ Empresa",
     produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.pessoa_nome ?? nomeDoFuncionario(l) ?? "",
-    descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
+    descricao: (l.parcela ? descricaoSemParcela(l.descricao) : l.descricao) ?? "", parcela: l.parcela ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
     baixa: fmtData(l.data_baixa), moeda: l.moeda ?? "", conta: l.conta_bancaria_nome ?? "", nf: l.nfe_numero ?? l.documento_origem ?? "",
@@ -507,7 +509,7 @@ export default function ContasAPagarPage() {
   } as Record<string, string>)[k] ?? "";
   // Colunas com filtro de texto no cabeçalho (as mesmas que textoColuna sabe ler) e o exemplo de cada uma
   const COLUNAS_TEXTO_FILTRO: Record<string, string> = {
-    origem: "PF / PJ", produtor: "produtor", numero: "nº", pessoa: "nome", descricao: "descrição", operacao: "operação",
+    origem: "PF / PJ", produtor: "produtor", numero: "nº", pessoa: "nome", descricao: "descrição", parcela: "3/10", operacao: "operação",
     safra: "safra", ciclo: "ciclo", cc: "centro de custo", lancamento: "dd/mm", vencimento: "dd/mm", venc_orig: "dd/mm",
     baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº doc.", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
@@ -2330,6 +2332,7 @@ export default function ContasAPagarPage() {
                     numero: cel(b.numero_titulo ?? "—", { color: "#888", fontVariantNumeric: "tabular-nums" }),
                     pessoa: cel(info?.fornecedor ?? "—", { fontWeight: 600 }),
                     descricao: cel(<><span style={{ fontWeight: 700, color: corTexto }}>Borderô</span> · {qtdItens} NF{qtdItens !== 1 ? "s" : ""}</>),
+                    parcela: cel("—", { textAlign: "center" }),
                     operacao: cel(info?.operacao ?? "—"),
                     safra: cel("—"), ciclo: cel("—"), cc: cel("—"),
                     lancamento: cel(fmtData(b.created_at), { color: "#888" }),
@@ -2385,13 +2388,16 @@ export default function ContasAPagarPage() {
                   ),
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>
-                      {l.descricao ?? "—"}
+                      {(l.parcela ? descricaoSemParcela(l.descricao) : l.descricao) || "—"}
                       {l.adiantamento_fornecedor && <span style={{ marginLeft: 6, padding: "2px 6px", borderRadius: 4, background: "#FFF0CD", color: "#765000", fontWeight: 700, fontSize: 10 }}>Adiantamento{l.pedido_compra_id ? ` · Pedido nº ${l.pedido_numero ?? l.pedido_compra_id.slice(0, 8)}` : " · Sem pedido"}</span>}
                       {l.origem_lancamento === "pedido_compra" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>Pedido de Compra</span>}
                       {l.origem_lancamento === "pedido_compra" && motivoDaObservacao(l.observacao) && (
                         <div style={{ fontSize: 10, color: "#666", marginTop: 2, fontStyle: "normal" }}>Valor reduzido: {motivoDaObservacao(l.observacao)}</div>
                       )}
                     </td>
+                  ),
+                  parcela: (
+                    <td style={{ padding: "7px 10px", textAlign: "center", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{l.parcela ?? "—"}</td>
                   ),
                   operacao: (
                     <td style={{ padding: "7px 10px" }}>{l.operacao_gerencial_nome ?? "—"}</td>
