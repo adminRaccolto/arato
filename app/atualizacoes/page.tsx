@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-a",
+    data: "17/11/2026",
+    titulo: "NFS-e: sem escolha de fazenda, Centro de Custo obrigatório e OGs de Notas Fiscais",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A NFS-e não pede mais a fazenda. Ela vem da I.E. do tomador (ou da importação) e aparece só para conferência. O Centro de Custo passa a ser obrigatório para processar." },
+      { tipo: "correcao", texto: "A lista de Operações Gerenciais da NFS-e é a mesma da NF de produtos. OG marcada só para Notas Fiscais de Entrada aparece e processa a nota sem título no Contas a Pagar, depois de confirmar." },
+      { tipo: "correcao", texto: "A auditoria de saúde dos dados não acusa mais como \"sem título\" a NF ou NFS-e processada com OG sem financeiro." },
+    ],
+    onde: "Documentos Fiscais → Notas de Fornecedores (NF de Serviços)",
+  },
+  {
     versao: "2026.11.16-q",
     data: "16/11/2026",
     titulo: "DANFE com código de barras e horário certo; endereço do destinatário sem rua",

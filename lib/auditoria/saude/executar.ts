@@ -36,11 +36,11 @@ export async function carregarExclusoes(sb: SupabaseClient) {
 }
 
 export async function carregarBase(sb: SupabaseClient): Promise<Base> {
-  const [fazendas, nfs, itens, nfse, lanc, emp, dels, movs, espelhoPj, insumos, depositos] = await Promise.all([
+  const [fazendas, nfs, itens, nfse, lanc, emp, dels, movs, espelhoPj, insumos, depositos, ogsSemFin] = await Promise.all([
     todas<{ id: string; conta_id: string | null; nome: string }>(sb, "fazendas", "id,conta_id,nome"),
-    todas<NfE>(sb, "nf_entradas", "id,fazenda_id,numero,emitente_nome,emitente_cnpj,valor_total,status,chave_acesso,cfop,nf_origem_id,pessoa_id,lancamento_id,emp_lancamento_id,processado_por,data_emissao,pedido_compra_id"),
+    todas<NfE>(sb, "nf_entradas", "id,fazenda_id,numero,emitente_nome,emitente_cnpj,valor_total,status,chave_acesso,cfop,nf_origem_id,pessoa_id,lancamento_id,emp_lancamento_id,processado_por,data_emissao,pedido_compra_id,operacao_gerencial_id"),
     todas<{ id: string; nf_entrada_id: string; cfop: string | null }>(sb, "nf_entrada_itens", "id,nf_entrada_id,cfop"),
-    todas<NfS>(sb, "nf_servicos", "id,fazenda_id,numero_nf,prestador_nome,prestador_id,valor_liquido,valor_servico,empresa_id,lancamento_id,processado_por,data_prestacao,status", q => q.eq("status", "processada")),
+    todas<NfS>(sb, "nf_servicos", "id,fazenda_id,numero_nf,prestador_nome,prestador_id,valor_liquido,valor_servico,empresa_id,lancamento_id,processado_por,data_prestacao,status,operacao_gerencial_id", q => q.eq("status", "processada")),
     todas<Omit<Tit, "tabela" | "origem"> & { origem_lancamento: string | null }>(sb, "lancamentos",
       "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,contrato_financeiro_id,data_vencimento,numero_documento,origem_lancamento,num_parcela,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto,titulo_origem_id"),
     todas<Omit<Tit, "tabela" | "contrato_financeiro_id" | "num_parcela">>(sb, "empresa_lancamentos",
@@ -50,6 +50,7 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
     todas<{ id: string; nfe_numero: string | null }>(sb, "rel_lancamentos", "id,nfe_numero", q => q.eq("origem_tabela", "empresa_lancamentos")),
     todas<{ id: string; nome: string }>(sb, "insumos", "id,nome"),
     todas<{ id: string; nome: string }>(sb, "depositos", "id,nome"),
+    todas<{ id: string }>(sb, "operacoes_gerenciais", "id", q => q.eq("permite_cp_cr", false)),
   ]);
   const delsNf = dels.filter(d => !!d.dados_antes.nf_entrada_id);
   const [nLanc, nRelLanc, nEmp, nRelEmp] = await Promise.all([
@@ -71,7 +72,7 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
   const excluidos = dels.map(comoExcluido);
   return {
     contaDaFazenda: id => (id ? contaDe.get(id) ?? null : null),
-    nfs, cfopsItens, nfse, titulos, excluidos, movs, espelhoPj, exclusoesNf: delsNf.map(comoExcluido),
+    nfs, cfopsItens, nfse, titulos, excluidos, movs, espelhoPj, exclusoesNf: delsNf.map(comoExcluido), ogSemFinanceiro: new Set(ogsSemFin.map(o => o.id)),
     contagem: { lanc: nLanc, relLanc: nRelLanc, emp: nEmp, relEmp: nRelEmp },
     nomeInsumo: id => nomeIns.get(id) ?? id, nomeDeposito: id => (id ? nomeDep.get(id) ?? id : "sem depósito"), nomeFazenda: id => nomeFaz.get(id) ?? "",
   };

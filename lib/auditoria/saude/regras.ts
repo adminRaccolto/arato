@@ -67,8 +67,8 @@ export type Achado = {
 };
 
 // ── Base carregada ────────────────────────────────────────────────────────────
-export type NfE = { id: string; fazenda_id: string; numero: string; emitente_nome: string | null; emitente_cnpj: string | null; valor_total: number | null; status: string; chave_acesso: string | null; cfop: string | null; nf_origem_id: string | null; pessoa_id: string | null; lancamento_id: string | null; emp_lancamento_id: string | null; processado_por: string | null; data_emissao: string | null; pedido_compra_id: string | null };
-export type NfS = { id: string; fazenda_id: string; numero_nf: string; prestador_nome: string | null; prestador_id: string | null; valor_liquido: number | null; valor_servico: number | null; empresa_id: string | null; lancamento_id: string | null; processado_por: string | null; data_prestacao: string | null; status: string };
+export type NfE = { id: string; fazenda_id: string; numero: string; emitente_nome: string | null; emitente_cnpj: string | null; valor_total: number | null; status: string; chave_acesso: string | null; cfop: string | null; nf_origem_id: string | null; pessoa_id: string | null; lancamento_id: string | null; emp_lancamento_id: string | null; processado_por: string | null; data_emissao: string | null; pedido_compra_id: string | null; operacao_gerencial_id?: string | null };
+export type NfS = { id: string; fazenda_id: string; numero_nf: string; prestador_nome: string | null; prestador_id: string | null; valor_liquido: number | null; valor_servico: number | null; empresa_id: string | null; lancamento_id: string | null; processado_por: string | null; data_prestacao: string | null; status: string; operacao_gerencial_id?: string | null };
 export type Tit = { id: string; tabela: "lancamentos" | "empresa_lancamentos"; fazenda_id: string; tipo: string; descricao: string | null; valor: number; valor_pago: number | null; status: string; pessoa_id: string | null; nf_entrada_id: string | null; contrato_financeiro_id: string | null; data_vencimento: string | null; numero_documento: string | null; origem: string | null; num_parcela: number | null; moeda: string | null; cotacao_usd: number | null; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null; titulo_origem_id?: string | null };
 export type Excluido = { audit_id: string; quando: string; quem: string | null; tabela: "lancamentos" | "empresa_lancamentos"; antes: Record<string, unknown> };
 export type Mov = { fazenda_id: string; deposito_id: string | null; insumo_id: string; tipo: string; quantidade: number; usuario_nome?: string | null; created_at?: string | null };
@@ -80,6 +80,8 @@ export type Base = {
   espelhoPj: EspelhoPj[]; contagem: { lanc: number; relLanc: number; emp: number; relEmp: number };
   /** Exclusões (qualquer status) de títulos ligados a NF, para dizer quem apagou o título de uma NF sem título. */
   exclusoesNf?: Excluido[];
+  /** Operações gerenciais habilitadas para Notas Fiscais mas não para Contas a Pagar: nota processada com elas não gera título. */
+  ogSemFinanceiro?: Set<string>;
   nomeInsumo?: (id: string) => string; nomeDeposito?: (id: string | null) => string; nomeFazenda?: (id: string) => string;
 };
 
@@ -121,6 +123,7 @@ export function regraNfSemTitulo(b: Base): Achado[] {
     if (n.status !== "processada" || n.nf_origem_id || num(n.valor_total) <= 0) continue;   // devolução gera CR; valor zero não gera CP
     const cfops = [...(b.cfopsItens.get(n.id) ?? []), so(n.cfop)].filter(Boolean);
     if (cfops.length && cfops.every(c => CFOPS_SEM_FINANCEIRO.has(c))) continue;
+    if (n.operacao_gerencial_id && b.ogSemFinanceiro?.has(n.operacao_gerencial_id)) continue;
     if (titulosDaNf(n, b, ix).length) continue;
     const exclusao = [...(b.exclusoesNf ?? []), ...b.excluidos].find(e => e.antes.nf_entrada_id === n.id);
     out.push({ regra: "nf_sem_titulo", chave: n.id, conta_id: b.contaDaFazenda(n.fazenda_id), fazenda_id: n.fazenda_id,
@@ -140,6 +143,7 @@ export function regraNfseSemTitulo(b: Base): Achado[] {
   for (const s of b.nfse) {
     if (s.status !== "processada") continue;
     if (s.lancamento_id && ix.porId.has(s.lancamento_id)) continue;
+    if (s.operacao_gerencial_id && b.ogSemFinanceiro?.has(s.operacao_gerencial_id)) continue;
     const conta = b.contaDaFazenda(s.fazenda_id);
     const desc = norm(`NFS-e ${s.numero_nf} — ${s.prestador_nome ?? ""}`);
     const tem = b.titulos.some(t => t.status !== "cancelado" && b.contaDaFazenda(t.fazenda_id) === conta

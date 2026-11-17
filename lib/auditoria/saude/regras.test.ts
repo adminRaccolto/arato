@@ -75,3 +75,11 @@ test("NF 416800 Mirian Cuiabá: título de Empresa com valor pago e status pende
   assert.equal(regraStatusInconsistente(base({ titulos: [{ ...t, status: "pago" }] })).length, 0);
   assert.equal(regraStatusInconsistente(base({ titulos: [{ ...t, valor_pago: null }] })).length, 0);
 });
+
+test("NF e NFS-e processadas com OG sem financeiro (só Notas Fiscais, sem Contas a Pagar) não são achado de nota sem título", () => {
+  const sem = new Set(["og-particular"]);
+  assert.equal(regraNfSemTitulo(base({ nfs: [nf({ operacao_gerencial_id: "og-particular" })], ogSemFinanceiro: sem })).length, 0);
+  assert.equal(regraNfSemTitulo(base({ nfs: [nf({ operacao_gerencial_id: "og-normal" })], ogSemFinanceiro: sem })).length, 1);
+  assert.equal(regraNfseSemTitulo(base({ nfse: [nfs({ operacao_gerencial_id: "og-particular" })], ogSemFinanceiro: sem })).length, 0);
+  assert.equal(regraNfseSemTitulo(base({ nfse: [nfs({ operacao_gerencial_id: "og-normal" })], ogSemFinanceiro: sem })).length, 1);
+});

@@ -87,7 +87,7 @@ interface NfServico {
   created_at?: string;
 }
 
-interface OpGerencial { ids_equivalentes?:string[]; id: string; classificacao: string; descricao: string; }
+interface OpGerencial { ids_equivalentes?:string[]; id: string; classificacao: string; descricao: string; permite_cp_cr?: boolean | null; }
 interface PedidoMin   { id: string; nr_pedido?: string; status: string; }
 
 type Etapa = "prestador" | "servico" | "tributacao";
@@ -183,8 +183,15 @@ export default function ModalNfServico({
     const as = await listarAnosSafra(fazendaId).catch(() => []);
     setAnos(as);
     try {
-      const ops = await listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId);
-      setOpsGer(ops as OpGerencial[]);
+      // Mesma lista da NF de produtos: OGs de Notas Fiscais + de Contas a Pagar. Antes só as de Contas a Pagar: OG marcada
+      // só para "Notas Fiscais de Entrada" (ex.: despesa particular sem financeiro) não aparecia na NFS (achado 17/11/2026).
+      const [ogNf, ogCp] = await Promise.all([
+        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "notas_fiscais" }, fazendaId).catch(() => []),
+        listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).catch(() => []),
+      ]);
+      const porClass = new Map<string, OpGerencial>();
+      for (const o of [...ogCp, ...ogNf] as OpGerencial[]) if (!porClass.has(o.classificacao ?? o.id)) porClass.set(o.classificacao ?? o.id, o);
+      setOpsGer([...porClass.values()].sort((a, b) => (a.classificacao ?? "").localeCompare(b.classificacao ?? "")));
     } catch {}
     try {
       const { data } = await supabase
@@ -397,21 +404,25 @@ export default function ModalNfServico({
     if (status === "processada" && vServico <= 0) { setErr("Valor do serviço deve ser maior que zero para processar."); return; }
     if (status !== "digitando" && !cab.ano_safra_id) { setErr("Selecione o Ano Safra antes de salvar/processar a NFS-e."); return; }
     if (status === "processada" && !cab.operacao_gerencial_id) { setErr("Selecione a Operação Gerencial para processar."); return; }
-    if (status === "processada" && cab.tomador_tipo === "produtor") {
-      const ieSel = iesTomador.find(i => i.inscricao_estadual === cab.ie_tomador);
-      if (!ieSel && ieObrigatoria(iesTomador)) { setErr("Escolha a I.E. do tomador (a que está na nota). O produtor tem inscrições em fazendas diferentes e a IE define em qual fazenda e município a NFS-e é processada."); setEtapa("prestador"); return; }
-      const fazDestino = cab.fazenda_id || fazendaId;
-      if (ieSel?.fazenda_id && fazDestino && ieSel.fazenda_id !== fazDestino) {
-        const nomeIe = fazendas.find(f => f.id === ieSel.fazenda_id)?.nome ?? "outra fazenda";
-        const nomeNf = fazendas.find(f => f.id === fazDestino)?.nome ?? "outra fazenda";
-        setErr(`A I.E. ${ieSel.inscricao_estadual} é da ${nomeIe}, mas a NFS-e está marcada como da ${nomeNf}. Confira a IE ou a fazenda antes de processar.`); setEtapa("prestador"); return;
-      }
+    if (status === "processada" && !cab.centro_custo_id && centros.length > 0) { setErr("Selecione o Centro de Custo para processar."); return; }
+    const ieSel = cab.tomador_tipo === "produtor" ? iesTomador.find(i => i.inscricao_estadual === cab.ie_tomador) : undefined;
+    if (status === "processada" && cab.tomador_tipo === "produtor" && !ieSel && ieObrigatoria(iesTomador)) {
+      setErr("Escolha a I.E. do tomador (a que está na nota). O produtor tem inscrições em fazendas diferentes e a IE define em qual fazenda e município a NFS-e é processada."); setEtapa("prestador"); return;
     }
+    // Fazenda não se escolhe na tela: a da I.E. do tomador vale (nota processada nem chega aqui); sem IE, a da importação
+    const fazendaFinal = ieSel?.fazenda_id && (fazendaIds.includes(ieSel.fazenda_id) || ieSel.fazenda_id === fazendaId)
+      ? ieSel.fazenda_id : (cab.fazenda_id || fazendaId);
+
+    // OG habilitada para Notas Fiscais mas não para Contas a Pagar/Receber: processa sem título, como a NF de produtos
+    const ogSel = opsGer.find(o => o.id === cab.operacao_gerencial_id || o.ids_equivalentes?.includes(cab.operacao_gerencial_id));
+    const semCp = status === "processada" && ogSel?.permite_cp_cr === false && !nfEdit?.lancamento_id;
+    if (semCp && !(await confirmarAcao({ titulo: "Processar sem Contas a Pagar?", perigo: false, textoConfirmar: "Processar sem CP",
+      mensagem: `A operação gerencial "${ogSel!.classificacao} — ${ogSel!.descricao}" não está habilitada para Contas a Pagar/Receber. A NFS-e ${cab.numero_nf} é processada normalmente (custos), mas NÃO nasce título no Contas a Pagar.` }))) return;
 
     const codigoFinal = cab.codigo_servico === "outros" ? codigoLivre : cab.codigo_servico;
 
     const payload = {
-      fazenda_id:            cab.fazenda_id || fazendaId,
+      fazenda_id:            fazendaFinal,
       numero_nf:             cab.numero_nf,
       serie:                 cab.serie,
       chave_nfse:            cab.chave_nfse || undefined,
@@ -482,7 +493,7 @@ export default function ModalNfServico({
         }
       }
 
-      if (status === "processada" && empTranspNfs && !nfEdit?.lancamento_id) {
+      if (status === "processada" && !semCp && empTranspNfs && !nfEdit?.lancamento_id) {
         const baseEmp = {
           fazenda_id:       empTranspNfs.fazenda_id,
           empresa_id:       empTranspNfs.id,
@@ -515,9 +526,9 @@ export default function ModalNfServico({
         if (!empJson.ok) throw new Error(`Erro ao criar CP da Empresa: ${empJson.error}`);
       }
 
-      if (status === "processada" && !empTranspNfs && !nfEdit?.lancamento_id) {
+      if (status === "processada" && !semCp && !empTranspNfs && !nfEdit?.lancamento_id) {
         const baseCP = {
-          fazenda_id:            cab.fazenda_id || fazendaId,
+          fazenda_id:            fazendaFinal,
           tipo:                  "pagar",
           moeda:                 "BRL",
           descricao:             `NFS-e ${cab.numero_nf} — ${cab.prestador_nome}`,
@@ -709,13 +720,12 @@ export default function ModalNfServico({
 
             {etapa === "prestador" && (
               <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
-                {fazendas.length > 1 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <label data-arato-label="true" style={lbl}>Esta NF pertence a *</label>
-                    <SelectField value={cab.fazenda_id} onChange={e => setCab(p => ({ ...p, fazenda_id: e.target.value }))} style={inp}>
-                      <option value="">— Selecionar —</option>
-                      {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                    </SelectField>
+                {/* Sem escolha de fazenda (pedido do dono, 17/11/2026): a NFS é classificada pelo Centro de Custo. A fazenda
+                    — usada só por baixo (cliente, PF/PJ do LCDPR) — vem da I.E. do tomador ou da importação, e aparece só para conferência. */}
+                {fazendas.length > 1 && (cab.fazenda_id || fazendaId) && (
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>
+                    Fazenda: <strong style={{ color: "var(--text-2)" }}>{fazendas.find(f => f.id === (cab.fazenda_id || fazendaId))?.nome ?? "—"}</strong>
+                    {cab.ie_tomador ? " (pela I.E. do tomador)" : ""}
                   </div>
                 )}
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
@@ -987,7 +997,7 @@ export default function ModalNfServico({
                     />
                   </div>
                   <div>
-                    <label data-arato-label="true" style={lbl}>Centro de Custo</label>
+                    <label data-arato-label="true" style={lbl}>Centro de Custo{centros.length > 0 ? " *" : ""}</label>
                     <SelectField value={cab.centro_custo_id} onChange={e => setCab(p=>({...p,centro_custo_id:e.target.value,maquina_id:""}))} style={inp}>
                       <option value="">Sem centro de custo</option>
                       {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
