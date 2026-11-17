@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-c",
+    data: "17/11/2026",
+    titulo: "IBS/CBS definido na Operação Fiscal dispensa o NCM na tabela",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Quando a Operação Fiscal da nota já define o CST e a classificação do IBS/CBS (ex.: remessa não onerosa), a NF-e emite sem o NCM estar na Tributação NCM. Sem isso, o aviso agora diz onde cadastrar (Carregar padrões do agro ou + Adicionar NCM)." },
+    ],
+    onde: "Documentos Fiscais → toda emissão de NF-e; Parâmetros do Sistema → Tributação NCM",
+  },
+  {
     versao: "2026.11.17-b",
     data: "17/11/2026",
     titulo: "Operação Gerencial por documento de entrada: NF de Produtos, NFS-e e CT-e",

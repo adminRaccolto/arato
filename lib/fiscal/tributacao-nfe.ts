@@ -56,13 +56,15 @@ export async function resolverTributacaoNFe(db:SupabaseClient,fazendaId:string,i
       regra_fiscal:{data,operacao_id:op?.id ?? null,ncm_id:ncm?.id ?? null,og_id:input.operacao_gerencial_id ?? null,regra:regra ?? null,texto_legal:op?.inf_cpl_template || ncmAplica?.inf_cpl || null},
     };
     if(config.ibs_cbs_ativo==="sim") {
-      if(!ncm)throw new Error("Cadastre a tributação IBS/CBS do NCM "+item.ncm+" antes de emitir.");
-      const cst=op?.ibs_cbs_cst || (op?.ibs_cbs_imune?"410":ncm.ibs_cbs_cst);
-      const classe=op?.ibs_cbs_cclasstrib || ncm.ibs_cbs_cclasstrib;
+      // Operação Fiscal com CST e classificação próprios (ex.: remessa não onerosa 410) não depende do cadastro do NCM
+      const opDefine=!!(op?.ibs_cbs_cst && op?.ibs_cbs_cclasstrib);
+      if(!ncm&&!opDefine)throw new Error("Cadastre a tributação IBS/CBS do NCM "+item.ncm+" antes de emitir (Parâmetros do Sistema → Tributação NCM → Carregar padrões do agro, ou + Adicionar NCM).");
+      const cst=op?.ibs_cbs_cst || (op?.ibs_cbs_imune?"410":ncm?.ibs_cbs_cst);
+      const classe=op?.ibs_cbs_cclasstrib || ncm?.ibs_cbs_cclasstrib;
       if(!cst||!classe)throw new Error("Informe CST e classificação IBS/CBS do NCM "+item.ncm+".");
       if(!classe.startsWith(cst))throw new Error("CST e classificação IBS/CBS incompatíveis para o NCM "+item.ncm+".");
       const teste2026=data.startsWith("2026-");
-      out.ibsCbs={cst,cclasstrib:classe,ibsEstadualAliq:teste2026?0.1:Number(ncm.ibs_estadual_aliq ?? 0),ibsMunicipalAliq:teste2026?0:Number(ncm.ibs_municipal_aliq ?? 0),cbsAliq:teste2026?0.9:Number(ncm.cbs_aliq ?? 0),reducaoPct:Number(op?.ibs_cbs_reducao_pct ?? ncm.ibs_cbs_reducao_pct ?? 0)};
+      out.ibsCbs={cst,cclasstrib:classe,ibsEstadualAliq:teste2026?0.1:Number(ncm?.ibs_estadual_aliq ?? 0),ibsMunicipalAliq:teste2026?0:Number(ncm?.ibs_municipal_aliq ?? 0),cbsAliq:teste2026?0.9:Number(ncm?.cbs_aliq ?? 0),reducaoPct:Number(op?.ibs_cbs_reducao_pct ?? ncm?.ibs_cbs_reducao_pct ?? 0)};
       out.regra_fiscal={...out.regra_fiscal,calendario:teste2026?"RTC-2026":"cadastro-vigente",crt};
     }
     return out;

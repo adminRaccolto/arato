@@ -70,3 +70,12 @@ test("emissão: NCM 'pela operação' só dá o IBS/CBS; grão segue com ICMS do
   assert.equal(grao.pis_cst, "06");
   assert.deepEqual([grao.ibsCbs?.cst, grao.ibsCbs?.cclasstrib, grao.ibsCbs?.reducaoPct], ["200", "200036", 60]);
 });
+
+test("emissão: Operação Fiscal com CST e classificação IBS/CBS próprios dispensa o NCM na tabela; sem eles, pede o NCM", async () => {
+  const op = { id: "op1", fazenda_id: "f1", cfop_interno: "5934", cfop_externo: "6934", icms_cst_interno: "041", icms_cst_externo: "041", ibs_cbs_cst: "410", ibs_cbs_cclasstrib: "410999", ibs_cbs_reducao_pct: 0, vigencia_inicio: null, vigencia_fim: null };
+  const comOp = dbFake({ ncm_tributacoes: [], operacoes_fiscais: [op] });
+  const [it] = await resolverTributacaoNFe(comOp, "f1", { ...nota("38089329", "5934"), operacao_fiscal_id: "op1" } as never, { ibs_cbs_ativo: "sim" }, "3");
+  assert.deepEqual([it.ibsCbs?.cst, it.ibsCbs?.cclasstrib], ["410", "410999"]);
+  const semDef = dbFake({ ncm_tributacoes: [], operacoes_fiscais: [{ ...op, ibs_cbs_cst: null, ibs_cbs_cclasstrib: null }] });
+  await assert.rejects(resolverTributacaoNFe(semDef, "f1", { ...nota("38089329", "5934"), operacao_fiscal_id: "op1" } as never, { ibs_cbs_ativo: "sim" }, "3"), /Cadastre a tributação IBS\/CBS do NCM 38089329[\s\S]*Carregar padrões do agro/);
+});
