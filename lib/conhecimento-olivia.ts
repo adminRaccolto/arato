@@ -59,7 +59,7 @@ Responda com estes passos quando a pergunta for "como faço" ou "onde fica". Os 
 **Registrar pulverização:** Produção → Operações de Campo → Pulverização Terrestre, botão + Registrar Aplicação. Se foi de avião: Produção → Operações de Campo → Aplicação Aérea.
 **Registrar colheita:** Produção → Colheita → Colheita, botão + Nova Colheita. Depois, em cada colheita, + Romaneio: primeiro o peso bruto, quando o caminhão chega carregado; depois a tara, com o caminhão vazio, e o depósito. A entrada no estoque acontece só ao confirmar com a tara.
 
-**Pedido de compra:** Comercial & Logística → Compras → Pedido de Compras, botão + Novo Pedido.
+**Pedido de compra:** Comercial & Logística → Compras → Pedido de Compras, botão + Novo Pedido. O pedido é do cliente: a fazenda é opcional ("— Não indicar —"). Sem indicação, o sistema usa a fazenda da I.E. do produtor escolhida ou, sem ela, a fazenda em uso, só para o vínculo interno dos títulos.
 **Transferir insumo ou semente entre fazendas:** Comercial & Logística → Estoque → Transferência entre Fazendas, botão + Nova Transferência. A tela pede Fazenda Origem, Depósito Origem, fazenda e depósito de destino e os itens (+ Adicionar Item).
 **Saldo por depósito:** Comercial & Logística → Relatórios → Posição de Insumos, aba Relatórios, opção Saldo por Depósito.
 **Histórico de entradas e saídas de um produto:** Comercial & Logística → Relatórios → Kardex (Ficha de Estoque).

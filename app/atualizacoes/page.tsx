@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-d",
+    data: "17/11/2026",
+    titulo: "Pedido de Compra: fazenda opcional",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O Pedido de Compra é do cliente: a fazenda deixa de ser obrigatória e começa em \"— Não indicar —\". Sem indicação, o sistema usa a fazenda da I.E. do produtor escolhida (ou a fazenda em uso) só para o vínculo interno dos títulos." },
+    ],
+    onde: "Comercial & Logística → Compras → Pedido de Compras",
+  },
+  {
     versao: "2026.11.17-c",
     data: "17/11/2026",
     titulo: "IBS/CBS definido na Operação Fiscal dispensa o NCM na tabela",

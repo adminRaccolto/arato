@@ -1094,7 +1094,9 @@ export default function ComprasPage() {
       // do update) — precisa ser buscado AQUI, antes de atualizarPedidoCompra
       // rodar logo abaixo, senão já vem com os valores novos.
       const pedidoExistenteFull = pedidoEdit ? await buscarPedidoCompraPorId(pedidoEdit) : null;
-      const fidPedido = f.fazenda_id || fazendaId;
+      // Fazenda opcional: a indicada; senão a da I.E. do produtor; senão a fazenda em uso (vínculo interno do pedido)
+      const ieFaz = ieOpcoes.find(ie => ie.inscricao_estadual === f.ie_produtor)?.fazenda_id;
+      const fidPedido = f.fazenda_id || (ieFaz && fazendas.some(fz => fz.id === ieFaz) ? ieFaz : "") || fazendaId;
       const payload: Omit<PedidoCompra, "id" | "created_at" | "numero"> = {
         fazenda_id: fidPedido, status: f.status,
         data_registro: f.data_registro, tipo: f.tipo, fiscal: f.fiscal,
@@ -1886,17 +1888,15 @@ export default function ComprasPage() {
 
             <div data-arato-dialog-body="true" style={{ padding: "18px 22px" }}>
 
-              {/* Fazenda — seletor explícito */}
+              {/* Fazenda — opcional (o pedido é do cliente; pedido do dono, 17/11/2026). Sem indicação, vale a fazenda da
+                  I.E. do produtor escolhida ou, sem ela, a fazenda em uso — só para o vínculo interno (títulos, LCDPR). */}
               {fazendas.length > 1 && (
-                <div data-arato-panel="true" style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este pedido pertence a</div>
-                  <div>
-                    <label data-arato-label="true" style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
-                    <SelectField style={inp} value={f.fazenda_id || fazendaId || ""} onChange={e => setF(p => ({ ...p, fazenda_id: e.target.value }))}>
-                      <option value="">— Selecionar —</option>
-                      {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-                    </SelectField>
-                  </div>
+                <div style={{ marginBottom:14, maxWidth: 420 }}>
+                  <label data-arato-label="true" style={lbl}>Fazenda (opcional)</label>
+                  <SelectField style={inp} value={f.fazenda_id || ""} onChange={e => setF(p => ({ ...p, fazenda_id: e.target.value }))}>
+                    <option value="">— Não indicar —</option>
+                    {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+                  </SelectField>
                 </div>
               )}
 
