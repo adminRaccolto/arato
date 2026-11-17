@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-h",
+    data: "17/11/2026",
+    titulo: "Remessa: aviso de armazém sem Inscrição Estadual e busca na SEFAZ",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Quando o armazém escolhido na Remessa não tem Inscrição Estadual no cadastro, a tela avisa e oferece \"Buscar IE na SEFAZ\": consulta o cadastro de contribuintes pelo CNPJ e grava a IE no cadastro, com confirmação. Emitir sem a IE pede confirmação." },
+    ],
+    onde: "Documentos Fiscais → Remessas → Nova Remessa",
+  },
+  {
     versao: "2026.11.17-g",
     data: "17/11/2026",
     titulo: "Contas a Pagar: Nº Documento e Observação vindos da origem",

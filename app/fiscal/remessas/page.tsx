@@ -163,6 +163,30 @@ function RemessasConteudo() {
 
   const insumoPorId = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
   const armazem = pessoas.find(p => p.id === armazemId);
+  // Armazém (CNPJ) sem IE no cadastro: a NF-e sairia sem a IE do destinatário (achado 17/11/2026, LUFT no Cleber)
+  const armazemSemIe = !!armazem && (armazem.cpf_cnpj ?? "").replace(/\D/g, "").length === 14 && !(armazem.inscricao_est ?? "").replace(/\D/g, "");
+  const [buscandoIe, setBuscandoIe] = useState(false);
+  // Consulta o cadastro de contribuintes da SEFAZ pelo CNPJ e grava a IE no cadastro do armazém (com confirmação)
+  async function buscarIeArmazem() {
+    if (!armazem) return;
+    setBuscandoIe(true);
+    try {
+      const res = await fetch("/api/fiscal/consultar-cadastro", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaRem || fazendaId, uf: armazem.estado || "MT", cnpj: (armazem.cpf_cnpj ?? "").replace(/\D/g, "") }) });
+      const d = await res.json().catch(() => ({ error: `Resposta inválida do servidor (HTTP ${res.status}).` })) as { error?: string; encontrados?: number; xMotivo?: string; opcoes?: { ie?: string; situacao?: string; municipio?: string }[] };
+      if (!res.ok || d.error) { alert(d.error || "Falha ao consultar a SEFAZ."); return; }
+      const ies = (d.opcoes ?? []).filter(o => o.ie && o.situacao !== "desabilitada");
+      if (!ies.length) { alert(d.xMotivo || "A SEFAZ não retornou Inscrição Estadual habilitada para esse CNPJ."); return; }
+      const ie = ies.length === 1 ? ies[0].ie! : prompt(`A SEFAZ retornou ${ies.length} inscrições para esse CNPJ:\n${ies.map(o => `${o.ie} — ${o.municipio ?? ""}`).join("\n")}\n\nDigite a IE a usar:`, ies[0].ie)?.replace(/\D/g, "");
+      if (!ie) return;
+      if (!(await confirmarAcao({ titulo: "Gravar a Inscrição Estadual?", perigo: false, mensagem: `Gravar a IE ${ie} no cadastro de ${armazem.nome}? Ela passa a ir em todas as notas para esse destinatário.` }))) return;
+      const { error } = await supabase.from("pessoas").update({ inscricao_est: ie }).eq("id", armazem.id);
+      if (error) { alert(`Não foi possível gravar a IE: ${error.message}`); return; }
+      setPessoas(ps => ps.map(p => p.id === armazem.id ? { ...p, inscricao_est: ie } : p));
+    } catch (e) {
+      alert(`Falha ao consultar a SEFAZ: ${e instanceof Error ? e.message : e}`);
+    } finally { setBuscandoIe(false); }
+  }
   const fazendaRem = nfOrigem?.fazenda_id ?? depositos.find(d => d.id === depOrigem)?.fazenda_id ?? fazendaId ?? ids[0];
   // Informações fiscais da operação: CFOP pela UF do emitente × destinatário; CST e texto do cadastro de Operações
   // Fiscais da fazenda emitente quando houver, senão da regra do CFOP
@@ -315,6 +339,8 @@ function RemessasConteudo() {
     if (itens.some(i => !i.insumo_id || !(numBR(i.quantidade) > 0))) { setErro("Todo item precisa estar ligado a um produto do cadastro e ter quantidade."); return; }
     if (!/^\d{4}$/.test(cf)) { setErro("Informe o CFOP da remessa (ex.: 5905)."); return; }
     if (modo === "externa" && !ext.numero.trim()) { setErro("Informe o número da NF emitida."); return; }
+    if (!espelho && modo === "arato" && armazemSemIe && !(await confirmarAcao({ titulo: "Destinatário sem Inscrição Estadual", perigo: true, textoConfirmar: "Emitir sem a IE",
+      mensagem: `O cadastro de ${armazem.nome} está sem Inscrição Estadual: a NF-e sai sem a IE do destinatário. Use "Buscar IE na SEFAZ" abaixo do armazém para preencher antes. Emitir assim mesmo?` }))) return;
     const deDepositos = `O estoque passa de "${depositos.find(d => d.id === depOrigem)?.nome}" para "${depositos.find(d => d.id === depTerceiro)?.nome}"`;
     if (!espelho && !(await confirmarAcao(acao === "painel" && modo === "arato"
       ? { titulo: "Enviar a NF-e de remessa ao painel?", perigo: false,
@@ -630,6 +656,15 @@ function RemessasConteudo() {
                 <div>
                   <label style={lbl}>Armazém (destinatário) *</label>
                   <SelectBusca value={armazemId} onChange={escolherArmazem} placeholder="— selecionar —" options={pessoas.map(p => ({ value: p.id, label: `${p.nome}${p.cpf_cnpj ? " · " + p.cpf_cnpj : ""}` }))} />
+                  {armazemSemIe && modo === "arato" && (
+                    <div style={{ marginTop: 6, padding: "6px 10px", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 11, color: "#7A4800" }}>
+                      Cadastro do armazém sem Inscrição Estadual: a NF-e sairia sem a IE do destinatário.{" "}
+                      <button type="button" onClick={buscarIeArmazem} disabled={buscandoIe}
+                        style={{ border: "none", background: "none", color: "#1A4870", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 11, textDecoration: "underline" }}>
+                        {buscandoIe ? "Consultando SEFAZ…" : "Buscar IE na SEFAZ"}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={lbl}>Depósito de origem *</label>
