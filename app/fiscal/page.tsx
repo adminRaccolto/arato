@@ -11,6 +11,7 @@ import { confirmarAcao } from "../../components/ConfirmarAcao";
 import ModalRecusaDevolucao from "../../components/fiscal/ModalRecusaDevolucao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../lib/fiscal/espelho-cliente";
+import { formatarIe, idIeDoModulo, ieEmitenteDaNota } from "../../lib/fiscal/ie-nota";
 import { corpoComDestinatarioAtual, registrarRemessaAutorizada, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "../../lib/fiscal/remessa-pendente";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
@@ -549,8 +550,10 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa }: {
+function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa }: {
   notas: NotaFiscal[];
+  /** IE do estabelecimento que emitiu (lib/fiscal/ie-nota.ts) — coluna IE Emitente */
+  ieEmitente?: (n: NotaFiscal) => string | null;
   /** Remessa pendente de transmissão (vinda de Documentos Fiscais → Remessas): espelho, registrar depois de autorizada, excluir */
   onEspelhoRemessa?: (n: NotaFiscal) => void;
   onRegistrarRemessa?: (n: NotaFiscal) => void;
@@ -576,8 +579,8 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
     <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
         <tr style={{ background: "var(--bg-page)" }}>
-          {["Número", "Data", "Destinatário / Remetente", "Natureza / CFOP", "Valor Total", "Status", "Origem", ""].map((h, i) => (
-            <th key={i} style={{ padding: "8px 14px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
+          {["Número", "IE Emitente", "Data", "Destinatário / Remetente", "Natureza / CFOP", "Valor Total", "Status", "Origem", ""].map((h, i) => (
+            <th key={i} style={{ padding: "8px 14px", textAlign: i >= 5 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
           ))}
         </tr>
       </thead>
@@ -600,6 +603,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                   NF-e {nota.numero}
                   <div style={{ fontSize: 10, color: "#444", fontWeight: 400 }}>Série {nota.serie}</div>
                 </td>
+                <td style={{ padding: "10px 14px", color: "var(--text-1)", whiteSpace: "nowrap", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{formatarIe(ieEmitente?.(nota)) || "—"}</td>
                 <td style={{ padding: "10px 14px", color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtData(nota.data_emissao)}</td>
                 <td style={{ padding: "10px 14px", maxWidth: 200 }}>
                   <div style={{ fontWeight: 600, color: "var(--text-1)", fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }}>{nota.destinatario}</div>
@@ -632,7 +636,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
               </tr>
               {exp && (
                 <tr key={`${nota.id}-exp`}>
-                  <td colSpan={8} style={{ background: "var(--bg-page)", padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)" }}>
+                  <td colSpan={9} style={{ background: "var(--bg-page)", padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)" }}>
                     <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 11 }}>
                       {nota.chave_acesso && (
                         <div>
@@ -1182,6 +1186,9 @@ function FiscalInner() {
   }, [emissores, moduloKeyAtivo]);
   // Todos os configs de emitentes indexados por moduloKey — evita usar cfgs[0] incorretamente
   const [allEmitCfgs, setAllEmitCfgs] = useState<Record<string, Record<string, string>>>({});
+  // IE por configuração de emitente (ie_emitente da configuração ou a IE do produtor do módulo "…__ie_<id>")
+  const [iePorModulo, setIePorModulo] = useState<Record<string, string>>({});
+  const ieDaNota = (n: NotaFiscal) => ieEmitenteDaNota(n.dados_nf_json as Record<string, unknown> | null, iePorModulo);
 
   // ── Certificado A1 — carregado de configuracoes_modulo ──────────
   type CertInfo = { modulo: string; arquivo_nome: string; storage_path: string; produtor_id: string; produtor_nome: string; cpf_cnpj: string; data_vencimento: string | null };
@@ -1363,6 +1370,12 @@ function FiscalInner() {
       if (erroConfigs) throw erroConfigs;
       const byKey = indexarConfigsEmitentes(cfgs ?? [], fazendaId);
       setAllEmitCfgs(byKey);
+      {
+        const idsIe = [...new Set((cfgs ?? []).map(c => idIeDoModulo(c.modulo)).filter((x): x is string => !!x))];
+        const { data: iesRows } = idsIe.length ? await supabase.from("produtor_inscricoes_estaduais").select("id, inscricao_estadual").in("id", idsIe) : { data: [] };
+        const iePorId = new Map((iesRows ?? []).map(r => [r.id as string, String(r.inscricao_estadual ?? "")]));
+        setIePorModulo(Object.fromEntries((cfgs ?? []).map(c => [c.modulo, String((c.config as Record<string, unknown> | null)?.ie_emitente ?? "") || iePorId.get(idIeDoModulo(c.modulo) ?? "") || ""])));
+      }
 
       // O rótulo e a validação usam a mesma configuração, sem duplicar titulares.
       const lista: EmissorOpcao[] = Object.entries(byKey)
@@ -2235,7 +2248,7 @@ function FiscalInner() {
                     })}
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{notas.filter(n => n.auto).length}/{notasVenda.length} emitidas automaticamente</span>
                   </div>
-                  <TabelaNFe
+                  <TabelaNFe ieEmitente={ieDaNota}
                     notas={filtroStatusVenda ? notasVenda.filter(n => n.status === filtroStatusVenda || (filtroStatusVenda === "rejeitada" && n.status === "denegada")) : notasVenda}
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => router.push(`/comercial/faturamento?complementar=${n.id}`)}
@@ -2286,7 +2299,7 @@ function FiscalInner() {
                       <div style={{ fontSize: 12, color: "var(--text-3)" }}>Para devolver mercadoria ao fornecedor, abra a NF dele em Notas de Fornecedores e use Devolver.</div>
                     </div>
                   ) : (
-                    <TabelaNFe
+                    <TabelaNFe ieEmitente={ieDaNota}
                       notas={notasDevolucao}
                       onCancelar={n => setModalCancelamento(n)}
                       onImprimirDanfe={n => n.chave_acesso
@@ -2319,7 +2332,7 @@ function FiscalInner() {
                       </OperationalButton>
                     </div>
                   ) : (
-                    <TabelaNFe notas={notasTransferencia} />
+                    <TabelaNFe ieEmitente={ieDaNota} notas={notasTransferencia} />
                   )}
                 </div>
               )}
@@ -2376,7 +2389,7 @@ function FiscalInner() {
                       <div style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-row)", borderTop: "0.5px solid var(--border-row)" }}>
                         NOTAS CANCELADAS
                       </div>
-                      <TabelaNFe notas={notasCanceladas} />
+                      <TabelaNFe ieEmitente={ieDaNota} notas={notasCanceladas} />
                     </div>
                   )}
 

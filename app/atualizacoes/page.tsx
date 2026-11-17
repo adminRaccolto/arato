@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-l",
+    data: "17/11/2026",
+    titulo: "Painel de Notas: coluna IE Emitente",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "O Painel de Notas mostra a IE do estabelecimento que emitiu cada nota, ao lado do número. Vem da IE gravada na autorização ou, no rascunho e na remessa pendente, da configuração do emitente escolhida. Nota registrada de fora sem XML aparece com \"—\"." },
+    ],
+    onde: "Documentos Fiscais → Painel de Notas",
+  },
+  {
     versao: "2026.11.17-k",
     data: "17/11/2026",
     titulo: "Custos Totais: só o que é custo da safra escolhida",
