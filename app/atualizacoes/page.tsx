@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-m",
+    data: "17/11/2026",
+    titulo: "Remessa: IE do emitente igual à da NF de referência",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A remessa feita a partir de uma NF de entrada usa como emitente a IE para a qual essa NF foi emitida (a IE escolhida no processamento ou, sem ela, a do XML). Antes vinha a IE da fazenda do depósito e era preciso corrigir à mão. Se a IE da nota não estiver cadastrada, ou se for trocada, a tela avisa." },
+    ],
+    onde: "Documentos Fiscais → Remessas → Nova Remessa",
+  },
+  {
     versao: "2026.11.17-l",
     data: "17/11/2026",
     titulo: "Painel de Notas: coluna IE Emitente",

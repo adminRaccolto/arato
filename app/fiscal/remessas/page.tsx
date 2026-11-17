@@ -155,7 +155,10 @@ function RemessasConteudo() {
   const [dataRem, setDataRem] = useState(hojeLocal());
   const [obs, setObs] = useState("");
   const [emitenteSel, setEmitenteSel] = useState("");
-  const [ieSel, setIeSel] = useState("");   // IE (estabelecimento) emitente; sugerida pela fazenda do depósito de origem
+  const [ieSel, setIeSel] = useState("");
+  // IE para a qual a NF de referência foi emitida (destinatário da compra): a remessa sai por essa IE (17/11/2026 —
+  // antes vinha a IE sugerida pela fazenda do depósito e o usuário corrigia à mão)
+  const [ieRefNf, setIeRefNf] = useState("");   // IE (estabelecimento) emitente; sugerida pela fazenda do depósito de origem
   const [tr, setTr] = useState<Transp>(TRANSP_VAZIO);
   const [ext, setExt] = useState({ numero: "", serie: "", chave: "", xml: "" });
   const [erro, setErro] = useState("");
@@ -217,9 +220,14 @@ function RemessasConteudo() {
     if (ieSel && iesRemessa.some(i => i.id === ieSel)) return;
     setIeSel(ieSugerida(iesRemessa, fazendaRem, cpfEmitenteSel)?.id ?? "");
   }, [fazendaRem, cpfEmitenteSel, dados.inscricoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NF de referência escolhida: a IE dela manda (troca manual depois continua valendo — só roda quando a referência muda)
+  const ieDaReferencia = ieRefNf ? iesRemessa.find(i => i.ie.replace(/\D/g, "") === ieRefNf) : undefined;
+  useEffect(() => {
+    if (ieDaReferencia) setIeSel(ieDaReferencia.id);
+  }, [ieRefNf, ieDaReferencia?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrirNova() {
-    setModo("arato"); setNfOrigem(null); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
+    setModo("arato"); setNfOrigem(null); setIeRefNf(""); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
     setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setTipoRem("armazem"); setCfopOutro(""); setCfopXml(""); setCstRem(""); setCfopManual(""); setNatureza("Remessa para depósito em armazém geral");
     setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
     setErro(""); setModal(true);
@@ -235,11 +243,14 @@ function RemessasConteudo() {
   }
 
   async function escolherNfOrigem(nf: NfOrigem) {
-    setNfOrigem(nf); setNfsOrigem([]);
+    setNfOrigem(nf); setNfsOrigem([]); setIeRefNf("");
     const [its, { data: cabNf }] = await Promise.all([
       listarNfEntradaItens(nf.id),
-      supabase.from("nf_entradas").select("valor_desconto, valor_produtos").eq("id", nf.id).maybeSingle(),
+      supabase.from("nf_entradas").select("valor_desconto, valor_produtos, ie_produtor, xml_content").eq("id", nf.id).maybeSingle(),
     ]);
+    // IE da NF de referência: a escolhida no processamento; sem ela, a do destinatário no XML
+    const ieXml = /<dest>[\s\S]*?<IE>(\d+)<\/IE>/.exec(String(cabNf?.xml_content ?? ""))?.[1] ?? "";
+    setIeRefNf(String(cabNf?.ie_produtor ?? "").replace(/\D/g, "") || ieXml);
     // Desconto da NF de compra (só no cabeçalho) rateado pelos itens, proporcional ao valor de cada um: a remessa sai
     // com o valor líquido da compra (mesma regra da remessa feita pelas Notas de Venda). Antes saía com o valor cheio.
     const descontos = ratearDescontoNf(Number(cabNf?.valor_desconto ?? 0), Number(cabNf?.valor_produtos ?? 0), its.map(i => Number(i.valor_total ?? 0)));
@@ -632,7 +643,7 @@ function RemessasConteudo() {
                   {nfOrigem ? (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", fontSize: 12 }}>
                       <span><strong>NF {nfOrigem.numero}</strong> · {nfOrigem.emitente_nome ?? "—"} · {fmtData(nfOrigem.data_emissao)} · {fmtBRL(nfOrigem.valor_total)}</span>
-                      <button type="button" onClick={() => setNfOrigem(null)} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>trocar</button>
+                      <button type="button" onClick={() => { setNfOrigem(null); setIeRefNf(""); }} style={{ background: "none", border: "none", color: "#1A4870", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>trocar</button>
                     </div>
                   ) : (
                     <>
@@ -713,7 +724,15 @@ function RemessasConteudo() {
               )}
               {modo === "arato" && (
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 12 }}>
-                  <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
+                  <div>
+                    <SeletorIE ies={iesRemessa} value={ieSel} onChange={setIeSel} inp={inp} lbl={lbl} />
+                    {ieRefNf && !ieDaReferencia && (
+                      <div style={{ marginTop: 4, fontSize: 11, color: "#7A4800" }}>A NF de referência foi emitida para a IE {ieRefNf}, que não está entre as IEs ativas cadastradas do emitente. Confira a IE.</div>
+                    )}
+                    {ieRefNf && ieDaReferencia && ieSel !== ieDaReferencia.id && (
+                      <div style={{ marginTop: 4, fontSize: 11, color: "#7A4800" }}>A NF de referência foi emitida para a IE {ieDaReferencia.ie}; a IE escolhida é outra.</div>
+                    )}
+                  </div>
                   <div>
                     <label style={lbl}>CFOP</label>
                     <select value={cfopManual || cfopSugerido} style={inp}
