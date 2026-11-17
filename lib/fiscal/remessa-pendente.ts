@@ -9,7 +9,33 @@ export type RemessaPendente = {
   corpo: Record<string, unknown>;
   /** Corpo de /api/fiscal/remessas (acao "registrar") sem a NF — a NF entra depois de autorizada. */
   registro: Record<string, unknown>;
+  /** Escolhas da tela de Remessas que não dá para deduzir do corpo (transporte, IE, operação), para reabrir o rascunho
+   *  e editar (17/11/2026). Rascunhos anteriores não têm: a edição reconstrói pelo corpo e pelo registro. */
+  tela?: RemessaTela;
 };
+export type RemessaTela = {
+  tr?: { frete: "0" | "1" | "2" | "9"; transportadora_id: string; veiculo_id: string; placa: string; uf_placa: string; motorista_nome: string; motorista_cpf: string };
+  emitente_sel?: string; ie_id?: string; tipo_rem?: string; cfop_manual?: string; cfop_outro?: string; cst?: string;
+};
+
+/** Operação de transmissão ainda viva para a nota: editar agora não mudaria o que vai (ou foi) para a SEFAZ. */
+export const ESTADOS_OPERACAO_ATIVA = ["reservada", "enviada", "pendente", "autorizada", "sincronizada"] as const;
+export async function remessaTemTransmissaoAtiva(db: SupabaseClient, notaId: string): Promise<boolean> {
+  const { data, error } = await db.from("fiscal_operacoes").select("id").eq("modelo", 55).eq("registro_id", notaId).in("estado", [...ESTADOS_OPERACAO_ATIVA]).limit(1);
+  if (error) throw new Error(`Não foi possível conferir a transmissão da NF-e: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+/** Remessa no painel que ainda pode ser editada: pendente, sem chave (nunca autorizada). */
+export function remessaEditavel(n: { status?: string | null; chave_acesso?: string | null; dados_nf_json?: unknown }): boolean {
+  return n.status === "em_digitacao" && !n.chave_acesso && !!remessaPendenteDe(n.dados_nf_json);
+}
+
+/** Motorista gravado nas informações complementares ("Motorista: NOME — CPF 000"), para reabrir rascunho antigo. */
+export function motoristaDoInfCpl(infCpl: unknown): { nome: string; cpf: string } {
+  const m = /Motorista:\s*([^|]+?)(?:\s*—\s*CPF\s*([\d.\-\/]+))?\s*(?:\||$)/.exec(String(infCpl ?? ""));
+  return { nome: m?.[1]?.trim() ?? "", cpf: m?.[2]?.trim() ?? "" };
+}
 
 type Dados = Record<string, unknown> | null | undefined;
 export type NotaRemessa = {

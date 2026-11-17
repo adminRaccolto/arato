@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { notaPendenteDaRemessa, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "./remessa-pendente";
+import { motoristaDoInfCpl, notaPendenteDaRemessa, remessaEditavel, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "./remessa-pendente";
 
 const pendente = { corpo: { fazenda_id: "faz-1", modulo_key: "fiscal_pf_1", itens: [{ cfop: "5905" }] }, registro: { acao: "registrar", fazenda_id: "faz-1", data: "2026-11-10", itens: [{ insumo_id: "i1", quantidade: 10 }] } };
 
@@ -100,4 +100,23 @@ test("painel: espelho e transmissão usam o cadastro atual do armazém (IE corri
   assert.equal(c.fazenda_id, "f1");
   // Sem armazém no registro: corpo guardado
   assert.equal(await corpoComDestinatarioAtual(db, { ...p, registro: { acao: "registrar" } }), p.corpo);
+});
+
+// Edição da remessa pendente pelo Painel de Notas (17/11/2026)
+
+const pendEd = { remessa_pendente: { corpo: { fazenda_id: "f" }, registro: { acao: "registrar" } } };
+
+test("remessa pendente só é editável antes de transmitir", () => {
+  assert.equal(remessaEditavel({ status: "em_digitacao", chave_acesso: null, dados_nf_json: pendEd }), true);
+  assert.equal(remessaEditavel({ status: "autorizada", chave_acesso: "5".repeat(44), dados_nf_json: pendEd }), false);
+  assert.equal(remessaEditavel({ status: "em_digitacao", chave_acesso: "5".repeat(44), dados_nf_json: pendEd }), false);
+  assert.equal(remessaEditavel({ status: "em_digitacao", chave_acesso: null, dados_nf_json: { rascunho: true } }), false);   // rascunho de venda
+});
+
+test("motorista das informações complementares (rascunho antigo)", () => {
+  assert.deepEqual(motoristaDoInfCpl("Remessa p/ armazém | Ref. NF de compra 123 — X | Motorista: JOÃO DA SILVA — CPF 123.456.789-00"),
+    { nome: "JOÃO DA SILVA", cpf: "123.456.789-00" });
+  assert.deepEqual(motoristaDoInfCpl("Motorista: PEDRO"), { nome: "PEDRO", cpf: "" });
+  assert.deepEqual(motoristaDoInfCpl("Ref. NF de compra 123"), { nome: "", cpf: "" });
+  assert.deepEqual(motoristaDoInfCpl(undefined), { nome: "", cpf: "" });
 });

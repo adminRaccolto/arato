@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.17-n",
+    data: "17/11/2026",
+    titulo: "Editar NF-e de remessa pendente no Painel de Notas",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A NF-e de remessa que está pendente no Painel de Notas (ainda não transmitida) ganhou o botão \"✏ Editar\". Ele reabre a tela de Remessas já preenchida (NF de referência, armazém, depósitos, itens, operação, IE do emitente, transporte e observação). \"Salvar alterações\" grava por cima da mesma nota, que continua pendente para conferir no espelho e transmitir. Se a nota já tiver uma transmissão em andamento na SEFAZ, a edição é bloqueada." },
+    ],
+    onde: "Documentos Fiscais → Painel de Notas → abrir a remessa pendente → ✏ Editar",
+  },
+  {
     versao: "2026.11.17-m",
     data: "17/11/2026",
     titulo: "Remessa: IE do emitente igual à da NF de referência",

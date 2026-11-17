@@ -12,7 +12,7 @@ import ModalRecusaDevolucao from "../../components/fiscal/ModalRecusaDevolucao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../lib/fiscal/espelho-cliente";
 import { formatarIe, idIeDoModulo, ieEmitenteDaNota } from "../../lib/fiscal/ie-nota";
-import { corpoComDestinatarioAtual, registrarRemessaAutorizada, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "../../lib/fiscal/remessa-pendente";
+import { corpoComDestinatarioAtual, registrarRemessaAutorizada, remessaEditavel, remessaPendenteDe, remessaSemRegistro, transmitirRemessaPendente, type NotaRemessa } from "../../lib/fiscal/remessa-pendente";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop, OPCOES_CST_ICMS } from "../../lib/nfe/cst-por-cfop";
 import { modoDaNota } from "../../lib/fiscal/modo-faturamento";
@@ -550,7 +550,7 @@ window.onload = function() {
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa }: {
+function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe, onRetransmitir, onManifestarNF, onCorrigir, onDuplicar, onRecusada, onEspelhoRemessa, onRegistrarRemessa, onExcluirRemessa, onEditarRemessa }: {
   notas: NotaFiscal[];
   /** IE do estabelecimento que emitiu (lib/fiscal/ie-nota.ts) — coluna IE Emitente */
   ieEmitente?: (n: NotaFiscal) => string | null;
@@ -558,6 +558,8 @@ function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarS
   onEspelhoRemessa?: (n: NotaFiscal) => void;
   onRegistrarRemessa?: (n: NotaFiscal) => void;
   onExcluirRemessa?: (n: NotaFiscal) => void;
+  /** Reabre a remessa pendente na tela de Remessas para editar (só antes de transmitir) */
+  onEditarRemessa?: (n: NotaFiscal) => void;
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
   onConsultarSefaz?: (n: NotaFiscal) => void;
@@ -777,6 +779,13 @@ function TabelaNFe({ notas, ieEmitente, onCancelar, onComplementar, onConsultarS
                                   title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal)"
                                   style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                                   📄 Espelho
+                                </OperationalButton>
+                              )}
+                              {onEditarRemessa && remessaEditavel(nota) && (
+                                <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onEditarRemessa(nota); }}
+                                  title="Reabre a remessa na tela de Remessas para corrigir antes de transmitir"
+                                  style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                                  ✏ Editar
                                 </OperationalButton>
                               )}
                               <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
@@ -2266,6 +2275,7 @@ function FiscalInner() {
                     onEspelhoRemessa={espelhoRemessaDoPainel}
                     onRegistrarRemessa={registrarRemessaDoPainel}
                     onExcluirRemessa={excluirRemessaPendente}
+                    onEditarRemessa={n => router.push(`/fiscal/remessas?editar_nota=${n.id}`)}
                     onManifestarNF={maniTestarNF}
                     onCorrigir={abrirModalCorrecao}
                     onDuplicar={n => router.push(`/comercial/faturamento?duplicar=${n.id}`)}

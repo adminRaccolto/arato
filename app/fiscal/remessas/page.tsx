@@ -6,7 +6,7 @@ import Link from "next/link";
 // entrada de origem ou do cadastro; o estoque é TRANSFERIDO do depósito próprio para o depósito do armazém (continua
 // sendo do cliente). O retorno (NF recebida do armazém, emitida pelo Arato ou fora) fica na tela Retornos.
 import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -24,7 +24,7 @@ import { ratearDescontoNf } from "../../../lib/nfe/remessa";
 import { BlocoTransporte, SeletorIE, TRANSP_VAZIO, ieSugerida, montarTransporte, resolverEmitente, useDadosEmissao, type Transp } from "../../../components/fiscal/EmissaoNfe";
 import RemessasMaquinas from "../../../components/fiscal/RemessasMaquinas";
 import { comJanelaEspelho, mostrarEspelhoNfe, type JanelaEspelho } from "../../../lib/fiscal/espelho-cliente";
-import { notaPendenteDaRemessa } from "../../../lib/fiscal/remessa-pendente";
+import { motoristaDoInfCpl, notaPendenteDaRemessa, remessaEditavel, remessaPendenteDe, remessaTemTransmissaoAtiva, type RemessaTela } from "../../../lib/fiscal/remessa-pendente";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -81,6 +81,7 @@ const novoItem = (): ItemRem => ({ key: crypto.randomUUID(), insumo_id: "", desc
 function RemessasConteudo() {
   const { contaId, fazendaId, fazendaIds } = useAuth();
   const params = useSearchParams();
+  const router = useRouter();
   const [aba, setAba] = useState<"mercadorias" | "maquinas">(params.get("aba") === "maquinas" ? "maquinas" : "mercadorias");
   const ids = useMemo(() => (fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : []), [fazendaIds, fazendaId]);
   const dados = useDadosEmissao(ids, contaId);
@@ -163,6 +164,10 @@ function RemessasConteudo() {
   const [ext, setExt] = useState({ numero: "", serie: "", chave: "", xml: "" });
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
+  // Remessa pendente do Painel de Notas reaberta para editar (17/11/2026): salvar regrava a mesma nota, não cria outra
+  const [editNota, setEditNota] = useState<{ id: string; numero: string | null } | null>(null);
+  // Escolhas do rascunho aplicadas depois dos efeitos que sugerem CFOP e IE (senão eles sobrescrevem o que estava salvo)
+  const [restaurar, setRestaurar] = useState<{ cfop?: { manual: string; salvo: string; cst: string }; ie?: { id: string; numero: string } } | null>(null);
 
   const insumoPorId = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
   const armazem = pessoas.find(p => p.id === armazemId);
@@ -225,12 +230,84 @@ function RemessasConteudo() {
   useEffect(() => {
     if (ieDaReferencia) setIeSel(ieDaReferencia.id);
   }, [ieRefNf, ieDaReferencia?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Rascunho reaberto: CFOP/CST e IE como estavam salvos (fica depois dos efeitos de sugestão para valer sobre eles)
+  useEffect(() => {
+    if (!restaurar) return;
+    // Só a IE pendente e as IEs ainda não carregaram: espera (regravar o estado aqui faria o efeito rodar sem parar)
+    if (!restaurar.cfop && !dados.inscricoes.length) return;
+    const r = { ...restaurar };
+    if (r.cfop) {
+      // Sem a escolha guardada (rascunho antigo), só força o CFOP quando o salvo difere do sugerido
+      setCfopManual(r.cfop.manual || (r.cfop.salvo && r.cfop.salvo !== cfopSugerido ? r.cfop.salvo : ""));
+      setCstRem(r.cfop.cst);
+      delete r.cfop;
+    }
+    if (r.ie && dados.inscricoes.length) {
+      const ie = dados.inscricoes.find(i => i.id === r.ie!.id) ?? dados.inscricoes.find(i => i.ie.replace(/\D/g, "") === r.ie!.numero);
+      if (ie) setIeSel(ie.id);
+      delete r.ie;
+    }
+    setRestaurar(r.cfop || r.ie ? r : null);
+  }, [restaurar, dados.inscricoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrirNova() {
     setModo("arato"); setNfOrigem(null); setIeRefNf(""); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
     setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setTipoRem("armazem"); setCfopOutro(""); setCfopXml(""); setCstRem(""); setCfopManual(""); setNatureza("Remessa para depósito em armazém geral");
     setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
-    setErro(""); setModal(true);
+    setEditNota(null); setRestaurar(null); setErro(""); setModal(true);
+  }
+
+  // Reabre a NF-e de remessa pendente do Painel de Notas com tudo que foi escolhido, para corrigir antes de transmitir.
+  // Só enquanto não houver transmissão viva: com operação reservada/enviada, a SEFAZ receberia (ou recebeu) a versão antiga.
+  async function abrirEdicao(notaId: string) {
+    const { data: n } = await supabase.from("notas_fiscais").select("id, numero, status, chave_acesso, dados_nf_json").eq("id", notaId).maybeSingle();
+    const p = n ? remessaPendenteDe(n.dados_nf_json) : null;
+    if (!n || !p) { setMsg("⚠ NF-e de remessa pendente não encontrada."); return; }
+    if (!remessaEditavel(n)) { setMsg(`⚠ A NF-e ${n.numero ?? ""} não está mais pendente (já foi transmitida) e não pode ser editada.`); return; }
+    try {
+      if (await remessaTemTransmissaoAtiva(supabase, n.id)) {
+        setMsg(`⚠ A NF-e ${n.numero ?? ""} tem uma transmissão em andamento na SEFAZ. Consulte a situação no Painel de Notas antes de editar.`); return;
+      }
+    } catch (e) { setMsg(`⚠ ${e instanceof Error ? e.message : e}`); return; }
+    type ItemReg = { insumo_id: string; descricao?: string; ncm?: string; unidade?: string; quantidade: number; valor_unitario: number };
+    const reg = p.registro as { nf_entrada_id?: string | null; cfop?: string; natureza?: string; data?: string; observacao?: string;
+      destinatario?: { pessoa_id?: string }; deposito_origem_id?: string; deposito_terceiro_id?: string; itens?: ItemReg[] };
+    const corpo = p.corpo as { emit_ie_override?: string; frete?: Transp["frete"]; inf_cpl?: string;
+      transporte?: { cpf_cnpj?: string; placa?: string; uf_veiculo?: string } };
+    const tela: RemessaTela = p.tela ?? {};
+    let nfo: NfOrigem | null = null, ieRef = "";
+    if (reg.nf_entrada_id) {
+      const { data } = await supabase.from("nf_entradas").select("id, numero, emitente_nome, data_emissao, valor_total, produtor_id, fazenda_id, ie_produtor, xml_content").eq("id", reg.nf_entrada_id).maybeSingle();
+      if (data) {
+        const { ie_produtor, xml_content, ...cab } = data as NfOrigem & { ie_produtor: string | null; xml_content: string | null };
+        nfo = cab;
+        ieRef = String(ie_produtor ?? "").replace(/\D/g, "") || (/<dest>[\s\S]*?<IE>(\d+)<\/IE>/.exec(String(xml_content ?? ""))?.[1] ?? "");
+      }
+    }
+    // Transporte: o guardado na tela; rascunho antigo reconstrói pelo corpo (transportadora pelo CNPJ, veículo pela placa)
+    let tr0: Transp = tela.tr ?? TRANSP_VAZIO;
+    if (!tela.tr) {
+      const doc = (corpo.transporte?.cpf_cnpj ?? "").replace(/\D/g, ""), placa = (corpo.transporte?.placa ?? "").toUpperCase();
+      const transp = doc ? dados.transportadoras.find(t => (t.cnpj || t.cpf || "").replace(/\D/g, "") === doc) : undefined;
+      const veic = placa ? dados.veiculos.find(v => v.placa.toUpperCase() === placa) : undefined;
+      const mot = motoristaDoInfCpl(corpo.inf_cpl);
+      tr0 = { frete: corpo.frete ?? "9", transportadora_id: transp?.id ?? "", veiculo_id: veic?.id ?? "", placa: veic ? "" : placa,
+        uf_placa: veic ? "" : (corpo.transporte?.uf_veiculo ?? ""), motorista_nome: mot.nome, motorista_cpf: mot.cpf };
+    }
+    const cf = String(reg.cfop ?? "").replace(/\D/g, "");
+    const op = tela.tipo_rem ? null : operacaoPorCfop(cf);
+    abrirNova();
+    setEditNota({ id: n.id, numero: n.numero ?? null });
+    setNfOrigem(nfo); setIeRefNf(ieRef);
+    setItens((reg.itens ?? []).length ? (reg.itens ?? []).map(i => ({ key: crypto.randomUUID(), insumo_id: i.insumo_id, descricao: i.descricao ?? "",
+      ncm: i.ncm ?? "", unidade: i.unidade ?? "", quantidade: paraCampo(i.quantidade), valor_unitario: paraCampo(i.valor_unitario) })) : [novoItem()]);
+    setArmazemId(reg.destinatario?.pessoa_id ?? ""); setDepOrigem(reg.deposito_origem_id ?? ""); setDepTerceiro(reg.deposito_terceiro_id ?? "");
+    setTipoRem(tela.tipo_rem ?? op?.chave ?? "outro"); setCfopOutro(tela.cfop_outro ?? (tela.tipo_rem || op ? "" : cf));
+    if (reg.natureza) setNatureza(reg.natureza);
+    if (reg.data) setDataRem(reg.data);
+    setObs(reg.observacao ?? ""); setEmitenteSel(tela.emitente_sel ?? ""); setTr(tr0);
+    setRestaurar({ cfop: { manual: tela.cfop_manual ?? "", salvo: cf, cst: tela.cst ?? "" },
+      ie: { id: tela.ie_id ?? "", numero: String(corpo.emit_ie_override ?? "").replace(/\D/g, "") } });
   }
 
   async function buscarNfsOrigem(t: string) {
@@ -353,7 +430,10 @@ function RemessasConteudo() {
     if (!espelho && modo === "arato" && armazemSemIe && !(await confirmarAcao({ titulo: "Destinatário sem Inscrição Estadual", perigo: true, textoConfirmar: "Emitir sem a IE",
       mensagem: `O cadastro de ${armazem.nome} está sem Inscrição Estadual: a NF-e sai sem a IE do destinatário. Use "Buscar IE na SEFAZ" abaixo do armazém para preencher antes. Emitir assim mesmo?` }))) return;
     const deDepositos = `O estoque passa de "${depositos.find(d => d.id === depOrigem)?.nome}" para "${depositos.find(d => d.id === depTerceiro)?.nome}"`;
-    if (!espelho && !(await confirmarAcao(acao === "painel" && modo === "arato"
+    if (!espelho && !(await confirmarAcao(acao === "painel" && modo === "arato" && editNota
+      ? { titulo: "Salvar as alterações da NF-e pendente?", perigo: false,
+          mensagem: `${itens.length} item(ns), ${fmtBRL(totalItens)}, para ${armazem.nome}. A NF-e continua pendente no Painel de Notas: confira o espelho e transmita de lá. ${deDepositos} só quando ela for autorizada.` }
+      : acao === "painel" && modo === "arato"
       ? { titulo: "Enviar a NF-e de remessa ao painel?", perigo: false,
           mensagem: `${itens.length} item(ns), ${fmtBRL(totalItens)}, para ${armazem.nome}. A NF-e fica pendente de transmissão no Painel de Notas (Documentos Fiscais): confira o espelho e transmita de lá. ${deDepositos} só quando ela for autorizada. Não gera CP/CR.` }
       : { titulo: modo === "arato" ? "Emitir NF-e de remessa?" : "Registrar remessa?", perigo: false,
@@ -400,13 +480,25 @@ function RemessasConteudo() {
               body: JSON.stringify({ fazenda_id: em.fazenda_id, modulo_key: em.modulo, cpf_cnpj_hint: em.cpf, emit_ie_override: ie?.ie || undefined }) });
             if (rn.ok) previa = await rn.json();
           } catch { /* sem prévia: número provisório */ }
-          const { error: eIns } = await supabase.from("notas_fiscais").insert(notaPendenteDaRemessa({
+          const tela: RemessaTela = { tr, emitente_sel: emitenteSel, ie_id: ieSel, tipo_rem: tipoRem, cfop_manual: cfopManual, cfop_outro: cfopOutro, cst: cstRem };
+          const linha = notaPendenteDaRemessa({
             fazenda_id: em.fazenda_id, numero: previa.numero != null ? String(previa.numero).padStart(6, "0") : "PREVIA", serie: previa.serie ?? "1",
             cfop: cf, natureza, destinatario: armazem.nome, cnpj_destinatario: armazem.cpf_cnpj, data: dataRem, observacao: obs || null,
-            itens: itensReg, pendente: { corpo, registro: registroDe(em.fazenda_id) },
+            itens: itensReg, pendente: { corpo, registro: registroDe(em.fazenda_id), tela },
             destino: { ie: armazem.inscricao_est, endereco: armazem.logradouro, numero: armazem.numero, bairro: armazem.bairro, cidade: armazem.municipio,
               uf: armazem.estado, cep: armazem.cep, ibge: armazem.municipio_ibge },
-          }));
+          });
+          if (editNota) {
+            // Regrava a mesma nota, só se ainda estiver pendente e sem transmissão viva (pode ter sido transmitida em outra aba)
+            if (await remessaTemTransmissaoAtiva(supabase, editNota.id)) throw new Error("A NF-e passou a ter uma transmissão em andamento na SEFAZ. Nada foi alterado: consulte a situação no Painel de Notas.");
+            const { data: upd, error: eUpd } = await supabase.from("notas_fiscais").update(linha).eq("id", editNota.id).eq("status", "em_digitacao").is("chave_acesso", null).select("id");
+            if (eUpd) throw new Error(`Não foi possível salvar a NF-e: ${eUpd.message}`);
+            if (!upd?.length) throw new Error("A NF-e não está mais pendente (foi transmitida ou excluída). Nada foi alterado.");
+            setModal(false); setEditNota(null);
+            router.push("/fiscal");
+            return;
+          }
+          const { error: eIns } = await supabase.from("notas_fiscais").insert(linha);
           if (eIns) throw new Error(`Não foi possível enviar a NF-e ao painel: ${eIns.message}`);
           setMsg(`✓ NF-e de remessa para ${armazem.nome} enviada ao Painel de Notas como pendente de transmissão. Confira o espelho e transmita em Documentos Fiscais → Painel de Notas; o estoque passa para "${depositos.find(d => d.id === depTerceiro)?.nome}" quando ela for autorizada.`);
           setModal(false);
@@ -439,6 +531,14 @@ function RemessasConteudo() {
       setSalvando(false);
     }
   }
+
+  // Painel de Notas → "Editar" na remessa pendente
+  useEffect(() => {
+    const id = params.get("editar_nota");
+    if (!id || loading || modal) return;
+    void abrirEdicao(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // Botão "Emitir NF Remessa" da NF de entrada: abre já com a NF de origem
   useEffect(() => {
@@ -614,16 +714,16 @@ function RemessasConteudo() {
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "min(96vw, 980px)", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Nova Remessa</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{editNota ? `Editar NF-e de remessa pendente${editNota.numero && editNota.numero !== "PREVIA" ? ` (prévia nº ${editNota.numero})` : ""}` : "Nova Remessa"}</div>
               <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div style={{ padding: "16px 22px", overflowY: "auto", flex: 1, display: "grid", gap: 14 }}>
-              <div style={{ display: "flex", gap: 8 }}>
+              {!editNota && <div style={{ display: "flex", gap: 8 }}>
                 {([["arato", "Emitir NF-e de remessa pelo Arato"], ["externa", "NF de remessa já emitida em outro sistema"]] as const).map(([m, t]) => (
                   <button key={m} type="button" onClick={() => setModo(m)} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: modo === m ? 700 : 500,
                     border: modo === m ? "1.5px solid #1A4870" : "0.5px solid var(--border)", background: modo === m ? "#D5E8F5" : "var(--bg-card)", color: modo === m ? "#0B2D50" : "var(--text-2)" }}>{t}</button>
                 ))}
-              </div>
+              </div>}
 
               {modo === "externa" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 2fr 1fr", gap: 10, alignItems: "end" }}>
@@ -801,10 +901,12 @@ function RemessasConteudo() {
                 <OperationalButton data-arato-button="secondary" onClick={() => comJanelaEspelho(j => salvar(j))} disabled={salvando}
                   title="DANFE montado como será transmitido, marcado como espelho (sem valor fiscal). Nada é enviado à SEFAZ."
                   style={{ ...btnR, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 600, opacity: salvando ? 0.6 : 1 }}>📄 Espelho</OperationalButton>
-                <OperationalButton data-arato-button="secondary" onClick={() => salvar("agora")} disabled={salvando} style={{ ...btnR, opacity: salvando ? 0.6 : 1 }}
-                  title="Transmite à SEFAZ agora, sem passar pelo painel">Emitir agora</OperationalButton>
+                {/* Editando a pendente: só salva por cima; transmitir continua sendo pelo painel (a nota é a mesma) */}
+                {!editNota && <OperationalButton data-arato-button="secondary" onClick={() => salvar("agora")} disabled={salvando} style={{ ...btnR, opacity: salvando ? 0.6 : 1 }}
+                  title="Transmite à SEFAZ agora, sem passar pelo painel">Emitir agora</OperationalButton>}
                 <OperationalButton data-arato-button="primary" onClick={() => salvar("painel")} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}
-                  title="Grava a NF-e como pendente de transmissão no Painel de Notas, para conferir no espelho e transmitir de lá">{salvando ? "Salvando…" : "Enviar ao painel (pendente)"}</OperationalButton>
+                  title={editNota ? "Regrava a NF-e pendente no Painel de Notas com as alterações" : "Grava a NF-e como pendente de transmissão no Painel de Notas, para conferir no espelho e transmitir de lá"}>
+                  {salvando ? "Salvando…" : editNota ? "Salvar alterações" : "Enviar ao painel (pendente)"}</OperationalButton>
               </> : (
                 <OperationalButton data-arato-button="primary" onClick={() => salvar()} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}>{salvando ? "Salvando…" : "Registrar remessa"}</OperationalButton>
               )}
