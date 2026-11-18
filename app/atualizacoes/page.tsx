@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-b",
+    data: "18/11/2026",
+    titulo: "Estoque: relatórios em PDF e Excel; bombas de todas as fazendas",
+    modulos: ["Estoque", "Cadastros", "Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "Todos os relatórios do Estoque (Movimentação por Produto, Histórico por Item, Saldos de Estoque, Saldo por Lote, Saldo por Depósito, Posição Financeira e Auditoria de Saldo) ganharam os botões PDF e Excel, no padrão de impressão Arato." },
+      { tipo: "melhoria", texto: "A Posição de estoque e o relatório Saldos de Estoque não mostram mais a coluna Depósito, que vinha de um campo fixo do cadastro e não acompanhava transferências. O filtro de depósito da Posição passa a mostrar os itens com saldo real naquele depósito." },
+      { tipo: "melhoria", texto: "Bombas & Tanques lista todas as bombas do cliente, com a coluna Fazenda, sem o filtro por fazenda." },
+      { tipo: "correcao", texto: "Na NF de combustível, o seletor de bomba mostra todas as bombas do cliente, agrupadas por fazenda, com a fazenda da IE primeiro. Antes só apareciam as bombas da fazenda da IE." },
+    ],
+    onde: "Estoque → Relatórios; Estoque → Posição; Cadastros → Combustíveis & Lubrificantes; processamento de NF de combustível",
+  },
+  {
     versao: "2026.11.18-a",
     data: "18/11/2026",
     titulo: "Conciliação: lançamentos de tesouraria deixam de aparecer como inconsistentes",

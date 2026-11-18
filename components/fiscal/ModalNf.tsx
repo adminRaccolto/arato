@@ -441,8 +441,6 @@ export default function ModalNf({
   const [wBombas,     setWBombas]     = useState<(BombaCombustivel & { fazenda_nome?: string })[]>([]);
   // IE do destinatário lida do XML (<dest><IE>) — escolhe sozinha a IE do produtor e, por ela, a fazenda que recebe.
   const [ieDestXml, setIeDestXml] = useState("");
-  // Fazenda onde o combustível é descarregado — escolhida no seletor; vazio = a sugerida (a da IE).
-  const [fazendaBombaSel, setFazendaBombaSel] = useState("");
   const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);
   const [wProdutores, setWProdutores] = useState<Array<{id: string; nome: string; cpf_cnpj?: string}>>([]);
   const [iesProdutor,  setIesProdutor]  = useState<ProdutorIE[]>([]);
@@ -2662,17 +2660,13 @@ export default function ModalNf({
   const modoDireto: "combustivel" | "manutencao" | "cc" =
     opSelecionada?.permite_combustivel ? "combustivel" :
     opSelecionada?.permite_manutencao  ? "manutencao"  : "cc";
-  // Cada fazenda tem a sua bomba. Sugestão: a fazenda da IE do produtor na nota (sem IE vinculada a uma fazenda,
-  // a da própria NF). O local físico de descarga pode ser outro (estoque físico ≠ fiscal) — o usuário troca a
-  // fazenda no seletor acima da bomba.
+  // Todas as bombas do cliente numa lista só, agrupadas por fazenda (18/11/2026 — antes era preciso escolher a fazenda
+  // antes, e o seletor de fazenda quase nunca aparecia: só se viam as bombas da fazenda da IE). A fazenda da IE do
+  // produtor (sem IE ligada a fazenda, a da NF) vem primeiro, marcada; o local físico de descarga pode ser outro.
   const fazendaBombaSugerida = iesProdutor.find(i => i.inscricao_estadual === cab.ie_produtor)?.fazenda_id || nfEdit?.fazenda_id || fazendaId || "";
   const fazendasComBomba = wBombas.reduce<{ id: string; nome: string }[]>((acc, b) =>
-    acc.some(f => f.id === b.fazenda_id) ? acc : [...acc, { id: b.fazenda_id, nome: b.fazenda_nome ?? "Fazenda" }], []);
-  // Fazenda sugerida sem bomba e só uma fazenda do cliente com bomba: usa essa (antes a lista ficava vazia e o seletor
-  // de fazenda nem aparecia, porque só era mostrado com duas ou mais fazendas com bomba)
-  const sugeridaTemBomba = fazendasComBomba.some(f => f.id === fazendaBombaSugerida);
-  const fazendaBombas = fazendaBombaSel || (!sugeridaTemBomba && fazendasComBomba.length === 1 ? fazendasComBomba[0].id : fazendaBombaSugerida);
-  const bombasDaFazenda = wBombas.filter(b => !fazendaBombas || b.fazenda_id === fazendaBombas);
+    acc.some(f => f.id === b.fazenda_id) ? acc : [...acc, { id: b.fazenda_id, nome: b.fazenda_nome ?? "Fazenda" }], [])
+    .sort((a, b) => (a.id === fazendaBombaSugerida ? -1 : b.id === fazendaBombaSugerida ? 1 : a.nome.localeCompare(b.nome, "pt-BR")));
   // OG de compra de combustível (permite_combustivel) em NF de Insumos/Combustíveis já é combustível: marca
   // "É Combustível" sozinho e mostra o seletor de bomba — antes dependia de achar e marcar a caixa à mão.
   useEffect(() => {
@@ -2680,12 +2674,6 @@ export default function ModalNf({
     setCab(p => (p.e_combustivel ? p : { ...p, e_combustivel: true, deposito_destino_id: "" }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, cab.operacao_gerencial_id, opSelecionada?.permite_combustivel]);
-  // Bomba escolhida tem de ser da fazenda da IE: trocar a IE para outra fazenda limpa a escolha.
-  useEffect(() => {
-    if (cab.bomba_destino_id && wBombas.length && !bombasDaFazenda.some(b => b.id === cab.bomba_destino_id)) setCab(p => ({ ...p, bomba_destino_id: "" }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaBombas, wBombas]);
-  useEffect(() => { setFazendaBombaSel(""); }, [nfEdit?.id]);
 
   if (carregandoNf) {
     return (
@@ -4276,32 +4264,25 @@ export default function ModalNf({
                           <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
                             Bomba / Tanque destino (crédito de estoque)
                           </div>
-                          {(fazendasComBomba.length > 1 || (fazendasComBomba.length === 1 && fazendasComBomba[0].id !== fazendaBombaSugerida)) && (
-                            <div style={{ marginBottom: 8 }}>
-                              <label data-arato-label="true" style={lbl}>Fazenda da descarga</label>
-                              <SelectField value={fazendasComBomba.some(f => f.id === fazendaBombas) ? fazendaBombas : ""}
-                                onChange={e => setFazendaBombaSel(e.target.value)}
-                                style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}>
-                                {!fazendasComBomba.some(f => f.id === fazendaBombas) && <option value="">Selecione a fazenda…</option>}
-                                {fazendasComBomba.map(f => <option key={f.id} value={f.id}>{f.nome}{f.id === fazendaBombaSugerida ? " (fazenda da IE)" : ""}</option>)}
-                              </SelectField>
-                            </div>
-                          )}
                           <SelectField
                             value={cab.bomba_destino_id}
                             onChange={e => setCab(p => ({ ...p, bomba_destino_id: e.target.value }))}
                             style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}
                           >
                             <option value="">Selecione a bomba ou tanque…</option>
-                            {bombasDaFazenda.map(b => (
-                              <option key={b.id} value={b.id}>
-                                {b.nome} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
-                              </option>
+                            {fazendasComBomba.map(f => (
+                              <optgroup key={f.id} label={`${f.nome}${f.id === fazendaBombaSugerida ? " (fazenda da IE)" : ""}`}>
+                                {wBombas.filter(b => b.fazenda_id === f.id).map(b => (
+                                  <option key={b.id} value={b.id}>
+                                    {b.nome} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
+                                  </option>
+                                ))}
+                              </optgroup>
                             ))}
                           </SelectField>
-                          {bombasDaFazenda.length === 0 && (
+                          {wBombas.length === 0 && (
                             <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-                              {wBombas.length > 0 ? "Nenhuma bomba nesta fazenda — escolha a fazenda da descarga acima." : "Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis & Bombas."}
+                              Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis &amp; Lubrificantes.
                             </div>
                           )}
                         </div>

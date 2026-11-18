@@ -443,13 +443,6 @@ function CadastrosInner() {
   const [fBomba, setFBomba]             = useState({ fazenda_id: "", nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
   const [insumosComb, setInsumosComb]   = useState<{ id: string; nome: string }[]>([]);
   // Fazenda que a LISTA de bombas mostra — independente da "fazenda ativa" global do TopNav.
-  // Achado real 23/09/2026 (cliente Habio Pereira Marciano, conta com 2 fazendas): a lista sempre
-  // seguia fazIdEff (a fazenda ativa da sessão), sem nenhum seletor visível nessa aba — bombas
-  // cadastradas na Herança J7 "sumiam" sempre que a fazenda ativa da sessão era a outra fazenda da
-  // conta (Estância Guasca). O cadastro nunca esteve errado no banco; só a lista escondia. Mesma
-  // classe de bug documentada na memória "Sem Fazenda Ativa" pra Produtores/Ano Safra — aqui
-  // aplicada à aba Combustíveis & Bombas especificamente.
-  const [fazBombasView, setFazBombasView] = useState("");
 
   // ── Funcionários ──
   const [funcs, setFuncs]                   = useState<Funcionario[]>([]);
@@ -755,10 +748,9 @@ function CadastrosInner() {
       listarConsorciosContemplados(contaId).then(setConsorciosContemplados).catch(() => {});
     }
     if (aba === "combustivel") {
-      // fazBombasView (seletor próprio da aba) tem prioridade sobre a fazenda ativa global —
-      // ver comentário no state fazBombasView.
-      if (!fazBombasView) setFazBombasView(fazendaId);
-      listarBombas(fazBombasView || fazendaId).then(setBombas).catch(e => setErro(e.message));
+      // Todas as bombas do cliente, com a coluna Fazenda (18/11/2026). Antes a lista seguia uma fazenda por vez (seletor
+      // da aba) e bombas de outra fazenda pareciam não existir.
+      listarBombas(fazendaIds.length ? fazendaIds : fazendaId).then(setBombas).catch(e => setErro(e.message));
       // A sub-aba "Combustíveis" (dentro de Combustíveis & Bombas) lista o
       // catálogo de insumos categoria=combustivel, mas o estado `insumos` só
       // era carregado nas abas Insumos/Produtos/Itens — abrir esta aba direto
@@ -874,7 +866,7 @@ function CadastrosInner() {
           }));
         });
     }
-  }, [aba, fazendaId, contaId, fazBombasView, fazendaIds]);
+  }, [aba, fazendaId, contaId, fazendaIds]);
 
   // Depósitos: useEffect separado que observa `fazendas` para evitar race condition
   // (aba=depositos pode estar ativa antes de fazendas terminar de carregar)
@@ -3792,28 +3784,21 @@ function CadastrosInner() {
                     <OperationalFilters data-arato-filters="true" style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                       <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Bombas de Combustível <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({bombas.length})</span></div>
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        {/* Bomba é equipamento físico de UMA fazenda — a lista sempre seguia a
-                            fazenda ativa global (TopNav), sem seletor próprio; bombas de outras
-                            fazendas da conta "somiam" sem aviso nenhum. Seletor explícito 23/09/2026. */}
-                        {fazendas.length > 1 && (
-                          <SelectField value={fazBombasView} onChange={e => setFazBombasView(e.target.value)} style={{ ...inp, width: 220 }}>
-                            {fazendas.map(f => <option key={f.id} value={f.id!}>{f.nome}</option>)}
-                          </SelectField>
-                        )}
-                        <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalBomba(undefined, fazBombasView)}>+ Nova Bomba</OperationalButton>
+                        <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirModalBomba()}>+ Nova Bomba</OperationalButton>
                       </div>
                     </OperationalFilters>
                     <OperationalGrid data-native-cadastro-grid="true" data-op-title="Bombas de Combustível" data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <TH cols={["Nome / Localização", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Controle", "Status", ""]} />
+                      <TH cols={["Nome / Localização", "Fazenda", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Controle", "Status", ""]} />
                       <tbody>
-                        {bombas.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
-                        {bombas.map((b, i) => {
+                        {bombas.length === 0 && <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
+                        {bombas.slice().sort((a, b) => (fazendas.find(f => f.id === a.fazenda_id)?.nome ?? "").localeCompare(fazendas.find(f => f.id === b.fazenda_id)?.nome ?? "", "pt-BR") || a.nome.localeCompare(b.nome, "pt-BR")).map((b, i) => {
                           const pct = b.capacidade_l ? Math.round(b.estoque_atual_l / b.capacidade_l * 100) : null;
                           const corComb: Record<string, [string,string]> = { diesel_s10: ["#E6F1FB","#0C447C"], diesel_s500: ["#E6F1FB","#0D0D0D"], gasolina: ["#FAEEDA","#633806"], etanol: ["#E8E8E8","#0D0D0D"], arla: ["#FBF0D8","#7A5A12"] };
                           const [bg, cl] = corComb[b.combustivel] ?? ["#F1EFE8","var(--text-2)"];
                           return (
                             <tr key={b.id} style={{ borderBottom: i < bombas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{b.nome}</td>
+                              <td style={{ padding: "10px 14px", color: "var(--text-2)", fontSize: 12 }}>{fazendas.find(f => f.id === b.fazenda_id)?.nome ?? "—"}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.combustivel.replace("_"," ").toUpperCase(), bg, cl)}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{b.capacidade_l?.toLocaleString("pt-BR") ?? "—"}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{b.estoque_atual_l.toLocaleString("pt-BR")}</td>

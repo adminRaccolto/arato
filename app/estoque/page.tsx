@@ -37,6 +37,8 @@ import type { DuplicadoRevisado } from "../../lib/db";
 import { gruposDuplicados as agruparDuplicados } from "../../lib/estoque/duplicados";
 import { ordenarCronologico, textoDoMotivo, type DepositosDaTransferencia } from "../../lib/estoque/rotulo-transferencia";
 import { useAuth } from "../../components/AuthProvider";
+import BotoesExportar from "../../components/relatorios/BotoesExportar";
+import type { RelatorioExport } from "../../lib/relatorios/tabela-exportavel";
 import type {
   Insumo, MovimentacaoEstoque, RelMovimentacaoEstoque,
   Deposito, BombaCombustivel, Maquina,
@@ -290,6 +292,8 @@ export default function Estoque() {
     return true;
   };
   const nomeFaz = (id?: string | null) => (fazendasConta.length > 1 && id ? fazendasConta.find(f => f.id === id)?.nome ?? "" : "");
+  // Filtro de fazenda que vai no cabeçalho dos relatórios exportados (PDF/Excel)
+  const filtroFazendaRel = () => ({ rotulo: "Fazenda", valor: modoTodas ? "Todas as fazendas" : fazendasConta.find(f => f.id === fazAtiva)?.nome ?? "" });
 
   const [aba, setAba] = useState<Aba>("posicao");
   const [erro, setErro] = useState<string | null>(null);
@@ -638,6 +642,10 @@ export default function Estoque() {
       listarSaldoPorDeposito(fazLeitura).then(setSaldoPorDeposito).catch(() => {});
     }
   }, [aba, relTipo, fazAtiva, chaveLeitura]); // eslint-disable-line
+  // Filtro de depósito da Posição: pelo saldo real no depósito (movimentações), como em Saldo por Depósito
+  useEffect(() => {
+    if (aba === "posicao" && filtroDeposito) listarSaldoPorDeposito(fazLeitura).then(setSaldoPorDeposito).catch(() => {});
+  }, [aba, filtroDeposito, chaveLeitura]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ──
   async function salvar(fn: () => Promise<void>) {
@@ -1014,7 +1022,8 @@ export default function Estoque() {
     : insumos;
   const insumosFiltrados = insumosPosicao.filter(i => {
     if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false;
-    if (filtroDeposito && i.deposito_id !== filtroDeposito) return false;
+    // Depósito = onde o item tem saldo pelas movimentações (não o campo fixo insumos.deposito_id, que não acompanha transferências)
+    if (filtroDeposito && !saldoPorDeposito.some(r => r.insumo_id === i.id && r.deposito_id === filtroDeposito && Math.abs(Number(r.saldo)) > 0.001)) return false;
     if (filtroCat === "alertas")  return i.estoque <= i.estoque_minimo;
     if (filtroCat === "negativos") return i.estoque < 0;
     if (filtroCat === "produtos")  return !["semente","fertilizante","defensivo","corretivo"].includes(i.categoria);
@@ -1246,18 +1255,17 @@ export default function Estoque() {
                               onChange={e => setSelecionados(e.target.checked ? new Set(insumosFiltrados.map(i => i.id)) : new Set())}
                               style={{ cursor: "pointer", width: 15, height: 15 }} />
                           </th>
-                          {["Item", "Tipo / Categoria", "Depósito", "Estoque atual", "Estoque mín.", "Custo médio", "Valor total", ""].map((c, i) => (
+                          {["Item", "Tipo / Categoria", "Estoque atual", "Estoque mín.", "Custo médio", "Valor total", ""].map((c, i) => (
                             <th key={i} style={{ ...thStyle, textAlign: i === 0 ? "left" : "center" }}>{c}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {insumosFiltrados.length === 0 && <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum item encontrado</td></tr>}
+                        {insumosFiltrados.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum item encontrado</td></tr>}
                         {insumosFiltrados.map((ins, i) => {
                           const negativo = ins.estoque < 0;
                           const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
                           const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: ins.categoria };
-                          const dep      = depositos.find(d => d.id === ins.deposito_id);
                           const valorTotal = ins.estoque * ins.valor_unitario;
                           const sel = selecionados.has(ins.id);
                           return (
@@ -1276,7 +1284,6 @@ export default function Estoque() {
                                 {badge(ins.tipo === "produto" ? "Produto" : "Insumo", ins.tipo === "produto" ? "#F0F9FF" : "#E8F5E9", ins.tipo === "produto" ? "#0369A1" : "#1A6B3C")}
                                 <div style={{ marginTop: 4 }}>{badge(cat.label, cat.bg, cat.cl)}</div>
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 5, justifyContent: "center" }}>
                                   <span style={{ fontWeight: 600, color: negativo ? "#E24B4A" : alerta ? "#EF9F27" : "var(--text-1)" }}>{fmtNum(ins.estoque)}</span>
@@ -1640,6 +1647,34 @@ export default function Estoque() {
                 const totalEntradas = grupos.reduce((s, g) => s + g.totalE, 0);
                 const totalSaidas   = grupos.reduce((s, g) => s + g.totalS, 0);
                 const MOTIVO_LABEL: Record<string, string> = { compra: "Compra", ajuste_saldo: "Ajuste", baixa_uso: "Uso", baixa_perda: "Perda", transferencia: "Transfer.", inventario: "Inventário", abastecimento: "Abastecimento", outros: "Outros" };
+                // Origem em texto (a tela mostra com ícones e link) — usada no PDF/Excel
+                const origemTxt = (m: MovimentacaoEstoque) => {
+                  const nfNum = m.nf_entradas?.numero ?? m.nf_entrada;
+                  const ciclo = (m as MovimentacaoEstoque & { ciclos?: { descricao: string } | null }).ciclos?.descricao;
+                  if (nfNum) return `NF ${nfNum}`;
+                  if (ciclo) return ciclo;
+                  const fixos: Record<string, string> = { transferencia: "Transferência", abastecimento: "Abastecimento", baixa_uso: "Aplicação em campo", baixa_perda: "Perda", ajuste_saldo: "Ajuste de saldo", inventario: "Inventário" };
+                  return fixos[m.motivo ?? ""] ?? MOTIVO_LABEL[m.motivo ?? ""] ?? textoDoMotivo(m.motivo, depositosTrf) ?? "";
+                };
+                const qtdSinal = (m: MovimentacaoEstoque) => m.tipo === "ajuste" ? m.quantidade : m.tipo === "entrada" ? m.quantidade : -m.quantidade;
+                const tipoTxt = (m: MovimentacaoEstoque) => m.tipo === "ajuste" ? "Ajuste" : m.tipo === "entrada" ? "Entrada" : "Saída";
+                const exportKardex = (): RelatorioExport => {
+                  const colsMov = [{ rotulo: "Data", tipo: "data" as const }, { rotulo: "Tipo" }, { rotulo: "Origem" }, { rotulo: "Quantidade", tipo: "numero" as const }, { rotulo: "Saldo acum.", tipo: "numero" as const }, { rotulo: "Depósito" }, { rotulo: "Usuário" }];
+                  const linhaMov = (m: MovimentacaoEstoque & { saldo: number }) => [m.data, tipoTxt(m), origemTxt(m), qtdSinal(m), m.saldo, depositos.find(d => d.id === m.deposito_id)?.nome ?? "", m.usuario_nome ?? ""];
+                  const resumo = { titulo: "Resumo por produto", colunas: [{ rotulo: "Produto" }, { rotulo: "Categoria" }, { rotulo: "Unid." }, { rotulo: "Saldo inicial", tipo: "numero" as const }, { rotulo: "Entradas", tipo: "numero" as const }, { rotulo: "Saídas", tipo: "numero" as const }, { rotulo: "Saldo final", tipo: "numero" as const }],
+                    linhas: grupos.map(g => [g.insumo.nome, CAT_META[g.insumo.categoria]?.label ?? g.insumo.categoria, g.insumo.unidade, g.saldoInicial, g.totalE, g.totalS, g.saldoFinal]),
+                    total: ["TOTAL", "", "", null, totalEntradas, totalSaidas, null] };
+                  return {
+                    titulo: "Movimentação de Estoque por Produto", tipoArquivo: "ESTOQUE MOVIMENTACAO POR PRODUTO",
+                    filtros: [filtroFazendaRel(), { rotulo: "Período", valor: `${kardexInicio.split("-").reverse().join("/")} a ${kardexFim.split("-").reverse().join("/")}` },
+                      { rotulo: "Categoria", valor: kardexCat === "todos" ? "" : CAT_META[kardexCat as Insumo["categoria"]]?.label ?? kardexCat },
+                      { rotulo: "Depósito", valor: depositos.find(d => d.id === kardexDepositoId)?.nome ?? "" },
+                      { rotulo: "Produto", valor: insumos.find(i => i.id === kardexInsumoId)?.nome ?? "" }],
+                    secoes: [resumo, ...grupos.map(g => ({ titulo: `${g.insumo.nome} (${g.insumo.unidade}) — inicial ${fmtNum(g.saldoInicial)} · final ${fmtNum(g.saldoFinal)}`, colunas: colsMov, linhas: g.movs.map(linhaMov) }))],
+                    planilhas: [{ ...resumo, nome: "Resumo" }, { nome: "Movimentações", colunas: [{ rotulo: "Produto" }, { rotulo: "Unid." }, ...colsMov],
+                      linhas: grupos.flatMap(g => g.movs.map(m => [g.insumo.nome, g.insumo.unidade, ...linhaMov(m)])) }],
+                  };
+                };
 
                 return (
                   <div>
@@ -1716,11 +1751,9 @@ export default function Estoque() {
                           </div>
                         </div>
 
-                        {/* Botão imprimir */}
+                        {/* Exportar */}
                         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }} className="no-print">
-                          <OperationalButton data-arato-button="secondary" onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                            🖨 Imprimir
-                          </OperationalButton>
+                          <BotoesExportar gerar={exportKardex} />
                         </div>
 
                         {/* Tabela resumo */}
@@ -1880,6 +1913,14 @@ export default function Estoque() {
                           <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</span>
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>Saldo atual: <strong style={{ color: ins.estoque < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(ins.estoque)} {ins.unidade}</strong></span>
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>{rows.length} movimentações</span>
+                          <span style={{ marginLeft: "auto" }}><BotoesExportar disabled={rows.length === 0} gerar={() => ({
+                            titulo: `Histórico do Item — ${ins.nome}`, tipoArquivo: `ESTOQUE HISTORICO ${ins.nome}`,
+                            filtros: [filtroFazendaRel(), { rotulo: "Item", valor: `${ins.nome} (${ins.unidade})` }, { rotulo: "A partir de", valor: relDataInicio ? relDataInicio.split("-").reverse().join("/") : "" },
+                              { rotulo: "Saldo atual", valor: `${fmtNum(ins.estoque)} ${ins.unidade}` }],
+                            secoes: [{ colunas: [{ rotulo: "Data", tipo: "data" }, { rotulo: "Tipo" }, { rotulo: "Motivo" }, { rotulo: "Quantidade", tipo: "numero" }, { rotulo: "Saldo acum.", tipo: "numero" }, { rotulo: "Depósito" }, { rotulo: "Origem" }],
+                              linhas: rows.map(m => [m.data, m.tipo === "entrada" ? "Entrada" : "Saída", textoDoMotivo(m.motivo, depositosTrf) ?? "", m.tipo === "entrada" ? m.quantidade : -m.quantidade, m.saldo,
+                                depositos.find(x => x.id === m.deposito_id)?.nome ?? "", m.auto ? "Automático" : "Manual"]) }],
+                          })} /></span>
                         </div>
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
                           <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1914,23 +1955,29 @@ export default function Estoque() {
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Saldos de Estoque</div>
-                    <div style={{ fontSize: 12, color: "var(--text-2)" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-2)" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
+                      <BotoesExportar gerar={() => ({
+                        titulo: "Saldos de Estoque", tipoArquivo: "ESTOQUE SALDOS", filtros: [filtroFazendaRel()],
+                        secoes: [{ colunas: [{ rotulo: "Item" }, { rotulo: "Tipo" }, { rotulo: "Categoria" }, { rotulo: "Saldo", tipo: "numero" }, { rotulo: "Unid." }, { rotulo: "Mínimo", tipo: "numero" }, { rotulo: "Status" }],
+                          linhas: insumos.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map(ins => [ins.nome, ins.tipo === "produto" ? "Produto" : "Insumo", CAT_META[ins.categoria]?.label ?? ins.categoria,
+                            ins.estoque, ins.unidade, ins.estoque_minimo, ins.estoque < 0 ? "Negativo" : ins.estoque <= ins.estoque_minimo ? "Mínimo" : "OK"]) }],
+                      })} />
+                    </div>
                   </div>
                   <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
                     <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <TH cols={["Item","Tipo","Categoria","Depósito","Saldo","Mínimo","Status"]} />
+                      <TH cols={["Item","Tipo","Categoria","Saldo","Mínimo","Status"]} />
                       <tbody>
                         {insumos.sort((a,b) => a.nome.localeCompare(b.nome)).map((ins, i) => {
                           const negativo = ins.estoque < 0;
                           const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
-                          const dep      = depositos.find(d => d.id === ins.deposito_id);
                           const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: ins.categoria };
                           return (
                             <tr key={ins.id} style={{ borderBottom: i < insumos.length-1 ? "0.5px solid var(--border-row)" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
                               <td style={{ padding: "9px 14px", fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(ins.tipo === "produto" ? "Produto" : "Insumo", ins.tipo === "produto" ? "#F0F9FF" : "#E8F5E9", ins.tipo === "produto" ? "#0369A1" : "#1A6B3C")}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
-                              <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: negativo ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(ins.estoque)} {ins.unidade}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center" }}>
@@ -1983,6 +2030,13 @@ export default function Estoque() {
                           <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</span>
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>{saldosLote.length} lote{saldosLote.length !== 1 ? "s" : ""} com movimento</span>
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>Soma dos lotes: <strong style={{ color: saldoTotal < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(saldoTotal)} {ins.unidade}</strong></span>
+                          <span style={{ marginLeft: "auto" }}><BotoesExportar disabled={saldosLote.length === 0} gerar={() => ({
+                            titulo: `Saldo por Lote — ${ins.nome}`, tipoArquivo: `ESTOQUE SALDO POR LOTE ${ins.nome}`, orientacao: "portrait",
+                            filtros: [{ rotulo: "Semente", valor: `${ins.nome} (${ins.unidade})` }, { rotulo: "Fazenda", valor: nomeFaz(ins.fazenda_id) }, { rotulo: "Depósito", valor: depositos.find(d => d.id === relLoteDepositoId)?.nome ?? "Todos" }],
+                            secoes: [{ colunas: [{ rotulo: "Lote" }, { rotulo: "Entradas", tipo: "numero" }, { rotulo: "Saídas", tipo: "numero" }, { rotulo: "Saldo atual", tipo: "numero" }, { rotulo: "Última movimentação", tipo: "data" }],
+                              linhas: saldosLote.map(l => [l.lote, l.entradas, l.saidas, l.saldo, l.ultima_movimentacao]),
+                              total: ["TOTAL", saldosLote.reduce((t, l) => t + l.entradas, 0), saldosLote.reduce((t, l) => t + l.saidas, 0), saldoTotal, ""] }],
+                          })} /></span>
                         </div>
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
                           <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -2169,6 +2223,23 @@ export default function Estoque() {
                       )}
                     </div>
 
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                      <BotoesExportar disabled={grupos.length === 0} gerar={() => {
+                        const status = (ins: Insumo, saldo: number) => saldo < 0 ? "Negativo" : saldo <= ins.estoque_minimo ? "Mínimo" : "OK";
+                        const cols = [{ rotulo: "Item" }, { rotulo: "Categoria" }, { rotulo: "Saldo", tipo: "numero" as const }, { rotulo: "Unid." }, { rotulo: "Valor unit.", tipo: "moeda" as const }, { rotulo: "Valor total", tipo: "moeda" as const }, { rotulo: "Status" }];
+                        const itens = (g: DepGrupo) => g.itens.slice().sort((a, b) => a.ins.nome.localeCompare(b.ins.nome));
+                        const linha = ({ ins, saldo }: DepItem) => [ins.nome, CAT_META[ins.categoria]?.label ?? ins.categoria, saldo, ins.unidade, ins.valor_unitario, saldo * ins.valor_unitario, status(ins, saldo)];
+                        const nomeDep = (g: DepGrupo) => g.dep ? g.dep.nome : "Sem depósito vinculado";
+                        return {
+                          titulo: "Saldo por Depósito", tipoArquivo: "ESTOQUE SALDO POR DEPOSITO",
+                          filtros: [filtroFazendaRel(), { rotulo: "Produtos", valor: filtroDepProdutos.size ? [...filtroDepProdutos].map(id => insumos.find(i => i.id === id)?.nome ?? "").join(", ") : "" }],
+                          resumo: [{ rotulo: "Depósitos com itens", valor: String(grupos.filter(g => g.dep !== null).length) }, { rotulo: "Valor total em estoque", valor: fmtBRL(totalGeral) }],
+                          secoes: grupos.map(g => ({ titulo: `${nomeDep(g)} — ${fmtBRL(g.valorTotal)}`, colunas: cols, linhas: itens(g).map(linha), total: ["TOTAL", "", null, "", null, g.valorTotal, ""] })),
+                          planilhas: [{ nome: "Saldo por depósito", colunas: [{ rotulo: "Depósito" }, ...cols],
+                            linhas: grupos.flatMap(g => itens(g).map(it => [nomeDep(g), ...linha(it)])), total: ["TOTAL", "", "", null, "", null, totalGeral, ""] }],
+                        };
+                      }} />
+                    </div>
                     {/* KPIs */}
                     <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
                       {[
@@ -2303,6 +2374,12 @@ export default function Estoque() {
                           </>
                         )}
                         <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setAuditoriaDados([]); carregarAuditoria(); }}>↻ Reanalisar</OperationalButton>
+                        <BotoesExportar disabled={auditoriaDados.length === 0} gerar={() => ({
+                          titulo: "Auditoria de Saldo de Estoque", tipoArquivo: "ESTOQUE AUDITORIA DE SALDO", filtros: [filtroFazendaRel()],
+                          secoes: [{ colunas: [{ rotulo: "Item" }, { rotulo: "Unid." }, { rotulo: "Σ Entradas", tipo: "numero" }, { rotulo: "Σ Saídas", tipo: "numero" }, { rotulo: "Saldo (mov.)", tipo: "numero" }, { rotulo: "Estoque (campo)", tipo: "numero" }, { rotulo: "Divergência", tipo: "numero" }, { rotulo: "Diagnóstico" }],
+                            linhas: auditoriaDados.map(a => [a.insumo.nome, a.insumo.unidade, a.totalEntradas, a.totalSaidas, a.saldoMov, a.saldoCampo, a.divergencia,
+                              a.movimentos.length === 0 ? "Sem movimentos" : a.divergencia > 0 ? "Saldo inicial fantasma" : "Saída sem movimento"]) }],
+                        })} />
                       </div>
                     </div>
 
@@ -2476,7 +2553,16 @@ export default function Estoque() {
                       ))}
                     </div>
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14 }}>Valor por Categoria</div>
+                      <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Valor por Categoria</span>
+                        <BotoesExportar gerar={() => ({
+                          titulo: "Posição Financeira do Estoque", tipoArquivo: "ESTOQUE POSICAO FINANCEIRA", orientacao: "portrait", filtros: [filtroFazendaRel()],
+                          resumo: [{ rotulo: "Total em estoque", valor: fmtBRL(total) }, { rotulo: "Itens cadastrados", valor: String(insumos.length) }, { rotulo: "Alertas (mínimo/neg.)", valor: String(alertas.length + negativos.length) }],
+                          secoes: [{ titulo: "Valor por categoria", colunas: [{ rotulo: "Categoria" }, { rotulo: "Qtd. itens", tipo: "numero" }, { rotulo: "Valor total", tipo: "moeda" }, { rotulo: "% do estoque", tipo: "percentual" }],
+                            linhas: porCategoria.map(([cat, valor]) => [cat, insumos.filter(x => (CAT_META[x.categoria]?.label ?? x.categoria) === cat).length, valor, total > 0 ? valor / total * 100 : 0]),
+                            total: ["TOTAL", insumos.length, total, total > 0 ? 100 : 0] }],
+                        })} />
+                      </div>
                       <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
                         <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <TH cols={["Categoria","Qtd. itens","Valor total","% do estoque"]} />
