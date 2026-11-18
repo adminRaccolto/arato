@@ -23458,3 +23458,114 @@ REVOKE ALL ON FUNCTION public.cancelar_adiantamento_fornecedor(uuid) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.cancelar_adiantamento_fornecedor(uuid) TO authenticated, service_role;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 460 — Gratificação de funcionário no CP vai para PRÊMIO FUNCIONÁRIOS (2.01.01.10.004) (18/11/2026)
+-- A rotina da Seção 415 procurava uma OG com "gratifica" no nome; o plano de contas não tem nenhuma (a conta é
+-- 2.01.01.10.004 PRÊMIO FUNCIONÁRIOS) e o título caía em SALÁRIOS (2.01.01.10.001). Ordem agora: 2.01.01.10.004,
+-- depois OG com "gratifica"/"prêmio"/"premio" no nome, por último SALÁRIOS. Entre cópias da mesma classificação:
+-- a da fazenda, depois a do cliente (conta_id), depois a de outra fazenda do cliente, por último a global.
+-- Também reclassifica os títulos de gratificação já gravados em SALÁRIOS (só a OG; valor e pagamento não mudam).
+-- ═══════════════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION fn_og_gratificacao(p_fazenda uuid)
+RETURNS uuid LANGUAGE sql STABLE SET search_path = public AS $$
+  WITH c AS (SELECT conta_id FROM fazendas WHERE id = p_fazenda)
+  SELECT o.id FROM operacoes_gerenciais o, c
+    WHERE NOT coalesce(o.inativo, false) AND o.tipo = 'despesa'
+      AND (o.classificacao IN ('2.01.01.10.004', '2.01.01.10.001')
+        OR o.descricao ILIKE '%gratifica%' OR o.descricao ILIKE '%prêmio%' OR o.descricao ILIKE '%premio%')
+      AND (o.fazenda_id = p_fazenda OR o.conta_id = c.conta_id
+        OR (o.conta_id IS NULL AND o.fazenda_id IS NULL)
+        OR o.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = c.conta_id))
+    ORDER BY
+      CASE WHEN o.classificacao = '2.01.01.10.004' THEN 0
+           WHEN o.classificacao <> '2.01.01.10.001' THEN 1
+           ELSE 2 END,
+      CASE WHEN o.fazenda_id = p_fazenda THEN 0
+           WHEN o.conta_id = c.conta_id THEN 1
+           WHEN o.fazenda_id IS NOT NULL THEN 2
+           ELSE 3 END,
+      o.id
+    LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION fn_gratificacao_cp_antes()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  f funcionarios%ROWTYPE; t lancamentos%ROWTYPE; og uuid; conta uuid; titulo uuid;
+  comp text; total_premios numeric; total_adis numeric;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM id FROM funcionarios WHERE id = OLD.funcionario_id FOR UPDATE;
+  ELSE
+    SELECT * INTO STRICT f FROM funcionarios WHERE id = NEW.funcionario_id FOR UPDATE;
+    IF NEW.mes_referencia !~ '^\d{4}-(0[1-9]|1[0-2])$' OR NEW.valor <= 0 THEN
+      RAISE EXCEPTION 'Informe uma competência válida e valor maior que zero.';
+    END IF;
+  END IF;
+  IF TG_OP <> 'INSERT' AND OLD.lancamento_id IS NOT NULL THEN
+    SELECT * INTO STRICT t FROM lancamentos WHERE id = OLD.lancamento_id FOR UPDATE;
+    IF TG_OP = 'UPDATE' AND (NEW.funcionario_id, NEW.mes_referencia, NEW.valor, NEW.descricao, NEW.data_pagamento)
+        IS NOT DISTINCT FROM (OLD.funcionario_id, OLD.mes_referencia, OLD.valor, OLD.descricao, OLD.data_pagamento) THEN
+      NEW.lancamento_id := OLD.lancamento_id; NEW.lancado_financeiro := true;
+      RETURN NEW;
+    END IF;
+    IF coalesce(t.valor_pago, 0) > 0 OR t.status IN ('baixado','parcial') OR t.lote_id IS NOT NULL OR coalesce(t.conciliado, false) THEN
+      RAISE EXCEPTION 'A gratificação já tem pagamento, conciliação ou borderô. Estorne no CP antes de editar ou excluir.';
+    END IF;
+    IF TG_OP = 'UPDATE' AND (NEW.funcionario_id, NEW.mes_referencia) IS DISTINCT FROM (OLD.funcionario_id, OLD.mes_referencia) THEN
+      RAISE EXCEPTION 'Exclua a gratificação em aberto e lance novamente para trocar funcionário ou competência.';
+    END IF;
+  END IF;
+  IF TG_OP <> 'INSERT' THEN
+    SELECT coalesce(sum(valor), 0) INTO total_adis FROM adiantamentos_salario
+      WHERE funcionario_id = OLD.funcionario_id AND competencia_ref = OLD.mes_referencia AND tipo = 'gratificacao' AND status <> 'cancelado';
+    SELECT coalesce(sum(valor), 0) INTO total_premios FROM funcionarios_premiacoes
+      WHERE funcionario_id = OLD.funcionario_id AND mes_referencia = OLD.mes_referencia AND id <> OLD.id;
+    IF TG_OP = 'UPDATE' AND NEW.funcionario_id = OLD.funcionario_id AND NEW.mes_referencia = OLD.mes_referencia THEN
+      total_premios := total_premios + NEW.valor;
+    END IF;
+    IF total_premios < total_adis THEN
+      RAISE EXCEPTION 'A gratificação não pode ficar abaixo dos adiantamentos já lançados. Ajuste os adiantamentos primeiro.';
+    END IF;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    -- O título é excluído no AFTER, depois que a premiação deixa de referenciá-lo.
+    RETURN OLD;
+  END IF;
+  IF NOT coalesce(NEW.lancado_financeiro, false) AND NEW.lancamento_id IS NULL THEN RETURN NEW; END IF;
+  IF TG_OP = 'UPDATE' AND OLD.lancamento_id IS NULL AND EXISTS (
+    SELECT 1 FROM folha_funcionarios ff JOIN folha_pagamento fp ON fp.id = ff.folha_id
+    WHERE ff.funcionario_id = NEW.funcionario_id AND fp.competencia = NEW.mes_referencia AND coalesce(ff.gratificacao, 0) > 0
+  ) THEN
+    RAISE EXCEPTION 'Esta competência já tem gratificação incluída no salário. Retire o valor da folha e salve ou reprocesse antes de lançar o título separado.';
+  END IF;
+  NEW.fazenda_id := f.fazenda_id;
+  NEW.data_pagamento := coalesce(NEW.data_pagamento, (to_date(NEW.mes_referencia || '-01', 'YYYY-MM-DD') + interval '1 month 4 days')::date);
+  SELECT conta_id INTO conta FROM fazendas WHERE id = f.fazenda_id;
+  SELECT fn_og_gratificacao(f.fazenda_id) INTO og;
+  titulo := CASE WHEN TG_OP = 'UPDATE' THEN OLD.lancamento_id ELSE NULL END;
+  IF titulo IS NULL THEN
+    INSERT INTO lancamentos (fazenda_id, empresa_id, produtor_id, funcionario_id, tipo, natureza,
+      descricao, categoria, valor, moeda, status, data_vencimento, data_lancamento, origem_lancamento, operacao_gerencial_id)
+    VALUES (f.fazenda_id, f.empresa_id, f.produtor_id, f.id, 'pagar', 'real',
+      'Gratificação ' || NEW.mes_referencia || ' — ' || f.nome || ' — ' || NEW.descricao,
+      'Pessoal / Gratificações', NEW.valor, 'BRL', 'em_aberto', NEW.data_pagamento,
+      (now() AT TIME ZONE 'America/Cuiaba')::date, 'folha', og)
+    RETURNING id INTO titulo;
+  ELSE
+    UPDATE lancamentos SET descricao = 'Gratificação ' || NEW.mes_referencia || ' — ' || f.nome || ' — ' || NEW.descricao,
+      data_vencimento = NEW.data_pagamento, operacao_gerencial_id = og WHERE id = titulo;
+  END IF;
+  NEW.lancamento_id := titulo; NEW.lancado_financeiro := true;
+  RETURN NEW;
+END $$;
+
+-- Títulos de gratificação já gravados na OG SALÁRIOS
+UPDATE lancamentos l SET operacao_gerencial_id = fn_og_gratificacao(l.fazenda_id)
+  FROM funcionarios_premiacoes p, operacoes_gerenciais o
+  WHERE p.lancamento_id = l.id AND o.id = l.operacao_gerencial_id AND o.classificacao = '2.01.01.10.001'
+    AND fn_og_gratificacao(l.fazenda_id) IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

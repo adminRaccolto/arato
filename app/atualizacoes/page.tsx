@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-o",
+    data: "18/11/2026",
+    titulo: "Gratificação de funcionário vai para a OG Prêmio Funcionários",
+    modulos: ["Folha de Pagamento", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O título que a aba Gratificações gera no Contas a Pagar passa a usar a operação gerencial 2.01.01.10.004 PRÊMIO FUNCIONÁRIOS. Antes ele caía em SALÁRIOS (2.01.01.10.001). As gratificações já lançadas foram reclassificadas; valor e pagamento não mudam." },
+    ],
+    onde: "Financeiro → Folha de Pagamento → Gratificações",
+  },
+  {
     versao: "2026.11.18-n",
     data: "18/11/2026",
     titulo: "Botão próprio para registrar remessa emitida em outro sistema",
