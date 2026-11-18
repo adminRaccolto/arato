@@ -137,9 +137,7 @@ function RemessasConteudo() {
 
   // ── Nova remessa ─────────────────────────────────────────────────────────────
   const [modal, setModal] = useState(false);
-  // Abre em "Origem da operação": é ali que se escolhe emitir pelo Arato ou registrar a NF emitida em outro sistema
-  const [abaEmissao, setAbaEmissao] = useState<AbaEmissaoNfe>("origem");
-  useEffect(() => { if (modal) setAbaEmissao("origem"); }, [modal]);
+  const [abaEmissao, setAbaEmissao] = useState<AbaEmissaoNfe>("emitente");
   const [modo, setModo] = useState<"arato" | "externa">("arato");
   const [nfOrigem, setNfOrigem] = useState<NfOrigem | null>(null);
   const [buscaNf, setBuscaNf] = useState("");
@@ -255,8 +253,10 @@ function RemessasConteudo() {
     setRestaurar(r.cfop || r.ie ? r : null);
   }, [restaurar, dados.inscricoes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function abrirNova() {
-    setModo("arato"); setNfOrigem(null); setIeRefNf(""); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
+  // "+ Nova Remessa" = emitir pelo Arato (abre em Emitente); "Registrar remessa de outro sistema" = NF emitida fora
+  // (abre em Origem da operação, onde ficam número, série, chave e o XML que preenche itens e armazém)
+  function abrirNova(m: "arato" | "externa" = "arato") {
+    setModo(m); setAbaEmissao(m === "externa" ? "origem" : "emitente"); setNfOrigem(null); setIeRefNf(""); setBuscaNf(""); setNfsOrigem([]); setItens([novoItem()]); setArmazemId("");
     setDepOrigem(""); setDepTerceiro(""); setCfop("5905"); setTipoRem("armazem"); setCfopOutro(""); setCfopXml(""); setCstRem(""); setCfopManual(""); setNatureza("Remessa para depósito em armazém geral");
     setDataRem(hojeLocal()); setObs(""); setEmitenteSel(""); setTr(TRANSP_VAZIO); setExt({ numero: "", serie: "", chave: "", xml: "" });
     setEditNota(null); setRestaurar(null); setErro(""); setModal(true);
@@ -580,7 +580,10 @@ function RemessasConteudo() {
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas</h1>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Mercadoria ou máquina que sai e depois volta: armazém geral, depósito, conserto, empréstimo, comodato. O retorno recebido fica em Entradas → Retornos Recebidos.</div>
           </div>
-          {aba === "mercadorias" && <OperationalButton data-arato-button="primary" onClick={abrirNova} style={btnV}>+ Nova Remessa</OperationalButton>}
+          {aba === "mercadorias" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <OperationalButton data-arato-button="secondary" onClick={() => abrirNova("externa")} style={{ ...btnV, background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870" }}>Registrar remessa de outro sistema</OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={() => abrirNova()} style={btnV}>+ Nova Remessa</OperationalButton>
+          </div>}
         </OperationalHeading>
 
         <div style={{ display: "flex", gap: 4, borderBottom: "0.5px solid var(--border-table)", marginBottom: 16 }}>
@@ -1255,40 +1258,8 @@ function RemessasConteudo() {
               <>
                 <SecaoNfe
                   titulo="Origem da operação"
-                  descricao="Defina se a nota será emitida pelo Arato ou se já foi emitida em outro sistema."
+                  descricao={modo === "externa" ? "Dados da NF de remessa emitida em outro sistema. O XML, se tiver, preenche itens e armazém." : "Nota emitida pelo Arato."}
                 >
-                  {!editNota && (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {(
-                        [
-                          ["arato", "Emitir NF-e de remessa pelo Arato"],
-                          ["externa", "NF de remessa já emitida em outro sistema"],
-                        ] as const
-                      ).map(([m, t]) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setModo(m)}
-                          style={{
-                            flex: 1,
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            fontSize: 12,
-                            cursor: "pointer",
-                            fontWeight: modo === m ? 700 : 500,
-                            border:
-                              modo === m
-                                ? "1.5px solid #1A4870"
-                                : "0.5px solid var(--border)",
-                            background: modo === m ? "#D5E8F5" : "var(--bg-card)",
-                            color: modo === m ? "#0B2D50" : "var(--text-2)",
-                          }}
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                   {modo === "externa" && (
                     <div className="nfe-editor-fields">
                       <div>

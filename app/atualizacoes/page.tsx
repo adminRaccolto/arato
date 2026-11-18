@@ -9,12 +9,12 @@ const RELEASES = [
   {
     versao: "2026.11.18-n",
     data: "18/11/2026",
-    titulo: "Nova Remessa abre na escolha entre emitir ou registrar nota de outro sistema",
+    titulo: "Botão próprio para registrar remessa emitida em outro sistema",
     modulos: ["Documentos Fiscais"],
     itens: [
-      { tipo: "correcao", texto: "Ao clicar em + Nova Remessa, a tela abre direto na aba Origem da operação, onde se escolhe entre emitir a NF-e de remessa pelo Arato ou registrar uma NF de remessa já emitida em outro sistema. Antes a escolha ficava escondida na última aba." },
+      { tipo: "correcao", texto: "A tela Remessas ganhou o botão Registrar remessa de outro sistema, ao lado de + Nova Remessa. Ele abre direto nos campos de número, série, chave e XML da nota emitida fora. + Nova Remessa fica só para emitir a NF-e pelo Arato. Antes a escolha ficava escondida na última aba do editor." },
     ],
-    onde: "Documentos Fiscais → Saídas → Remessas → + Nova Remessa",
+    onde: "Documentos Fiscais → Saídas → Remessas",
   },
   {
     versao: "2026.11.18-m",
