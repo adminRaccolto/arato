@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-m",
+    data: "18/11/2026",
+    titulo: "Custos Totais sintético sem avisos de conferência",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "melhoria", texto: "O relatório sintético de Custos Totais passa a apresentar somente o resumo dos custos, sem avisos ou quantidades de pagamentos pendentes de conferência e fora do escopo operacional. A mudança vale para PDF e Excel; essas informações continuam disponíveis na tela e no relatório detalhado." },
+    ],
+    onde: "Resultados → Custos Totais → Sintético",
+  },
+  {
     versao: "2026.11.18-l",
     data: "18/11/2026",
     titulo: "Custos Totais: relatório sintético ou detalhado",

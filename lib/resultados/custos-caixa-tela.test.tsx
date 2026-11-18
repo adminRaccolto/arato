@@ -148,8 +148,10 @@ test("impressão sintética é o padrão e preserva totais sem listar pagamentos
       );
       assert.match(html, /R\$ 300,00/);
       assert.match(html, /Em que foi gasto/);
-      assert.match(html, /1 pagamentos precisam de conferência/);
-      assert.match(html, /1 pagamentos fora do escopo operacional/);
+      assert.doesNotMatch(
+        html,
+        /precisam de conferência|fora do escopo operacional|Ver pagamentos a conferir/,
+      );
       assert.doesNotMatch(
         html,
         /Pagamentos do período|Documento \/ pagamento|Sementes pagas|Serviço pago|Pagamento a conferir individual|Pagamento excluído individual/,
@@ -164,6 +166,12 @@ test("escolher detalhado imprime os pagamentos selecionados e a relação de con
     descricao: "Pagamento a conferir individual",
     motivo: "Classificação pendente",
     valor: 50,
+  });
+  d.excluidos.push({
+    id: "e",
+    descricao: "Pagamento excluído individual",
+    motivo: "Investimento",
+    valor: 500,
   });
   for (const active of [false, true]) {
     const html = renderToStaticMarkup(
@@ -181,6 +189,11 @@ test("escolher detalhado imprime os pagamentos selecionados e a relação de con
     assert.match(html, /Documento \/ pagamento/);
     assert.match(html, /Serviço pago/);
     assert.match(html, /Pagamento a conferir individual/);
+    assert.match(html, /precisam de conferência/);
+    assert.match(
+      html,
+      /Pagamento excluído individual|fora do escopo operacional/,
+    );
     assert.doesNotMatch(html, /Sementes pagas/);
   }
 });

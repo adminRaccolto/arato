@@ -411,7 +411,7 @@ export function PainelCustosCaixa({
         </section>
       )}
 
-      {dados.pendencias.length > 0 && (
+      {exibirPagamentos && dados.pendencias.length > 0 && (
         <section
           role="status"
           style={{ ...card, borderColor: "rgb(214, 172, 91)" }}
@@ -422,8 +422,8 @@ export function PainelCustosCaixa({
           </strong>
           <p style={{ fontSize: 13 }}>
             Confira a classificação e os dados de baixa na tela ou no relatório
-            detalhado. Os pagamentos sem ciclo com classificação operacional
-            já estão incluídos no total.
+            detalhado. Os pagamentos sem ciclo com classificação operacional já
+            estão incluídos no total.
           </p>
           {exibirPagamentos && (
             <details open={impressao}>
@@ -441,27 +441,22 @@ export function PainelCustosCaixa({
           )}
         </section>
       )}
-      {dados.excluidos.length > 0 &&
-        (exibirPagamentos ? (
-          <details style={card} open={impressao}>
-            <summary>
-              {dados.excluidos.length} pagamentos fora do escopo operacional
-            </summary>
-            <ul>
-              {dados.excluidos.map((p) => (
-                <li key={p.id} style={{ marginTop: 8 }}>
-                  {p.descricao}
-                  {p.valor !== null && ` · ${dinheiroCaixa(p.valor)}`} —{" "}
-                  {p.motivo}
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : (
-          <p style={{ margin: 0, fontSize: 13 }}>
-            {dados.excluidos.length} pagamentos fora do escopo operacional.
-          </p>
-        ))}
+      {exibirPagamentos && dados.excluidos.length > 0 && (
+        <details style={card} open={impressao}>
+          <summary>
+            {dados.excluidos.length} pagamentos fora do escopo operacional
+          </summary>
+          <ul>
+            {dados.excluidos.map((p) => (
+              <li key={p.id} style={{ marginTop: 8 }}>
+                {p.descricao}
+                {p.valor !== null && ` · ${dinheiroCaixa(p.valor)}`} —{" "}
+                {p.motivo}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

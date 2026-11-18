@@ -224,12 +224,19 @@ export default function RelatorioCustosCaixa() {
             nomeCicloCaixa(c.id, s.ref),
             c.valor,
           ]),
-          [],
-          [
-            "Pagamentos a conferir — fora do total operacional",
-            s.dados.pendencias.length,
-          ],
-          ["Pagamentos fora do escopo operacional", s.dados.excluidos.length],
+          ...(formato === "detalhado"
+            ? [
+                [],
+                [
+                  "Pagamentos a conferir — fora do total operacional",
+                  s.dados.pendencias.length,
+                ],
+                [
+                  "Pagamentos fora do escopo operacional",
+                  s.dados.excluidos.length,
+                ],
+              ]
+            : []),
         ]),
         "Resumo",
       );
