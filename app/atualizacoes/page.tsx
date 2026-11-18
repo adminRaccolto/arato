@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-n",
+    data: "18/11/2026",
+    titulo: "Nova Remessa abre na escolha entre emitir ou registrar nota de outro sistema",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "Ao clicar em + Nova Remessa, a tela abre direto na aba Origem da operação, onde se escolhe entre emitir a NF-e de remessa pelo Arato ou registrar uma NF de remessa já emitida em outro sistema. Antes a escolha ficava escondida na última aba." },
+    ],
+    onde: "Documentos Fiscais → Saídas → Remessas → + Nova Remessa",
+  },
+  {
     versao: "2026.11.18-m",
     data: "18/11/2026",
     titulo: "Custos Totais sintético sem avisos de conferência",

@@ -137,8 +137,9 @@ function RemessasConteudo() {
 
   // ── Nova remessa ─────────────────────────────────────────────────────────────
   const [modal, setModal] = useState(false);
-  const [abaEmissao, setAbaEmissao] = useState<AbaEmissaoNfe>("emitente");
-  useEffect(() => { if (modal) setAbaEmissao("emitente"); }, [modal]);
+  // Abre em "Origem da operação": é ali que se escolhe emitir pelo Arato ou registrar a NF emitida em outro sistema
+  const [abaEmissao, setAbaEmissao] = useState<AbaEmissaoNfe>("origem");
+  useEffect(() => { if (modal) setAbaEmissao("origem"); }, [modal]);
   const [modo, setModo] = useState<"arato" | "externa">("arato");
   const [nfOrigem, setNfOrigem] = useState<NfOrigem | null>(null);
   const [buscaNf, setBuscaNf] = useState("");
