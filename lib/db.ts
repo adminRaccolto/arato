@@ -2136,16 +2136,28 @@ export async function excluirMaquinas(ids: string[]): Promise<void> {
  * numa fazenda diferente da que recebeu a nota; buscar só a fazenda da NF deixava o seletor vazio (achado 05/11/2026).
  */
 export async function listarBombasDoCliente(conta_id: string | null | undefined, fazendasReserva: string[]): Promise<(BombaCombustivel & { fazenda_nome?: string })[]> {
-  let ids = fazendasReserva.filter(Boolean);
-  if (conta_id) {
-    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
-    if (fzs?.length) ids = fzs.map(f => f.id as string);
+  // Fazendas do cliente pela conta; sem conta, a da reserva vira a conta (nunca só a fazenda da sessão)
+  let fzs: { id: string; nome: string }[] = [];
+  let conta = conta_id ?? null;
+  if (!conta && fazendasReserva.filter(Boolean).length) {
+    const { data } = await supabase.from("fazendas").select("conta_id").in("id", fazendasReserva.filter(Boolean)).not("conta_id", "is", null).limit(1);
+    conta = (data?.[0]?.conta_id as string | undefined) ?? null;
   }
-  if (!ids.length) return [];
-  const { data, error } = await supabase.from("bombas_combustivel").select("*, fazendas(nome)").in("fazenda_id", ids).order("nome");
+  if (conta) {
+    const { data } = await supabase.from("fazendas").select("id, nome").eq("conta_id", conta);
+    fzs = (data ?? []) as { id: string; nome: string }[];
+  }
+  if (!fzs.length && fazendasReserva.filter(Boolean).length) {
+    const { data } = await supabase.from("fazendas").select("id, nome").in("id", fazendasReserva.filter(Boolean));
+    fzs = (data ?? []) as { id: string; nome: string }[];
+  }
+  if (!fzs.length) return [];
+  // Sem junção com fazendas: bombas_combustivel não tem chave estrangeira para fazendas e o select "*, fazendas(nome)"
+  // falhava SEMPRE ("Could not find a relationship") — a NF de combustível ficava sem nenhuma bomba (achado 18/11/2026)
+  const { data, error } = await supabase.from("bombas_combustivel").select("*").in("fazenda_id", fzs.map(f => f.id)).order("nome");
   if (error) throw error;
-  return (data ?? []).filter(b => b.ativa !== false)
-    .map(b => ({ ...b, fazenda_nome: (b as { fazendas?: { nome?: string } }).fazendas?.nome })) as (BombaCombustivel & { fazenda_nome?: string })[];
+  const nome = new Map(fzs.map(f => [f.id, f.nome]));
+  return ((data ?? []) as BombaCombustivel[]).filter(b => b.ativa !== false).map(b => ({ ...b, fazenda_nome: nome.get(b.fazenda_id) }));
 }
 
 export async function listarBombas(fazenda_id: string | string[]): Promise<BombaCombustivel[]> {

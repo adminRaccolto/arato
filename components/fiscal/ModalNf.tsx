@@ -439,6 +439,12 @@ export default function ModalNf({
   const [wCentros,    setWCentros]    = useState<CentroCusto[]>([]);
   const [wDepositos,  setWDepositos]  = useState<Deposito[]>([]);
   const [wBombas,     setWBombas]     = useState<(BombaCombustivel & { fazenda_nome?: string })[]>([]);
+  // Bombas do cliente: pela conta, sem depender da fazenda da sessão (a NF nova só carregava se houvesse fazenda ativa)
+  useEffect(() => {
+    if (!contaId && !fazendaIds.length && !fazendaId) return;
+    listarBombasDoCliente(contaId, fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []).then(setWBombas).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contaId, fazendaIds.join(",")]);
   // IE do destinatário lida do XML (<dest><IE>) — escolhe sozinha a IE do produtor e, por ela, a fazenda que recebe.
   const [ieDestXml, setIeDestXml] = useState("");
   const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);

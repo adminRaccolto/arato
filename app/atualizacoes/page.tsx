@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-d",
+    data: "18/11/2026",
+    titulo: "NF de combustível: bombas voltam a aparecer",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "No processamento da NF de combustível, a lista de bombas vinha vazia: a busca das bombas falhava sempre e a tela tratava a falha como \"nenhuma bomba\". Agora a lista traz todas as bombas do cliente, agrupadas por fazenda, sem depender da fazenda da sessão." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → processar NF de combustível",
+  },
+  {
     versao: "2026.11.18-b",
     data: "18/11/2026",
     titulo: "Estoque: relatórios em PDF e Excel; bombas de todas as fazendas",
