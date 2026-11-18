@@ -1,4 +1,5 @@
 "use client";
+import { idDaContaDoTitulo } from "../../../lib/financeiro/conta-titulo";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 export const dynamic = "force-dynamic";
@@ -504,7 +505,7 @@ function ConciliacaoInner() {
       supabase.from("conciliacao_pendencias")
         .select("id,fitid,conta_id,conta_nome,data,descricao,valor,tipo,status")
         .in("fazenda_id", fazendaIds)
-        .not("status", "in", "(ignorada,ignorado)")
+        .not("status", "in", "(ignorada,ignorado,resolvido)")
         .order("data", { ascending: false }),
       paginar<{ conta_bancaria_id: string; conta_nome: string | null; fitid: string }>((de, ate) => supabase.from("extrato_transacoes")
         .select("conta_bancaria_id,conta_nome,fitid")
@@ -557,7 +558,10 @@ function ConciliacaoInner() {
     // linhas já estavam conciliadas ou nem existiam mais em extrato_transacoes (fonte
     // única). Só mostra pendência de conta bancária que ainda está pendente de verdade.
     const pendVivas = new Set((etR.data ?? []).map(r => `${r.conta_bancaria_id}|${r.fitid}`));
-    if (pR.data) setPendencias((pR.data as Pendencia[]).filter(p => !p.conta_id || pendVivas.has(`${p.conta_id}|${p.fitid}`)));
+    // Pendência sem conta: some quando a linha do extrato já foi conciliada (antes ficava para sempre — 18/11/2026:
+    // 298 de 303 já estavam conciliadas, inclusive por lançamentos de tesouraria)
+    const fitidsVivos = new Set((etR.data ?? []).map(r => r.fitid));
+    if (pR.data) setPendencias((pR.data as Pendencia[]).filter(p => p.conta_id ? pendVivas.has(`${p.conta_id}|${p.fitid}`) : fitidsVivos.has(p.fitid)));
     if (etR.data) {
       const mapa = new Map<string, { conta_bancaria_id: string; conta_nome: string; pendentes: number }>();
       for (const row of etR.data as { conta_bancaria_id: string; conta_nome: string | null }[]) {
@@ -1328,7 +1332,8 @@ function ConciliacaoInner() {
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
         .update({ status: "resolvido", lancamento_id: ids[0] })
-        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", linha.id).eq("conta_id", extrato.conta_id);
+        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", linha.id).eq("conta_id", extrato.conta_id)
+        .then(({ error: ePend }) => { if (ePend) console.error("[conciliacao] pendência resolvida", ePend); });
       registrarHistorico(linha, "conciliado", ids, justificativa ? `${descVinc} · diferença justificada: ${justificativa}` : descVinc);
     }
 
@@ -1412,7 +1417,8 @@ function ConciliacaoInner() {
       if (fazendaId) {
         supabase.from("conciliacao_pendencias")
           .update({ status: "resolvido", lancamento_id: lancToLink.id })
-          .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", modalTes.id);
+          .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", modalTes.id)
+          .then(({ error: ePend }) => { if (ePend) console.error("[conciliacao] pendência resolvida", ePend); });
         registrarHistorico(modalTes, "conciliado", ids, desc);
       }
       const erroRegraT = await criarRegraDaLinha(modalTes, { acao: "transferencia", conta_destino_id: modalTes.tipo === "debito" ? fTes.conta_destino : fTes.conta_origem });
@@ -1483,7 +1489,8 @@ function ConciliacaoInner() {
     if (fazendaId) {
       supabase.from("conciliacao_pendencias")
         .update({ status: "resolvido", lancamento_id: novoLanc.id })
-        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", modalTes.id);
+        .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", modalTes.id)
+        .then(({ error: ePend }) => { if (ePend) console.error("[conciliacao] pendência resolvida", ePend); });
       registrarHistorico(modalTes, "conciliado", ids, desc);
     }
 
@@ -1579,7 +1586,8 @@ function ConciliacaoInner() {
       for (const l of linhasSel) {
         supabase.from("conciliacao_pendencias")
           .update({ status: "resolvido", lancamento_id: novoLanc.id })
-          .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", l.id);
+          .in("fazenda_id", fazendaIds.length ? fazendaIds : [fazendaId]).eq("fitid", l.id)
+          .then(({ error: ePend }) => { if (ePend) console.error("[conciliacao] pendência resolvida", ePend); });
         registrarHistorico(l, "conciliado", [novoLanc.id], descAgrupado.trim());
       }
     }
@@ -2110,7 +2118,8 @@ function ConciliacaoInner() {
   const inconsistenciasLista: Inconsistencia[] = (() => {
     if (!extrato) return [];
     const contaEx = extrato.conta_id;
-    const contaDe = (r: LinhaSis) => r.lote?.conta_bancaria ?? r.l.conta_bancaria;
+    // Título antigo pode ter o NOME da conta gravado (Tesouraria até 18/11/2026): resolve para o ID; sem resolver, não acusa
+    const contaDe = (r: LinhaSis) => idDaContaDoTitulo(r.lote?.conta_bancaria ?? r.l.conta_bancaria, contas);
     const baixaDe = (r: LinhaSis) => r.lote?.data_pagamento ?? r.l.data_baixa ?? r.l.data_vencimento;
     const valorDe = (r: LinhaSis) => (r.lote ? caixaDoBordero(r.lote) : Number(r.l.valor_pago ?? r.l.valor));
     const base = lancamentos.filter(l => l.status === "baixado" && !l.conciliado && !origemPorLanc.has(l.id) && (!l.moeda || l.moeda === "BRL"));
@@ -2948,7 +2957,7 @@ function ConciliacaoInner() {
                                 <td style={{ padding: "8px 12px" }}>
                                   <OperationalButton data-arato-button="secondary"
                                     onClick={async () => {
-                                      await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", p.id);
+                                      await supabase.from("conciliacao_pendencias").update({ status: "ignorado" }).eq("id", p.id);
                                       setPendencias(prev => prev.filter(x => x.id !== p.id));
                                     }}
                                     style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}
@@ -3003,7 +3012,7 @@ function ConciliacaoInner() {
                             <td style={{ padding: "8px 12px" }}>
                               <OperationalButton data-arato-button="secondary"
                                 onClick={async () => {
-                                  await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", p.id);
+                                  await supabase.from("conciliacao_pendencias").update({ status: "ignorado" }).eq("id", p.id);
                                   setPendencias(prev => prev.filter(x => x.id !== p.id));
                                 }}
                                 style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-a",
+    data: "18/11/2026",
+    titulo: "Conciliação: lançamentos de tesouraria deixam de aparecer como inconsistentes",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A Tesouraria gravava o nome da conta no lançamento em vez da conta cadastrada, e a Conciliação Bancária o acusava como \"baixado em outra conta\". Agora grava a conta cadastrada, com data de baixa e valor pago. Lançamentos antigos com o nome da conta também passam a ser reconhecidos." },
+      { tipo: "correcao", texto: "A aba Inconsistências deixou de mostrar linhas do extrato que já foram conciliadas, e conciliar uma linha agora a tira da lista." },
+      { tipo: "correcao", texto: "O botão Ignorar das Inconsistências não gravava (falhava sem aviso). Agora funciona." },
+    ],
+    onde: "Financeiro → Conciliação Bancária → Inconsistências; Financeiro → Tesouraria",
+  },
+  {
     versao: "2026.11.17-s",
     data: "17/11/2026",
     titulo: "Emissão de NF-e com o mesmo padrão de telas",

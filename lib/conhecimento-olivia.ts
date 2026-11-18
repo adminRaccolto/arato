@@ -596,6 +596,8 @@ Juros e multa ficam desabilitados no pagamento parcial e entram no pagamento que
 
 **Sugestão de conciliação:** considera o nome de quem recebeu (quando a descrição da linha o traz), depois valor e data. Cada título é sugerido a uma linha só. Título de salário não é sugerido para linha com nome de outra pessoa e, sem nome confirmado, nunca concilia sozinho: fica como sugestão para conferir. Para os demais títulos, o nome só dá prioridade. Conciliações já gravadas não mudam. Se a linha não sugere título, use "Vincular".
 
+**Inconsistências da Conciliação Bancária:** a aba Inconsistências (no topo) lista linhas de extrato ainda não conciliadas; a linha some quando é conciliada ou ignorada. A aba Inconsistências do extrato aberto mostra a linha do OFX cujo valor bate com um título baixado em OUTRA conta. Título antigo com o nome da conta gravado no lugar da conta cadastrada é reconhecido pelo nome; se houver duas contas com o mesmo nome, ele não é acusado. Os lançamentos feitos pela Tesouraria (transferência, aplicação, resgate, ajuste) saem com a conta cadastrada, data de baixa e valor pago.
+
 **Relação dos títulos:** na Conciliação Bancária, clique no texto com seta (→ descrição do título) abaixo de uma linha conciliada para abrir um popup com todos os CPs e CRs ligados (tipo, fornecedor ou cliente, descrição, vencimento, baixa, status e valor, com saldo no rodapé). Útil em lote ou borderô.
 
 **Filtro de data no Extrato OFX:** o painel do extrato tem filtro Data, de/até, que limita as linhas mostradas sem alterar o importado.

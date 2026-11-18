@@ -591,7 +591,7 @@ export default function Dashboard() {
   }, [fazendaId, contaId, fazendaIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ignorarInconsistencia(id: string) {
-    await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", id);
+    await supabase.from("conciliacao_pendencias").update({ status: "ignorado" }).eq("id", id);
     setConciliPend(prev => prev.filter(x => x.id !== id));
   }
 
