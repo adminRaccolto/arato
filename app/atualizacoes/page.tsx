@@ -17,7 +17,7 @@ const RELEASES = [
       { tipo: "melhoria", texto: "Bombas & Tanques lista todas as bombas do cliente, com a coluna Fazenda, sem o filtro por fazenda." },
       { tipo: "correcao", texto: "Na NF de combustível, o seletor de bomba mostra todas as bombas do cliente, agrupadas por fazenda, com a fazenda da IE primeiro. Antes só apareciam as bombas da fazenda da IE." },
     ],
-    onde: "Estoque → Relatórios; Estoque → Posição; Cadastros → Combustíveis & Lubrificantes; processamento de NF de combustível",
+    onde: "Posição de Insumos (abas Posição e Relatórios); Cadastros → Combustíveis & Bombas; processamento de NF de combustível",
   },
   {
     versao: "2026.11.18-a",
