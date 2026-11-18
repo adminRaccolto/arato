@@ -116,6 +116,7 @@ export async function carregarResultadoAgricola(
     contaId: string | null;
     anoLabel: string;
     receita: BaseReceita;
+    apenasCustos?: boolean;
   },
 ): Promise<ResultadoAgricola> {
   const { referencias: ref } = p,
@@ -180,13 +181,16 @@ export async function carregarResultadoAgricola(
     centros,
     movimentos,
   ] = await Promise.all([
-    ler("lancamentos", porAno),
-    // A empresa só integra o resultado agrícola com safra/ciclo explicitamente classificado.
-    ler("empresa_lancamentos", (q) =>
-      q
-        .in("fazenda_id", fids)
-        .or(`${filtroCiclos}ano_safra_id.in.(${anoIds.join(",")})`),
+    ler("lancamentos", (q) =>
+      p.apenasCustos ? porAno(q).eq("tipo", "pagar") : porAno(q),
     ),
+    // A empresa só integra o resultado agrícola com safra/ciclo explicitamente classificado.
+    ler("empresa_lancamentos", (q) => {
+      const consulta = q
+        .in("fazenda_id", fids)
+        .or(`${filtroCiclos}ano_safra_id.in.(${anoIds.join(",")})`);
+      return p.apenasCustos ? consulta.eq("tipo", "pagar") : consulta;
+    }),
     ...[
       "plantios",
       "pulverizacoes",
@@ -220,7 +224,9 @@ export async function carregarResultadoAgricola(
     ler("arrendamento_pagamentos", (q) =>
       q.in("fazenda_id", fids).in("ano_safra_id", anoIds),
     ),
-    ler("apoio_lancamentos", porCiclo),
+    ler("apoio_lancamentos", (q) =>
+      p.apenasCustos ? porCiclo(q).eq("tipo", "pagar") : porCiclo(q),
+    ),
     ler("regras_rateio", (q) =>
       q.in("fazenda_id", fids).in("ano_safra_id", anoIds),
     ),
@@ -533,7 +539,8 @@ export async function carregarResultadoAgricola(
     [apoio, "apoio_lancamentos"],
   ] as const) {
     for (const r of rs) {
-      if (r.status === "cancelado") continue;
+      if (r.status === "cancelado" || (p.apenasCustos && r.tipo !== "pagar"))
+        continue;
       if (
         r.natureza !== "previsao" &&
         r.origem_lancamento !== "tesouraria" &&
@@ -736,7 +743,10 @@ export async function carregarResultadoAgricola(
     );
   }
   const precos = new Map<string, { valor: number; sacas: number }>();
-  for (const c of contratos) {
+  for (const c of p.apenasCustos &&
+  !arrendamentos.some((a) => numero(a.sacas_pagas) > 0)
+    ? []
+    : contratos) {
     if (
       !c.confirmado ||
       c.tipo === "compra" ||
@@ -750,7 +760,7 @@ export async function carregarResultadoAgricola(
     acumulado.valor += valor;
     acumulado.sacas += numero(c.quantidade_sc);
     precos.set(chave, acumulado);
-    if (p.receita === "contratada")
+    if (!p.apenasCustos && p.receita === "contratada")
       adicionar(c, "contratos", "receita_bruta", valor, {
         descricao: `Contrato ${texto(c, "numero") || texto(c, "id").slice(0, 8)}`,
       });
@@ -780,7 +790,7 @@ export async function carregarResultadoAgricola(
     if (valor > 0)
       adicionar(r, "arrendamento_pagamentos", "arrendamento", valor);
   }
-  if (p.receita === "estimada")
+  if (!p.apenasCustos && p.receita === "estimada")
     for (const c of ciclos.filter((c) => !c.is_auxiliar)) {
       const pr = producao[c.id];
       if (pr.precoOrcado === null || pr.precoOrcado <= 0) {

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-h",
+    data: "18/11/2026",
+    titulo: "Custos Totais com relatório próprio, separado da DRE Agrícola",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "correcao", texto: "Custos Totais passa a apresentar custos e despesas por categoria, com as colunas Realizado, Previsto e Realizado + previsto lado a lado. Os destaques mostram custos realizados, previsões em aberto e o total combinado. Receitas, margens, EBITDA e lucro permanecem na DRE Agrícola." },
+      { tipo: "melhoria", texto: "O relatório de custos abre na visão consolidada e mantém a comparação dos ciclos e fazendas em colunas, a visão individual e a composição dos valores por clique. Custo por Hectare usa a estrutura de custos; percentuais são calculados sobre o custo de cada coluna." },
+      { tipo: "correcao", texto: "PDF e Excel acompanham a estrutura de cada relatório. Custos Totais deixa de oferecer filtro de receita e não soma recebimentos nem vendas; descontos obtidos reduzem os custos e previsões continuam identificadas separadamente." },
+    ],
+    onde: "Resultados → Custos Totais, Custo / ha e DRE Agrícola",
+  },
+  {
     versao: "2026.11.18-g",
     data: "18/11/2026",
     titulo: "Visualização em fichas: campos sem sobreposição",

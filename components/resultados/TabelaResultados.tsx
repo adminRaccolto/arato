@@ -5,6 +5,13 @@ import {
   totaisResultado,
   type ItemResultado,
 } from "../../lib/resultados/apuracao";
+import {
+  BASES_CUSTO,
+  GRUPOS_CUSTO,
+  somaCustos,
+  itensCusto,
+  type BaseCusto,
+} from "../../lib/resultados/custos";
 export type ModoResultado =
   | "dre"
   | "margens"
@@ -28,9 +35,37 @@ type Linha = {
   label: string;
   destaque?: boolean;
   unidade?: string;
-  valor: (c: ColunaResultado, u: UnidadeResultado) => number | null;
-  itens?: (c: ColunaResultado) => ItemResultado[];
+  valor: (
+    c: ColunaResultado,
+    u: UnidadeResultado,
+    base?: BaseCusto,
+  ) => number | null;
+  itens?: (c: ColunaResultado, base?: BaseCusto) => ItemResultado[];
 };
+export const relatorioDeCustos = (modo: ModoResultado) =>
+  modo === "custostotais" || modo === "custoha";
+export function colunasDemonstrativo(
+  modo: ModoResultado,
+  colunas: ColunaResultado[],
+) {
+  return colunas.flatMap((coluna) =>
+    relatorioDeCustos(modo)
+      ? BASES_CUSTO.map((base) => ({
+          key: `${coluna.id}:${base.id}`,
+          coluna,
+          base: base.id as BaseCusto | undefined,
+          titulo: `${coluna.fazenda} · ${coluna.nome} · ${base.label}`,
+        }))
+      : [
+          {
+            key: coluna.id,
+            coluna,
+            base: undefined as BaseCusto | undefined,
+            titulo: `${coluna.fazenda} · ${coluna.nome}`,
+          },
+        ],
+  );
+}
 const moeda = (n: number, u: UnidadeResultado) =>
   u === "percentual"
     ? `${n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
@@ -71,6 +106,26 @@ export function linhasDemonstrativo(modo: ModoResultado): Linha[] {
         (c) => c.precoOrcado,
       ),
     ];
+  if (relatorioDeCustos(modo)) {
+    const custo = (grupo: string | undefined, label: string): Linha => ({
+      id: grupo ?? "custo",
+      label,
+      destaque: !grupo,
+      valor: (c, u, base = "realizado") =>
+        metrica(
+          somaCustos(c.itens, base, grupo),
+          u,
+          c.area,
+          c.sacas,
+          somaCustos(c.itens, base),
+        ),
+      itens: (c, base = "realizado") => itensCusto(c.itens, base, grupo),
+    });
+    return [
+      ...GRUPOS_CUSTO.map((g) => custo(g.grupo, g.nome)),
+      custo(undefined, "TOTAL DE CUSTOS E DESPESAS"),
+    ];
+  }
   const resumida = (
     id: keyof ReturnType<typeof totaisResultado>,
     label: string,
@@ -195,16 +250,21 @@ export function linhasVisiveis(
   unidade: UnidadeResultado,
   ocultarZeradas: boolean,
 ) {
+  const bases: (BaseCusto | undefined)[] = relatorioDeCustos(modo)
+    ? BASES_CUSTO.map((b) => b.id)
+    : [undefined];
   return linhasDemonstrativo(modo).filter(
     (l) =>
       !ocultarZeradas ||
       l.destaque ||
       l.unidade ||
       l.id === "receita_bruta" ||
-      colunas.some(
-        (c) =>
-          Math.abs(l.valor(c, unidade) ?? 0) > 0.00001 ||
-          l.itens?.(c).some((i) => Math.abs(i.valor) > 0.00001),
+      colunas.some((c) =>
+        bases.some(
+          (base) =>
+            Math.abs(l.valor(c, unidade, base) ?? 0) > 0.00001 ||
+            l.itens?.(c, base).some((i) => Math.abs(i.valor) > 0.00001),
+        ),
       ),
   );
 }
@@ -221,6 +281,8 @@ export function TabelaResultados({
   onDetalhe?: (titulo: string, itens: ItemResultado[]) => void;
   ocultarZeradas?: boolean;
 }) {
+  const custos = relatorioDeCustos(modo),
+    campos = colunasDemonstrativo(modo, colunas);
   return (
     <div
       style={{
@@ -231,29 +293,35 @@ export function TabelaResultados({
     >
       <style>{`
         .resultados-comparativo { --rotulo-resultado: 260px; table-layout: fixed; }
-        .resultados-comparativo tr > :first-child { width: var(--rotulo-resultado); overflow-wrap: anywhere; white-space: normal; }
+        .resultados-comparativo > thead > tr:first-child > th:first-child, .resultados-comparativo > tbody > tr > th { width: var(--rotulo-resultado); overflow-wrap: anywhere; white-space: normal; }
         @media (max-width: 600px) {
           .resultados-comparativo { --rotulo-resultado: 160px; font-size: 12px; }
-          .resultados-comparativo tr > :first-child { font-size: 12px; line-height: 1.35; }
+          .resultados-comparativo > thead > tr:first-child > th:first-child, .resultados-comparativo > tbody > tr > th { font-size: 12px; line-height: 1.35; }
         }
         @media print {
           .resultados-comparativo { table-layout: auto; min-width: 100% !important; font-size: 8pt; }
-          .resultados-comparativo tr > :first-child { position: static !important; width: auto; }
+          .resultados-comparativo > thead > tr:first-child > th:first-child, .resultados-comparativo > tbody > tr > th { position: static !important; width: auto; }
           .resultados-comparativo tr > * { min-width: 0 !important; white-space: normal !important; padding: 5px !important; }
         }
       `}</style>
       <OperationalGrid
         className="resultados-comparativo"
-        aria-label="Comparativo de resultados por ciclo"
+        aria-label={
+          custos
+            ? "Comparativo de custos por ciclo"
+            : "Comparativo de resultados por ciclo"
+        }
         style={{
           width: "100%",
           borderCollapse: "collapse",
-          minWidth: `calc(var(--rotulo-resultado) + ${colunas.length * 180}px)`,
+          minWidth: `calc(var(--rotulo-resultado) + ${campos.length * 180}px)`,
         }}
       >
         <thead>
           <tr>
             <th
+              rowSpan={custos ? 2 : undefined}
+              scope="col"
               style={{
                 position: "sticky",
                 left: 0,
@@ -263,16 +331,18 @@ export function TabelaResultados({
                 textAlign: "left",
               }}
             >
-              Demonstrativo
+              {custos ? "Categoria de custo / despesa" : "Demonstrativo"}
             </th>
             {colunas.map((c) => (
               <th
                 key={c.id}
+                colSpan={custos ? BASES_CUSTO.length : undefined}
+                scope={custos ? "colgroup" : "col"}
                 style={{
                   padding: 12,
                   textAlign: "right",
-                  minWidth: 180,
-                  width: 180,
+                  minWidth: custos ? 540 : 180,
+                  width: custos ? 540 : 180,
                   borderLeft: "1px solid var(--border)",
                 }}
               >
@@ -281,6 +351,24 @@ export function TabelaResultados({
               </th>
             ))}
           </tr>
+          {custos && (
+            <tr>
+              {campos.map((campo) => (
+                <th
+                  key={campo.key}
+                  scope="col"
+                  style={{
+                    textAlign: "right",
+                    padding: "8px 12px",
+                    width: 180,
+                    borderLeft: "1px solid var(--border)",
+                  }}
+                >
+                  {BASES_CUSTO.find((b) => b.id === campo.base)?.label}
+                </th>
+              ))}
+            </tr>
+          )}
         </thead>
         <tbody>
           {linhasVisiveis(modo, colunas, unidade, ocultarZeradas).map((l) => (
@@ -306,9 +394,9 @@ export function TabelaResultados({
                 {l.label}
                 {l.unidade && ` (${l.unidade})`}
               </th>
-              {colunas.map((c) => {
-                const v = l.valor(c, unidade),
-                  itens = l.itens?.(c);
+              {campos.map(({ coluna: c, base, key }) => {
+                const v = l.valor(c, unidade, base),
+                  itens = l.itens?.(c, base);
                 const txt =
                   v === null
                     ? "—"
@@ -317,7 +405,7 @@ export function TabelaResultados({
                       : moeda(v, unidade);
                 return (
                   <td
-                    key={c.id}
+                    key={key}
                     style={{
                       textAlign: "right",
                       padding: "9px 12px",
@@ -341,7 +429,7 @@ export function TabelaResultados({
                         }}
                         onClick={() =>
                           onDetalhe(
-                            `${l.label} · ${c.fazenda} · ${c.nome}`,
+                            `${l.label} · ${c.fazenda} · ${c.nome}${base ? ` · ${BASES_CUSTO.find((b) => b.id === base)?.label}` : ""}`,
                             itens,
                           )
                         }

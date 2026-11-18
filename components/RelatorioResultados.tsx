@@ -24,7 +24,15 @@ import {
   type ItemResultado,
 } from "../lib/resultados/apuracao";
 import {
+  GRUPOS_CUSTO,
+  efeitoNoCusto,
+  itensCusto,
+  totaisCustos,
+} from "../lib/resultados/custos";
+import {
   TabelaResultados,
+  colunasDemonstrativo,
+  relatorioDeCustos,
   linhasVisiveis,
   type ColunaResultado,
   type ModoResultado,
@@ -70,6 +78,7 @@ export default function RelatorioResultados({
   modo?: ModoResultado;
 }) {
   const { fazendaId, fazendaIds, contaId, contaNome } = useAuth();
+  const custos = relatorioDeCustos(modo);
   const escopo = JSON.stringify([
     contaId,
     [...(fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : [])].sort(),
@@ -83,7 +92,7 @@ export default function RelatorioResultados({
   const [selecionados, setSelecionados] = useState<string[] | null>(null);
   const [receita, setReceita] = useState<BaseReceita>("financeiro");
   const [visao, setVisao] = useState<"colunas" | "consolidado" | "individual">(
-    "colunas",
+    custos ? "consolidado" : "colunas",
   );
   const [unidade, setUnidade] = useState<UnidadeResultado>(
     modo === "custoha" ? "ha" : "total",
@@ -122,10 +131,11 @@ export default function RelatorioResultados({
     .filter((c) => selecionados === null || selecionados.includes(c.id))
     .map((c) => c.id);
   const chave = JSON.stringify([
+    modo,
     escopo,
     fazenda,
     anoEfetivo,
-    receita,
+    custos ? null : receita,
     [...ids].sort(),
   ]);
   useEffect(() => {
@@ -164,6 +174,7 @@ export default function RelatorioResultados({
   }, [escopo]);
   useEffect(() => {
     setUnidade(modo === "custoha" ? "ha" : "total");
+    setVisao(relatorioDeCustos(modo) ? "consolidado" : "colunas");
     setDetalhe(null);
   }, [modo]);
   useEffect(() => {
@@ -194,6 +205,7 @@ export default function RelatorioResultados({
         contaId,
         anoLabel: anoEfetivo,
         receita,
+        apenasCustos: custos,
       });
       if (atual !== req.current || capturada !== chaveAtualRef.current) return;
       setSnapshot({
@@ -224,10 +236,11 @@ export default function RelatorioResultados({
     const fazendasVisiveis = fazenda
       ? [fazenda]
       : ref.fazendas.map((f) => f.id);
-    const itens = dados.itens.filter((i) =>
-      i.ciclo_id
-        ? snapshot.ids.includes(i.ciclo_id)
-        : fazendasVisiveis.includes(i.fazenda_id),
+    const itens = (custos ? itensCusto(dados.itens) : dados.itens).filter(
+      (i) =>
+        i.ciclo_id
+          ? snapshot.ids.includes(i.ciclo_id)
+          : fazendasVisiveis.includes(i.fazenda_id),
     );
     const ciclos = dados.ciclos.filter((c) => snapshot.ids.includes(c.id));
     const cols: ColunaResultado[] = ciclos.map((c) => ({
@@ -263,17 +276,20 @@ export default function RelatorioResultados({
       produtividadeOrcada: null,
     });
     return cols;
-  }, [snapshot, desatualizado, fazenda, ref]);
+  }, [snapshot, desatualizado, fazenda, ref, custos]);
   const total = colunas.at(-1),
     totais = total ? totaisResultado(total.itens) : null;
+  const custosApurados = total ? totaisCustos(total.itens) : null;
   const filtrosPrint = snapshot
     ? [
         { rotulo: "Safra", valor: snapshot.safra },
         { rotulo: "Fazendas", valor: snapshot.fazendas },
-        { rotulo: "Receita", valor: snapshot.receita },
+        ...(custos ? [] : [{ rotulo: "Receita", valor: snapshot.receita }]),
         {
           rotulo: "Apuração",
-          valor: "Competência gerencial; previsões separadas",
+          valor: custos
+            ? "Custos e despesas: realizado, previsto e total"
+            : "Competência gerencial; previsões separadas",
         },
         { rotulo: "Unidade", valor: unidade },
       ]
@@ -295,14 +311,16 @@ export default function RelatorioResultados({
   async function excel() {
     if (!snapshot || desatualizado) return;
     const XLSX = await import("xlsx");
-    const linhas = linhasVisiveis(modo, colunas, unidade, ocultarZeradas);
+    const colunasExport = visao === "consolidado" && total ? [total] : colunas;
+    const linhas = linhasVisiveis(modo, colunasExport, unidade, ocultarZeradas);
+    const campos = colunasDemonstrativo(modo, colunasExport);
     const cabecalho = [
-      "Demonstrativo",
-      ...colunas.map((c) => `${c.fazenda} · ${c.nome}`),
+      custos ? "Categoria de custo / despesa" : "Demonstrativo",
+      ...campos.map((c) => c.titulo),
     ];
     const dados = linhas.map((l) => [
       l.label,
-      ...colunas.map((c) => l.valor(c, unidade)),
+      ...campos.map((c) => l.valor(c.coluna, unidade, c.base)),
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(
@@ -333,7 +351,8 @@ export default function RelatorioResultados({
             ref.ciclos.find((c) => c.id === i.ciclo_id)?.descricao ??
             "Sem ciclo",
           grupo: i.grupo,
-          valor_brl: i.valor,
+          valor_brl: custos ? efeitoNoCusto(i) : i.valor,
+          ...(custos ? { valor_origem_brl: i.valor } : {}),
           previsao: i.previsto ? "Sim" : "Não",
           rateio: i.rateio ?? "Direto",
         })) ?? [],
@@ -390,8 +409,9 @@ export default function RelatorioResultados({
           <div>
             <h1>{TITULOS[modo]}</h1>
             <p>
-              Compare os ciclos das fazendas e confira a composição de cada
-              valor.
+              {custos
+                ? "Custos e despesas por categoria, com realizado e previsto lado a lado."
+                : "Compare os ciclos das fazendas e confira a composição de cada valor."}
             </p>
           </div>
         </OperationalHeading>
@@ -442,20 +462,24 @@ export default function RelatorioResultados({
               ))}
             </SelectField>
           </label>
-          <label>
-            Base da receita
-            <SelectField
-              style={inp}
-              value={receita}
-              onChange={(e) => setReceita(e.target.value as BaseReceita)}
-            >
-              {Object.entries(RECEITAS).map(([v, label]) => (
-                <option key={v} value={v}>
-                  {label}
-                </option>
-              ))}
-            </SelectField>
-          </label>
+          {!custos && (
+            <>
+              <label>
+                Base da receita
+                <SelectField
+                  style={inp}
+                  value={receita}
+                  onChange={(e) => setReceita(e.target.value as BaseReceita)}
+                >
+                  {Object.entries(RECEITAS).map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+                </SelectField>
+              </label>
+            </>
+          )}
           <OperationalButton
             onClick={gerar}
             disabled={
@@ -543,7 +567,9 @@ export default function RelatorioResultados({
                 >
                   <option value="colunas">Ciclos em colunas</option>
                   <option value="consolidado">Consolidado</option>
-                  <option value="individual">Uma DRE por ciclo</option>
+                  <option value="individual">
+                    {custos ? "Um relatório por ciclo" : "Uma DRE por ciclo"}
+                  </option>
                 </SelectField>
               </label>
               <label>
@@ -558,7 +584,9 @@ export default function RelatorioResultados({
                   <option value="total">R$ total</option>
                   <option value="ha">R$ por hectare</option>
                   <option value="sc">R$ por saca</option>
-                  <option value="percentual">% da receita</option>
+                  <option value="percentual">
+                    {custos ? "% do custo em cada coluna" : "% da receita"}
+                  </option>
                 </SelectField>
               </label>
               <label
@@ -586,7 +614,7 @@ export default function RelatorioResultados({
                 <b>
                   {snapshot.safra} · {snapshot.fazendas}
                 </b>{" "}
-                · Receita: {snapshot.receita}
+                {!custos && <> · Receita: {snapshot.receita}</>}
               </p>
               <p style={{ fontSize: 13 }}>
                 Apuração por competência gerencial. Compras de estoque entram
@@ -602,16 +630,32 @@ export default function RelatorioResultados({
                   marginBottom: 16,
                 }}
               >
-                <strong>Receita {DINHEIRO(totais.receitas)}</strong>
-                <strong>Custo {DINHEIRO(totais.custo)}</strong>
-                <strong
-                  style={{
-                    color: totais.resultado < 0 ? "#b42318" : "#087443",
-                  }}
-                >
-                  Resultado {DINHEIRO(totais.resultado)}
-                </strong>
-                <span>Previsões {DINHEIRO(totais.previsto)}</span>
+                {custos && custosApurados ? (
+                  <>
+                    <strong>
+                      Custos realizados {DINHEIRO(custosApurados.realizado)}
+                    </strong>
+                    <strong>
+                      Previsões em aberto {DINHEIRO(custosApurados.previsto)}
+                    </strong>
+                    <strong>
+                      Realizado + previsto {DINHEIRO(custosApurados.total)}
+                    </strong>
+                  </>
+                ) : (
+                  <>
+                    <strong>Receita {DINHEIRO(totais.receitas)}</strong>
+                    <strong>Custo {DINHEIRO(totais.custo)}</strong>
+                    <strong
+                      style={{
+                        color: totais.resultado < 0 ? "#b42318" : "#087443",
+                      }}
+                    >
+                      Resultado {DINHEIRO(totais.resultado)}
+                    </strong>
+                    <span>Previsões {DINHEIRO(totais.previsto)}</span>
+                  </>
+                )}
               </div>
               {visao === "individual" ? (
                 colunas
@@ -645,8 +689,10 @@ export default function RelatorioResultados({
                 “—” indica base ausente para o indicador. O total por hectare,
                 saca e percentual é recalculado com as bases consolidadas.
                 Custos sem ciclo permanecem no total, sem serem atribuídos
-                artificialmente aos ciclos. Receitas financeiras e não
-                operacionais não compõem o EBITDA.
+                artificialmente aos ciclos.{" "}
+                {custos
+                  ? "Custos são positivos; descontos obtidos reduzem o total. A coluna Previsto contém somente previsões em aberto. Em percentual, cada coluna usa seu próprio total como base."
+                  : "Receitas financeiras e não operacionais não compõem o EBITDA."}
               </p>
               <details open={snapshot.dados.avisos.length > 0}>
                 <summary>
@@ -659,8 +705,8 @@ export default function RelatorioResultados({
                   <>
                     <p>
                       Existem dados que exigem conferência. Valores sem custo ou
-                      cotação histórica não foram estimados; o resultado pode
-                      estar incompleto.
+                      cotação histórica não foram estimados; a apuração pode
+                      estar incompleta.
                     </p>
                     <ul>
                       {snapshot.dados.avisos.map((a, i) => (
@@ -718,8 +764,9 @@ export default function RelatorioResultados({
                 </OperationalButton>
               </div>
               <p>
-                Composição em R$. Despesas são subtraídas no demonstrativo;
-                descontos são acrescentados.
+                {custos
+                  ? "Composição em R$. Custos e despesas são somados; descontos obtidos reduzem o total."
+                  : "Composição em R$. Despesas são subtraídas no demonstrativo; descontos são acrescentados."}
               </p>
               <OperationalGrid>
                 <thead>
@@ -741,12 +788,15 @@ export default function RelatorioResultados({
                           : i.descricao}
                       </td>
                       <td>
-                        {GRUPOS_RESULTADO.find(([g]) => g === i.grupo)?.[1] ??
-                          i.grupo}
+                        {(custos
+                          ? GRUPOS_CUSTO.find((g) => g.grupo === i.grupo)?.nome
+                          : GRUPOS_RESULTADO.find(
+                              ([g]) => g === i.grupo,
+                            )?.[1]) ?? i.grupo}
                       </td>
                       <td>{i.rateio ?? "Direto"}</td>
                       <td style={{ textAlign: "right" }}>
-                        {DINHEIRO(i.valor)}
+                        {DINHEIRO(custos ? efeitoNoCusto(i) : i.valor)}
                       </td>
                     </tr>
                   ))}

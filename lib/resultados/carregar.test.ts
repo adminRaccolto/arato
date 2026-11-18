@@ -520,3 +520,112 @@ test("NFS-e da empresa só retira CP do mesmo número, empresa e prestador já a
   assert.ok(r.itens.some((i) => i.origem_id === "serv2"));
   assert.ok(!r.itens.some((i) => i.origem_id === "serv1"));
 });
+
+test("consulta de custos não traz CR, receitas de contrato ou alertas de câmbio de recebimentos", async () => {
+  const b = banco({
+    lancamentos: [
+      titulo({ valor: 100 }),
+      titulo({ id: "prev", valor: 200, natureza: "previsao" }),
+      titulo({
+        id: "rec",
+        tipo: "receber",
+        moeda: "USD",
+        valor_juros: 50,
+        valor_desconto: 10,
+        status: "baixado",
+        categoria: "Venda Produção",
+      }),
+    ],
+    empresa_lancamentos: [
+      titulo({
+        id: "er",
+        tipo: "receber",
+        categoria: "Venda Produção",
+        valor: 5000,
+      }),
+    ],
+    apoio_lancamentos: [
+      titulo({
+        id: "ar",
+        tipo: "receber",
+        categoria: "Venda Produção",
+        valor: 5000,
+      }),
+    ],
+    contratos: [
+      {
+        id: "ct",
+        fazenda_id: "f",
+        ano_safra_id: "a",
+        ciclo_id: "c",
+        confirmado: true,
+        tipo: "venda",
+        status: "ativo",
+        moeda: "USD",
+        preco: 5000,
+        quantidade_sc: 100,
+      },
+    ],
+  });
+  const r = await carregarResultadoAgricola(b.db, {
+    referencias: referencias(),
+    fazendaIds: ["f"],
+    contaId: "conta",
+    anoLabel: "2026/2027",
+    receita: "contratada",
+    apenasCustos: true,
+  });
+  assert.equal(r.itens.length, 2);
+  assert.equal(
+    r.itens.some((i) => i.grupo.startsWith("receita")),
+    false,
+  );
+  assert.equal(totaisResultado(r.itens).custo, 100);
+  assert.equal(totaisResultado(r.itens).previsto, 200);
+  assert.equal(
+    r.avisos.some((a) => a.descricao.includes("cotação")),
+    false,
+  );
+});
+
+test("custo de arrendamento em sacas mantém a referência do contrato sem lançar receita no relatório de custos", async () => {
+  const b = banco({
+    contratos: [
+      {
+        id: "ct",
+        fazenda_id: "f",
+        ano_safra_id: "a",
+        ciclo_id: "c",
+        confirmado: true,
+        tipo: "venda",
+        status: "ativo",
+        moeda: "BRL",
+        produto: "soja",
+        preco: 10,
+        quantidade_sc: 1000,
+      },
+    ],
+    arrendamento_pagamentos: [
+      {
+        id: "arr",
+        fazenda_id: "f",
+        ano_safra_id: "a",
+        sacas_pagas: 10,
+        commodity: "soja",
+      },
+    ],
+  });
+  const r = await carregarResultadoAgricola(b.db, {
+    referencias: referencias(),
+    fazendaIds: ["f"],
+    contaId: "conta",
+    anoLabel: "2026/2027",
+    receita: "contratada",
+    apenasCustos: true,
+  });
+  assert.equal(totaisResultado(r.itens).custo, 100);
+  assert.equal(
+    r.itens.some((i) => i.grupo.startsWith("receita")),
+    false,
+  );
+});
