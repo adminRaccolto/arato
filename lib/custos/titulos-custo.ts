@@ -6,7 +6,7 @@
 export type TituloCusto = { status?: string | null; categoria?: string | null; origem_lancamento?: string | null; natureza?: string | null };
 
 // Principal de empréstimo e movimentos de caixa: não são custo de produção (juros e IOF continuam como custo financeiro)
-const NAO_CUSTO = /^(pagamento de (custeio|financiamento|securitiza|cpr|egf|empr)|capta[cç][aã]o|ajuste de saldo|transfer|adiantamento)/i;
+const NAO_CUSTO = /^(pagamento (?:de )?(custeio|financiamento|securitiza|cpr|egf|empr)|capta[cç][aã]o|ajuste de saldo|transfer|adiantamento)/i;
 
 /**
  * O título entra como custo? Fora: cancelado, previsão, tesouraria, principal de empréstimo e movimentos de caixa.

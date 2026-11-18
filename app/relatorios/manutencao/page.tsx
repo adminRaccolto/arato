@@ -4,12 +4,13 @@ import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarMaquinas, listarAnosSafra, listarCiclos, listarFazendasDaConta } from "../../../lib/db";
+import { repositorioResultados } from "../../../lib/resultados/carregar";
+import { buscarPaginado } from "../../../lib/buscar-paginado";
 import type { Maquina, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -55,21 +56,17 @@ interface GrupoMaq {
 
 // ─── componente ──────────────────────────────────────────────────────────────
 function RelManutInner() {
-  const { fazendaId, contaId, contaNome } = useAuth();
+  const { fazendaId, fazendaIds, contaId, contaNome } = useAuth();
   const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   const nomeCliente = contaNome ?? "";
 
   // Relatório da CONTA toda: frota, anos safra e ciclos de todas as fazendas do cliente (a frota é do
   // cliente, não de uma fazenda). A fazenda de cada máquina só aparece como informação.
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
-  useEffect(() => {
-    if (!fazendaId && !contaId) return;
-    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
-      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
-    }).catch(() => {});
-  }, [fazendaId, contaId]);
   const nomeFazenda = (id?: string | null) => fazendasConta.find(f => f.id === id)?.nome ?? "";
   const fazAtiva = fazendaId || fazendasConta[0]?.id || "";
+  const escopo = JSON.stringify([contaId, fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []]);
+  const [refPronta, setRefPronta] = useState("");
 
   const [modoFiltro, setModoFiltro] = useState<"data" | "safra">("data");
   const [inicio, setInicio]         = useState(anoAtras());
@@ -84,61 +81,72 @@ function RelManutInner() {
   const [anosSafra, setAnosSafra]   = useState<AnoSafra[]>([]);
   const [ciclos, setCiclos]         = useState<Ciclo[]>([]);
   const [grupos, setGrupos]         = useState<GrupoMaq[]>([]);
-  const [gerado, setGerado]         = useState(false);
+  const [geradoBase, setGerado] = useState(false);
+  const [geradoChave, setGeradoChave] = useState("");
+  const [erro, setErro] = useState("");
+  const sequencia = useRef(0);
+  const chaveFiltro = JSON.stringify([escopo, modoFiltro, inicio, fim, anoSafraId, cicloId, [...tiposMaqSel].sort(), [...tiposManutSel].sort(), [...maquinasSel].sort()]);
+  const gerado = geradoBase && geradoChave === chaveFiltro;
+  useEffect(() => { const seq = sequencia; seq.current++; setLoading(false); return () => { seq.current++; }; }, [chaveFiltro]);
   const [loading, setLoading]       = useState(false);
 
   useEffect(() => {
-    if (!fazAtiva) return;
-    listarMaquinas(fazAtiva).then(m => {
-      setMaquinas(m);
-      setMaquinasSel(new Set(m.map(x => x.id)));
-    }).catch(() => {});
-    listarAnosSafra(fazAtiva).then(setAnosSafra).catch(() => {});
-  }, [fazAtiva]);
-
+    let ativo = true;
+    const [conta, ids] = JSON.parse(escopo) as [string | null, string[]];
+    setRefPronta(""); setMaquinas([]); setMaquinasSel(new Set()); setAnoSafraId(""); setCiclos([]); setFazendasConta([]);
+    if (!ids.length) return;
+    const ler = repositorioResultados(supabase);
+    Promise.all([ler("maquinas", q => q.in("fazenda_id", ids)), ler("fazendas", q => q.in("id", ids)), ler("anos_safra", q => conta ? q.eq("conta_id", conta) : q.in("fazenda_id", ids))]).then(([ms, fs, anos]) => {
+      if (!ativo) return;
+      const maquinas = (ms as Maquina[]).sort((a, b) => a.nome.localeCompare(b.nome));
+      setMaquinas(maquinas); setMaquinasSel(new Set(maquinas.map(m => m.id))); setFazendasConta(fs as { id: string; nome: string }[]); setAnosSafra(anos as AnoSafra[]); setRefPronta(escopo);
+    }).catch(e => { if (ativo) setErro(e.message ?? "Falha ao carregar referências."); });
+    return () => { ativo = false; };
+  }, [escopo]);
   useEffect(() => {
-    if (anoSafraId) listarCiclos(anoSafraId, null).then(setCiclos).catch(() => {});
-    else setCiclos([]);
-    setCicloId("");
-  }, [anoSafraId, fazAtiva]);
+    let ativo = true; setCicloId(""); setCiclos([]);
+    if (!anoSafraId || refPronta !== escopo) return;
+    const [, ids] = JSON.parse(escopo) as [string | null, string[]];
+    const descricao = anosSafra.find(a => a.id === anoSafraId)?.descricao;
+    const anoIds = anosSafra.filter(a => a.descricao === descricao).map(a => a.id);
+    repositorioResultados(supabase)("ciclos", q => q.in("fazenda_id", ids).in("ano_safra_id", anoIds)).then(cs => { if (ativo) setCiclos(cs as Ciclo[]); }).catch(e => { if (ativo) setErro(e.message); });
+    return () => { ativo = false; };
+  }, [anoSafraId, anosSafra, escopo, refPronta]);
 
   function toggleSet(_set: Set<string>, key: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) {
-    setter((prev: Set<string>) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+    setter((prev: Set<string>) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   }
 
   // ── datas do período de safra ─────────────────────────────────────────────
   function periodoSafra(): { de: string; ate: string } {
     if (cicloId) {
       const c = ciclos.find(x => x.id === cicloId);
-      return { de: c?.data_inicio ?? inicio, ate: c?.data_fim ?? fim };
+      return { de: c?.data_inicio ?? "", ate: c?.data_fim ?? "" };
     }
     if (anoSafraId) {
       const a = anosSafra.find(x => x.id === anoSafraId);
-      return { de: a?.data_inicio ?? inicio, ate: a?.data_fim ?? fim };
+      return { de: a?.data_inicio ?? "", ate: a?.data_fim ?? "" };
     }
     return { de: inicio, ate: fim };
   }
 
   // ── gerar ─────────────────────────────────────────────────────────────────
   async function gerar() {
-    if (!fazAtiva) return;
-    setLoading(true);
+    if (!fazAtiva || refPronta !== escopo) return;
+    const req = ++sequencia.current;
+    setLoading(true); setErro(""); setGerado(false); setGrupos([]);
     try {
+      if (modoFiltro === "safra" && !anoSafraId) throw new Error("Selecione o ano safra para definir o período.");
       const { de, ate } = modoFiltro === "safra" ? periodoSafra() : { de: inicio, ate: fim };
 
-      // Busca todas as manutenções do período
-      const { data, error } = await supabase
-        .from("historico_manutencao")
-        .select("*")
-        .in("maquina_id", [...maquinasSel].length > 0
-          ? maquinas.filter(m => maquinasSel.has(m.id) && tiposMaqSel.has(m.tipo)).map(m => m.id)
-          : ["_noop_"])
-        .gte("data", de)
-        .lte("data", ate)
-        .order("maquina_id")
-        .order("data");
-
-      if (error) throw error;
+      if (!de || !ate || de > ate) throw new Error("Informe um período válido.");
+      const ids = maquinas.filter(m => maquinasSel.has(m.id) && tiposMaqSel.has(m.tipo)).map(m => m.id);
+      type Fonte = { id: string; maquina_id: string; data: string; tipo: string; descricao: string; custo?: number };
+      const data: Fonte[] = [];
+      // Seleção vazia representa nenhum registro, sem enviar um UUID fictício ao banco.
+      if (tiposManutSel.size) for (let i = 0; i < ids.length; i += 150) data.push(...await buscarPaginado<Fonte>((from, to) => supabase.from("historico_manutencao").select("*")
+        .in("maquina_id", ids.slice(i, i + 150)).gte("data", de).lte("data", ate).in("tipo", [...tiposManutSel])
+        .order("maquina_id").order("data").order("id").range(from, to)));
 
       const rows: ManutRow[] = (data ?? [])
         .filter((r: { tipo: string }) => tiposManutSel.has(r.tipo))
@@ -168,10 +176,13 @@ function RelManutInner() {
         g.total_custo += r.custo ?? 0;
       });
 
+      if (req !== sequencia.current) return;
+      setGeradoChave(chaveFiltro);
       setGrupos([...mapaGrupos.values()].sort((a, b) => a.maquina_nome.localeCompare(b.maquina_nome)));
       setGerado(true);
-    } finally {
-      setLoading(false);
+    } catch (e) { if (req === sequencia.current) setErro(e instanceof Error ? e.message : String((e as {message?:string})?.message ?? e)); }
+    finally {
+      if (req === sequencia.current) setLoading(false);
     }
   }
 
@@ -184,6 +195,7 @@ function RelManutInner() {
 
   // ── PDF ───────────────────────────────────────────────────────────────────
   function gerarPDF() {
+    if (!gerado) return;
     const periodoLabel = `${fmtDate(periodoInicio)} a ${fmtDate(periodoFim)}`;
 
     const gruposHtml = grupos.map(g => {
@@ -251,6 +263,7 @@ function RelManutInner() {
 
   // ── Excel ─────────────────────────────────────────────────────────────────
   async function exportarExcel() {
+    if (!gerado) return;
     const XLSX = await import("xlsx");
     const wb = XLSX.utils.book_new();
 
@@ -340,7 +353,7 @@ function RelManutInner() {
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {gerado && (
+        {gerado && (
               <>
                 <OperationalButton data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   PDF / Imprimir
@@ -352,6 +365,10 @@ function RelManutInner() {
             )}
           </div>
         </OperationalHeading>
+            {erro && <p role="alert" style={{ color: "#b42318" }}>{erro}</p>}
+        {geradoBase && !gerado && <p role="status">Os filtros mudaram. Gere novamente para atualizar o relatório.</p>}
+        <p style={{ fontSize: 12 }}>Safra e ciclo definem o intervalo de datas deste relatório. A manutenção é apresentada pela data do serviço; isso não representa rateio do custo ao ciclo.</p>
+
 
         {/* Filtros */}
         <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
@@ -360,7 +377,7 @@ function RelManutInner() {
             {(["data", "safra"] as const).map(m => (
               <OperationalButton data-arato-button="secondary" key={m} onClick={() => setModoFiltro(m)}
                 style={{ ...btn(modoFiltro === m), padding: "7px 18px" }}>
-                {m === "data" ? "Intervalo de Datas" : "Por Safra / Ciclo"}
+                {m === "data" ? "Intervalo de Datas" : "Por Período da Safra / Ciclo"}
               </OperationalButton>
             ))}
           </div>
@@ -382,7 +399,7 @@ function RelManutInner() {
                 <label data-arato-label="true" style={lbl}>Ano Safra</label>
                 <SelectField value={anoSafraId} onChange={e => setAnoSafraId(e.target.value)} style={{ ...inp, width: "100%" }}>
                   <option value="">Selecione o ano safra</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                  {anosSafra.filter((a, i, rs) => rs.findIndex(x => x.descricao === a.descricao) === i).map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                 </SelectField>
               </div>
               <div>
@@ -441,7 +458,7 @@ function RelManutInner() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <OperationalButton data-arato-button="primary" onClick={gerar} disabled={loading}
+            <OperationalButton data-arato-button="primary" onClick={gerar} disabled={loading || refPronta !== escopo}
               style={{ padding: "10px 28px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {loading ? "Gerando..." : "Gerar Relatório"}
             </OperationalButton>

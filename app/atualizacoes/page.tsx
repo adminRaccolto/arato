@@ -7,6 +7,21 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-e",
+    data: "18/11/2026",
+    titulo: "Resultados: DRE comparativa por ciclo e apuração unificada",
+    modulos: ["Resultados", "Financeiro", "Lavoura", "Máquinas"],
+    itens: [
+      { tipo: "novidade", texto: "Na DRE e em Margens por Safra, escolha os ciclos e gere o relatório para comparar cada ciclo em uma coluna, identificado pela fazenda. Linhas zeradas podem ser ocultadas para uma leitura mais compacta. Há também as visões consolidada e individual, valores totais, por hectare, por saca e em percentual, além de PDF e Excel." },
+      { tipo: "melhoria", texto: "Clique em um valor para consultar sua composição. Custos sem ciclo ou sem regra válida de rateio ficam em coluna própria e permanecem no consolidado. As regras de rateio por centro de custos, área e percentuais passam a ser aplicadas entre fazendas e ciclos, preservando os centavos do total." },
+      { tipo: "correcao", texto: "DRE, margens e custos usam a mesma apuração: consumo pelo custo histórico, folha fechada pelo bruto, complemento e encargos e despesas reais de produtor e empresa. A base da receita é escolhida explicitamente entre CR, contratos confirmados e estimativa do orçamento. Previsões ficam separadas e dados sem custo ou cotação aparecem como pendência, sem utilizar preços atuais ou valores padrão." },
+      { tipo: "correcao", texto: "Prejuízos preservam o sinal negativo, indicadores consolidados são ponderados e a depreciação é descontada após o EBITDA. Tributos são considerados pelos lançamentos classificados, sem aplicar alíquotas fixas presumidas. A DRE por empresa também corrige conversões de moeda, períodos mensais e custo da folha." },
+      { tipo: "melhoria", texto: "Financeiro por Classificação permite escolher o período por vencimento, lançamento ou baixa e separar reais de previsões. Selecionar nenhum tipo ou status retorna nenhum registro; moedas são convertidas em reais pela cotação registrada. Alterar os filtros exige gerar novamente antes de exportar." },
+      { tipo: "correcao", texto: "Aplicações e Manutenção consultam todas as páginas dos registros selecionados e informam falhas de consulta. Aplicações conta operações sem multiplicar pela quantidade de produtos, identifica a área por ciclo e talhão e consulta somente os itens das operações filtradas. Na Manutenção, safra e ciclo são apresentados como filtros do período do serviço." },
+    ],
+    onde: "Resultados → DRE, Margens por Safra, Custos, Produtividade, Aplicações, Manutenção e Financeiro por Classificação; Financeiro → DRE por Empresa",
+  },
+  {
     versao: "2026.11.18-d",
     data: "18/11/2026",
     titulo: "NF de combustível: bombas voltam a aparecer",

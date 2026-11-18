@@ -9,6 +9,8 @@ import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarOperacoesGerenciais, listarEmpresaLancamentosComoLancamento } from "../../../lib/db";
+import { emReais } from "../../../lib/resultados/apuracao";
+import SelectField from "../../../components/SelectField";
 import type { Lancamento, OperacaoGerencial } from "../../../lib/supabase";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -22,7 +24,7 @@ const mesInicio = () => { const d = new Date(); d.setDate(1); return d.toISOStri
 // ─── constantes ──────────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
   em_aberto: "Aberto", vencendo: "A Vencer",
-  vencido: "Vencido", parcial: "Parcial", baixado: "Pago",
+  vencido: "Vencido", parcial: "Parcial", baixado: "Pago", cancelado: "Cancelado",
 };
 const STATUS_COR: Record<string, string> = {
   em_aberto: "#444444", vencendo: "#EF9F27",
@@ -179,15 +181,17 @@ function countRows(no: NoGrupo): number {
 
 // ─── componente principal ─────────────────────────────────────────────────────
 function RelFinClassInner() {
-  const { fazendaId, fazendaIds, nomeFazendaSelecionada, contaId, contaNome } = useAuth();
+  const { fazendaId, fazendaIds, nomeFazendaSelecionada, contaId } = useAuth();
   const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   // ── filtros ──
   const [inicio, setInicio]   = useState(mesInicio());
   const [fim, setFim]         = useState(hoje());
+  const [dataBase, setDataBase] = useState<"data_vencimento" | "data_lancamento" | "data_baixa">("data_vencimento");
+  const [natureza, setNatureza] = useState<"real" | "previsao" | "todos">("real");
 
   const [tipoSel,   setTipoSel]   = useState<Set<"pagar" | "receber">>(new Set(["pagar", "receber"]));
-  const [statusSel, setStatusSel] = useState<Set<string>>(new Set(Object.keys(STATUS_LABELS)));
+  const [statusSel, setStatusSel] = useState<Set<string>>(new Set(Object.keys(STATUS_LABELS).filter(s => s !== "cancelado")));
   const [classifSel, setClassifSel] = useState<Set<string> | null>(null);
 
   // ── agrupadores ──
@@ -213,24 +217,32 @@ function RelFinClassInner() {
   const [fazendaMap, setFazendaMap]   = useState<Map<string, string>>(new Map());
   const [produtorMap, setProdutorMap] = useState<Map<string, string>>(new Map());
   const [rows, setRows]         = useState<LancRow[]>([]);
-  const [gerado, setGerado]     = useState(false);
+  const [geradoBase, setGerado] = useState(false);
+  const [geradoChave, setGeradoChave] = useState("");
+  const [erro, setErro] = useState("");
+  const sequencia = useRef(0);
+  const chaveFiltro = JSON.stringify([contaId, fazendaId, fazendaIds, inicio, fim, dataBase, natureza, [...tipoSel].sort(), [...statusSel].sort(), classifSel && [...classifSel].sort()]);
+  const gerado = geradoBase && geradoChave === chaveFiltro;
+  useEffect(() => { const seq = sequencia; seq.current++; setLoading(false); return () => { seq.current++; }; }, [chaveFiltro]);
   const [loading, setLoading]   = useState(false);
 
   // ── efeitos ──
   useEffect(() => {
     if (!fazendaId) return;
-    listarOperacoesGerenciais(fazendaId).then(setOps).catch(() => {});
+    listarOperacoesGerenciais(fazendaId).then(setOps).catch(e => setErro(e.message ?? "Falha ao carregar classificações."));
   }, [fazendaId]);
 
+  const fazendasRefKey = JSON.stringify(fazendaIds);
   useEffect(() => {
-    if (!fazendaIds?.length) return;
-    supabase.from("fazendas").select("id, nome").in("id", fazendaIds)
+    const ids = JSON.parse(fazendasRefKey) as string[];
+    if (!ids.length) return;
+    supabase.from("fazendas").select("id, nome").in("id", ids)
       .then(({ data }) => {
         const m = new Map<string, string>();
         (data ?? []).forEach((f: { id: string; nome: string }) => m.set(f.id, f.nome));
         setFazendaMap(m);
       });
-  }, [fazendaIds?.join(",")]);
+  }, [fazendasRefKey]);
 
   useEffect(() => {
     if (!contaId) return;
@@ -244,13 +256,16 @@ function RelFinClassInner() {
 
   // classificações usadas nos lançamentos
   useEffect(() => {
-    if (!fazendaId || ops.length === 0) return;
+    if (!fazendaId || !inicio || !fim || inicio > fim) return;
+    let ativo = true;
     // Paginado (limite de 1.000 linhas por consulta) e inclui os títulos de empresa
     const paginar = async (tabela: string) => {
       let out: { categoria?: string; operacao_gerencial_id?: string }[] = [];
       for (let from = 0; ; from += 1000) {
-        const { data: pg } = await supabase.from(tabela).select("categoria, operacao_gerencial_id")
-          .in("fazenda_id", fazendaIds).order("id", { ascending: true }).range(from, from + 999);
+        const campo = tabela === "empresa_lancamentos" ? dataBase === "data_baixa" ? "data_pagamento" : dataBase === "data_lancamento" ? "created_at" : dataBase : dataBase;
+        const { data: pg, error } = await supabase.from(tabela).select("categoria, operacao_gerencial_id")
+          .in("fazenda_id", fazendaIds).gte(campo, inicio).lte(campo, campo === "created_at" ? fim + "T23:59:59.999999" : fim).order("id", { ascending: true }).range(from, from + 999);
+        if (error) throw error;
         out = out.concat(pg ?? []);
         if (!pg || pg.length < 1000) break;
       }
@@ -262,7 +277,7 @@ function RelFinClassInner() {
         const map = new Map<string, ClassifOpt>();
         (data ?? []).forEach((l: { categoria?: string; operacao_gerencial_id?: string }) => {
           const op = ops.find(o => o.id === l.operacao_gerencial_id);
-          const chave = l.operacao_gerencial_id ?? l.categoria ?? "Sem Classificação";
+          const chave = l.operacao_gerencial_id ?? `sem-og::${l.categoria ?? ""}`;
           const label = op?.descricao ?? l.categoria ?? "Sem Classificação";
           const codigo = op?.classificacao ?? undefined;
           map.set(chave, { chave, label, codigo });
@@ -270,9 +285,10 @@ function RelFinClassInner() {
         const sorted = [...map.values()].sort((a, b) =>
           a.codigo && b.codigo ? a.codigo.localeCompare(b.codigo) : a.label.localeCompare(b.label)
         );
-        setClassifOpts(sorted);
-      });
-  }, [fazendaId, ops, fazendaIds]);
+        if (ativo) setClassifOpts(sorted);
+      }).catch(e => { if (ativo) setErro(e.message ?? "Falha ao carregar classificações."); });
+    return () => { ativo = false; };
+  }, [fazendaId, ops, fazendaIds, dataBase, inicio, fim]);
 
   // fechar dropdowns ao clicar fora
   useEffect(() => {
@@ -301,14 +317,14 @@ function RelFinClassInner() {
 
   // ── Tipo ─────────────────────────────────────────────────────────────────
   function toggleTipo(v: "pagar" | "receber") {
-    setTipoSel(p => { const n = new Set(p); n.has(v) ? n.delete(v) : n.add(v); return n; });
+    setTipoSel(p => { const n = new Set(p); if (n.has(v)) n.delete(v); else n.add(v); return n; });
   }
   const tipoLabel = tipoSel.size === 2 ? "Todos" : tipoSel.size === 0 ? "Nenhum" :
     tipoSel.has("pagar") ? "Contas a Pagar" : "Contas a Receber";
 
   // ── Status ───────────────────────────────────────────────────────────────
   function toggleStatus(s: string) {
-    setStatusSel(p => { const n = new Set(p); n.has(s) ? n.delete(s) : n.add(s); return n; });
+    setStatusSel(p => { const n = new Set(p); if (n.has(s)) n.delete(s); else n.add(s); return n; });
   }
   const statusCount = statusSel.size;
   const statusLabel = statusCount === Object.keys(STATUS_LABELS).length ? "Todos" :
@@ -331,7 +347,7 @@ function RelFinClassInner() {
       setClassifSel(new Set(classifOpts.map(o => o.chave).filter(x => x !== chave)));
     } else {
       const n = new Set(classifSel);
-      n.has(chave) ? n.delete(chave) : n.add(chave);
+      if (n.has(chave)) n.delete(chave); else n.add(chave);
       setClassifSel(n);
     }
   }
@@ -375,10 +391,12 @@ function RelFinClassInner() {
   // ── gerar ─────────────────────────────────────────────────────────────────
   async function gerar() {
     if (!fazendaId) return;
-    setLoading(true);
+    const req = ++sequencia.current;
+    setLoading(true); setErro(""); setGerado(false); setRows([]);
     try {
+      if (!inicio || !fim || inicio > fim) throw new Error("Informe um período válido.");
       const tipos = [...tipoSel];
-      const filtrarStatus = statusSel.size > 0 && statusSel.size < Object.keys(STATUS_LABELS).length;
+      if (!tipos.length || !statusSel.size || classifSel?.size === 0) { setRows([]); setGeradoChave(chaveFiltro); setGerado(true); return; }
       // Paginado: o PostgREST corta em 1.000 linhas sem avisar (períodos longos perdiam títulos).
       type Raw = LancRow & { pessoas?: { nome: string } | null };
       let data: Raw[] = [];
@@ -387,13 +405,14 @@ function RelFinClassInner() {
           .from("lancamentos")
           .select("*, pessoas(nome)")
           .in("fazenda_id", fazendaIds)
-          .gte("data_vencimento", inicio)
-          .lte("data_vencimento", fim)
+          .gte(dataBase, inicio)
+          .lte(dataBase, fim)
           .order("data_vencimento", { ascending: true })
           .order("id", { ascending: true })
           .order("id", { ascending: true }).range(from, from + 999);
-        if (tipos.length === 1) q = q.eq("tipo", tipos[0]);
-        if (filtrarStatus) q = q.in("status", [...statusSel]);
+        q = q.in("tipo", tipos).in("status", [...statusSel]);
+        if (natureza === "previsao") q = q.eq("natureza", "previsao");
+        if (natureza === "real") q = q.or("natureza.is.null,natureza.eq.real");
         const { data: pg, error } = await q;
         if (error) throw error;
         data = data.concat((pg ?? []) as unknown as Raw[]);
@@ -401,14 +420,14 @@ function RelFinClassInner() {
       }
 
       // Títulos de EMPRESA ficam em empresa_lancamentos; sem eles o relatório só mostrava os antigos.
-      const empresaTit = (await listarEmpresaLancamentosComoLancamento(fazendaIds).catch(() => [] as Lancamento[]))
-        .filter(l => l.data_vencimento >= inicio && l.data_vencimento <= fim)
-        .filter(l => tipos.length !== 1 || l.tipo === tipos[0])
-        .filter(l => !filtrarStatus || statusSel.has(l.status));
+      const empresaTit = (await listarEmpresaLancamentosComoLancamento(fazendaIds, { inicio, fim, base: dataBase }))
+        .filter(l => tipos.includes(l.tipo) && statusSel.has(l.status))
+        .filter(l => natureza === "todos" || (natureza === "previsao" ? l.natureza === "previsao" : l.natureza !== "previsao"));
       const idsPessoa = [...new Set(empresaTit.map(l => (l as { pessoa_id?: string }).pessoa_id).filter(Boolean))] as string[];
       const nomePessoa = new Map<string, string>();
       for (let i = 0; i < idsPessoa.length; i += 150) {
-        const { data: ps } = await supabase.from("pessoas").select("id, nome").in("id", idsPessoa.slice(i, i + 150));
+        const { data: ps, error } = await supabase.from("pessoas").select("id, nome").in("id", idsPessoa.slice(i, i + 150));
+        if (error) throw error;
         (ps ?? []).forEach((p: { id: string; nome: string }) => nomePessoa.set(p.id, p.nome));
       }
       const doEmpresa: Raw[] = empresaTit.map(l => ({
@@ -420,8 +439,10 @@ function RelFinClassInner() {
 
       const loaded: LancRow[] = (data ?? []).map((l: Raw) => {
         const op = ops.find(o => o.id === l.operacao_gerencial_id);
+        const valor = emReais(l);
+        if (valor === null) throw new Error(`Título ${l.descricao || l.id} sem cotação histórica válida. O relatório não pode somar moedas diferentes como reais.`);
         return {
-          ...l,
+          ...l, valor,
           pessoa_nome:   l.pessoas?.nome ?? undefined,
           op_descricao:  op?.descricao,
           op_codigo:     op?.classificacao ?? undefined,
@@ -434,20 +455,22 @@ function RelFinClassInner() {
       const filtered = classifSel === null ? loaded :
         classifSel.size === 0 ? [] :
         loaded.filter(r => {
-          const chave = r.operacao_gerencial_id ?? r.categoria ?? "__sem__";
+          const chave = getChave(r, "og");
           return classifSel.has(chave);
         });
 
-      setRows(filtered);
-      setGerado(true);
-    } finally {
-      setLoading(false);
+      if (req !== sequencia.current) return;
+      setRows(filtered); setGeradoChave(chaveFiltro); setGerado(true);
+    } catch (e) { if (req === sequencia.current) setErro(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e)); }
+    finally {
+      if (req === sequencia.current) setLoading(false);
     }
   }
 
   // ── PDF ───────────────────────────────────────────────────────────────────
   function gerarPDF() {
-    const periodoLabel = `${fmtDate(inicio)} a ${fmtDate(fim)}`;
+    if (!gerado) return;
+    const periodoLabel = `${fmtDate(inicio)} a ${fmtDate(fim)} · Base: ${dataBase === "data_baixa" ? "Baixa" : dataBase === "data_lancamento" ? "Lançamento" : "Vencimento"} · ${natureza === "todos" ? "Reais e previsões" : natureza === "previsao" ? "Previsões" : "Reais"} · Valores em BRL pela cotação registrada`;
     if (visao === "sintetico") {
       const th = (t: string, al = "right") => `<th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111;text-align:${al};white-space:nowrap">${t}</th>`;
       const linhas = sintese.map(x => `
@@ -561,11 +584,12 @@ function RelFinClassInner() {
 
   // ── Excel ─────────────────────────────────────────────────────────────────
   async function exportarExcel() {
+    if (!gerado) return;
     const XLSX = await import("xlsx");
     if (visao === "sintetico") {
       const d: (string | number)[][] = [
         [`Financeiro por Classificação (Sintético) — ${nomeFazendaSelecionada ?? ""}`],
-        [`Período: ${fmtDate(inicio)} a ${fmtDate(fim)} | Tipo: ${tipoLabel}`],
+        [`Período: ${fmtDate(inicio)} a ${fmtDate(fim)} | Base: ${dataBase} | Natureza: ${natureza} | Valores em BRL pela cotação registrada | Tipo: ${tipoLabel}`],
         [`Gerado em: ${new Date().toLocaleString("pt-BR")}`], [],
         ["Operação Gerencial", "Lançamentos", "Entradas (R$)", "Saídas (R$)", "Saldo (R$)"],
         ...sintese.map(x => [x.label, x.qtd, x.entradas, x.saidas, x.entradas - x.saidas] as (string | number)[]),
@@ -584,10 +608,10 @@ function RelFinClassInner() {
     const agrsLabel = agrupadores.map(a => AGRUPADORES_DISP.find(d => d.key === a)?.label).join(" → ") || "Sem agrupamento";
 
     ws_data.push([`Financeiro por Classificação — ${nomeFazendaSelecionada ?? ""}`]);
-    ws_data.push([`Período: ${fmtDate(inicio)} a ${fmtDate(fim)} | Tipo: ${tipoLabel} | Agrupamento: ${agrsLabel}`]);
+    ws_data.push([`Período: ${fmtDate(inicio)} a ${fmtDate(fim)} | Base: ${dataBase} | Natureza: ${natureza} | Valores em BRL pela cotação registrada | Tipo: ${tipoLabel} | Agrupamento: ${agrsLabel}`]);
     ws_data.push([`Gerado em: ${new Date().toLocaleString("pt-BR")}`]);
     ws_data.push([]);
-    ws_data.push(["Vcto", "Descrição", "Fornecedor/Cliente", "Parcela", "Tipo", "Valor (R$)", "Status", "Data Baixa"]);
+    ws_data.push(["Vcto", "Descrição", "Fornecedor/Cliente", "Parcela", "Tipo", "Valor convertido (R$)", "Status", "Data Baixa"]);
 
     function addXlsxTree(nos: NoGrupo[], nivel: number) {
       const prefix = "  ".repeat(nivel);
@@ -660,13 +684,16 @@ function RelFinClassInner() {
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
           </div>
-          {gerado && (
+        {gerado && (
             <div style={{ display: "flex", gap: 10 }}>
               <OperationalButton data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF / Imprimir</OperationalButton>
               <OperationalButton data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Exportar Excel</OperationalButton>
             </div>
           )}
         </OperationalHeading>
+          {erro && <p role="alert" style={{ color: "#b42318" }}>{erro}</p>}
+        {geradoBase && !gerado && <p role="status">Os filtros mudaram. Gere novamente para atualizar os valores e liberar as exportações.</p>}
+
 
         {/* Filtros */}
         <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
@@ -676,13 +703,15 @@ function RelFinClassInner() {
 
             {/* Data Início */}
             <div>
-              <label data-arato-label="true" style={lbl}>Data Início (Vcto)</label>
+              <label data-arato-label="true" style={lbl}>Data Início</label>
               <InputData type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
             </div>
 
+            <div><label style={lbl}>Período por</label><SelectField style={inp} value={dataBase} onChange={e => setDataBase(e.target.value as typeof dataBase)}><option value="data_vencimento">Vencimento</option><option value="data_lancamento">Lançamento</option><option value="data_baixa">Baixa</option></SelectField></div>
+            <div><label style={lbl}>Natureza</label><SelectField style={inp} value={natureza} onChange={e => setNatureza(e.target.value as typeof natureza)}><option value="real">Somente reais</option><option value="previsao">Somente previsões</option><option value="todos">Reais e previsões</option></SelectField></div>
             {/* Data Fim */}
             <div>
-              <label data-arato-label="true" style={lbl}>Data Fim (Vcto)</label>
+              <label data-arato-label="true" style={lbl}>Data Fim</label>
               <InputData type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
             </div>
 

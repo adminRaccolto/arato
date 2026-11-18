@@ -2,17 +2,16 @@
 import { aplicarPadraoRelatorio } from "../../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../../lib/print";
-import { hojeLocal } from "../../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../../components/OperationalUI";
 import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
+import { buscarPaginado } from "../../../../lib/buscar-paginado";
+import { repositorioResultados } from "../../../../lib/resultados/carregar";
+import { estatisticasAplicacoes } from "../../../../lib/resultados/aplicacoes";
 import { supabase } from "../../../../lib/supabase";
-import {
-  listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, listarGruposInsumo,
-} from "../../../../lib/db";
 import type { Talhao, Insumo, AnoSafra, Ciclo, GrupoInsumo, Fazenda } from "../../../../lib/supabase";
 
 // ─── Estilos base ────────────────────────────────────────────
@@ -49,6 +48,7 @@ const CULT: Record<string, string> = {
 // ─── Tipo da linha unificada ─────────────────────────────────
 type Linha = {
   _id: string;
+  operacao_id: string;
   tipo_op: "pulverizacao" | "correcao" | "adubacao" | "plantio";
   tipo_detalhe: string;
   data: string;
@@ -89,7 +89,7 @@ const AGRUP_LABELS: { key: Agrupamento; label: string }[] = [
 
 // ─── Componente principal ─────────────────────────────────────
 export default function RelAplicacoesPage() {
-  const { fazendaId, nomeUsuario, fazendaIds: authFazendaIds } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, fazendaIds: authFazendaIds } = useAuth();
   const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   // Suporte multi-fazenda
@@ -117,7 +117,9 @@ export default function RelAplicacoesPage() {
   // Resultado
   const [linhas,       setLinhas]       = useState<Linha[]>([]);
   const [agrupamento,  setAgrupamento]  = useState<Agrupamento>("detalhado");
-  const [gerado,       setGerado]       = useState(false);
+  const [geradoBase, setGerado] = useState(false);
+  const [geradoChave, setGeradoChave] = useState("");
+  const sequencia = useRef(0);
   const [dataGeracao,  setDataGeracao]  = useState("");
   const [carregando,   setCarregando]   = useState(false);
   const [erro,         setErro]         = useState<string | null>(null);
@@ -135,36 +137,41 @@ export default function RelAplicacoesPage() {
     return fid ? [fid] : [];
   })();
   const fid0 = fids[0] ?? fazendaId ?? "";
+  const chaveFiltro = JSON.stringify([authFazendaIds, fids, fAno, fCiclos, fTalhoes, fTiposOp, fDtInicio, fDtFim, fProduto]);
+  const gerado = geradoBase && geradoChave === chaveFiltro;
+  useEffect(() => { const seq = sequencia; seq.current++; setCarregando(false); setModalWA(false); return () => { seq.current++; }; }, [chaveFiltro]);
 
-  // ── Carregar fazendas disponíveis (usa authFazendaIds para isolamento seguro de tenant) ──
+  const idsAutorizados = JSON.stringify(authFazendaIds.length ? authFazendaIds : fazendaId ? [fazendaId] : []);
+  const idsFiltro = JSON.stringify(fids);
+  const [refPronta, setRefPronta] = useState("");
   useEffect(() => {
-    if (!authFazendaIds.length) return;
-    supabase.from("fazendas").select("*").in("id", authFazendaIds).order("nome")
-      .then(({ data }) => { if (data?.length) setTodasFazendas(data as Fazenda[]); });
-  }, [authFazendaIds.join(",")]);
-
-  // ── Carrega referências ───────────────────────────────────
+    let ativo = true; const ids = JSON.parse(idsAutorizados) as string[];
+    setTodasFazendas([]);
+    if (ids.length) buscarPaginado<Fazenda>((de, ate) => supabase.from("fazendas").select("*").in("id", ids).order("id").range(de, ate)).then(rs => { if (ativo) setTodasFazendas(rs); }).catch(e => { if (ativo) setErro(e.message ?? "Falha ao carregar fazendas."); });
+    return () => { ativo = false; };
+  }, [idsAutorizados]);
   useEffect(() => {
-    if (fids.length === 0) return;
+    let ativo = true; const ids = JSON.parse(idsFiltro) as string[];
+    setRefPronta(""); setFCiclos([]); setFTalhoes([]); setFAno("");
+    if (!ids.length) return;
+    const ler = repositorioResultados(supabase);
     Promise.all([
-      Promise.all(fids.map(f => listarTalhoes(f))).then(rs => setTalhoes(rs.flat())),
-      Promise.all(fids.map(f => listarInsumos(f))).then(rs => setInsumos(rs.flat())),
-      Promise.all(fids.map(f => listarAnosSafra(f))).then(rs => {
-        const seen = new Set<string>(); const merged: AnoSafra[] = [];
-        rs.flat().forEach(a => { if (!seen.has(a.id)) { seen.add(a.id); merged.push(a); } });
-        setAnos(merged);
-      }),
-      Promise.all(fids.map(f => listarTodosCiclos(f))).then(rs => setCiclos(rs.flat())),
-      listarGruposInsumo(fid0).then(setGrupos),
-      supabase.from("fazendas").select("*").eq("id", fid0).single().then(({ data }) => { if (data) setFazenda(data as Fazenda); }),
-    ]).catch(() => {});
-    const logo = localStorage.getItem(`fazenda_logo_${fid0}`);
-    if (logo) setLogoFaz(logo);
-    setFCiclos([]); setFTalhoes([]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fids.join(",")]);
+      ler("talhoes", q => q.in("fazenda_id", ids)), ler("insumos", q => q.in("fazenda_id", JSON.parse(idsAutorizados))),
+      ler("anos_safra", q => contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", ids)),
+      ler("ciclos", q => q.in("fazenda_id", ids)), ler("grupos_insumos", q => q.in("fazenda_id", JSON.parse(idsAutorizados))),
+    ]).then(([ts, ins, an, cs, gs]) => {
+      if (!ativo) return;
+      setTalhoes(ts as Talhao[]); setInsumos(ins as unknown as Insumo[]); setAnos(an as AnoSafra[]); setCiclos(cs as Ciclo[]); setGrupos(gs as GrupoInsumo[]); setRefPronta(idsFiltro);
+    }).catch(e => { if (ativo) setErro(e.message ?? "Falha ao carregar referências."); });
+    const fid = ids[0];
+    setLogoFaz(localStorage.getItem(`fazenda_logo_${fid}`));
+    return () => { ativo = false; };
+  }, [idsFiltro, idsAutorizados, contaId]);
+  useEffect(() => { setFazenda(todasFazendas.find(f => f.id === fid0) ?? null); }, [todasFazendas, fid0]);
 
-  const ciclosFiltradosAno = fAno ? ciclos.filter(c => c.ano_safra_id === fAno) : ciclos;
+  const anoDescricao = anos.find(a => a.id === fAno)?.descricao;
+  const idsAno = anos.filter(a => a.descricao === anoDescricao).map(a => a.id);
+  const ciclosFiltradosAno = fAno ? ciclos.filter(c => idsAno.includes(c.ano_safra_id)) : ciclos;
 
   const toggleFCiclo  = (id: string) => setFCiclos(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const toggleFTalhao = (id: string) => setFTalhoes(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
@@ -178,7 +185,7 @@ export default function RelAplicacoesPage() {
   }, [ciclos, anos]);
 
   // ── Descrição dos filtros (para cabeçalho do relatório) ──
-  const filtroDescricao = useMemo(() => {
+  const filtroDescricaoBase = useMemo(() => {
     const partes: string[] = [];
     if (fAno) partes.push(`Ano: ${anos.find(a => a.id === fAno)?.descricao ?? fAno}`);
     if (fCiclos.length > 0) partes.push(`Ciclos: ${fCiclos.map(id => nomeCicloFn(id)).join(", ")}`);
@@ -189,38 +196,43 @@ export default function RelAplicacoesPage() {
     partes.push(`Operações: ${opLabels.join(", ")}`);
     if (fDtInicio || fDtFim) partes.push(`Período: ${fDtInicio ? fmtData(fDtInicio) : "início"} a ${fDtFim ? fmtData(fDtFim) : "hoje"}`);
     if (fProduto) partes.push(`Produto: "${fProduto}"`);
+    partes.push("Área única por ciclo/talhão; custo/ha considera registros com área identificada");
     return partes.join(" · ");
   }, [fAno, fCiclos, fTalhoes, fTiposOp, fDtInicio, fDtFim, fProduto, anos, talhoes, nomeCicloFn]);
 
+  const filtroDescricao = filtroDescricaoBase + (estatisticasAplicacoes(linhas).semArea ? ` · Atenção: ${estatisticasAplicacoes(linhas).semArea} itens sem talhão/área; seus custos estão no total, fora da base do custo/ha.` : "");
+
   // ── Gera relatório ────────────────────────────────────────
-  const gerar = useCallback(async () => {
-    if (fids.length === 0) return;
-    setCarregando(true); setErro(null);
+  const gerar = async () => {
+    if (fids.length === 0 || refPronta !== idsFiltro) return;
+    const req = ++sequencia.current;
+    setCarregando(true); setErro(null); setGerado(false); setLinhas([]);
     try {
       const ciclosAlvo = fCiclos.length > 0 ? fCiclos : ciclosFiltradosAno.map(c => c.id);
 
-      const fazQ = (table: string) => {
-        const q = supabase.from(table).select("*") as any;
-        return fids.length === 1 ? q.eq("fazenda_id", fids[0]) : q.in("fazenda_id", fids);
+      if (fDtInicio && fDtFim && fDtInicio > fDtFim) throw new Error("Informe um período válido.");
+      const cabecalho = (table: string, campoData: string, tipo: string) => {
+        if (!ciclosAlvo.length || !fTiposOp.includes(tipo)) return Promise.resolve([]);
+        return buscarPaginado((de, ate) => {
+          let q = supabase.from(table).select("*").in("fazenda_id", fids).in("ciclo_id", ciclosAlvo).eq("status_campo", "aprovado");
+          if (fTalhoes.length) q = q.in("talhao_id", fTalhoes);
+          if (fDtInicio) q = q.gte(campoData, fDtInicio);
+          if (fDtFim) q = q.lte(campoData, fDtFim);
+          return q.order("id").range(de, ate);
+        });
       };
-      // Tabelas de cabeçalho têm status_campo (lançamento do App Campo só
-      // conta depois de aprovado — as de itens não têm essa coluna, filtro
-      // não se aplica a elas).
-      const fazQAprovado = (table: string) => fazQ(table).eq("status_campo", "aprovado");
-
-      const [
-        { data: pulvs }, { data: pulvItens },
-        { data: corrSolos }, { data: corrItens },
-        { data: adubs }, { data: aduItens },
-        { data: plantios },
-      ] = await Promise.all([
-        fazQAprovado("pulverizacoes"),
-        fazQ("pulverizacao_itens"),
-        fazQAprovado("correcoes_solo").then((r: any) => r.error ? { data: [] } : r),
-        fazQ("correcoes_solo_itens").then((r: any) => r.error ? { data: [] } : r),
-        fazQAprovado("adubacoes_base").then((r: any) => r.error ? { data: [] } : r),
-        fazQ("adubacoes_base_itens").then((r: any) => r.error ? { data: [] } : r),
-        fazQAprovado("plantios"),
+      const [pulvs, corrSolos, adubs, plantios] = await Promise.all([
+        cabecalho("pulverizacoes", "data_inicio", "pulverizacao"), cabecalho("correcoes_solo", "data_aplicacao", "correcao"),
+        cabecalho("adubacoes_base", "data_aplicacao", "adubacao"), cabecalho("plantios", "data_plantio", "plantio"),
+      ]);
+      const itensPorOperacao = async (table: string, campo: string, ids: string[]) => {
+        const lotes = Array.from({ length: Math.ceil(ids.length / 150) }, (_, i) => ids.slice(i * 150, i * 150 + 150));
+        return (await Promise.all(lotes.map(lote => buscarPaginado((de, ate) => supabase.from(table).select("*").in(campo, lote).order("id").range(de, ate))))).flat();
+      };
+      const [pulvItens, corrItens, aduItens] = await Promise.all([
+        itensPorOperacao("pulverizacao_itens", "pulverizacao_id", pulvs.map(p => p.id)),
+        itensPorOperacao("correcoes_solo_itens", "correcao_id", corrSolos.map(p => p.id)),
+        itensPorOperacao("adubacoes_base_itens", "adubacao_id", adubs.map(p => p.id)),
       ]);
 
       const nomeT   = (id?: string) => talhoes.find(t => t.id === id)?.nome ?? "Sem talhão";
@@ -234,15 +246,15 @@ export default function RelAplicacoesPage() {
 
       // Pulverizações
       if (fTiposOp.includes("pulverizacao")) {
-        for (const p of ((pulvs ?? []) as any[]).filter((p: any) => ciclosAlvo.includes(p.ciclo_id))) {
-          if (fTalhoes.length > 0 && p.talhao_id && !fTalhoes.includes(p.talhao_id)) continue;
+        for (const p of (pulvs ?? []).filter(p => ciclosAlvo.includes(p.ciclo_id))) {
+          if (fTalhoes.length > 0 && !fTalhoes.includes(p.talhao_id)) continue;
           if (fDtInicio && p.data_inicio < fDtInicio) continue;
           if (fDtFim   && p.data_inicio > fDtFim)   continue;
-          const itens = ((pulvItens ?? []) as any[]).filter((i: any) => i.pulverizacao_id === p.id);
+          const itens = (pulvItens ?? []).filter(i => i.pulverizacao_id === p.id);
           for (const it of itens) {
-            if (fProduto && !it.nome_produto.toLowerCase().includes(fProduto.toLowerCase())) continue;
+            if (fProduto && !(it.nome_produto ?? "").toLowerCase().includes(fProduto.toLowerCase())) continue;
             const info = infoIns(it.insumo_id);
-            ll.push({ _id: `pulv-${p.id}-${it.id}`, tipo_op: "pulverizacao", tipo_detalhe: p.tipo,
+            ll.push({ _id: `pulv-${p.id}-${it.id}`, operacao_id: p.id, tipo_op: "pulverizacao", tipo_detalhe: p.tipo,
               data: p.data_inicio, talhao_id: p.talhao_id, talhao_nome: nomeT(p.talhao_id),
               ciclo_id: p.ciclo_id, ciclo_nome: nomeCicloFn(p.ciclo_id),
               produto: it.nome_produto, insumo_id: it.insumo_id, ...info,
@@ -256,7 +268,7 @@ export default function RelAplicacoesPage() {
       // Correções de Solo
       if (fTiposOp.includes("correcao")) {
         for (const c of (corrSolos ?? []).filter((c: {ciclo_id:string}) => ciclosAlvo.includes(c.ciclo_id))) {
-          if (fTalhoes.length > 0 && c.talhao_id && !fTalhoes.includes(c.talhao_id)) continue;
+          if (fTalhoes.length > 0 && !fTalhoes.includes(c.talhao_id)) continue;
           if (fDtInicio && c.data_aplicacao < fDtInicio) continue;
           if (fDtFim   && c.data_aplicacao > fDtFim)   continue;
           const itens = (corrItens ?? []).filter((i: {correcao_id:string}) => i.correcao_id === c.id);
@@ -265,7 +277,7 @@ export default function RelAplicacoesPage() {
             if (fProduto && !produto.toLowerCase().includes(fProduto.toLowerCase())) continue;
             const info = infoIns(it.insumo_id);
             const custo_ha = it.custo_total && c.area_ha ? it.custo_total / c.area_ha : 0;
-            ll.push({ _id: `corr-${c.id}-${it.id}`, tipo_op: "correcao", tipo_detalhe: c.finalidade,
+            ll.push({ _id: `corr-${c.id}-${it.id}`, operacao_id: c.id, tipo_op: "correcao", tipo_detalhe: c.finalidade,
               data: c.data_aplicacao, talhao_id: c.talhao_id, talhao_nome: nomeT(c.talhao_id),
               ciclo_id: c.ciclo_id, ciclo_nome: nomeCicloFn(c.ciclo_id),
               produto, insumo_id: it.insumo_id,
@@ -279,7 +291,7 @@ export default function RelAplicacoesPage() {
       // Adubações de Base
       if (fTiposOp.includes("adubacao")) {
         for (const a of (adubs ?? []).filter((a: {ciclo_id:string}) => ciclosAlvo.includes(a.ciclo_id))) {
-          if (fTalhoes.length > 0 && a.talhao_id && !fTalhoes.includes(a.talhao_id)) continue;
+          if (fTalhoes.length > 0 && !fTalhoes.includes(a.talhao_id)) continue;
           if (fDtInicio && a.data_aplicacao < fDtInicio) continue;
           if (fDtFim   && a.data_aplicacao > fDtFim)   continue;
           const itens = (aduItens ?? []).filter((i: {adubacao_id:string}) => i.adubacao_id === a.id);
@@ -288,7 +300,7 @@ export default function RelAplicacoesPage() {
             if (fProduto && !produto.toLowerCase().includes(fProduto.toLowerCase())) continue;
             const info = infoIns(it.insumo_id);
             const custo_ha = it.custo_total && a.area_ha ? it.custo_total / a.area_ha : 0;
-            ll.push({ _id: `adu-${a.id}-${it.id}`, tipo_op: "adubacao", tipo_detalhe: a.modalidade,
+            ll.push({ _id: `adu-${a.id}-${it.id}`, operacao_id: a.id, tipo_op: "adubacao", tipo_detalhe: a.modalidade,
               data: a.data_aplicacao, talhao_id: a.talhao_id, talhao_nome: nomeT(a.talhao_id),
               ciclo_id: a.ciclo_id, ciclo_nome: nomeCicloFn(a.ciclo_id),
               produto, insumo_id: it.insumo_id,
@@ -302,7 +314,7 @@ export default function RelAplicacoesPage() {
       // Plantio / Semente
       if (fTiposOp.includes("plantio")) {
         for (const p of (plantios ?? []).filter((p: {ciclo_id:string}) => ciclosAlvo.includes(p.ciclo_id))) {
-          if (fTalhoes.length > 0 && p.talhao_id && !fTalhoes.includes(p.talhao_id)) continue;
+          if (fTalhoes.length > 0 && !fTalhoes.includes(p.talhao_id)) continue;
           if (fDtInicio && p.data_plantio < fDtInicio) continue;
           if (fDtFim   && p.data_plantio > fDtFim)   continue;
           if (!p.insumo_id && !p.variedade) continue;
@@ -310,7 +322,7 @@ export default function RelAplicacoesPage() {
           if (fProduto && !produto.toLowerCase().includes(fProduto.toLowerCase())) continue;
           const info = infoIns(p.insumo_id);
           const custo_ha = p.custo_sementes && p.area_ha ? p.custo_sementes / p.area_ha : 0;
-          ll.push({ _id: `pl-${p.id}`, tipo_op: "plantio", tipo_detalhe: "semente",
+          ll.push({ _id: `pl-${p.id}`, operacao_id: p.id, tipo_op: "plantio", tipo_detalhe: "semente",
             data: p.data_plantio, talhao_id: p.talhao_id, talhao_nome: nomeT(p.talhao_id),
             ciclo_id: p.ciclo_id, ciclo_nome: nomeCicloFn(p.ciclo_id),
             produto, insumo_id: p.insumo_id,
@@ -321,23 +333,20 @@ export default function RelAplicacoesPage() {
       }
 
       ll.sort((a, b) => a.data.localeCompare(b.data));
+      if (req !== sequencia.current) return;
+      setGeradoChave(chaveFiltro);
       setLinhas(ll);
       setGerado(true);
       setDataGeracao(new Date().toLocaleString("pt-BR"));
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao gerar relatório");
+      if (req === sequencia.current) setErro(e instanceof Error ? e.message : "Erro ao gerar relatório");
     } finally {
-      setCarregando(false);
+      if (req === sequencia.current) setCarregando(false);
     }
-  }, [fazendaId, fCiclos, fTalhoes, fTiposOp, fDtInicio, fDtFim, fProduto, ciclosFiltradosAno, talhoes, insumos, grupos, nomeCicloFn]);
+  };
 
-  // ── Stats ─────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const custo = linhas.reduce((s, l) => s + l.custo_total, 0);
-    const tids  = new Set(linhas.map(l => l.talhao_id ?? "__"));
-    const area  = [...tids].reduce((s, tid) => s + Math.max(...linhas.filter(l => (l.talhao_id ?? "__") === tid).map(l => l.area_ha)), 0);
-    return { custo, area, custo_ha: area > 0 ? custo / area : 0, ops: linhas.length };
-  }, [linhas]);
+  // Contagem e área usam a mesma base no grid, nos agrupamentos e nas exportações.
+  const stats = useMemo(() => estatisticasAplicacoes(linhas), [linhas]);
 
   // ── Helpers de layout compartilhados PDF/Print ───────────
   const buildLinhasHtml = () => linhas.map((l, i) => {
@@ -359,7 +368,7 @@ export default function RelAplicacoesPage() {
     </tr>`;
   }).join("");
 
-  const buildPrintHtml = (logoAratoSrc: string) => {
+  const buildPrintHtml = () => {
     const fazNome = fazenda?.nome ?? "Fazenda";
     const fazSub  = [fazenda?.municipio, fazenda?.estado].filter(Boolean).join(" · ")
                   + (fazenda?.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : "");
@@ -410,7 +419,7 @@ export default function RelAplicacoesPage() {
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
   ${[
     { l:"Aplicações",     v: String(stats.ops),           hl: false },
-    { l:"Área coberta",   v: `${fmtN(stats.area,1)} ha`,  hl: false },
+    { l:"Área identificada",   v: `${fmtN(stats.area,1)} ha`,  hl: false },
     { l:"Custo Total",    v: fmtBRL(stats.custo),          hl: true  },
     { l:"Custo Médio/ha", v: fmtBRL(stats.custo_ha),       hl: false },
   ].map(s => `<div style="border:1px solid var(--border-table);border-radius:4px;padding:5px 8px;background:${s.hl?"#111111":"#fff"};color:${s.hl?"#fff":"var(--text-1)"}">
@@ -427,7 +436,7 @@ export default function RelAplicacoesPage() {
   </tr></thead>
   <tbody>${buildLinhasHtml()}</tbody>
   <tfoot><tr>
-    <td colspan="7">TOTAL GERAL — ${linhas.length} aplicações</td>
+    <td colspan="7">TOTAL GERAL — ${stats.ops} operações</td>
     <td colspan="4"></td>
     <td class="r">${fmtBRL(stats.custo_ha)}/ha</td>
     <td class="r">${fmtBRL(stats.custo)}</td>
@@ -440,6 +449,7 @@ export default function RelAplicacoesPage() {
 
   // ── Exportar PDF (download via jsPDF) ─────────────────────
   const exportarPDF = async () => {
+    if (!gerado) return;
     const [{ jsPDF }, { default: autoTable }] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
@@ -458,7 +468,7 @@ export default function RelAplicacoesPage() {
       } catch { return null; }
     };
 
-    const imgArato = await loadImg("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png");
+    const imgArato = await loadImg("/logo_Arato_Nova.png");
     const imgFaz   = logoFaz ?? null;
 
     const doc  = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -518,7 +528,7 @@ export default function RelAplicacoesPage() {
     const bW = (pw - mg * 2 - 9) / 4;
     [
       { l: "Aplicações",     v: String(stats.ops),          hl: false },
-      { l: "Área coberta",   v: `${fmtN(stats.area,1)} ha`, hl: false },
+      { l: "Área identificada",   v: `${fmtN(stats.area,1)} ha`, hl: false },
       { l: "Custo Total",    v: fmtBRL(stats.custo),         hl: true  },
       { l: "Custo Médio/ha", v: fmtBRL(stats.custo_ha),      hl: false },
     ].forEach((s, i) => {
@@ -554,7 +564,7 @@ export default function RelAplicacoesPage() {
       headStyles: { fillColor: [26, 72, 112], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [249, 250, 251] },
       columnStyles: { 7:{halign:"right"}, 8:{halign:"right"}, 9:{halign:"right"}, 10:{halign:"right"}, 11:{halign:"right"}, 12:{halign:"right",fontStyle:"bold"}, 13:{halign:"right"} },
-      foot: [[`TOTAL GERAL — ${linhas.length} aplicações`,"","","","","","","","","","",fmtBRL(stats.custo_ha)+"/ha",fmtBRL(stats.custo),fmtN(stats.area,1)+" ha"]],
+      foot: [[`TOTAL GERAL — ${stats.ops} operações`,"","","","","","","","","","",fmtBRL(stats.custo_ha)+"/ha",fmtBRL(stats.custo),fmtN(stats.area,1)+" ha"]],
       footStyles: { fillColor: [26, 72, 112], textColor: 255, fontStyle: "bold" },
       didDrawPage: () => {
         const pn = (doc.internal as unknown as { getCurrentPageInfo: () => { pageNumber: number } }).getCurrentPageInfo().pageNumber;
@@ -571,28 +581,17 @@ export default function RelAplicacoesPage() {
 
   // ── Imprimir (nova janela com layout idêntico ao PDF) ─────
   const imprimir = async () => {
-    const loadImg = async (src: string): Promise<string> => {
-      try {
-        const res = await fetch(src);
-        const blob = await res.blob();
-        return new Promise(resolve => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => resolve("");
-          reader.readAsDataURL(blob);
-        });
-      } catch { return ""; }
-    };
-    const imgArato = await loadImg("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png");
+    if (!gerado) return;
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(aplicarPadraoRelatorio(buildPrintHtml(imgArato), window.location.origin));
+    win.document.write(aplicarPadraoRelatorio(buildPrintHtml(), window.location.origin));
     win.document.close();
     win.focus();
   };
 
   // ── Exportar XLSX ─────────────────────────────────────────
   const exportarXLSX = async () => {
+    if (!gerado) return;
     const XLSX = await import("xlsx");
     const rows = linhas.map(l => ({
       "Data":             fmtData(l.data),
@@ -625,7 +624,7 @@ export default function RelAplicacoesPage() {
       [],
       ["Métrica",        "Valor"],
       ["Operações",      stats.ops],
-      ["Área coberta",   stats.area],
+      ["Área identificada",   stats.area],
       ["Custo Total",    stats.custo],
       ["Custo Médio/ha", stats.custo_ha],
     ];
@@ -646,6 +645,7 @@ export default function RelAplicacoesPage() {
 
   // ── WhatsApp: upload para Storage + link ──────────────────
   const prepararWA = async () => {
+    if (!gerado) return;
     setModalWA(true); setWaStatus("uploading"); setWaUrl("");
     try {
       const XLSX = await import("xlsx");
@@ -729,7 +729,7 @@ export default function RelAplicacoesPage() {
                   <label data-arato-label="true" style={lbl}>Ano Safra</label>
                   <SelectField style={inp} value={fAno} onChange={e => { setFAno(e.target.value); setFCiclos([]); }}>
                     <option value="">Todos os anos</option>
-                    {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                    {anos.filter((a, i, rs) => rs.findIndex(x => x.descricao === a.descricao) === i).map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                   </SelectField>
                 </div>
                 <div>
@@ -827,7 +827,7 @@ export default function RelAplicacoesPage() {
             <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
               {[
                 { label: "Operações",     value: String(stats.ops),           sub: "registros"        },
-                { label: "Área coberta",  value: `${fmtN(stats.area, 1)} ha`, sub: "hectares únicos"  },
+                { label: "Área identificada",  value: `${fmtN(stats.area, 1)} ha`, sub: "área única por ciclo/talhão"  },
                 { label: "Custo total",   value: fmtBRL(stats.custo),         sub: "insumos"          },
                 { label: "Custo médio/ha",value: fmtBRL(stats.custo_ha),      sub: "R$/ha"            },
               ].map((s, i) => (
@@ -947,12 +947,12 @@ function TabelaResultado({ linhas, agrupamento, nomeCiclo }: { linhas: Linha[]; 
           <SecaoAgrupada key={grp} titulo={grp} linhas={gRows} cor="#166534" nivel={1}>
             {Object.entries(groupBy(gRows, l => l.subgrupo || "Geral")).sort(([a],[b]) => a.localeCompare(b)).map(([sub, sRows]) => {
               const sc = sRows.reduce((s,r) => s + r.custo_total, 0);
-              const sa = sRows.reduce((s,r) => s + r.area_ha, 0);
+              const sa = estatisticasAplicacoes(sRows);
               return (
                 <div key={sub} style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", padding: "4px 14px", background: "#F9FAFB", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
                     <span>{sub}</span>
-                    <span style={{ fontWeight: 400, color: "var(--text-3)" }}>{fmtBRL(sc)} · {fmtBRL(sa > 0 ? sc/sa : 0)}/ha</span>
+                    <span style={{ fontWeight: 400, color: "var(--text-3)" }}>{fmtBRL(sc)} · {fmtBRL(sa.custo_ha)}/ha</span>
                   </div>
                   <TabelaDetalhada linhas={sRows} nomeCiclo={nomeCiclo} compact />
                 </div>
@@ -996,12 +996,12 @@ function TabelaResultado({ linhas, agrupamento, nomeCiclo }: { linhas: Linha[]; 
           <SecaoAgrupada key={op} titulo={badge.label} linhas={opRows} cor={badge.color} nivel={1}>
             {Object.entries(byDet).sort(([a],[b]) => a.localeCompare(b)).map(([det, dRows]) => {
               const dc = dRows.reduce((s,r) => s + r.custo_total, 0);
-              const da = dRows.reduce((s,r) => s + r.area_ha, 0);
+              const da = estatisticasAplicacoes(dRows);
               return (
                 <div key={det} style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", padding: "4px 14px", background: "#F9FAFB", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
                     <span>{det}</span>
-                    <span style={{ fontWeight: 400, color: "var(--text-3)" }}>{fmtBRL(dc)} · {fmtBRL(da > 0 ? dc/da : 0)}/ha</span>
+                    <span style={{ fontWeight: 400, color: "var(--text-3)" }}>{fmtBRL(dc)} · {fmtBRL(da.custo_ha)}/ha</span>
                   </div>
                   <TabelaDetalhada linhas={dRows} nomeCiclo={nomeCiclo} compact />
                 </div>
@@ -1018,18 +1018,18 @@ function TabelaResultado({ linhas, agrupamento, nomeCiclo }: { linhas: Linha[]; 
 function SecaoAgrupada({ titulo, linhas, cor, nivel = 0, children }: { titulo: string; linhas: Linha[]; cor: string; nivel?: number; children: React.ReactNode }) {
   const [aberto, setAberto] = useState(true);
   const custo = linhas.reduce((s,l) => s + l.custo_total, 0);
-  const area  = linhas.reduce((s,l) => s + l.area_ha, 0);
+  const resumo = estatisticasAplicacoes(linhas);
   return (
     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
       <div style={{ padding: nivel === 0 ? "10px 16px" : "8px 16px", background: nivel === 0 ? "var(--bg-page)" : "var(--bg-card)", borderBottom: aberto ? "0.5px solid var(--border-table)" : "none", display: "flex", alignItems: "center", cursor: "pointer", gap: 12 }} onClick={() => setAberto(!aberto)}>
         <span style={{ fontSize: 9, color: "var(--text-3)", transform: aberto ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: nivel === 0 ? 14 : 13, color: cor }}>{titulo}</div>
-          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{linhas.length} aplicação{linhas.length !== 1 ? "ões" : ""}</div>
+          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{resumo.ops} operações · {linhas.length} itens</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{fmtBRL(custo)}</div>
-          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{fmtBRL(area > 0 ? custo/area : 0)}/ha</div>
+          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{fmtBRL(resumo.custo_ha)}/ha</div>
         </div>
       </div>
       {aberto && <div>{children}</div>}
@@ -1098,10 +1098,10 @@ function TabelaDetalhada({ linhas, nomeCiclo, compact = false }: { linhas: Linha
 
 function Rodape({ linhas }: { linhas: Linha[] }) {
   const custo = linhas.reduce((s,l) => s + l.custo_total, 0);
-  const area  = linhas.reduce((s,l) => s + l.area_ha, 0);
+  const resumo = estatisticasAplicacoes(linhas);
   return (
     <div style={{ background: "#111111", color: "#fff", borderRadius: 8, padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-      <span style={{ fontSize: 12, fontWeight: 600 }}>TOTAL GERAL — {linhas.length} aplicação{linhas.length !== 1 ? "ões" : ""}</span>
+      <span style={{ fontSize: 12, fontWeight: 600 }}>TOTAL GERAL — {resumo.ops} operações · {linhas.length} itens</span>
       <div style={{ display: "flex", gap: 28 }}>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Custo Total</div>
@@ -1109,7 +1109,7 @@ function Rodape({ linhas }: { linhas: Linha[] }) {
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Custo Médio/ha</div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>{fmtBRL(area > 0 ? custo/area : 0)}</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{fmtBRL(resumo.custo_ha)}</div>
         </div>
       </div>
     </div>

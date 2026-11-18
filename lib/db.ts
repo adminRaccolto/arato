@@ -2517,13 +2517,17 @@ export async function listarEmpresaLancamentos(
  * tabela do produtor. Sem isso o relatório só enxergava os CP/CR de empresa antigos (que viviam em
  * lancamentos com empresa_id) e nunca os lançados depois — que vão para empresa_lancamentos.
  */
-export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[]): Promise<Lancamento[]> {
+export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[], periodo?: { inicio: string; fim: string; base?: "data_vencimento" | "data_lancamento" | "data_baixa" }): Promise<Lancamento[]> {
   if (!fazendaIds.length) return [];
   const hoje = hojeLocal();
   let todos: Record<string, any>[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase.from("empresa_lancamentos").select("*")
-      .in("fazenda_id", fazendaIds).order("data_vencimento", { ascending: true }).order("id", { ascending: true }).range(from, from + 999);
+    let consulta = supabase.from("empresa_lancamentos").select("*").in("fazenda_id", fazendaIds);
+    if (periodo) {
+      const campo = periodo.base === "data_baixa" ? "data_pagamento" : periodo.base === "data_lancamento" ? "created_at" : "data_vencimento";
+      consulta = consulta.gte(campo, periodo.inicio).lte(campo, campo === "created_at" ? periodo.fim + "T23:59:59.999999" : periodo.fim);
+    }
+    const { data, error } = await consulta.order("data_vencimento", { ascending: true }).order("id", { ascending: true }).range(from, from + 999);
     if (error) throw error;
     todos = todos.concat(data ?? []);
     if (!data || data.length < 1000) break;
@@ -2536,6 +2540,9 @@ export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[
     return {
       id: r.id, fazenda_id: r.fazenda_id, tipo: r.tipo, moeda: r.moeda ?? "BRL",
       descricao: r.descricao, categoria: r.categoria ?? "",
+      cotacao_usd: r.cotacao_usd ?? undefined, natureza: r.natureza ?? "real",
+      centro_custo_id: r.centro_custo_id ?? undefined, produtor_id: r.produtor_id ?? undefined,
+      origem_lancamento: r.origem_lancamento ?? r.origem ?? undefined,
       data_lancamento: (r.created_at ?? r.data_vencimento ?? "").slice(0, 10),
       data_vencimento: r.data_vencimento, data_baixa: r.data_pagamento ?? undefined,
       data_prorrogacao: r.data_prorrogacao ?? undefined,
