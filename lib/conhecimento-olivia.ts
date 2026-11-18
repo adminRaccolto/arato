@@ -865,6 +865,10 @@ O relatório sai direto, sem abrir a tela com todos os registros. Se nada atende
 
 **Adiantamento a fornecedor — pedido de compra:** em Financeiro, Adiantamentos a Fornecedores, o campo Pedido de Compra é opcional. Escolher o pedido preenche o fornecedor. O adiantamento já lançado pode ser ligado ao abrir os detalhes dele. O valor aparece como Adiantado no Controle de Valor do pedido. O adiantamento reduz o título do pedido no Contas a Pagar e no Fluxo de Caixa, só pelo crédito ainda não aplicado. Ao aplicar o crédito em uma NF, o título do pedido volta a subir, porque o pagamento dessa NF já usou o adiantamento. O motivo da redução aparece abaixo da descrição do título e no Controle de Valor. Desligar o pedido ou cancelar o adiantamento refaz o cálculo.
 
+**Adiantamento a fornecedor no Contas a Pagar:** o título do adiantamento aparece no grid do Contas a Pagar com a marca Adiantamento (e o nº do pedido, quando ligado). Pode ser baixado ali ou em Financeiro → Adiantamentos a Fornecedores → Baixar pagamento; os dois liberam o crédito do fornecedor. Não aceita multa, juros nem desconto.
+
+**Estornar pagamento de adiantamento:** no Contas a Pagar, menu do título pago → ↩ Estornar pagamento; ou em Adiantamentos a Fornecedores → Detalhes → Histórico de pagamentos → ↩ Estornar, em cada pagamento. O valor volta a ficar a pagar, a saída sai do saldo bancário e da conciliação, e o crédito do fornecedor diminui. Pagamento parcial estornado volta a somar no saldo em aberto do mesmo adiantamento. Não estorna: pagamento feito em borderô (use Estornar no borderô) e pagamento cujo crédito já foi aplicado em NF. Adiantamento pago só pode ser cancelado depois de estornar o pagamento. Requer a Seção 459.
+
 **Insumos — unidade bag:** a unidade bag está disponível no Catálogo de Insumos, em qualquer categoria, e no cadastro rápido do pedido de compra, da NF e do estoque.
 
 **Contas bancárias inativas:** os seletores de conta do Contas a Pagar, do Contas a Receber (baixa, novo lançamento e lote) e da Folha mostram só contas ativas. Para uma conta voltar a aparecer, reative-a em Cadastros. Lançamento antigo gravado numa conta inativa mostra a conta com "(inativa)" ao editar.
@@ -940,7 +944,9 @@ Valores saem como número (somáveis), negativos em vermelho.
 
 **Quem fez a ação:** ações do servidor a pedido de um usuário (processar NF, fechar folha, baixar, conciliar, aprovar pedido) registram o nome dele. Ocultar Sistema esconde só o que o sistema fez sozinho (rotinas automáticas, como os crons noturnos).
 
-**Filtros e carregamento:** De/Até, Tabela e Ação recarregam a lista na hora; Busca procura no que já foi carregado. Ao escolher uma Tabela, surgem filtros próprios: CP/CR (fornecedor/cliente, descrição, documento, valor de/até), Contratos de Grãos (nº, comprador, produto, quantidade), Pedidos de Compra (nº, fornecedor, valor), além de Contratos Financeiros, Folha e Romaneios. Carrega até 500 eventos por vez (Carregar mais traz os próximos).
+**Filtros e carregamento:** De/Até, Tabela e Ação recarregam a lista na hora; Busca procura no que já foi carregado. Ao escolher uma Tabela, surgem filtros próprios: CP/CR (fornecedor/cliente, descrição, documento, valor de/até), Contratos de Grãos (nº, comprador, produto, quantidade), Pedidos de Compra (nº, fornecedor, valor), além de Contratos Financeiros, Folha e Romaneios. Carrega até 500 eventos por vez (Carregar mais traz os próximos). Na Busca, valor pode ser digitado como na tela (3.768,84 ou R$ 3.768,84).
+
+**Adiantamentos na auditoria:** além do título no CP / CR, o Monitor registra as fichas de Adiantamentos a Fornecedor (lançar, alterar, cancelar, crédito usado), o Uso de Crédito de Adiantamento (aplicação em NF) e os Adiantamentos Salariais (lançar, cancelar, descontado na folha). Cada um tem opção própria no filtro Tabela. Só há registro a partir da execução da Seção 459.
 
 **Cancelamentos:** a ação Cancelamento mostra quem cancelou títulos do CP/CR, contratos e pedidos, com selo roxo Cancelado. Títulos de Pedido de Compra são cancelados automaticamente quando as NFs vinculadas cobrem o pedido; aí aparece quem processou a NF, e a observação diz Saldo do pedido zerado pelas NFs vinculadas.
 

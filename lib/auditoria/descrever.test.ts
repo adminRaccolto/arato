@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { descreverEvento, agruparEventos, type EventoAud } from "./descrever.ts";
+import { descreverEvento, agruparEventos, termosBusca, type EventoAud } from "./descrever.ts";
 
 const ev = (p: Partial<EventoAud>): EventoAud => ({
   id: Math.random().toString(36), tabela: "lancamentos", registro_id: "r", acao: "UPDATE",
@@ -78,4 +78,30 @@ test("exclusão de título gerado por NF: com usuário é ação dele; sem usuá
   assert.equal(comUsuario.automatico, false);
   assert.match(comUsuario.texto, /^Excluiu a .* \(gerada por NF de Entrada\)/);
   assert.equal(descreverEvento(ev({ acao: "DELETE", dados_antes: antes, usuario_app: null })).automatico, true);
+});
+
+test("busca aceita valor no formato brasileiro", () => {
+  assert.deepEqual(termosBusca(" 3.768,84 "), ["3.768,84", "3768.84"]);
+  assert.deepEqual(termosBusca("R$ 1.234.567,80"), ["r$ 1.234.567,80", "1234567.8"]);
+  assert.deepEqual(termosBusca("3768,84"), ["3768,84", "3768.84"]);
+  assert.deepEqual(termosBusca("Sinal"), ["sinal"]);
+  assert.deepEqual(termosBusca("3768.84"), ["3768.84"]);
+  assert.deepEqual(termosBusca(""), []);
+  // "3768.8" (de 3.768,80) é trecho do valor gravado 3768.80
+  assert.ok(JSON.stringify({ valor: "3768.80" }).includes(termosBusca("3.768,80")[1]));
+});
+
+test("adiantamentos: ficha, aplicação e salário descritos", () => {
+  const base = { id: "1", registro_id: "r", campos_alterados: null, usuario_app: "Tati", created_at: "2026-11-18T13:23:13Z", dados_antes: null };
+  const forn = descreverEvento({ ...base, tabela: "adiantamentos_fornecedor", acao: "INSERT", dados_depois: { descricao: "Sinal", valor: 3768.84, moeda: "BRL" } });
+  assert.equal(forn.tipo, "criou");
+  assert.match(forn.texto, /Lançou o adiantamento a fornecedor "Sinal" de R\$\s?3\.768,84/);
+  const canc = descreverEvento({ ...base, tabela: "adiantamentos_fornecedor", acao: "UPDATE", campos_alterados: ["status"],
+    dados_antes: { descricao: "Sinal", valor: 10, status: "em_aberto" }, dados_depois: { descricao: "Sinal", valor: 10, status: "cancelado" } });
+  assert.equal(canc.tipo, "cancelou");
+  const apl = descreverEvento({ ...base, tabela: "adiantamentos_aplicacoes", acao: "INSERT", dados_depois: { valor_aplicado: 500, nr_nf: "123" } });
+  assert.match(apl.texto, /^Aplicou crédito de adiantamento de R\$\s?500,00 na NF 123/);
+  const sal = descreverEvento({ ...base, tabela: "adiantamentos_salario", acao: "UPDATE", campos_alterados: ["status"],
+    dados_antes: { valor: 800, data: "2026-11-10", status: "pendente" }, dados_depois: { valor: 800, data: "2026-11-10", status: "descontado" } });
+  assert.equal(sal.automatico, true);
 });

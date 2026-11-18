@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-i",
+    data: "18/11/2026",
+    titulo: "Adiantamento a fornecedor de volta ao Contas a Pagar, com estorno do pagamento",
+    modulos: ["Financeiro", "Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "O título do adiantamento a fornecedor volta a aparecer no grid do Contas a Pagar, com a marca Adiantamento. A baixa pelo CP usa a mesma rotina da tela de Adiantamentos e libera o crédito do fornecedor." },
+      { tipo: "novidade", texto: "Estorno do pagamento do adiantamento: pelo CP (↩ Estornar pagamento) ou em Adiantamentos → Detalhes → Histórico de pagamentos. O valor volta a ficar a pagar e sai do saldo bancário e da conciliação. Não vale para pagamento em borderô nem para crédito já aplicado em NF." },
+      { tipo: "melhoria", texto: "Monitor de Auditoria registra também as fichas de adiantamento (fornecedor, uso de crédito e salário), com opção própria no filtro Tabela. A Busca aceita valor no formato da tela, como 3.768,84." },
+    ],
+    onde: "Financeiro → Contas a Pagar e Adiantamentos a Fornecedores · Configurações → Usuários → Auditoria",
+  },
+  {
     versao: "2026.11.18-h",
     data: "18/11/2026",
     titulo: "Custos Totais com relatório próprio, separado da DRE Agrícola",

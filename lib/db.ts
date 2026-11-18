@@ -8366,3 +8366,32 @@ export async function baixarAdiantamentoFornecedor(p: { adiantamento_id: string;
   if (!r.ok || !d.ok) throw new Error(d.error ?? "Não foi possível baixar o adiantamento.");
   return d;
 }
+
+/** Estorna um pagamento do adiantamento (Seção 459): o valor volta ao saldo a pagar e a conciliação é desfeita. */
+export async function estornarPagamentoAdiantamento(lancamento_id: string): Promise<{ adiantamento_id: string; saldo_a_pagar: number | null; credito_disponivel: number | null }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const r = await fetch("/api/financeiro/adiantamentos/estornar", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` }, body: JSON.stringify({ lancamento_id }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) throw new Error(d.error ?? "Não foi possível estornar o pagamento do adiantamento.");
+  await reajustarPedidoDoAdiantamento(d.pedido_compra_id);
+  return d;
+}
+
+/** Adiantamento a fornecedor a que pertence um título do CP (o próprio título ou a parte de um pagamento parcial). */
+export async function adiantamentoDoTitulo(lancamento_id: string): Promise<{ id: string; pedido_compra_id: string | null } | null> {
+  const { data: l, error } = await supabase.from("lancamentos").select("id,titulo_origem_id").eq("id", lancamento_id).maybeSingle();
+  if (error) throw error;
+  if (!l) return null;
+  const { data, error: e2 } = await supabase.from("adiantamentos_fornecedor").select("id,pedido_compra_id")
+    .in("lancamento_id", [l.id, l.titulo_origem_id].filter(Boolean)).neq("status", "cancelado").limit(1);
+  if (e2) throw e2;
+  return data?.[0] ?? null;
+}
+
+/** Baixa pelo CP de um título de adiantamento: usa a mesma rotina da tela de Adiantamentos (sem juros/multa/desconto). */
+export async function baixarTituloDeAdiantamento(lancamento_id: string, valor_pago: number, data: string, conta_bancaria: string, cotacao?: number): Promise<void> {
+  const a = await adiantamentoDoTitulo(lancamento_id);
+  if (!a) throw new Error("Adiantamento deste título não encontrado. Atualize a lista.");
+  await baixarAdiantamentoFornecedor({ adiantamento_id: a.id, lancamento_id, valor_pago, data, conta_bancaria, cotacao, requisicao_id: crypto.randomUUID() });
+  await reajustarPedidoDoAdiantamento(a.pedido_compra_id);
+}

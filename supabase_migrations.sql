@@ -23353,3 +23353,108 @@ REVOKE ALL ON FUNCTION public.fiscal_rascunho_nfe(uuid,text,jsonb) FROM PUBLIC,a
 GRANT EXECUTE ON FUNCTION public.fiscal_rascunho_nfe(uuid,text,jsonb) TO authenticated,service_role;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 459 — Adiantamentos: auditoria das fichas e estorno do pagamento (18/11/2026)
+-- =============================================================================
+-- 1) O Monitor de Auditoria via só o título do CP gerado pelo adiantamento; a ficha (criação, aplicação no pedido/NF,
+--    cancelamento) não deixava rastro. Mesmo gatilho das demais tabelas (fn_audit_log, Seção 353).
+-- 2) O pagamento do adiantamento não tinha estorno em lugar nenhum: o CP recusa ("regularize em Adiantamentos") e o
+--    cancelamento recusa adiantamento pago. Esta função desfaz UM pagamento (a parte baixada), devolvendo o valor ao
+--    saldo a pagar. Recusa quando o crédito desse pagamento já foi aplicado em NF (não há desfazer de aplicação)
+--    e quando o pagamento foi feito em borderô (usar o estorno do borderô). A conciliação com o extrato é desfeita.
+BEGIN;
+DROP TRIGGER IF EXISTS audit_adiantamentos_fornecedor ON adiantamentos_fornecedor;
+CREATE TRIGGER audit_adiantamentos_fornecedor AFTER INSERT OR UPDATE OR DELETE ON adiantamentos_fornecedor FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+DROP TRIGGER IF EXISTS audit_adiantamentos_aplicacoes ON adiantamentos_aplicacoes;
+CREATE TRIGGER audit_adiantamentos_aplicacoes AFTER INSERT OR UPDATE OR DELETE ON adiantamentos_aplicacoes FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+DROP TRIGGER IF EXISTS audit_adiantamentos_salario ON adiantamentos_salario;
+CREATE TRIGGER audit_adiantamentos_salario AFTER INSERT OR UPDATE OR DELETE ON adiantamentos_salario FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+
+CREATE OR REPLACE FUNCTION public.estornar_pagamento_adiantamento(p_pagamento uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE
+  a adiantamentos_fornecedor%ROWTYPE; c lancamentos%ROWTYPE; v_irmao uuid;
+  v_cot numeric; v_principal numeric; v_credito numeric; v_status text;
+  v_hoje date := (now() AT TIME ZONE 'America/Cuiaba')::date;
+  v_contexto text := current_setting('arato.baixando_adiantamento',true);
+BEGIN
+  SELECT * INTO c FROM lancamentos WHERE id=p_pagamento FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Pagamento não encontrado.'; END IF;
+  SELECT * INTO a FROM adiantamentos_fornecedor WHERE status<>'cancelado'
+    AND lancamento_id IN (c.id, c.titulo_origem_id) ORDER BY created_at LIMIT 1 FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Este título não pertence a um adiantamento ativo.'; END IF;
+  PERFORM id FROM lancamentos WHERE id=a.lancamento_id OR titulo_origem_id=a.lancamento_id ORDER BY id FOR UPDATE;
+  IF c.status NOT IN ('baixado','pago','parcial') THEN RAISE EXCEPTION 'Este título não tem pagamento para estornar.'; END IF;
+  IF c.forma_pagamento='Compensação de adiantamento a fornecedor' THEN RAISE EXCEPTION 'Compensação de crédito não é pagamento bancário: não se estorna por aqui.'; END IF;
+  IF c.lote_id IS NOT NULL OR EXISTS(SELECT 1 FROM pagamento_lote_itens i JOIN pagamento_lotes l ON l.id=i.lote_id
+    WHERE i.lancamento_id=c.id AND coalesce(i.origem_tabela,'lancamentos')='lancamentos' AND l.status IN ('pendente','pago')) THEN
+    RAISE EXCEPTION 'Pagamento feito em borderô: use Estornar no borderô.';
+  END IF;
+  IF c.fatura_cartao_id IS NOT NULL THEN RAISE EXCEPTION 'Pagamento feito no cartão: estorne pela fatura do cartão.'; END IF;
+
+  -- Crédito que este pagamento liberou (mesma conta de adiantamento_credito_pago)
+  v_cot := CASE WHEN c.moeda='USD' THEN nullif(c.cotacao_usd,0) ELSE 1 END;
+  IF v_cot IS NULL THEN RAISE EXCEPTION 'Pagamento em dólar sem cotação: confira o título antes de estornar.'; END IF;
+  v_principal := least(c.valor, greatest(0, coalesce(c.valor_pago, CASE WHEN c.status IN ('baixado','pago')
+    THEN c.valor*v_cot - coalesce(c.valor_desconto,0) ELSE 0 END) - coalesce(c.valor_juros,0) - coalesce(c.valor_multa,0)) / v_cot);
+  v_credito := coalesce(public.adiantamento_credito_pago(a.id),0);
+  IF v_credito + 0.005 < v_principal THEN
+    RAISE EXCEPTION 'O crédito deste pagamento já foi usado para abater NF (aplicado: %). Estornar deixaria a NF quitada sem o dinheiro: estorno não permitido.',
+      replace(round(a.valor_aplicado,2)::text,'.',',');
+  END IF;
+
+  PERFORM set_config('arato.baixando_adiantamento','1',true);
+  UPDATE extrato_transacoes SET conciliado=false,lancamento_id=NULL,lancamento_ids=NULL,lancamento_desc=NULL,
+    lancamento_valor=NULL,origem_vinculo=NULL,confianca=NULL,regra_id=NULL,updated_at=now()
+    WHERE lancamento_id=c.id OR c.id=ANY(coalesce(lancamento_ids,'{}'::uuid[]));
+
+  -- Pagamento parcial: o valor volta para a parte ainda em aberto (recompõe o título como antes da baixa)
+  SELECT id INTO v_irmao FROM lancamentos
+    WHERE (id=a.lancamento_id OR titulo_origem_id=a.lancamento_id) AND id<>c.id
+      AND status IN ('em_aberto','vencido','vencendo') AND coalesce(valor_pago,0)=0
+      AND lote_id IS NULL AND fatura_cartao_id IS NULL AND moeda IS NOT DISTINCT FROM c.moeda
+    ORDER BY data_vencimento, id LIMIT 1;
+  IF v_irmao IS NOT NULL THEN
+    UPDATE lancamentos SET valor=round(valor+c.valor,2) WHERE id=v_irmao;
+    UPDATE lancamentos SET status='cancelado',valor_pago=NULL,data_baixa=NULL,conta_bancaria=NULL,conciliado=false,
+      valor_juros=NULL,valor_multa=NULL,valor_desconto=NULL,adiantamento_pagamento_ref=NULL,pagamento_parcial=false,
+      observacao=concat_ws(' | ',nullif(observacao,''),'[Pagamento estornado — valor devolvido ao saldo do adiantamento]')
+      WHERE id=c.id;
+  ELSE
+    v_status := CASE WHEN c.data_vencimento < v_hoje THEN 'vencido' ELSE 'em_aberto' END;
+    UPDATE lancamentos SET status=v_status,valor_pago=NULL,data_baixa=NULL,conta_bancaria=NULL,conciliado=false,
+      valor_juros=NULL,valor_multa=NULL,valor_desconto=NULL,adiantamento_pagamento_ref=NULL,pagamento_parcial=false,
+      forma_pagamento=CASE WHEN forma_pagamento='Pagamento de adiantamento a fornecedor' THEN NULL ELSE forma_pagamento END
+      WHERE id=c.id;
+  END IF;
+  PERFORM set_config('arato.baixando_adiantamento',coalesce(v_contexto,''),true);
+
+  RETURN jsonb_build_object('ok',true,'adiantamento_id',a.id,'pedido_compra_id',a.pedido_compra_id,
+    'saldo_a_pagar',public.adiantamento_saldo_pagar(a.id),'credito_disponivel',public.adiantamento_credito_pago(a.id));
+END;
+$$;
+REVOKE ALL ON FUNCTION public.estornar_pagamento_adiantamento(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.estornar_pagamento_adiantamento(uuid) TO service_role;
+
+-- Cancelar: mesma regra da Seção 421, com a mensagem apontando o caminho (estornar o pagamento em Detalhes).
+CREATE OR REPLACE FUNCTION public.cancelar_adiantamento_fornecedor(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY INVOKER SET search_path=public AS $$
+DECLARE a adiantamentos_fornecedor%ROWTYPE;
+BEGIN
+  SELECT * INTO STRICT a FROM adiantamentos_fornecedor WHERE id=p_id FOR UPDATE;
+  PERFORM id FROM lancamentos WHERE id=a.lancamento_id OR titulo_origem_id=a.lancamento_id ORDER BY id FOR UPDATE;
+  IF a.valor_aplicado>0 THEN
+    RAISE EXCEPTION 'Adiantamento já usado para abater NF: não pode ser cancelado.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM lancamentos l WHERE (l.id=a.lancamento_id OR l.titulo_origem_id=a.lancamento_id) AND (l.status IN ('baixado','pago') OR coalesce(l.valor_pago,0)>0)) THEN
+    RAISE EXCEPTION 'Adiantamento pago: estorne o pagamento (Detalhes → Histórico de pagamentos → Estornar) antes de cancelar.';
+  END IF;
+  UPDATE adiantamentos_fornecedor SET status='cancelado' WHERE id=a.id;
+  UPDATE lancamentos SET status='cancelado' WHERE (id=a.lancamento_id OR titulo_origem_id=a.lancamento_id) AND status<>'cancelado';
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cancelar_adiantamento_fornecedor(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.cancelar_adiantamento_fornecedor(uuid) TO authenticated, service_role;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

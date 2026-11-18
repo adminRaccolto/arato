@@ -3,9 +3,9 @@ export type OrigemTituloCP = {
   categoria?: string | null; adiantamento_fornecedor?: boolean;
   nf_entrada_id?: string | null; nfe_numero?: string | null;
 };
-/** Pedido e adiantamento têm controle próprio; a dívida da NF continua no CP. */
+/** Pedido tem controle próprio; a dívida da NF continua no CP. Adiantamento a fornecedor voltou ao grid em 18/11/2026
+ *  (pedido do dono): baixa e estorno pelo CP usam a mesma rotina da tela de Adiantamentos. */
 export function exibirNoCP(t: OrigemTituloCP): boolean {
-  if (t.adiantamento_fornecedor || t.categoria === "Adiantamento a Fornecedores") return false;
   const temNF = !!t.nf_entrada_id || !!t.nfe_numero;
   return t.origem_lancamento !== "pedido_compra" || temNF;
 }

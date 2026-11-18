@@ -8,14 +8,17 @@ test("pedido fica fora do CP e a NF vinculada continua visível",()=>{
   assert.equal(exibirNoCP(nf),true);
   assert.equal(exibirNoCP({...nf,origem_lancamento:"pedido_compra",nf_entrada_id:null,nfe_numero:"123"}),true);
 });
-test("adiantamentos ao fornecedor, com ou sem pedido e partes pagas, ficam fora do grid",()=>{
-  assert.equal(exibirNoCP({...nf,adiantamento_fornecedor:true}),false);
-  assert.equal(exibirNoCP({...nf,categoria:"Adiantamento a Fornecedores"}),false);
-  assert.equal(exibirNoCP({...nf,categoria:"Adiantamento a funcionários"}),true);
+test("adiantamentos ao fornecedor aparecem no grid do CP (18/11/2026)",()=>{
+  assert.equal(exibirNoCP({...nf,adiantamento_fornecedor:true}),true);
+  assert.equal(exibirNoCP({...nf,categoria:"Adiantamento a Fornecedores"}),true);
+  const pedidoAdiantado={...nf,id:"adi",origem_lancamento:"pedido_compra",nf_entrada_id:null,adiantamento_fornecedor:true};
+  assert.equal(exibirNoCP(pedidoAdiantado),false);
 });
-test("borderô só de pedidos/adiantamentos é oculto; misto conserva a NF e valores",()=>{
+test("borderô só de pedidos é oculto; com adiantamento ou NF aparece",()=>{
+  const ped={...nf,id:"ped",origem_lancamento:"pedido_compra",nf_entrada_id:null};
   const a={...nf,id:"adi",adiantamento_fornecedor:true};
-  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:a.id}]},[a,nf]),false);
-  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:a.id},{lancamento_id:nf.id}]},[a,nf]),true);
-  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:"antigo"}]},[a,nf]),true);
+  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:ped.id}]},[ped,a,nf]),false);
+  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:a.id}]},[ped,a,nf]),true);
+  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:ped.id},{lancamento_id:nf.id}]},[ped,a,nf]),true);
+  assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:"antigo"}]},[ped,a,nf]),true);
 });

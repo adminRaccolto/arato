@@ -4,7 +4,7 @@ import { OperationalButton, OperationalFilters, OperationalGrid } from "../../..
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
-import { agruparEventos, type Tipo } from "../../../lib/auditoria/descrever";
+import { agruparEventos, termosBusca, type Tipo } from "../../../lib/auditoria/descrever";
 import { createBrowserClient } from "@supabase/ssr";
 import TopNav from "@/components/TopNav";
 import { useAuth } from "@/components/AuthProvider";
@@ -38,6 +38,9 @@ const TABELA_LABEL: Record<string, string> = {
   pedidos_compra: "Pedidos de Compra",
   nf_entradas: "NF de Entrada",
   nf_servicos: "NFS-e",
+  adiantamentos_fornecedor: "Adiantamentos a Fornecedor",
+  adiantamentos_aplicacoes: "Uso de Crédito de Adiantamento",
+  adiantamentos_salario: "Adiantamentos Salariais",
 };
 
 const STATUS_CANCELADO = ["cancelado", "cancelada"];
@@ -494,9 +497,10 @@ export default function AuditoriaPage() {
           }
         }
       }
-      if (!fBusca) return true;
-      const q = fBusca.toLowerCase();
-      return (
+      const termos = termosBusca(fBusca);
+      if (!termos.length) return true;
+      // Valor digitado como 3.768,84 também procura 3768.84 (como o registro é gravado)
+      return termos.some(q =>
         (l.tabela ?? "").includes(q) ||
         (l.acao ?? "").toLowerCase().includes(q) ||
         (l.registro_id ?? "").includes(q) ||

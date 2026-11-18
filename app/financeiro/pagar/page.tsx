@@ -69,7 +69,7 @@ import {
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
   listarOperacoesGerenciaisAtivasDaConta, ogDaLista, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclosDoCliente,
   excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
-  listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados,
+  listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, baixarTituloDeAdiantamento, estornarPagamentoAdiantamento, listarFuncionarios, listarVeiculosUnificados,
   comContaAtual} from "../../../lib/db";
 import { motivoDaObservacao } from "../../../lib/financeiro/saldo-pedido";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
@@ -720,7 +720,11 @@ export default function ContasAPagarPage() {
     setSalvandoAcao(true);
     setErroAcao("");
     try {
-      if (modalBaixa.origem_tabela === "lancamentos") {
+      if (modalBaixa.adiantamento_fornecedor && modalBaixa.origem_tabela === "lancamentos") {
+        // Adiantamento: mesma rotina da tela de Adiantamentos (libera o crédito do fornecedor); não aceita encargos
+        if (numBR(bMulta) || numBR(bJuros) || numBR(bDesc)) throw new Error("Adiantamento não tem multa, juros nem desconto: zere esses campos.");
+        await baixarTituloDeAdiantamento(modalBaixa.id, numBR(bValor), bData, bConta, ehUSD(modalBaixa.moeda) ? numBR(bCotacao) : undefined);
+      } else if (modalBaixa.origem_tabela === "lancamentos") {
         await baixarLancamento(modalBaixa.id, numBR(bValor), bData, bConta, {
           cotacao_usd: ehUSD(modalBaixa.moeda) ? numBR(bCotacao) : undefined,
           multa_valor: numBR(bMulta), juros_valor: numBR(bJuros), desconto_valor: numBR(bDesc), // 0 explícito: zera o que ficou gravado
@@ -806,9 +810,13 @@ export default function ContasAPagarPage() {
   // ── Reabrir ──────────────────────────────────────────────────
   async function reabrir(l: RelLancamento) {
     if (l.lote_id) { setErro(`"${l.descricao}" foi pago em borderô. Para desfazer a baixa, use Estornar no borderô.`); return; }
-    if (!confirm(`Reabrir "${l.descricao}"? Volta pra em aberto/vencido.`)) return;
+    if (l.adiantamento_fornecedor && l.origem_tabela === "lancamentos") {
+      if (!confirm(`Estornar o pagamento do adiantamento "${l.descricao}"? O valor volta a ficar a pagar, a saída sai do banco e da conciliação, e o crédito do fornecedor diminui.`)) return;
+    } else if (!confirm(`Reabrir "${l.descricao}"? Volta pra em aberto/vencido.`)) return;
     try {
-      if (l.origem_tabela === "lancamentos") {
+      if (l.adiantamento_fornecedor && l.origem_tabela === "lancamentos") {
+        await estornarPagamentoAdiantamento(l.id);
+      } else if (l.origem_tabela === "lancamentos") {
         await reabrirLancamento(l.id);
       } else {
         const res = await fetchFinanceiro("/api/empresa-lancamentos/baixar", {
@@ -1586,7 +1594,10 @@ export default function ContasAPagarPage() {
   }
 
   async function baixarUmItem(l: RelLancamento, valor: number, data: string, conta: string, e: { multa: string; juros: string; desconto: string }) {
-    if (l.origem_tabela === "lancamentos") {
+    if (l.adiantamento_fornecedor && l.origem_tabela === "lancamentos") {
+      if (numBR(e.multa) || numBR(e.juros) || numBR(e.desconto)) throw new Error(`"${l.descricao}": adiantamento não tem multa, juros nem desconto.`);
+      await baixarTituloDeAdiantamento(l.id, valor, data, conta, ehUSD(l.moeda) ? cotDe(l) ?? undefined : undefined);
+    } else if (l.origem_tabela === "lancamentos") {
       await baixarLancamento(l.id, valor, data, conta, {
         cotacao_usd: ehUSD(l.moeda) ? cotDe(l) ?? undefined : undefined,
         multa_valor: numBR(e.multa), juros_valor: numBR(e.juros), desconto_valor: numBR(e.desconto),
@@ -2157,7 +2168,7 @@ export default function ContasAPagarPage() {
                   <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</OperationalButton>
                 )}
                 {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
-                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↺ Reabrir</OperationalButton>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>{l.adiantamento_fornecedor ? "↩ Estornar pagamento" : "↺ Reabrir"}</OperationalButton>
                 )}
                 {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
                   <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); abrirReprog(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↕ Reprogramar</OperationalButton>
@@ -2678,7 +2689,7 @@ export default function ContasAPagarPage() {
                   <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</OperationalButton>
                 )}
                 {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
-                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↺ Reabrir</OperationalButton>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>{l.adiantamento_fornecedor ? "↩ Estornar pagamento" : "↺ Reabrir"}</OperationalButton>
                 )}
                 {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
                   <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); abrirReprog(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↕ Reprogramar</OperationalButton>

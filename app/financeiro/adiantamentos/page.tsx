@@ -11,7 +11,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
 import {
-  listarAdiantamentos, criarAdiantamento, cancelarAdiantamento, baixarAdiantamentoFornecedor,
+  listarAdiantamentos, criarAdiantamento, cancelarAdiantamento, baixarAdiantamentoFornecedor, estornarPagamentoAdiantamento,
   aplicarAdiantamento, listarAplicacoesAdiantamento,
   listarPessoasDaConta, listarContas, listarAnosSafra, listarFazendasDaConta,
   listarPedidosCompraRelDaConta, atualizarAdiantamento,
@@ -270,6 +270,22 @@ export default function AdiantamentosPage() {
       catch { setErro("Pagamento registrado. Atualize a lista para conferir o histórico completo."); }
     } catch(e: unknown) { setErroBaixa(e instanceof Error ? e.message : "Erro ao baixar o adiantamento."); }
     finally { setSalvandoBaixa(false); }
+  }
+
+  // ── Estornar um pagamento (Seção 459): o valor volta a ficar a pagar e sai da conciliação ──
+  const [estornando, setEstornando] = useState<string | null>(null);
+  async function estornarPagamento(a: AdiantamentoFornecedor, p: NonNullable<AdiantamentoFornecedor["pagamentos"]>[number]) {
+    if (estornando) return;
+    const valor = Number(p.valor_pago ?? (p.moeda === "USD" ? p.valor * Number(p.cotacao_usd ?? 0) : p.valor));
+    if (!(await confirmarAcao({ titulo: "Estornar pagamento do adiantamento", mensagem: `O pagamento de ${fmtBRL(valor)} em ${fmtData(p.data_baixa ?? undefined)} será desfeito: o valor volta a ficar a pagar, sai do saldo bancário e da conciliação, e o crédito do fornecedor diminui.`, perigo: true }))) return;
+    setEstornando(p.id); setErro("");
+    try {
+      await estornarPagamentoAdiantamento(p.id);
+      const atualizados = await listarAdiantamentos(a.fazenda_id);
+      setAdiantamentos(atualizados);
+      setModalDetalhe(atualizados.find(x => x.id === a.id) ?? null);
+    } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao estornar o pagamento."); }
+    finally { setEstornando(null); }
   }
 
   // ── Cancelar ──────────────────────────────────────────────────
@@ -657,8 +673,14 @@ export default function AdiantamentosPage() {
           )}
 
           <h3 style={{ fontSize: 13 }}>Histórico de pagamentos</h3>
-          {(modalDetalhe.pagamentos ?? []).filter(p => p.status === "baixado" || Number(p.valor_pago) > 0).map(p => <div key={p.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-table)", fontSize: 12 }}>
-            {fmtData(p.data_baixa ?? undefined)} · {fmtBRL(Number(p.valor_pago ?? (p.moeda === "USD" ? p.valor * Number(p.cotacao_usd ?? 0) : p.valor)))} · {contas.find(c => c.id === p.conta_bancaria)?.nome ?? "Conta não informada"}
+          {erro && <div role="alert" style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, padding: "8px 12px", color: "#791F1F", margin: "6px 0", fontSize: 12 }}>{erro}</div>}
+          {(modalDetalhe.pagamentos ?? []).filter(p => p.status === "baixado" || Number(p.valor_pago) > 0).map(p => <div key={p.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-table)", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ flex: 1 }}>{fmtData(p.data_baixa ?? undefined)} · {fmtBRL(Number(p.valor_pago ?? (p.moeda === "USD" ? p.valor * Number(p.cotacao_usd ?? 0) : p.valor)))} · {contas.find(c => c.id === p.conta_bancaria || c.nome === p.conta_bancaria)?.nome ?? "Conta não informada"}{p.lote_id ? " · pago em borderô" : ""}</span>
+            {modalDetalhe.status !== "cancelado" && (p.lote_id
+              ? <span style={{ fontSize: 11, color: "var(--text-2)" }}>Estorne pelo borderô no CP</span>
+              : <OperationalButton data-arato-button="danger" disabled={!!estornando} onClick={() => estornarPagamento(modalDetalhe, p)}
+                  style={{ padding: "4px 10px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                  {estornando === p.id ? "Estornando…" : "↩ Estornar"}</OperationalButton>)}
           </div>)}
           {!(modalDetalhe.pagamentos ?? []).some(p => p.status === "baixado" || Number(p.valor_pago) > 0) && <p style={{ fontSize: 12 }}>Nenhum pagamento registrado.</p>}
           {modalDetalhe.status !== "cancelado" && Number(modalDetalhe.saldo_a_pagar) > 0 && <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrirBaixa(modalDetalhe)}>Baixar pagamento</OperationalButton>}

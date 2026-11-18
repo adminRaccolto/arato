@@ -164,6 +164,35 @@ export function descreverEvento(e: EventoAud): Descricao {
     return { texto: `Sistema ${acao} a ${obj}`, automatico: true, tipo: e.acao === "DELETE" ? "excluiu" : e.acao === "INSERT" ? "criou" : "vinculou", objeto: obj };
   }
 
+  if (e.tabela === "adiantamentos_fornecedor") {
+    const obj = `adiantamento a fornecedor "${curto(s(d.descricao) || "sem descrição")}" de ${dinheiro(d.valor, d.moeda)}`;
+    if (e.acao === "INSERT") return { texto: `Lançou o ${obj}`, automatico: false, tipo: "criou", objeto: obj };
+    if (e.acao === "DELETE") return { texto: `Excluiu o ${obj}`, automatico: false, tipo: "excluiu", objeto: obj };
+    if (statusDepois === "cancelado" && statusAntes !== "cancelado") return { texto: `Cancelou o ${obj}`, automatico: false, tipo: "cancelou", objeto: obj };
+    if (mud.includes("valor_aplicado")) return { texto: `Sistema atualizou o crédito usado do ${obj}: ${dinheiro(a.valor_aplicado, d.moeda)} → ${dinheiro(d.valor_aplicado, d.moeda)}`, automatico: true, tipo: "vinculou", objeto: obj };
+    if (soTecnicos(e)) return { texto: `Sistema vinculou o ${obj} (${mud.map(rotuloCampo).join(", ")})`, automatico: true, tipo: "vinculou", objeto: obj };
+    return { texto: `Alterou o ${obj}: ${mud.filter(c => !CAMPOS_TECNICOS.has(c)).map(rotuloCampo).join(", ")}`, automatico: false, tipo: "alterou", objeto: obj };
+  }
+
+  if (e.tabela === "adiantamentos_aplicacoes") {
+    const obj = `crédito de adiantamento de ${dinheiro(d.valor_aplicado)}${d.nr_nf ? ` na NF ${s(d.nr_nf)}` : ""}${d.descricao ? ` (${curto(s(d.descricao), 50)})` : ""}`;
+    if (e.acao === "INSERT") return { texto: `Aplicou ${obj}`, automatico: false, tipo: "vinculou", objeto: obj };
+    if (e.acao === "DELETE") return { texto: `Excluiu a aplicação do ${obj}`, automatico: false, tipo: "excluiu", objeto: obj };
+    if (mud.includes("desfeito_em") && d.desfeito_em) return { texto: `Desfez a aplicação do ${obj}`, automatico: false, tipo: "estornou", objeto: obj };
+    return { texto: `Sistema atualizou a aplicação do ${obj}`, automatico: true, tipo: "vinculou", objeto: obj };
+  }
+
+  if (e.tabela === "adiantamentos_salario") {
+    const obj = `adiantamento salarial de ${dinheiro(d.valor)} em ${dataBR(d.data)}${d.descricao ? ` (${curto(s(d.descricao), 50)})` : ""}`;
+    if (e.acao === "INSERT") return { texto: `Lançou o ${obj}`, automatico: false, tipo: "criou", objeto: obj };
+    if (e.acao === "DELETE") return { texto: `Excluiu o ${obj}`, automatico: false, tipo: "excluiu", objeto: obj };
+    if (statusDepois === "cancelado" && statusAntes !== "cancelado") return { texto: `Cancelou o ${obj}`, automatico: false, tipo: "cancelou", objeto: obj };
+    if (statusDepois === "descontado" && statusAntes !== "descontado") return { texto: `Sistema descontou na folha o ${obj}`, automatico: true, tipo: "vinculou", objeto: obj };
+    if (statusAntes === "descontado" && statusDepois === "pendente") return { texto: `Sistema voltou a pendente o ${obj} (folha reaberta)`, automatico: true, tipo: "reabriu", objeto: obj };
+    if (soTecnicos(e)) return { texto: `Sistema vinculou o ${obj}`, automatico: true, tipo: "vinculou", objeto: obj };
+    return { texto: `Alterou o ${obj}: ${mud.filter(c => !CAMPOS_TECNICOS.has(c)).map(rotuloCampo).join(", ")}`, automatico: false, tipo: "alterou", objeto: obj };
+  }
+
   if (e.tabela === "contratos_financeiros") {
     const obj = `contrato financeiro "${curto(s(d.descricao))}"${d.valor_financiado != null ? ` de ${dinheiro(d.valor_financiado, d.moeda)}` : ""}`;
     if (e.acao === "INSERT") return { texto: `Criou o ${obj}`, automatico: false, tipo: "criou", objeto: obj };
@@ -178,6 +207,19 @@ export function descreverEvento(e: EventoAud): Descricao {
   return { texto: `${verbo} ${obj}${tipo === "alterou" && mud.length ? `: ${mud.map(rotuloCampo).join(", ")}` : ""}`, automatico: soTecnicos(e), tipo, objeto: obj };
 }
 
+/** Termos da busca do Monitor: o texto digitado e, quando é valor no formato brasileiro (3.768,84 ou R$ 3.768,84),
+ *  também o número como o banco grava (3768.84) — a busca compara com o registro gravado, que não tem milhar nem vírgula. */
+export function termosBusca(q: string): string[] {
+  const t = q.trim().toLowerCase();
+  if (!t) return [];
+  const num = t.replace(/^r\$\s*/, "");
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$|^\d+,\d+$/.test(num)) {
+    const n = Number(num.replace(/\./g, "").replace(",", "."));
+    if (Number.isFinite(n)) return [...new Set([t, String(n)])];
+  }
+  return [t];
+}
+
 export function rotuloCampo(campo: string): string {
   const mapa: Record<string, string> = {
     valor: "valor", status: "situação", descricao: "descrição", data_vencimento: "vencimento", data_baixa: "data da baixa",
@@ -187,6 +229,8 @@ export function rotuloCampo(campo: string): string {
     lancamento_id: "título vinculado", lancamento_cr_id: "título a receber vinculado", num_lancamento: "nº do lançamento",
     cp_lancamento_id: "título vinculado", nfe_numero: "nº da NF", numero_documento: "nº do documento", forma_pagamento: "forma de pagamento",
     preco: "preço", quantidade_sc: "quantidade", comprador: "comprador", confirmado: "confirmação", safra: "safra",
+    valor_aplicado: "crédito usado", data_emissao: "emissão", data_previsao: "previsão de entrega", nr_documento: "nº do documento",
+    conta_bancaria_id: "conta bancária", competencia_ref: "competência de desconto",
   };
   return mapa[campo] ?? campo.replace(/_id$/, "").replace(/_/g, " ");
 }
