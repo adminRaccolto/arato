@@ -11,14 +11,16 @@ import InputMonetario from "../../../components/InputMonetario";
 import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
 import {
-  listarAdiantamentos, criarAdiantamento, cancelarAdiantamento, baixarAdiantamentoFornecedor, estornarPagamentoAdiantamento,
+  listarAdiantamentosDaConta, criarAdiantamento, cancelarAdiantamento, baixarAdiantamentoFornecedor, estornarPagamentoAdiantamento,
   aplicarAdiantamento, listarAplicacoesAdiantamento,
   listarPessoasDaConta, listarContas, listarAnosSafra, listarFazendasDaConta,
-  listarPedidosCompraRelDaConta, atualizarAdiantamento,
+  listarPedidosCompraRelDaConta, atualizarAdiantamento, listarProdutoresDaConta,
 } from "../../../lib/db";
+import { fazendaDoProdutor, fazendaDaContaBancaria, primeiraFazenda } from "../../../lib/fazenda-de";
+import { supabase } from "../../../lib/supabase";
 import type {
   AdiantamentoFornecedor, AdiantamentoAplicacao,
-  Pessoa, ContaBancaria, AnoSafra, RelPedidoCompra,
+  Pessoa, ContaBancaria, AnoSafra, RelPedidoCompra, Produtor,
 } from "../../../lib/supabase";
 
 // ── Estilos base ──────────────────────────────────────────────
@@ -68,7 +70,7 @@ function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onC
 }
 
 const VAZIO_FORM = {
-  pessoa_id: "", pedido_compra_id: "", descricao: "", nr_documento: "", data_emissao: "", data_previsao: "",
+  produtor_id: "", pessoa_id: "", pedido_compra_id: "", descricao: "", nr_documento: "", data_emissao: "", data_previsao: "",
   valor: "", moeda: "BRL" as Moeda, cotacao_usd: "", conta_bancaria_id: "",
   ano_safra_id: "", observacao: "", ja_quitado: true,
 };
@@ -77,18 +79,18 @@ const VAZIO_APLIQ = { valor_aplicado: "", data_aplicacao: "", descricao: "", nr_
 
 export default function AdiantamentosPage() {
   const { fazendaId, fazendaIds = [], contaId, anoSafraVigenteId } = useAuth();
-  // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
-  // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
+  // Adiantamento é do cliente (conta): a tela lista todas as fazendas e não tem filtro de fazenda (18/11/2026).
+  // A fazenda gravada é só a do título no CP (LCDPR/SPED) e sai do pedido, do produtor que paga ou da conta bancária.
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
-  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  const [produtores, setProdutores] = useState<Produtor[]>([]);
   useEffect(() => {
     if (!fazendaId && !contaId) return;
-    listarFazendasDaConta(contaId, fazendaId).then(fzs => {
-      setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
-      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
-    }).catch(() => {});
+    listarFazendasDaConta(contaId, fazendaId).then(fzs => setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })))).catch(() => {});
+    if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => setProdutores([]));
   }, [fazendaId, contaId]);
-  const fazAtiva = fazTrabalho || fazendaId || "";
+  const idsConta = fazendasConta.length ? fazendasConta.map(f => f.id) : (fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : []);
+  const fazRef = fazendaId || idsConta[0] || ""; // só para achar a conta nas listas de apoio
+  const recarregar = () => listarAdiantamentosDaConta(idsConta);
 
   const [adiantamentos, setAdiantamentos] = useState<AdiantamentoFornecedor[]>([]);
   const [pessoas, setPessoas]             = useState<Pessoa[]>([]);
@@ -121,19 +123,20 @@ export default function AdiantamentosPage() {
   const [fApliq, setFApliq] = useState({ ...VAZIO_APLIQ });
 
   useEffect(() => {
-    if (!fazAtiva) return;
+    if (!fazRef || !idsConta.length) return;
     setCarregando(true);
     Promise.all([
-      listarAdiantamentos(fazAtiva),
-      listarPessoasDaConta(fazAtiva),
-      listarContas(fazendaIds.length ? fazendaIds : fazAtiva),
-      listarAnosSafra(fazAtiva),
+      listarAdiantamentosDaConta(idsConta),
+      listarPessoasDaConta(fazRef),
+      listarContas(idsConta),
+      listarAnosSafra(fazRef),
     ]).then(([a, p, c, s]) => {
       setAdiantamentos(a); setPessoas(p); setContas(c); setAnosSafra(s);
     }).catch(e => setErro(e.message)).finally(() => setCarregando(false));
     // Lista de apoio: sem ela o adiantamento continua funcionando, só sem o vínculo opcional
-    listarPedidosCompraRelDaConta(fazAtiva).then(setPedidos).catch(() => setPedidos([]));
-  }, [fazAtiva, fazendaIds.join(",")]);
+    listarPedidosCompraRelDaConta(fazRef).then(setPedidos).catch(() => setPedidos([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazRef, idsConta.join(",")]);
 
   // ── Pedido de compra (opcional) ───────────────────────────────
   const rotuloPedido = (p: RelPedidoCompra) => `${p.nr_pedido || `#${p.numero ?? "—"}`} — ${p.fornecedor_nome ?? "sem fornecedor"} — ${p.moeda === "USD" ? "US$ " : "R$ "}${(p.total_financeiro ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -175,8 +178,9 @@ export default function AdiantamentosPage() {
 
   // ── Salvar novo ───────────────────────────────────────────────
   const salvarNovo = async () => {
-    if (!fazAtiva) return;
+    if (!fazRef) return;
     const erros: string[] = [];
+    if (produtores.length > 1 && !form.produtor_id && !form.pedido_compra_id) erros.push("Produtor (quem paga)");
     if (!form.pessoa_id) erros.push("Fornecedor");
     if (!form.descricao.trim()) erros.push("Descrição");
     if (!form.data_emissao) erros.push("Data de Emissão");
@@ -186,8 +190,15 @@ export default function AdiantamentosPage() {
     if (erros.length) { setErro(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
     setSalvando(true); setErro("");
     try {
+      // Fazenda do título no CP: a do pedido (o banco exige a mesma), senão a do produtor que paga, senão a da conta bancária
+      const produtorId = form.produtor_id || (produtores.length === 1 ? produtores[0].id : "");
+      const fazendaNova = await primeiraFazenda([
+        pedidos.find(x => x.id === form.pedido_compra_id)?.fazenda_id ?? null,
+        fazendaDoProdutor(produtorId), fazendaDaContaBancaria(form.conta_bancaria_id),
+      ], fazRef);
+      if (!fazendaNova) throw new Error("Não foi possível definir a fazenda do adiantamento. Escolha o produtor que paga.");
       const novo = await criarAdiantamento({
-        fazenda_id:       fazAtiva,
+        fazenda_id:       fazendaNova,
         pessoa_id:        form.pessoa_id || undefined,
         pedido_compra_id: form.pedido_compra_id || undefined,
         descricao:        form.descricao.trim(),
@@ -202,8 +213,10 @@ export default function AdiantamentosPage() {
         observacao:       form.observacao || undefined,
         status:           "em_aberto",
       }, form.ja_quitado);
+      // O título no CP leva o produtor que paga (LCDPR); sem isso fica só a fazenda
+      if (produtorId && novo.lancamento_id) await supabase.from("lancamentos").update({ produtor_id: produtorId }).eq("id", novo.lancamento_id);
       setAdiantamentos(p => [{ ...novo, saldo_a_pagar: form.ja_quitado ? 0 : novo.valor }, ...p]);
-      void listarAdiantamentos(fazAtiva).then(setAdiantamentos).catch(() => setErro("Adiantamento salvo. Atualize a lista para conferir o pagamento."));
+      void recarregar().then(setAdiantamentos).catch(() => setErro("Adiantamento salvo. Atualize a lista para conferir o pagamento."));
       setModalNovo(false);
       setForm({ ...VAZIO_FORM });
     } catch (e) { setErro(msgErroPedido(e)); }
@@ -226,7 +239,7 @@ export default function AdiantamentosPage() {
     try {
       await aplicarAdiantamento(modalApliq, val, fApliq.data_aplicacao, fApliq.descricao.trim(), fApliq.nr_nf || undefined);
       // Recarrega lista para refletir novo saldo/status
-      listarAdiantamentos(fazAtiva!).then(setAdiantamentos);
+      recarregar().then(setAdiantamentos);
       setModalApliq(null);
       setFApliq({ ...VAZIO_APLIQ });
     } catch (e) { setErro((e as Error).message); }
@@ -242,7 +255,7 @@ export default function AdiantamentosPage() {
   async function abrirBaixa(a: AdiantamentoFornecedor) {
     setErro(""); setErroBaixa("");
     try {
-      const atualizados = await listarAdiantamentos(a.fazenda_id);
+      const atualizados = await recarregar();
       const atual = atualizados.find(x => x.id === a.id);
       if (!atual) throw new Error("Adiantamento não encontrado. Atualize a lista.");
       const abertas = parcelasAbertas(atual);
@@ -266,7 +279,7 @@ export default function AdiantamentosPage() {
         valor_pago: baixa.valor, data: baixa.data, conta_bancaria: baixa.conta, cotacao: baixa.cotacao, requisicao_id: baixa.requisicao });
       setAdiantamentos(prev => prev.map(a => a.id === modalBaixa.id ? { ...a, saldo_a_pagar: r.saldo_a_pagar, credito_disponivel: r.credito_disponivel } : a));
       setModalBaixa(null); setModalDetalhe(null);
-      try { setAdiantamentos(await listarAdiantamentos(modalBaixa.fazenda_id)); }
+      try { setAdiantamentos(await recarregar()); }
       catch { setErro("Pagamento registrado. Atualize a lista para conferir o histórico completo."); }
     } catch(e: unknown) { setErroBaixa(e instanceof Error ? e.message : "Erro ao baixar o adiantamento."); }
     finally { setSalvandoBaixa(false); }
@@ -281,7 +294,7 @@ export default function AdiantamentosPage() {
     setEstornando(p.id); setErro("");
     try {
       await estornarPagamentoAdiantamento(p.id);
-      const atualizados = await listarAdiantamentos(a.fazenda_id);
+      const atualizados = await recarregar();
       setAdiantamentos(atualizados);
       setModalDetalhe(atualizados.find(x => x.id === a.id) ?? null);
     } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao estornar o pagamento."); }
@@ -325,11 +338,6 @@ export default function AdiantamentosPage() {
             <div data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Adiantamentos a Fornecedores</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {fazendasConta.length > 1 && (
-              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
-                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </SelectField>
-            )}
             <OperationalButton data-arato-button="primary" style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: hojeLocal() }); setModalNovo(true); }}>
               + Novo Adiantamento
             </OperationalButton>
@@ -454,6 +462,15 @@ export default function AdiantamentosPage() {
       {modalNovo && (
         <Modal titulo="Novo Adiantamento a Fornecedor" onClose={() => setModalNovo(false)} width={720}>
           <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            {produtores.length > 1 && (
+              <div style={{ gridColumn: "1/-1" }}>
+                <label data-arato-label="true" style={lbl}>Produtor (quem paga) *</label>
+                <SelectField style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
+                  <option value="">— selecione —</option>
+                  {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                </SelectField>
+              </div>
+            )}
             <div style={{ gridColumn: "1/-1" }}>
               <label data-arato-label="true" style={lbl}>Fornecedor *</label>
               <SelectField style={inp} value={form.pessoa_id} onChange={e => {

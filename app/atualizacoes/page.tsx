@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-k",
+    data: "18/11/2026",
+    titulo: "Adiantamentos a Fornecedores sem filtro de fazenda",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A tela lista os adiantamentos de todas as fazendas do cliente; o seletor de fazenda saiu." },
+      { tipo: "melhoria", texto: "Novo Adiantamento pede o Produtor (quem paga) quando o cliente tem mais de um. O título no Contas a Pagar vai para a fazenda desse produtor e leva o produtor; com pedido de compra, vale a fazenda do pedido." },
+    ],
+    onde: "Financeiro → Adiantamentos a Fornecedores",
+  },
+  {
     versao: "2026.11.18-j",
     data: "18/11/2026",
     titulo: "Custos Totais pelo caixa, com visão geral e por ciclo",

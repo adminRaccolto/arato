@@ -7144,6 +7144,13 @@ export async function listarAdiantamentos(fazenda_id: string): Promise<Adiantame
   return carregarPagamentosAdiantamentos(supabase, (data ?? []) as AdiantamentoFornecedor[]);
 }
 
+/** Adiantamentos do cliente (todas as fazendas da conta). A fazenda do adiantamento é só a do título no CP, não um filtro. */
+export async function listarAdiantamentosDaConta(fazendaIds: string[]): Promise<AdiantamentoFornecedor[]> {
+  const ids = [...new Set(fazendaIds.filter(Boolean))];
+  const listas = await Promise.all(ids.map(id => listarAdiantamentos(id)));
+  return listas.flat().sort((a, b) => String(b.data_emissao ?? "").localeCompare(String(a.data_emissao ?? "")) || String(a.id).localeCompare(String(b.id)));
+}
+
 /** Adiantamentos programados e crédito efetivamente pago do pedido. */
 export async function listarAdiantamentosDoPedido(pedido_compra_id: string): Promise<AdiantamentoFornecedor[]> {
   const { data, error } = await supabase.rpc("listar_creditos_fornecedor", { p_pedido: pedido_compra_id });

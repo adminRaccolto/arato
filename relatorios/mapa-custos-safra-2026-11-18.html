@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de Custos da Safra</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: coluna de leitura larga; diagramas BPMN em faixas roláveis; paleta Arato (azul = sistema, mostarda = decisão/usuário) */
+:root {
+  --bg: #F4F6FA; --card: #ffffff; --lane2: #F8FAFD; --band: #D5E8F5;
+  --ink: #1a1a1a; --ink-2: #555555; --ink-3: #666666; --line: #DDE2EE;
+  --brand: #1A4870; --brand-ink: #0B2D50; --brand-soft: #D5E8F5;
+  --mustard: #C9921B; --mustard-soft: #FBF3E0; --on-mustard: #ffffff;
+  --ok: #16A34A; --warn: #E24B4A; --warn-soft: #FCEBEB; --warn-ink: #791F1F;
+  --f-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1823; --card: #15212E; --lane2: #182634; --band: #1C3550;
+  --ink: #E6EDF5; --ink-2: #AAB7C5; --ink-3: #93A2B3; --line: #2B3B4E;
+  --brand: #7FB2E0; --brand-ink: #CFE3F5; --brand-soft: #1C3550;
+  --mustard: #E0B04A; --mustard-soft: #33290F; --on-mustard: #1a1a1a;
+  --ok: #4ADE80; --warn: #F07171; --warn-soft: #3A1C1F; --warn-ink: #FBC7C7;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0E1823; --card: #15212E; --lane2: #182634; --band: #1C3550;
+  --ink: #E6EDF5; --ink-2: #AAB7C5; --ink-3: #93A2B3; --line: #2B3B4E;
+  --brand: #7FB2E0; --brand-ink: #CFE3F5; --brand-soft: #1C3550;
+  --mustard: #E0B04A; --mustard-soft: #33290F; --on-mustard: #1a1a1a;
+  --ok: #4ADE80; --warn: #F07171; --warn-soft: #3A1C1F; --warn-ink: #FBC7C7;
+  color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.55; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); color: var(--brand-ink); text-wrap: balance; margin: 0; }
+h1 { font-size: 28px; line-height: 1.15; }
+h2 { font-size: 20px; }
+h3 { font-size: 15px; }
+p { margin: 0; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mustard); }
+.lede { color: var(--ink-2); max-width: 75ch; }
+header { display: grid; gap: 8px; }
+section { display: grid; gap: 14px; min-width: 0; }
+.sec-head { display: grid; gap: 4px; }
+.sec-head p { color: var(--ink-2); max-width: 80ch; }
+
+.answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.answer { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.answer .q { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.answer .a { font-family: var(--f-display); font-size: 17px; font-weight: 600; color: var(--brand-ink); line-height: 1.3; }
+.answer p { color: var(--ink-2); font-size: 13px; }
+
+.diagram { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; overflow-x: auto; }
+.diagram svg { display: block; min-width: 1100px; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend svg { width: 26px; height: 18px; flex: none; }
+
+/* SVG */
+.pool { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+.lane-a { fill: var(--card); }
+.lane-b { fill: var(--lane2); }
+.lane-sep { stroke: var(--line); stroke-width: 1; }
+.band { fill: var(--band); stroke: var(--line); stroke-width: 1; }
+.band-t { fill: var(--brand-ink); font: 600 12px var(--f-body); }
+.task { fill: var(--card); stroke: var(--brand); stroke-width: 1.4; }
+.task-off { fill: var(--card); stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.gw { fill: var(--mustard-soft); stroke: var(--mustard); stroke-width: 1.6; }
+.gw-x { stroke: var(--mustard); stroke-width: 2; }
+.ev-start { fill: var(--card); stroke: var(--ok); stroke-width: 2; }
+.ev-end { fill: var(--card); stroke: var(--brand); stroke-width: 4.5; }
+.ev-bad { fill: var(--card); stroke: var(--warn); stroke-width: 4.5; }
+.flow { fill: none; stroke: var(--ink-2); stroke-width: 1.4; }
+.bus { fill: none; stroke: var(--ink-2); stroke-width: 2.4; }
+.arrowhead { fill: var(--ink-2); }
+.ann { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1; stroke-dasharray: 4 3; }
+.ann-info { fill: var(--brand-soft); stroke: var(--brand); stroke-width: 1; stroke-dasharray: 4 3; }
+.assoc { fill: none; stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.t { fill: var(--ink); font: 400 12px var(--f-body); }
+.tb { fill: var(--ink); font: 600 13px var(--f-body); }
+.ts { fill: var(--ink-2); font: 400 11px var(--f-body); }
+.tl { fill: var(--ink-3); font: 600 11px var(--f-body); }
+.tw { fill: var(--warn-ink); font: 500 11.5px var(--f-body); }
+.ti { fill: var(--brand-ink); font: 500 11.5px var(--f-body); }
+.badge { fill: var(--mustard); }
+.badge-t { fill: var(--on-mustard); font: 700 11px var(--f-body); }
+.sub { fill: var(--card); stroke: var(--brand); stroke-width: 1.2; }
+.sub-t { stroke: var(--brand); stroke-width: 1.4; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 24px; counter-reset: none; }
+.note { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; min-width: 0; }
+.num { width: 22px; height: 22px; border-radius: 50%; background: var(--mustard); color: var(--on-mustard); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.num.plain { background: var(--brand-soft); color: var(--brand-ink); }
+.note h3 { margin-bottom: 2px; }
+.note p { color: var(--ink-2); font-size: 13px; }
+
+.tablebox { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 13px; }
+th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding: 10px 12px; border-bottom: 0.5px solid var(--line); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 0.5px solid var(--line); vertical-align: top; color: var(--ink); }
+td:first-child { font-weight: 600; color: var(--brand-ink); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--brand-soft); color: var(--brand-ink); }
+.pill.no { background: var(--warn-soft); color: var(--warn-ink); }
+.pill.mid { background: var(--mustard-soft); color: var(--ink); }
+
+.alerts { display: grid; gap: 10px; }
+.alert { background: var(--card); border: 0.5px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; padding: 12px 16px; display: grid; gap: 4px; min-width: 0; }
+.alert.info { border-left-color: var(--brand); }
+.alert h3 { font-size: 14px; }
+.alert p { color: var(--ink-2); font-size: 13px; max-width: 95ch; }
+code { font-size: 12px; background: var(--lane2); border: 0.5px solid var(--line); border-radius: 4px; padding: 0 4px; }
+footer { color: var(--ink-3); font-size: 12px; }
+
+/* Impressão A4 paisagem: cada fluxograma inteiro numa página, sem cortar */
+@page { size: A4 landscape; margin: 10mm; }
+@media print {
+  :root { --bg: #ffffff; --card: #ffffff; --lane2: #F8FAFD; --band: #D5E8F5; --ink: #1a1a1a; --ink-2: #555555; --ink-3: #666666; --line: #DDE2EE;
+    --brand: #1A4870; --brand-ink: #0B2D50; --brand-soft: #D5E8F5; --mustard: #C9921B; --mustard-soft: #FBF3E0; --on-mustard: #ffffff;
+    --ok: #16A34A; --warn: #E24B4A; --warn-soft: #FCEBEB; --warn-ink: #791F1F; color-scheme: light; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 11px; }
+  .wrap { max-width: none; padding: 0; gap: 14px; display: block; }
+  .wrap > * + * { margin-top: 14px; }
+  .diagram, .tablebox { overflow: visible; border: none; }
+  .diagram svg { min-width: 0; width: 100%; max-height: 165mm; }
+  table { min-width: 0; font-size: 10.5px; }
+  .print-page { break-before: page; page-break-before: always; }
+  .diagram, .legend, .note, .alert, tr, .answer { break-inside: avoid; page-break-inside: avoid; }
+  .sec-head { break-after: avoid; page-break-after: avoid; }
+}
+</style>
+
+</head><body><div class="wrap">
+  <header>
+    <div class="eyebrow">Arato · Resultados · levantamento de 18/11/2026</div>
+    <h1>Como os custos chegam ao ciclo</h1>
+    <p class="lede">Mapa tirado do código que monta a DRE Agrícola, o Custo por ha e a Produtividade, conferido contra o banco de produção. Custos Totais segue outra regra, explicada na nota 11.</p>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>Respostas curtas</h2></div>
+    <div class="answers">
+      <div class="answer">
+        <div class="q">Apropriação Direta vai pelo Centro de Custo, pelo Ciclo ou pelos dois?</div>
+        <div class="a">Pelo ciclo. O Centro de Custo só entra quando não há ciclo, e aí só para achar a regra de rateio.</div>
+        <p>Os dois nunca se somam. Com ciclo, o valor vai inteiro para ele e o CC fica só como informação. Sem ciclo, o CC escolhe a regra de rateio. Sem ciclo e sem regra, o custo fica fora dos ciclos.</p>
+      </div>
+      <div class="answer">
+        <div class="q">Produto vem da entrada (CC apontado) ou da baixa (ciclo apontado)?</div>
+        <div class="a">Da baixa. A entrada não é custo.</div>
+        <p>A entrada só aumenta o saldo e recalcula o custo médio. O CC apontado na entrada de um item de estoque não chega aos custos. O custo nasce quando o produto sai: operação de campo (com ciclo) ou baixa manual, valendo quantidade × custo médio do momento.</p>
+      </div>
+      <div class="answer">
+        <div class="q">Como o rateio participa?</div>
+        <div class="a">Só para custo sem ciclo. Hoje, na prática, não distribui nada.</div>
+        <p>O rateio procura uma regra pelo CC do custo, primeiro na conta (global) e depois na fazenda, e reparte entre os ciclos por percentual ou área plantada. No banco atual não há regra de fazenda e nenhuma OG está marcada como global; veja os pontos de atenção.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head">
+      <h2>1. Da origem do gasto até o ciclo</h2>
+      <p>Cada raia é onde o registro nasce. Todas as fontes desembocam na mesma decisão: o custo tem ciclo apontado? Os números em mostarda remetem às notas logo abaixo.</p>
+    </div>
+    <div class="legend" aria-label="Legenda BPMN">
+      <span><svg viewBox="0 0 26 18"><circle cx="13" cy="9" r="7" class="ev-start"/></svg>Evento de início</span>
+      <span><svg viewBox="0 0 26 18"><rect x="2" y="2" width="22" height="14" rx="4" class="task"/></svg>Atividade</span>
+      <span><svg viewBox="0 0 26 18"><path d="M13 1 L22 9 L13 17 L4 9 Z" class="gw"/></svg>Decisão (exclusiva)</span>
+      <span><svg viewBox="0 0 26 18"><circle cx="13" cy="9" r="6.5" class="ev-end"/></svg>Fim: custo no ciclo</span>
+      <span><svg viewBox="0 0 26 18"><circle cx="13" cy="9" r="6.5" class="ev-bad"/></svg>Fim: custo não alocado</span>
+      <span><svg viewBox="0 0 26 18"><rect x="2" y="2" width="22" height="14" class="ann"/></svg>Anotação / ponto de atenção</span>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 1240 780" role="img" aria-label="Fluxograma BPMN: da origem do gasto até o ciclo">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" class="arrowhead"/>
+          </marker>
+        </defs>
+        <!-- pool e raias -->
+        <rect x="0.5" y="0.5" width="1239" height="779" class="pool"/>
+        <rect x="60" y="1" width="1179" height="194" class="lane-a"/>
+        <rect x="60" y="195" width="1179" height="120" class="lane-b"/>
+        <rect x="60" y="315" width="1179" height="145" class="lane-a"/>
+        <rect x="60" y="460" width="1179" height="319" class="lane-b"/>
+        <rect x="0.5" y="0.5" width="28" height="779" class="band"/>
+        <text class="band-t" transform="translate(19 390) rotate(-90)" text-anchor="middle">Apuração do custo da safra</text>
+        <rect x="28.5" y="0.5" width="31" height="194.5" class="band"/>
+        <rect x="28.5" y="195" width="31" height="120" class="band"/>
+        <rect x="28.5" y="315" width="31" height="145" class="band"/>
+        <rect x="28.5" y="460" width="31" height="319.5" class="band"/>
+        <text class="band-t" transform="translate(48 98) rotate(-90)" text-anchor="middle">Documento</text>
+        <text class="band-t" transform="translate(48 255) rotate(-90)" text-anchor="middle">Estoque</text>
+        <text class="band-t" transform="translate(48 388) rotate(-90)" text-anchor="middle">Campo</text>
+        <text class="band-t" transform="translate(48 620) rotate(-90)" text-anchor="middle">Apuração (DRE · Custo/ha)</text>
+        <line x1="60" y1="195" x2="1239" y2="195" class="lane-sep"/>
+        <line x1="60" y1="315" x2="1239" y2="315" class="lane-sep"/>
+        <line x1="60" y1="460" x2="1239" y2="460" class="lane-sep"/>
+
+        <!-- Raia Documento -->
+        <circle cx="100" cy="100" r="16" class="ev-start"/>
+        <text class="ts" x="100" y="134" text-anchor="middle">NF de entrada</text>
+        <text class="ts" x="100" y="148" text-anchor="middle">processada</text>
+        <path d="M116 100 H176" class="flow" marker-end="url(#ah)"/>
+        <path d="M200 78 L222 100 L200 122 L178 100 Z" class="gw"/>
+        <path d="M193 93 L207 107 M207 93 L193 107" class="gw-x"/>
+        <text class="tl" x="188" y="66" text-anchor="end">Apropriação</text>
+        <text class="tl" x="188" y="80" text-anchor="end">do item?</text>
+
+        <path d="M200 78 V56 H298" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="208" y="50">Direto</text>
+        <rect x="300" y="24" width="200" height="64" rx="8" class="task"/>
+        <text class="tb" x="400" y="47" text-anchor="middle">Item Direto</text>
+        <text class="ts" x="400" y="63" text-anchor="middle">parte do valor do título,</text>
+        <text class="ts" x="400" y="77" text-anchor="middle">proporcional ao item</text>
+        <circle cx="500" cy="24" r="10" class="badge"/><text class="badge-t" x="500" y="28" text-anchor="middle">2</text>
+
+        <path d="M222 100 H262 V144 H298" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="226" y="95">Maquinário</text>
+        <rect x="300" y="112" width="200" height="64" rx="8" class="task"/>
+        <text class="tb" x="400" y="135" text-anchor="middle">Item Maquinário</text>
+        <text class="ts" x="400" y="151" text-anchor="middle">vira manutenção da máquina</text>
+        <text class="ts" x="400" y="165" text-anchor="middle">(sem ciclo e sem CC)</text>
+        <circle cx="500" cy="112" r="10" class="badge"/><text class="badge-t" x="500" y="116" text-anchor="middle">7</text>
+
+        <path d="M500 56 H700 V500" class="flow" marker-end="url(#ah)"/>
+        <path d="M500 144 H740 V500" class="flow" marker-end="url(#ah)"/>
+
+        <circle cx="800" cy="56" r="16" class="ev-start"/>
+        <text class="ts" x="800" y="90" text-anchor="middle">Título lançado</text>
+        <text class="ts" x="800" y="104" text-anchor="middle">sem NF</text>
+        <path d="M816 56 H838" class="flow" marker-end="url(#ah)"/>
+        <rect x="840" y="24" width="230" height="64" rx="8" class="task"/>
+        <text class="tb" x="955" y="47" text-anchor="middle">Título manual (CP)</text>
+        <text class="ts" x="955" y="63" text-anchor="middle">entra pela OG ou categoria</text>
+        <text class="ts" x="955" y="77" text-anchor="middle">(compra de insumo fica fora)</text>
+        <circle cx="1070" cy="24" r="10" class="badge"/><text class="badge-t" x="1070" y="28" text-anchor="middle">5</text>
+        <path d="M955 88 V500" class="flow" marker-end="url(#ah)"/>
+
+        <!-- Raia Estoque -->
+        <path d="M200 122 V223" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="208" y="185">Estoque (produto)</text>
+        <rect x="110" y="225" width="230" height="66" rx="8" class="task"/>
+        <text class="tb" x="225" y="249" text-anchor="middle">Entrada no estoque</text>
+        <text class="ts" x="225" y="265" text-anchor="middle">saldo e custo médio</text>
+        <text class="ts" x="225" y="279" text-anchor="middle">CC da entrada não vira custo</text>
+        <circle cx="340" cy="225" r="10" class="badge"/><text class="badge-t" x="340" y="229" text-anchor="middle">3</text>
+        <rect x="390" y="226" width="280" height="44" class="ann-info"/>
+        <text class="ti" x="402" y="244">O custo do produto nasce na baixa:</text>
+        <text class="ti" x="402" y="260">quantidade × custo médio do momento</text>
+        <path d="M390 248 H340" class="assoc"/>
+
+        <!-- Raia Campo -->
+        <path d="M225 291 V330" class="flow"/>
+        <path d="M170 330 H580" class="flow"/>
+        <path d="M170 330 V348" class="flow" marker-end="url(#ah)"/>
+        <path d="M380 330 V348" class="flow" marker-end="url(#ah)"/>
+        <path d="M580 330 V348" class="flow" marker-end="url(#ah)"/>
+        <rect x="70" y="350" width="200" height="78" rx="8" class="task"/>
+        <text class="tb" x="170" y="371" text-anchor="middle">Operação de campo</text>
+        <text class="ts" x="170" y="387" text-anchor="middle">plantio · pulverização ·</text>
+        <text class="ts" x="170" y="401" text-anchor="middle">adubação · correção</text>
+        <text class="ts" x="170" y="417" text-anchor="middle">ciclo obrigatório</text>
+        <circle cx="270" cy="350" r="10" class="badge"/><text class="badge-t" x="270" y="354" text-anchor="middle">4</text>
+        <rect x="290" y="350" width="180" height="78" rx="8" class="task"/>
+        <text class="tb" x="380" y="374" text-anchor="middle">Baixa manual</text>
+        <text class="ts" x="380" y="390" text-anchor="middle">uso ou perda (tela Estoque)</text>
+        <text class="ts" x="380" y="406" text-anchor="middle">não pede ciclo</text>
+        <rect x="490" y="350" width="180" height="78" rx="8" class="task"/>
+        <text class="tb" x="580" y="374" text-anchor="middle">Abastecimento</text>
+        <text class="ts" x="580" y="390" text-anchor="middle">combustível da bomba</text>
+        <text class="ts" x="580" y="406" text-anchor="middle">ciclo opcional, sem CC</text>
+        <path d="M170 428 V500" class="flow" marker-end="url(#ah)"/>
+        <path d="M380 428 V500" class="flow" marker-end="url(#ah)"/>
+        <path d="M580 428 V500" class="flow" marker-end="url(#ah)"/>
+
+        <!-- Raia Apuração -->
+        <circle cx="1040" cy="505" r="16" class="ev-start"/>
+        <text class="ts" x="1040" y="538" text-anchor="middle">Folha fechada ·</text>
+        <text class="ts" x="1040" y="552" text-anchor="middle">arrendamento pago</text>
+        <path d="M1024 505 H120 V566" class="bus" marker-end="url(#ah)"/>
+        <text class="tl" x="790" y="524">todas as fontes chegam aqui</text>
+
+        <path d="M120 568 L142 590 L120 612 L98 590 Z" class="gw"/>
+        <path d="M113 583 L127 597 M127 583 L113 597" class="gw-x"/>
+        <circle cx="98" cy="568" r="10" class="badge"/><text class="badge-t" x="98" y="572" text-anchor="middle">1</text>
+        <text class="tl" x="152" y="626">Tem ciclo</text>
+        <text class="tl" x="152" y="640">apontado?</text>
+
+        <path d="M142 590 H172 V560 H198" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="150" y="580">Sim</text>
+        <rect x="200" y="530" width="240" height="60" rx="8" class="task"/>
+        <text class="tb" x="320" y="552" text-anchor="middle">Vai direto ao ciclo</text>
+        <text class="ts" x="320" y="568" text-anchor="middle">ciclo auxiliar vai ao ciclo pai</text>
+        <text class="ts" x="320" y="582" text-anchor="middle">pelo % de absorção</text>
+        <circle cx="440" cy="530" r="10" class="badge"/><text class="badge-t" x="440" y="534" text-anchor="middle">8</text>
+        <path d="M440 560 H1102" class="flow" marker-end="url(#ah)"/>
+
+        <path d="M120 612 V680 H198" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="126" y="662">Não</text>
+        <rect x="200" y="650" width="240" height="60" rx="8" class="task"/>
+        <rect x="313" y="696" width="14" height="14" class="sub"/>
+        <path d="M320 699 V707 M316 703 H324" class="sub-t"/>
+        <text class="tb" x="320" y="671" text-anchor="middle">Rateio</text>
+        <text class="ts" x="320" y="687" text-anchor="middle">pelo Centro de Custo (diagrama 2)</text>
+        <circle cx="440" cy="650" r="10" class="badge"/><text class="badge-t" x="440" y="654" text-anchor="middle">6</text>
+        <path d="M440 680 H486" class="flow" marker-end="url(#ah)"/>
+        <path d="M510 658 L532 680 L510 702 L488 680 Z" class="gw"/>
+        <path d="M503 673 L517 687 M517 673 L503 687" class="gw-x"/>
+        <text class="tl" x="510" y="636" text-anchor="middle">Achou 1 regra</text>
+        <text class="tl" x="510" y="650" text-anchor="middle">válida?</text>
+        <path d="M532 680 H588" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="542" y="672">Sim</text>
+        <rect x="590" y="650" width="240" height="60" rx="8" class="task"/>
+        <text class="tb" x="710" y="674" text-anchor="middle">Repartido entre ciclos</text>
+        <text class="ts" x="710" y="690" text-anchor="middle">por percentual ou área plantada</text>
+        <path d="M830 680 H1120 V578" class="flow" marker-end="url(#ah)"/>
+
+        <path d="M510 702 V740 H588" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="518" y="728">Não</text>
+        <rect x="590" y="715" width="260" height="50" rx="8" class="task"/>
+        <text class="tb" x="720" y="736" text-anchor="middle">Fica sem ciclo</text>
+        <text class="ts" x="720" y="752" text-anchor="middle">coluna sem ciclo + aviso de pendência</text>
+        <path d="M850 740 H1102" class="flow" marker-end="url(#ah)"/>
+
+        <circle cx="1120" cy="560" r="16" class="ev-end"/>
+        <text class="ts" x="1144" y="552">DRE ·</text>
+        <text class="ts" x="1144" y="566">Custo por ha ·</text>
+        <text class="ts" x="1144" y="580">Produtividade</text>
+        <circle cx="1120" cy="740" r="16" class="ev-bad"/>
+        <text class="ts" x="1144" y="736">Custo não</text>
+        <text class="ts" x="1144" y="750">alocado</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head"><h2>Notas explicativas</h2></div>
+    <div class="notes">
+      <div class="note"><div class="num">1</div><div><h3>O ciclo vence o Centro de Custo</h3><p>Primeira pergunta para qualquer custo: tem ciclo? Se tem, vai inteiro para esse ciclo e o CC não muda nada no valor. Se não tem, o CC é usado para procurar a regra de rateio. Custo sem ciclo e sem CC não tem como ser rateado.</p></div></div>
+      <div class="note"><div class="num">2</div><div><h3>Apropriação Direta na NF</h3><p>O valor do título da NF é repartido entre os itens Diretos, proporcional ao valor de cada um, descontando devoluções processadas. O ciclo vem do título, ou seja, do cabeçalho da NF: a nota não guarda ciclo por item. O CC vem do item; se o item não tem, vem do título. Combustível para máquina ou veículo e item com rateio entre máquinas saem daqui e entram por abastecimento e manutenção.</p></div></div>
+      <div class="note"><div class="num">3</div><div><h3>Produto de estoque: a entrada não é custo</h3><p>Ao processar a NF, o item de estoque só aumenta o saldo e recalcula o custo médio. O CC (ou ciclo) apontado nessa entrada não leva o valor para os custos. Um título no CP com categoria de insumo também fica fora, para não contar duas vezes.</p></div></div>
+      <div class="note"><div class="num">4</div><div><h3>A baixa é o custo</h3><p>O custo do produto aparece quando ele sai do estoque. Operações de campo (plantio, pulverização, adubação, correção) têm ciclo obrigatório e gravam o custo da aplicação pelo custo médio do momento; contam quando aprovadas. Baixa manual de uso ou perda e abastecimento também entram, mas a tela de baixa manual não pede ciclo e o abastecimento tem ciclo opcional e nenhum CC.</p></div></div>
+      <div class="note"><div class="num">5</div><div><h3>Título sem NF</h3><p>Lançamento manual no CP entra pela classificação da OG (ou, sem OG, pela categoria) e segue a mesma regra de ciclo e CC. Entra na safra pelo ciclo, pelo ano safra ou pelo vencimento dentro do período do ano safra, pago ou não.</p></div></div>
+      <div class="note"><div class="num">6</div><div><h3>Rateio</h3><p>Só trabalha com custo sem ciclo. Procura a regra pelo CC do custo (ou por um CC pai dele) no mesmo ano safra. Precisa achar exatamente uma regra válida; com nenhuma, ou com duas ou mais, o custo fica sem ciclo e gera aviso. Detalhe no diagrama 2.</p></div></div>
+      <div class="note"><div class="num">7</div><div><h3>Manutenção, folha e arrendamento</h3><p>Item Maquinário vira histórico de manutenção, que não tem ciclo nem CC: sempre fica sem ciclo. Folha fechada entra como mão de obra (bruto + complemento + FGTS + INSS patronal), com ciclo e CC do título de salário; o título do CP da folha não soma de novo. Arrendamento pago não tem ciclo; pago em sacas, é valorizado pelo preço médio dos contratos.</p></div></div>
+      <div class="note"><div class="num">8</div><div><h3>Ciclo auxiliar</h3><p>Custo apontado num ciclo auxiliar vai para o ciclo pai pelo percentual de absorção. A parte não absorvida fica sem ciclo.</p></div></div>
+      <div class="note"><div class="num plain">9</div><div><h3>O que nunca entra</h3><p>Título cancelado, movimento de tesouraria, pedido de compra, adiantamento, principal de custeio ou financiamento, fatura de cartão (os itens já entraram), NFS-e de serviço de máquina (entra pela manutenção) e OGs de investimento. Juros e multa pagos entram como despesa financeira; descontos obtidos reduzem o custo.</p></div></div>
+      <div class="note"><div class="num plain">10</div><div><h3>Previsão</h3><p>Previsão em aberto não é custo: aparece numa linha Previsto separada. Previsão efetivada vira título real e entra normalmente.</p></div></div>
+      <div class="note"><div class="num plain">11</div><div><h3>Custos Totais segue outra regra</h3><p>Está sendo reconstruído agora em outra frente: regime de caixa (só o que foi pago no período), ciclo do próprio título, sem rateio. Pode dar valores diferentes da DRE e do Custo por ha, que usam o regime deste mapa.</p></div></div>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head">
+      <h2>2. Rateio de um custo sem ciclo</h2>
+      <p>O caminho começa na OG: se ela estiver marcada com escopo Global, o custo passa primeiro pela regra da conta; senão, vai direto para a regra da fazenda. As anotações vermelhas mostram o estado do banco hoje.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 1240 470" role="img" aria-label="Fluxograma BPMN do rateio de um custo sem ciclo">
+        <defs>
+          <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" class="arrowhead"/>
+          </marker>
+        </defs>
+        <rect x="0.5" y="0.5" width="1239" height="469" class="pool"/>
+        <rect x="60" y="1" width="1179" height="189" class="lane-a"/>
+        <rect x="60" y="190" width="1179" height="279" class="lane-b"/>
+        <rect x="0.5" y="0.5" width="28" height="469" class="band"/>
+        <text class="band-t" transform="translate(19 235) rotate(-90)" text-anchor="middle">Rateio</text>
+        <rect x="28.5" y="0.5" width="31" height="189.5" class="band"/>
+        <rect x="28.5" y="190" width="31" height="279.5" class="band"/>
+        <text class="band-t" transform="translate(48 95) rotate(-90)" text-anchor="middle">Conta (global)</text>
+        <text class="band-t" transform="translate(48 330) rotate(-90)" text-anchor="middle">Fazenda</text>
+        <line x1="60" y1="190" x2="1239" y2="190" class="lane-sep"/>
+
+        <circle cx="100" cy="300" r="16" class="ev-start"/>
+        <text class="ts" x="100" y="334" text-anchor="middle">Custo</text>
+        <text class="ts" x="100" y="348" text-anchor="middle">sem ciclo</text>
+        <path d="M116 300 H186" class="flow" marker-end="url(#ah2)"/>
+        <path d="M210 278 L232 300 L210 322 L188 300 Z" class="gw"/>
+        <path d="M203 293 L217 307 M217 293 L203 307" class="gw-x"/>
+        <text class="tl" x="210" y="346" text-anchor="middle">OG com escopo</text>
+        <text class="tl" x="210" y="360" text-anchor="middle">Global?</text>
+
+        <path d="M210 278 V95 H288" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="218" y="88">Sim</text>
+        <rect x="290" y="56" width="250" height="78" rx="8" class="task"/>
+        <text class="tb" x="415" y="78" text-anchor="middle">Regra global da conta</text>
+        <text class="ts" x="415" y="94" text-anchor="middle">acha pelo CC (ou CC pai)</text>
+        <text class="ts" x="415" y="108" text-anchor="middle">reparte entre fazendas</text>
+        <text class="ts" x="415" y="122" text-anchor="middle">(% fixo ou área dos ciclos)</text>
+        <path d="M540 95 H606" class="flow" marker-end="url(#ah2)"/>
+        <path d="M630 73 L652 95 L630 117 L608 95 Z" class="gw"/>
+        <path d="M623 88 L637 102 M637 88 L623 102" class="gw-x"/>
+        <text class="tl" x="630" y="52" text-anchor="middle">Fazenda tem</text>
+        <text class="tl" x="630" y="66" text-anchor="middle">% por ciclo?</text>
+        <path d="M652 95 H718" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="662" y="88">Sim</text>
+        <rect x="720" y="62" width="220" height="66" rx="8" class="task"/>
+        <text class="tb" x="830" y="88" text-anchor="middle">Reparte nos ciclos</text>
+        <text class="ts" x="830" y="104" text-anchor="middle">definidos na regra global</text>
+        <path d="M940 95 H1205 V284" class="flow" marker-end="url(#ah2)"/>
+
+        <rect x="290" y="146" width="300" height="38" class="ann"/>
+        <text class="tw" x="300" y="162">Hoje nenhuma OG está marcada como Global:</text>
+        <text class="tw" x="300" y="177">este caminho não é usado.</text>
+        <path d="M415 146 V134" class="assoc"/>
+
+        <path d="M630 117 V263" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="638" y="160">Não: a parte</text>
+        <text class="tl" x="638" y="174">da fazenda</text>
+
+        <path d="M232 300 H578" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="246" y="292">Não</text>
+        <rect x="580" y="265" width="250" height="74" rx="8" class="task"/>
+        <text class="tb" x="705" y="288" text-anchor="middle">Regra da fazenda</text>
+        <text class="ts" x="705" y="304" text-anchor="middle">mesmo ano safra, CC igual</text>
+        <text class="ts" x="705" y="318" text-anchor="middle">ao do custo ou pai dele</text>
+        <path d="M830 302 H876" class="flow" marker-end="url(#ah2)"/>
+        <path d="M900 280 L922 302 L900 324 L878 302 Z" class="gw"/>
+        <path d="M893 295 L907 309 M907 295 L893 309" class="gw-x"/>
+        <text class="tl" x="900" y="258" text-anchor="middle">Exatamente 1</text>
+        <text class="tl" x="900" y="272" text-anchor="middle">regra válida?</text>
+        <path d="M922 302 H968" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="930" y="294">Sim</text>
+        <rect x="970" y="265" width="200" height="74" rx="8" class="task"/>
+        <text class="tb" x="1070" y="288" text-anchor="middle">Reparte entre ciclos</text>
+        <text class="ts" x="1070" y="304" text-anchor="middle">área plantada: pela área</text>
+        <text class="ts" x="1070" y="318" text-anchor="middle">percentual: linhas = 100%</text>
+        <path d="M1170 302 H1187" class="flow" marker-end="url(#ah2)"/>
+        <circle cx="1205" cy="302" r="16" class="ev-end"/>
+        <text class="ts" x="1225" y="336" text-anchor="end">Custo nos</text>
+        <text class="ts" x="1225" y="350" text-anchor="end">ciclos</text>
+
+        <path d="M900 324 V420 H1187" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="908" y="360">Não (nenhuma, duas</text>
+        <text class="tl" x="908" y="374">ou mais, ou % inválido)</text>
+        <circle cx="1205" cy="420" r="16" class="ev-bad"/>
+        <text class="ts" x="1225" y="452" text-anchor="end">Fica sem ciclo + aviso</text>
+
+        <rect x="290" y="370" width="380" height="58" class="ann"/>
+        <text class="tw" x="300" y="388">Hoje: nenhuma regra de fazenda cadastrada.</text>
+        <text class="tw" x="300" y="403">Os percentuais por ciclo dependem da Migração 48,</text>
+        <text class="tw" x="300" y="418">ainda não executada no banco.</text>
+        <path d="M600 370 L640 339" class="assoc"/>
+      </svg>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head"><h2>Fonte por fonte</h2><p>De onde vem o valor de cada tipo de registro, e de onde saem o ciclo e o Centro de Custo usados no mapa.</p></div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Fonte</th><th>Quando vira custo</th><th>Valor</th><th>Ciclo vem de</th><th>Centro de Custo vem de</th></tr></thead>
+        <tbody>
+          <tr><td>NF · item Direto</td><td>Título da NF na safra</td><td>Parte do título, proporcional ao item, menos devoluções</td><td><span class="pill mid">Cabeçalho da NF</span> (título)</td><td>Item; se vazio, título</td></tr>
+          <tr><td>NF · item Estoque</td><td><span class="pill no">Não vira custo</span> na entrada</td><td>Só saldo e custo médio</td><td>Ignorado</td><td>Ignorado</td></tr>
+          <tr><td>NF · item Maquinário</td><td>Ao registrar a manutenção</td><td>Custo da manutenção</td><td><span class="pill no">Não tem</span></td><td><span class="pill no">Não tem</span></td></tr>
+          <tr><td>CP sem NF</td><td>Título na safra, pago ou não</td><td>Valor do título em R$</td><td>Título</td><td>Título</td></tr>
+          <tr><td>Operação de campo</td><td>Lançamento aprovado</td><td>Quantidade × custo médio na aplicação</td><td><span class="pill ok">Obrigatório</span></td><td>Não usa</td></tr>
+          <tr><td>Baixa manual de estoque</td><td>Data da baixa no período</td><td>Quantidade × custo unitário na baixa</td><td><span class="pill no">Tela não pede</span></td><td><span class="pill no">Não tem</span></td></tr>
+          <tr><td>Abastecimento</td><td>Aprovado, no ano safra</td><td>Valor do abastecimento</td><td>Opcional</td><td><span class="pill no">Não tem</span></td></tr>
+          <tr><td>Folha</td><td>Folha fechada na competência</td><td>Bruto + complemento + FGTS + INSS patronal</td><td>Título de salário</td><td>Título de salário</td></tr>
+          <tr><td>Arrendamento</td><td>Pagamento do ano safra</td><td>Valor pago; sacas × preço médio dos contratos</td><td><span class="pill no">Não tem</span></td><td><span class="pill no">Não tem</span></td></tr>
+          <tr><td>Apoio Financeiro</td><td>Só com ciclo apontado</td><td>Valor do lançamento</td><td>Lançamento</td><td>Lançamento</td></tr>
+          <tr><td>Previsão em aberto</td><td><span class="pill mid">Linha Previsto</span>, fora do custo</td><td>Valor previsto</td><td>Título</td><td>Título</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head"><h2>Pontos de atenção encontrados</h2><p>Conferidos no banco de produção em 18/11/2026. Nenhum foi corrigido; ficam para decisão.</p></div>
+    <div class="alerts">
+      <div class="alert"><h3>O rateio não distribui nada hoje</h3><p>Nenhuma regra de rateio por fazenda está cadastrada e nenhuma OG tem escopo Global, então a única regra global existente nunca é aplicada. Todo custo sem ciclo vai para a coluna sem ciclo, inclusive arrendamento, manutenção e combustível sem ciclo.</p></div>
+      <div class="alert"><h3>Migração 48 pendente pode travar o relatório</h3><p>A tabela dos percentuais por ciclo (<code>regras_rateio_linhas</code>) não existe no banco. O relatório lê essa tabela sempre que encontra uma regra de fazenda; cadastrar a primeira regra antes de rodar a Migração 48 faria a DRE e o Custo por ha pararem de carregar.</p></div>
+      <div class="alert"><h3>NF com itens de ciclos diferentes vai inteira para um ciclo</h3><p>A NF não guarda ciclo por item, só no cabeçalho. Uma nota com despesas de soja e milho cai toda no ciclo do cabeçalho; o CC por item existe, mas é ignorado quando há ciclo.</p></div>
+      <div class="alert"><h3>Manutenção e baixa manual não têm como chegar a um ciclo</h3><p>Manutenção não guarda ciclo nem CC, e a baixa manual de estoque não pede ciclo. Sem ciclo e sem CC, não há rateio possível: esses custos ficam sempre fora dos ciclos.</p></div>
+      <div class="alert info"><h3>CC apontado em item de estoque não tem efeito</h3><p>Hoje são poucos casos (25 itens), mas quem aponta CC numa entrada de produto pode esperar que o custo vá para aquele centro. O custo só existe na baixa.</p></div>
+    </div>
+  </section>
+
+  <footer>Fonte: código de apuração (DRE Agrícola, Custo por ha e Produtividade) e consultas de leitura no banco de produção, 18/11/2026.</footer>
+</div>
+
+</body></html>
