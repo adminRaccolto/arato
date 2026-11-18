@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import PlanoGate from "../../components/PlanoGate";
 import RelatorioResultados from "../../components/RelatorioResultados";
+import RelatorioCustosCaixa from "../../components/resultados/RelatorioCustosCaixa";
 import type { ModoResultado } from "../../components/resultados/TabelaResultados";
 function Custos() {
   const aba = useSearchParams().get("aba");
@@ -12,7 +13,11 @@ function Custos() {
       : "dre";
   return (
     <PlanoGate modulo="custos">
-      <RelatorioResultados modo={modo} />
+      {modo === "custostotais" ? (
+        <RelatorioCustosCaixa />
+      ) : (
+        <RelatorioResultados modo={modo} />
+      )}
     </PlanoGate>
   );
 }

@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-j",
+    data: "18/11/2026",
+    titulo: "Custos Totais pelo caixa, com visão geral e por ciclo",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "melhoria", texto: "Custos Totais ganha um painel de gastos operacionais, com categorias, participação no total e os pagamentos que compõem cada valor. Escolha Total geral ou Por ciclo; os desembolsos sem ciclo continuam no total e têm identificação própria." },
+      { tipo: "correcao", texto: "A apuração passa a usar a data da baixa e o valor efetivamente pago no CP do produtor e da empresa. Previsões, depreciação, investimentos, principal de empréstimos e despesas financeiras ficam fora. Juros e multa são retirados do custo operacional; descontos já estão refletidos no desembolso." },
+      { tipo: "melhoria", texto: "Defina as datas dos pagamentos ou use uma safra para preencher o período. Consulte cada título, abra uma categoria para conferir seus pagamentos e exporte em PDF ou Excel. Os títulos de borderô mantêm seus valores individuais; faturas quitadas usam a composição conferida das compras, sem duplicar o pagamento." },
+      { tipo: "melhoria", texto: "Pagamentos sem classificação operacional, baixas antigas acumuladas e faturas com composição divergente aparecem para conferência, com o motivo, separados do total. A tela funciona nos layouts Padrão e Novo Layout." },
+    ],
+    onde: "Resultados → Custos Totais",
+  },
+  {
     versao: "2026.11.18-i",
     data: "18/11/2026",
     titulo: "Adiantamento a fornecedor de volta ao Contas a Pagar, com estorno do pagamento",
