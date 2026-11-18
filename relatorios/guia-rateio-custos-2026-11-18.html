@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guia de Rateio de Custos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: coluna de leitura larga; diagramas BPMN em faixas roláveis; paleta Arato (azul = sistema, mostarda = decisão/usuário) */
+:root {
+  --bg: #F4F6FA; --card: #ffffff; --lane2: #F8FAFD; --band: #D5E8F5;
+  --ink: #1a1a1a; --ink-2: #555555; --ink-3: #666666; --line: #DDE2EE;
+  --brand: #1A4870; --brand-ink: #0B2D50; --brand-soft: #D5E8F5;
+  --mustard: #C9921B; --mustard-soft: #FBF3E0; --on-mustard: #ffffff;
+  --ok: #16A34A; --warn: #E24B4A; --warn-soft: #FCEBEB; --warn-ink: #791F1F;
+  --f-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1823; --card: #15212E; --lane2: #182634; --band: #1C3550;
+  --ink: #E6EDF5; --ink-2: #AAB7C5; --ink-3: #93A2B3; --line: #2B3B4E;
+  --brand: #7FB2E0; --brand-ink: #CFE3F5; --brand-soft: #1C3550;
+  --mustard: #E0B04A; --mustard-soft: #33290F; --on-mustard: #1a1a1a;
+  --ok: #4ADE80; --warn: #F07171; --warn-soft: #3A1C1F; --warn-ink: #FBC7C7;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0E1823; --card: #15212E; --lane2: #182634; --band: #1C3550;
+  --ink: #E6EDF5; --ink-2: #AAB7C5; --ink-3: #93A2B3; --line: #2B3B4E;
+  --brand: #7FB2E0; --brand-ink: #CFE3F5; --brand-soft: #1C3550;
+  --mustard: #E0B04A; --mustard-soft: #33290F; --on-mustard: #1a1a1a;
+  --ok: #4ADE80; --warn: #F07171; --warn-soft: #3A1C1F; --warn-ink: #FBC7C7;
+  color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.55; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); color: var(--brand-ink); text-wrap: balance; margin: 0; }
+h1 { font-size: 28px; line-height: 1.15; }
+h2 { font-size: 20px; }
+h3 { font-size: 15px; }
+p { margin: 0; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mustard); }
+.lede { color: var(--ink-2); max-width: 75ch; }
+header { display: grid; gap: 8px; }
+section { display: grid; gap: 14px; min-width: 0; }
+.sec-head { display: grid; gap: 4px; }
+.sec-head p { color: var(--ink-2); max-width: 80ch; }
+
+.answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.answer { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.answer .q { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.answer .a { font-family: var(--f-display); font-size: 17px; font-weight: 600; color: var(--brand-ink); line-height: 1.3; }
+.answer p { color: var(--ink-2); font-size: 13px; }
+
+.diagram { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; overflow-x: auto; }
+.diagram svg { display: block; min-width: 1100px; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend svg { width: 26px; height: 18px; flex: none; }
+
+/* SVG */
+.pool { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+.lane-a { fill: var(--card); }
+.lane-b { fill: var(--lane2); }
+.lane-sep { stroke: var(--line); stroke-width: 1; }
+.band { fill: var(--band); stroke: var(--line); stroke-width: 1; }
+.band-t { fill: var(--brand-ink); font: 600 12px var(--f-body); }
+.task { fill: var(--card); stroke: var(--brand); stroke-width: 1.4; }
+.task-off { fill: var(--card); stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.gw { fill: var(--mustard-soft); stroke: var(--mustard); stroke-width: 1.6; }
+.gw-x { stroke: var(--mustard); stroke-width: 2; }
+.ev-start { fill: var(--card); stroke: var(--ok); stroke-width: 2; }
+.ev-end { fill: var(--card); stroke: var(--brand); stroke-width: 4.5; }
+.ev-bad { fill: var(--card); stroke: var(--warn); stroke-width: 4.5; }
+.flow { fill: none; stroke: var(--ink-2); stroke-width: 1.4; }
+.bus { fill: none; stroke: var(--ink-2); stroke-width: 2.4; }
+.arrowhead { fill: var(--ink-2); }
+.ann { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1; stroke-dasharray: 4 3; }
+.ann-info { fill: var(--brand-soft); stroke: var(--brand); stroke-width: 1; stroke-dasharray: 4 3; }
+.assoc { fill: none; stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.t { fill: var(--ink); font: 400 12px var(--f-body); }
+.tb { fill: var(--ink); font: 600 13px var(--f-body); }
+.ts { fill: var(--ink-2); font: 400 11px var(--f-body); }
+.tl { fill: var(--ink-3); font: 600 11px var(--f-body); }
+.tw { fill: var(--warn-ink); font: 500 11.5px var(--f-body); }
+.ti { fill: var(--brand-ink); font: 500 11.5px var(--f-body); }
+.badge { fill: var(--mustard); }
+.badge-t { fill: var(--on-mustard); font: 700 11px var(--f-body); }
+.sub { fill: var(--card); stroke: var(--brand); stroke-width: 1.2; }
+.sub-t { stroke: var(--brand); stroke-width: 1.4; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 24px; counter-reset: none; }
+.note { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; min-width: 0; }
+.num { width: 22px; height: 22px; border-radius: 50%; background: var(--mustard); color: var(--on-mustard); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.num.plain { background: var(--brand-soft); color: var(--brand-ink); }
+.note h3 { margin-bottom: 2px; }
+.note p { color: var(--ink-2); font-size: 13px; }
+
+.tablebox { background: var(--card); border: 0.5px solid var(--line); border-radius: 12px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 13px; }
+th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding: 10px 12px; border-bottom: 0.5px solid var(--line); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 0.5px solid var(--line); vertical-align: top; color: var(--ink); }
+td:first-child { font-weight: 600; color: var(--brand-ink); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--brand-soft); color: var(--brand-ink); }
+.pill.no { background: var(--warn-soft); color: var(--warn-ink); }
+.pill.mid { background: var(--mustard-soft); color: var(--ink); }
+
+.alerts { display: grid; gap: 10px; }
+.alert { background: var(--card); border: 0.5px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; padding: 12px 16px; display: grid; gap: 4px; min-width: 0; }
+.alert.info { border-left-color: var(--brand); }
+.alert h3 { font-size: 14px; }
+.alert p { color: var(--ink-2); font-size: 13px; max-width: 95ch; }
+code { font-size: 12px; background: var(--lane2); border: 0.5px solid var(--line); border-radius: 4px; padding: 0 4px; }
+footer { color: var(--ink-3); font-size: 12px; }
+
+/* Impressão A4 paisagem: cada fluxograma inteiro numa página, sem cortar */
+@page { size: A4 landscape; margin: 10mm; }
+@media print {
+  :root { --bg: #ffffff; --card: #ffffff; --lane2: #F8FAFD; --band: #D5E8F5; --ink: #1a1a1a; --ink-2: #555555; --ink-3: #666666; --line: #DDE2EE;
+    --brand: #1A4870; --brand-ink: #0B2D50; --brand-soft: #D5E8F5; --mustard: #C9921B; --mustard-soft: #FBF3E0; --on-mustard: #ffffff;
+    --ok: #16A34A; --warn: #E24B4A; --warn-soft: #FCEBEB; --warn-ink: #791F1F; color-scheme: light; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 11px; }
+  .wrap { max-width: none; padding: 0; gap: 14px; display: block; }
+  .wrap > * + * { margin-top: 14px; }
+  .diagram, .tablebox { overflow: visible; border: none; }
+  .diagram svg { min-width: 0; width: 100%; max-height: 142mm; }
+  .sec-head p { font-size: 10.5px; }
+  .legend { font-size: 10.5px; }
+  .notes { gap: 8px 18px; }
+  .note p { font-size: 10.5px; line-height: 1.4; }
+  .note h3 { font-size: 12.5px; }
+  table { min-width: 0; font-size: 10.5px; }
+  .print-page { break-before: page; page-break-before: always; }
+  .diagram, .legend, .note, .alert, tr, .answer { break-inside: avoid; page-break-inside: avoid; }
+  .sec-head { break-after: avoid; page-break-after: avoid; }
+}
+</style>
+</head><body><div class="wrap">
+  <header>
+    <div class="eyebrow">Arato · Resultados · guia de configuração · 18/11/2026</div>
+    <h1>Como montar o rateio de custos</h1>
+    <p class="lede">Passo a passo para que um custo lançado sem ciclo chegue aos ciclos certos, nos dois níveis: da conta para as fazendas (Nível 1) e da fazenda para os ciclos (Nível 2). Tirado do código que monta a DRE Agrícola e o Custo por ha, conferido no banco de produção.</p>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>Os dois níveis em uma frase cada</h2></div>
+    <div class="answers">
+      <div class="answer">
+        <div class="q">Nível 1 · Conta → Fazendas</div>
+        <div class="a">Divide um custo do cliente inteiro entre as fazendas.</div>
+        <p>Para despesas que servem a todas as fazendas: escritório, contador, energia da sede, gerente geral. Só é usado quando a Operação Gerencial do lançamento está marcada com Escopo CC = Global. A parte de cada fazenda segue para o Nível 2 daquela fazenda.</p>
+      </div>
+      <div class="answer">
+        <div class="q">Nível 2 · Fazenda → Ciclos</div>
+        <div class="a">Divide o custo de uma fazenda entre os ciclos dela.</div>
+        <p>Para despesas da fazenda que não são de uma cultura só: mão de obra fixa, manutenção da sede, energia do armazém. Pode ser por percentual fixo (Atribuído) ou proporcional à área plantada de cada ciclo.</p>
+      </div>
+      <div class="answer">
+        <div class="q">O que liga o custo à regra</div>
+        <div class="a">O Centro de Custo do lançamento, e só quando não há ciclo.</div>
+        <p>Lançamento com ciclo vai direto para o ciclo e ignora o rateio. Sem ciclo, o sistema procura a regra pelo CC do lançamento ou por um CC pai dele, no mesmo ano safra. Sem CC, não há como ratear.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head">
+      <h2>1. Configuração, do início da safra ao relatório</h2>
+      <p>As raias mostram onde cada passo é feito. Os números em mostarda remetem ao passo a passo logo abaixo.</p>
+    </div>
+    <div class="legend" aria-label="Legenda BPMN">
+      <span><svg viewBox="0 0 26 18"><circle cx="13" cy="9" r="7" class="ev-start"/></svg>Início</span>
+      <span><svg viewBox="0 0 26 18"><rect x="2" y="2" width="22" height="14" rx="4" class="task"/></svg>Passo de configuração</span>
+      <span><svg viewBox="0 0 26 18"><path d="M13 1 L22 9 L13 17 L4 9 Z" class="gw"/></svg>Decisão</span>
+      <span><svg viewBox="0 0 26 18"><circle cx="13" cy="9" r="6.5" class="ev-end"/></svg>Custo rateado nos ciclos</span>
+      <span><svg viewBox="0 0 26 18"><rect x="2" y="2" width="22" height="14" class="ann"/></svg>Cuidado</span>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 1240 720" role="img" aria-label="Fluxograma BPMN de configuração do rateio em dois níveis">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" class="arrowhead"/>
+          </marker>
+        </defs>
+        <rect x="0.5" y="0.5" width="1239" height="719" class="pool"/>
+        <rect x="60" y="1" width="1179" height="169" class="lane-a"/>
+        <rect x="60" y="170" width="1179" height="160" class="lane-b"/>
+        <rect x="60" y="330" width="1179" height="170" class="lane-a"/>
+        <rect x="60" y="500" width="1179" height="219" class="lane-b"/>
+        <rect x="0.5" y="0.5" width="28" height="719" class="band"/>
+        <text class="band-t" transform="translate(19 360) rotate(-90)" text-anchor="middle">Montar o rateio</text>
+        <rect x="28.5" y="0.5" width="31" height="169.5" class="band"/>
+        <rect x="28.5" y="170" width="31" height="160" class="band"/>
+        <rect x="28.5" y="330" width="31" height="170" class="band"/>
+        <rect x="28.5" y="500" width="31" height="219.5" class="band"/>
+        <text class="band-t" transform="translate(48 85) rotate(-90)" text-anchor="middle">Uma vez</text>
+        <text class="band-t" transform="translate(48 250) rotate(-90)" text-anchor="middle">Nível 1 · Conta</text>
+        <text class="band-t" transform="translate(48 415) rotate(-90)" text-anchor="middle">Nível 2 · Fazenda</text>
+        <text class="band-t" transform="translate(48 610) rotate(-90)" text-anchor="middle">Dia a dia</text>
+        <line x1="60" y1="170" x2="1239" y2="170" class="lane-sep"/>
+        <line x1="60" y1="330" x2="1239" y2="330" class="lane-sep"/>
+        <line x1="60" y1="500" x2="1239" y2="500" class="lane-sep"/>
+
+        <!-- Uma vez -->
+        <circle cx="95" cy="85" r="16" class="ev-start"/>
+        <text class="ts" x="95" y="119" text-anchor="middle">Início</text>
+        <text class="ts" x="95" y="133" text-anchor="middle">da safra</text>
+        <path d="M111 85 H128" class="flow" marker-end="url(#ah)"/>
+        <rect x="130" y="55" width="160" height="60" rx="8" class="task"/>
+        <text class="tb" x="210" y="79" text-anchor="middle">Migração 48</text>
+        <text class="ts" x="210" y="95" text-anchor="middle">uma vez, no Supabase</text>
+        <circle cx="290" cy="55" r="10" class="badge"/><text class="badge-t" x="290" y="59" text-anchor="middle">1</text>
+        <path d="M290 85 H308" class="flow" marker-end="url(#ah)"/>
+        <rect x="310" y="55" width="170" height="60" rx="8" class="task"/>
+        <text class="tb" x="395" y="79" text-anchor="middle">Centros de Custo</text>
+        <text class="ts" x="395" y="95" text-anchor="middle">em árvore: pai → filhos</text>
+        <circle cx="480" cy="55" r="10" class="badge"/><text class="badge-t" x="480" y="59" text-anchor="middle">2</text>
+        <path d="M480 85 H498" class="flow" marker-end="url(#ah)"/>
+        <rect x="500" y="55" width="160" height="60" rx="8" class="task"/>
+        <text class="tb" x="580" y="79" text-anchor="middle">Área plantada</text>
+        <text class="ts" x="580" y="95" text-anchor="middle">em cada ciclo</text>
+        <circle cx="660" cy="55" r="10" class="badge"/><text class="badge-t" x="660" y="59" text-anchor="middle">3</text>
+        <path d="M660 85 H696" class="flow" marker-end="url(#ah)"/>
+        <path d="M720 63 L742 85 L720 107 L698 85 Z" class="gw"/>
+        <path d="M713 78 L727 92 M727 78 L713 92" class="gw-x"/>
+        <text class="tl" x="720" y="36" text-anchor="middle">O custo é dividido</text>
+        <text class="tl" x="720" y="50" text-anchor="middle">entre fazendas?</text>
+
+        <!-- Nível 1 -->
+        <path d="M720 107 V213" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="728" y="150">Sim</text>
+        <rect x="630" y="215" width="180" height="70" rx="8" class="task"/>
+        <text class="tb" x="720" y="238" text-anchor="middle">OG com Escopo Global</text>
+        <text class="ts" x="720" y="254" text-anchor="middle">Cadastros → Financeiro →</text>
+        <text class="ts" x="720" y="268" text-anchor="middle">Operações Gerenciais</text>
+        <circle cx="810" cy="215" r="10" class="badge"/><text class="badge-t" x="810" y="219" text-anchor="middle">4</text>
+        <path d="M810 250 H838" class="flow" marker-end="url(#ah)"/>
+        <rect x="840" y="215" width="220" height="70" rx="8" class="task"/>
+        <text class="tb" x="950" y="238" text-anchor="middle">Regra de Nível 1</text>
+        <text class="ts" x="950" y="254" text-anchor="middle">ano safra + CC de origem</text>
+        <text class="ts" x="950" y="268" text-anchor="middle">% por fazenda ou área</text>
+        <circle cx="1060" cy="215" r="10" class="badge"/><text class="badge-t" x="1060" y="219" text-anchor="middle">5</text>
+        <rect x="130" y="205" width="460" height="56" class="ann"/>
+        <text class="tw" x="142" y="224">A tela chama o Centro de Custo de origem de opcional,</text>
+        <text class="tw" x="142" y="239">mas a regra de Nível 1 sem CC nunca é usada.</text>
+        <text class="tw" x="142" y="254">Escolha sempre o CC (pode ser o CC pai).</text>
+        <path d="M590 233 L630 240" class="assoc"/>
+
+        <!-- Nível 2 -->
+        <path d="M950 285 V373" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="958" y="325">parte de cada fazenda</text>
+        <path d="M742 85 H1120 V410 H1072" class="flow" marker-end="url(#ah)"/>
+        <text class="tl" x="752" y="78">Não</text>
+        <rect x="830" y="375" width="240" height="70" rx="8" class="task"/>
+        <text class="tb" x="950" y="398" text-anchor="middle">Regra de Nível 2</text>
+        <text class="ts" x="950" y="414" text-anchor="middle">em cada fazenda: ano + CC(s)</text>
+        <text class="ts" x="950" y="428" text-anchor="middle">% por ciclo ou área plantada</text>
+        <circle cx="1070" cy="375" r="10" class="badge"/><text class="badge-t" x="1070" y="379" text-anchor="middle">6</text>
+        <rect x="130" y="368" width="560" height="62" class="ann"/>
+        <text class="tw" x="142" y="387">Uma só regra por fazenda + Centro de Custo + ano safra.</text>
+        <text class="tw" x="142" y="402">Duas regras que pegam o mesmo CC: o custo não é rateado.</text>
+        <text class="tw" x="142" y="417">Com Nível 1, toda fazenda que recebe parte precisa da sua regra de Nível 2.</text>
+        <path d="M690 400 L830 405" class="assoc"/>
+
+        <!-- Dia a dia -->
+        <path d="M950 445 V510 H680 V538" class="flow" marker-end="url(#ah)"/>
+        <rect x="560" y="540" width="240" height="66" rx="8" class="task"/>
+        <text class="tb" x="680" y="563" text-anchor="middle">Lançar o custo</text>
+        <text class="ts" x="680" y="579" text-anchor="middle">com Centro de Custo</text>
+        <text class="ts" x="680" y="593" text-anchor="middle">e sem ciclo</text>
+        <circle cx="800" cy="540" r="10" class="badge"/><text class="badge-t" x="800" y="544" text-anchor="middle">7</text>
+        <path d="M800 573 H878" class="flow" marker-end="url(#ah)"/>
+        <rect x="880" y="540" width="240" height="66" rx="8" class="task"/>
+        <text class="tb" x="1000" y="563" text-anchor="middle">Conferir no Custo por ha</text>
+        <text class="ts" x="1000" y="579" text-anchor="middle">aviso "sem regra" ou</text>
+        <text class="ts" x="1000" y="593" text-anchor="middle">"mais de uma regra" = ajustar</text>
+        <circle cx="1120" cy="540" r="10" class="badge"/><text class="badge-t" x="1120" y="544" text-anchor="middle">8</text>
+        <path d="M1120 573 H1160 V626 H1180" class="flow" marker-end="url(#ah)"/>
+        <circle cx="1198" cy="626" r="16" class="ev-end"/>
+        <text class="ts" x="1198" y="660" text-anchor="middle">Custo</text>
+        <text class="ts" x="1198" y="674" text-anchor="middle">nos ciclos</text>
+        <rect x="130" y="545" width="380" height="50" class="ann-info"/>
+        <text class="ti" x="142" y="565">Lançamento com ciclo não passa pelo rateio:</text>
+        <text class="ti" x="142" y="581">vai inteiro para o ciclo apontado.</text>
+        <path d="M510 570 L560 573" class="assoc"/>
+      </svg>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head"><h2>Passo a passo</h2></div>
+    <div class="notes">
+      <div class="note"><div class="num">1</div><div><h3>Rodar a Migração 48 (uma vez)</h3><p>Cria a tabela dos percentuais por ciclo, que ainda não existe no banco. Sem ela, a regra de Nível 2 não é salva e, se existir regra, a DRE e o Custo por ha param de carregar. No Supabase SQL Editor, rode o bloco "Migration 48 — Rateio por Centro de Custo" do supabase_migrations.sql. As demais colunas das regras já existem.</p></div></div>
+      <div class="note"><div class="num">2</div><div><h3>Centros de Custo em árvore</h3><p>Em Cadastros → Financeiro → Centros de Custo, organize pais e filhos (ex.: Administração → Escritório, Contabilidade). A regra pega o CC escolhido e todos os filhos dele: uma regra no pai cobre os lançamentos feitos em qualquer filho. A regra de Nível 1 só oferece CCs filhos na lista.</p></div></div>
+      <div class="note"><div class="num">3</div><div><h3>Área plantada nos ciclos</h3><p>Necessária só para regras "Por área". Vem do cadastro do ciclo; sem ela, da área dos plantios aprovados do ciclo. Ciclos auxiliares ficam fora da divisão por área.</p></div></div>
+      <div class="note"><div class="num">4</div><div><h3>Escopo Global na Operação Gerencial (só Nível 1)</h3><p>Em Cadastros → Financeiro → Operações Gerenciais, coluna Escopo CC, marque Global (conta) nas OGs de despesas do cliente inteiro (ex.: honorários do contador, escritório central). Fazenda, Ciclo ou em branco funcionam igual: vão direto para o Nível 2. A tela Configurações → Operações Gerenciais só mostra o escopo; a mudança é feita em Cadastros.</p></div></div>
+      <div class="note"><div class="num">5</div><div><h3>Regra de Nível 1</h3><p>Em Resultados → Regras de Rateio, aba Nível 1 · Global → Fazendas, + Nova Regra. Informe nome, ano safra, Centro de Custo de origem (sempre) e o tipo: Atribuído (percentual por fazenda, somando 100%) ou Por área dos ciclos (proporcional à área plantada de cada fazenda no ano). A regra só pega lançamentos de OG com Escopo Global.</p></div></div>
+      <div class="note"><div class="num">6</div><div><h3>Regra de Nível 2</h3><p>Mesma tela, aba Nível 2 · Fazenda → Ciclos, + Nova Regra. Informe fazenda, ano safra, um ou mais Centros de Custo, nome e o tipo: Atribuído (percentual por ciclo daquela fazenda e ano, somando 100%) ou Por Área Plantada (o sistema calcula). Com Nível 1, cadastre uma regra de Nível 2 com o mesmo CC em cada fazenda que recebe parte; a parte de uma fazenda sem regra fica sem ciclo.</p></div></div>
+      <div class="note"><div class="num">7</div><div><h3>Lançar o custo</h3><p>No CP, na NF ou na folha, informe o Centro de Custo e deixe o ciclo em branco. Na NF, o CC pode ser por item (Apropriação Direta). Se o ciclo for preenchido, o lançamento vai inteiro para ele e o rateio não age.</p></div></div>
+      <div class="note"><div class="num">8</div><div><h3>Conferir</h3><p>Em Resultados → Custo / ha (ou DRE Agrícola), os valores rateados aparecem nos ciclos com o nome da regra. Custo que não achou regra fica sem ciclo e gera um aviso: "sem regra de rateio aplicável", "mais de uma regra de rateio aplicável" ou "regra … sem distribuição válida".</p></div></div>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head">
+      <h2>2. Exemplo: R$ 10.000 de energia do escritório</h2>
+      <p>Lançamento no CP com Centro de Custo Administração, sem ciclo, numa Operação Gerencial marcada como Global. Duas fazendas no ano safra.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 1240 420" role="img" aria-label="Exemplo numérico de rateio em dois níveis">
+        <defs>
+          <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" class="arrowhead"/>
+          </marker>
+        </defs>
+        <rect x="0.5" y="0.5" width="1239" height="419" class="pool"/>
+        <text class="tl" x="185" y="28" text-anchor="middle">LANÇAMENTO</text>
+        <text class="tl" x="540" y="28" text-anchor="middle">NÍVEL 1 · CONTA → FAZENDAS</text>
+        <text class="tl" x="930" y="28" text-anchor="middle">NÍVEL 2 · FAZENDA → CICLOS</text>
+        <line x1="350" y1="40" x2="350" y2="400" class="lane-sep"/>
+        <line x1="740" y1="40" x2="740" y2="400" class="lane-sep"/>
+
+        <rect x="60" y="160" width="250" height="96" rx="8" class="task"/>
+        <text class="tb" x="185" y="186" text-anchor="middle">CP Energia elétrica</text>
+        <text class="tb" x="185" y="206" text-anchor="middle">R$ 10.000,00</text>
+        <text class="ts" x="185" y="224" text-anchor="middle">CC Administração · sem ciclo</text>
+        <text class="ts" x="185" y="240" text-anchor="middle">OG com Escopo Global</text>
+        <path d="M310 208 H386" class="flow" marker-end="url(#ah2)"/>
+        <path d="M410 186 L432 208 L410 230 L388 208 Z" class="gw"/>
+        <path d="M403 201 L417 215 M417 201 L403 215" class="gw-x"/>
+        <text class="tl" x="410" y="256" text-anchor="middle">Regra Nível 1</text>
+        <text class="tl" x="410" y="270" text-anchor="middle">CC Administração</text>
+        <text class="tl" x="410" y="284" text-anchor="middle">Atribuído</text>
+        <path d="M410 186 V110 H498" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="420" y="104">60%</text>
+        <path d="M432 208 H460 V310 H498" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="466" y="300">40%</text>
+        <rect x="500" y="80" width="200" height="60" rx="8" class="task"/>
+        <text class="tb" x="600" y="104" text-anchor="middle">Fazenda A</text>
+        <text class="t" x="600" y="122" text-anchor="middle">R$ 6.000,00</text>
+        <rect x="500" y="280" width="200" height="60" rx="8" class="task"/>
+        <text class="tb" x="600" y="304" text-anchor="middle">Fazenda B</text>
+        <text class="t" x="600" y="322" text-anchor="middle">R$ 4.000,00</text>
+
+        <path d="M700 110 H776" class="flow" marker-end="url(#ah2)"/>
+        <path d="M800 88 L822 110 L800 132 L778 110 Z" class="gw"/>
+        <path d="M793 103 L807 117 M807 103 L793 117" class="gw-x"/>
+        <text class="tl" x="800" y="152" text-anchor="middle">Nível 2 · Faz. A</text>
+        <text class="tl" x="800" y="166" text-anchor="middle">Por área plantada</text>
+        <path d="M800 88 V70 H898" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="808" y="62">600 ha</text>
+        <path d="M822 110 H850 V150 H898" class="flow" marker-end="url(#ah2)"/>
+        <text class="tl" x="856" y="142">400 ha</text>
+        <rect x="900" y="46" width="220" height="48" rx="8" class="task"/>
+        <text class="tb" x="1010" y="66" text-anchor="middle">Soja 26/27 · Faz. A</text>
+        <text class="t" x="1010" y="84" text-anchor="middle">R$ 3.600,00 (60%)</text>
+        <rect x="900" y="126" width="220" height="48" rx="8" class="task"/>
+        <text class="tb" x="1010" y="146" text-anchor="middle">Milho 26/27 · Faz. A</text>
+        <text class="t" x="1010" y="164" text-anchor="middle">R$ 2.400,00 (40%)</text>
+
+        <path d="M700 310 H776" class="flow" marker-end="url(#ah2)"/>
+        <path d="M800 288 L822 310 L800 332 L778 310 Z" class="gw"/>
+        <path d="M793 303 L807 317 M807 303 L793 317" class="gw-x"/>
+        <text class="tl" x="800" y="352" text-anchor="middle">Nível 2 · Faz. B</text>
+        <text class="tl" x="800" y="366" text-anchor="middle">Atribuído: Soja 100%</text>
+        <path d="M822 310 H898" class="flow" marker-end="url(#ah2)"/>
+        <rect x="900" y="286" width="220" height="48" rx="8" class="task"/>
+        <text class="tb" x="1010" y="306" text-anchor="middle">Soja 26/27 · Faz. B</text>
+        <text class="t" x="1010" y="324" text-anchor="middle">R$ 4.000,00</text>
+
+        <path d="M1120 70 H1170 V92" class="flow" marker-end="url(#ah2)"/>
+        <path d="M1120 150 H1170 V128" class="flow" marker-end="url(#ah2)"/>
+        <circle cx="1170" cy="110" r="16" class="ev-end"/>
+        <path d="M1120 310 H1152" class="flow" marker-end="url(#ah2)"/>
+        <circle cx="1170" cy="310" r="16" class="ev-end"/>
+        <text class="ts" x="1170" y="392" text-anchor="middle">Total: R$ 10.000,00</text>
+      </svg>
+    </div>
+    <div class="alerts">
+      <div class="alert info"><h3>O que mudaria sem a regra de Nível 2 da Fazenda B</h3><p>Os R$ 4.000,00 da Fazenda B ficariam sem ciclo, com o aviso "sem regra de rateio aplicável". Os R$ 6.000,00 da Fazenda A continuariam rateados normalmente.</p></div>
+      <div class="alert info"><h3>E se a OG não fosse Global</h3><p>O Nível 1 seria ignorado. O lançamento iria direto para o Nível 2 da fazenda em que foi feito, e só ela receberia os R$ 10.000,00.</p></div>
+    </div>
+  </section>
+
+  <section class="print-page">
+    <div class="sec-head"><h2>Quando o custo não é rateado</h2><p>Cada causa aparece como aviso no relatório; o custo fica sem ciclo até a regra ser corrigida. Nada é gravado nos lançamentos: corrigir a regra corrige o relatório na hora.</p></div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Situação</th><th>O que acontece</th><th>Como corrigir</th></tr></thead>
+        <tbody>
+          <tr><td>Lançamento com ciclo</td><td><span class="pill ok">Vai direto ao ciclo</span> sem rateio</td><td>Se o custo é rateável, deixe o ciclo em branco</td></tr>
+          <tr><td>Lançamento sem CC</td><td><span class="pill no">Sem rateio</span></td><td>Informe o Centro de Custo</td></tr>
+          <tr><td>Nenhuma regra para o CC</td><td><span class="pill no">sem regra de rateio aplicável</span></td><td>Cadastre a regra no CC ou num CC pai</td></tr>
+          <tr><td>Duas regras pegam o mesmo CC</td><td><span class="pill no">mais de uma regra aplicável</span></td><td>Deixe uma ativa (desative ou exclua a outra)</td></tr>
+          <tr><td>Percentuais não somam 100%</td><td><span class="pill no">sem distribuição válida</span></td><td>Ajuste as linhas da regra</td></tr>
+          <tr><td>Ciclo da regra de outro ano ou fazenda</td><td><span class="pill no">sem distribuição válida</span></td><td>Escolha ciclos do mesmo ano safra e fazenda</td></tr>
+          <tr><td>Por área, sem área nos ciclos</td><td><span class="pill no">sem distribuição válida</span></td><td>Informe a área plantada no ciclo</td></tr>
+          <tr><td>Regra de Nível 1 sem CC de origem</td><td><span class="pill no">sem rateio global aplicável</span></td><td>Escolha o CC de origem na regra</td></tr>
+          <tr><td>Nível 1 manda parte a fazenda sem Nível 2</td><td><span class="pill mid">Só essa parte</span> fica sem ciclo</td><td>Cadastre o Nível 2 nessa fazenda com o mesmo CC</td></tr>
+          <tr><td>Regra inativa</td><td><span class="pill no">Ignorada</span></td><td>Marque a regra como ativa</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="alerts">
+      <div class="alert"><h3>Estado do banco hoje (18/11/2026)</h3><p>A tabela dos percentuais (Migração 48) não existe; nenhuma regra de Nível 2 está cadastrada; existe 1 regra de Nível 1 ("Rateio Safra 2026/2027", com CC), mas nenhuma Operação Gerencial está marcada como Global, então ela não pega nenhum lançamento. Comece pelo passo 1.</p></div>
+    </div>
+  </section>
+
+  <footer>Fonte: código de apuração (DRE Agrícola e Custo por ha), tela Regras de Rateio e consultas de leitura no banco de produção, 18/11/2026.</footer>
+</div>
+
+</body></html>
