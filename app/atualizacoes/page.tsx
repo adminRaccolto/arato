@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-g",
+    data: "18/11/2026",
+    titulo: "Visualização em fichas: campos sem sobreposição",
+    modulos: ["Interface", "Cadastros", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na opção Fichas do Novo Layout, os campos passam a crescer conforme seu conteúdo. Rótulos, valores, indicadores e botões deixam de se sobrepor, inclusive quando a densidade compacta está ativa. A correção atende as listagens que compartilham essa visualização, como Bombas & Tanques e Financeiro." },
+      { tipo: "melhoria", texto: "As fichas distribuem os campos em quatro, duas ou uma coluna conforme o espaço disponível. Descrições longas quebram a linha, tabelas dentro de um campo mantêm seu formato e os controles de movimentação permanecem acessíveis." },
+    ],
+    onde: "Novo Layout → listagens → Fichas",
+  },
+  {
     versao: "2026.11.18-f",
     data: "18/11/2026",
     titulo: "Rescisão e 13º: valores editáveis para espelhar a contabilidade",
