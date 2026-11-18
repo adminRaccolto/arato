@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { avosDecimo, calcularDecimo, valorPrimeira } from "./decimo-terceiro.ts";
+import { aplicarAjustesDecimo, avosDecimo, calcularDecimo, valorPrimeira } from "./decimo-terceiro.ts";
 
 test("avos: ano inteiro, admissão no meio do ano e a regra dos 15 dias", () => {
   assert.equal(avosDecimo("2020-03-10", null, 2026), 12);
@@ -54,4 +54,20 @@ test("% da 1ª parcela: descontos sempre na 2ª e 1ª limitada ao líquido", () 
   assert.equal(calcularDecimo(3000, 12).parcela1, 1500);          // padrão continua 50%
   assert.equal(valorPrimeira(1000, 0, 0, 40).valor, 400);          // abaixo do mínimo: calcula, a tela avisa
   assert.equal(valorPrimeira(1000, 50, 0, 200).valor, 950);        // % fora da faixa vira 100% e bate no teto
+});
+
+test("valores da contabilidade por cima do cálculo do 13º", () => {
+  const c = calcularDecimo(3000, 12);
+  // sem ajuste: igual ao cálculo
+  const s = aplicarAjustesDecimo(c, {});
+  assert.equal(s.p1, c.parcela1); assert.equal(s.p2, c.parcela2); assert.equal(s.inss, c.inss);
+  // INSS e IRRF da contabilidade: a 2ª acompanha, a 1ª (50% do bruto) não muda
+  const a = aplicarAjustesDecimo(c, { inss: 200, irrf: 0 });
+  assert.equal(a.p1, 1500); assert.equal(a.p2, 1300);
+  // bruto diferente: 1ª e 2ª recalculadas sobre ele
+  const b = aplicarAjustesDecimo(c, { bruto: 3200, inss: 200, irrf: 0 });
+  assert.equal(b.p1, 1600); assert.equal(b.p2, 1400);
+  // 1ª e 2ª informadas valem como estão
+  const d = aplicarAjustesDecimo(c, { p1: 1000, p2: 1777.77 });
+  assert.equal(d.p1, 1000); assert.equal(d.p2, 1777.77); assert.equal(d.limitada, false);
 });

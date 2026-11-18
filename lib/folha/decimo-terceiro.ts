@@ -61,3 +61,18 @@ export function calcularDecimo(base: number, avos: number, complemento = 0, pct1
   const pct = bruto > 0 ? r2(p1.valor / bruto * 100) : Math.max(0, Math.min(100, pct1));
   return { bruto, brutoTributavel, parcela1: p1.valor, inss, irrf, parcela2: Math.max(0, r2(bruto - inss - irrf - p1.valor)), pct1: pct, teto1: p1.teto, limitada: p1.limitada };
 }
+
+export type AjustesDecimo = { bruto?: number; inss?: number; irrf?: number; p1?: number; p2?: number };
+
+/**
+ * Valores informados por cima do cálculo (18/11/2026 — a contabilidade às vezes calcula diferente e o Arato precisa
+ * espelhar). O que não foi informado segue a regra: 1ª pelo % sobre o bruto (limitada a bruto − INSS − IRRF) e
+ * 2ª = bruto − INSS − IRRF − 1ª. 1ª ou 2ª informadas valem como estão.
+ */
+export function aplicarAjustesDecimo(c: CalculoDecimo, a: AjustesDecimo, pct1 = PCT_PRIMEIRA_MINIMO) {
+  const bruto = r2(a.bruto ?? c.bruto), inss = r2(a.inss ?? c.inss), irrf = r2(a.irrf ?? c.irrf);
+  const auto1 = valorPrimeira(bruto, inss, irrf, pct1);
+  const p1 = r2(a.p1 ?? auto1.valor);
+  const p2 = r2(a.p2 ?? Math.max(0, bruto - inss - irrf - p1));
+  return { bruto, inss, irrf, p1, p2, pct1: bruto > 0 ? r2(p1 / bruto * 100) : pct1, limitada: a.p1 === undefined && auto1.limitada };
+}

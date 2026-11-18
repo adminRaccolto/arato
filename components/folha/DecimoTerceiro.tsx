@@ -8,7 +8,7 @@ import InputData from "../InputData";
 import { OperationalButton } from "../OperationalUI";
 import { confirmarAcao } from "../ConfirmarAcao";
 import { supabase } from "../../lib/supabase";
-import { avosDecimo, calcularDecimo, PCT_PRIMEIRA_MINIMO } from "../../lib/folha/decimo-terceiro";
+import { aplicarAjustesDecimo, avosDecimo, calcularDecimo, PCT_PRIMEIRA_MINIMO, type AjustesDecimo } from "../../lib/folha/decimo-terceiro";
 
 type Func = { id: string; nome: string; fazenda_id: string; data_admissao: string | null; data_demissao: string | null; salario_base: number | null; complemento_salarial?: number | null; area_trabalho: string | null; funcao?: string | null; ativo: boolean };
 type Reg = { id: string; funcionario_id: string; avos: number; base: number; bruto: number; inss: number; irrf: number; parcela1_valor: number | null; parcela1_vencimento: string | null; parcela1_lancamento_id: string | null; parcela2_valor: number | null; parcela2_vencimento: string | null; parcela2_lancamento_id: string | null };
@@ -43,6 +43,8 @@ export default function DecimoTerceiro() {
   // Base do 13º: só o salário da carteira ou salário + complemento salarial (escolha do usuário; lembrada no navegador)
   const [comComplemento, setComComplemento] = useState(false);
   const [avosEd, setAvosEd] = useState<Record<string, string>>({});
+  // Valores digitados por cima do cálculo (espelhar a contabilidade): bruto, 1ª, INSS, IRRF e 2ª, por funcionário
+  const [ajustes, setAjustes] = useState<Record<string, Partial<Record<keyof AjustesDecimo, string>>>>({});
   const [sel, setSel] = useState<Set<string>>(new Set());
   // % do 13º pago na 1ª parcela (padrão e mínimo legal 50%); os descontos ficam todos na 2ª. Lembrado no navegador.
   const [pct1Txt, setPct1Txt] = useState(String(PCT_PRIMEIRA_MINIMO));
@@ -90,6 +92,7 @@ export default function DecimoTerceiro() {
       setBases(Object.fromEntries(lista.map(f => [f.id, fmtBase(Number(mapa.get(f.id)?.base ?? baseCadastro(f, comComplemento)))])));
       setAvosEd(Object.fromEntries(lista.map(f => [f.id, String(mapa.get(f.id)?.avos || avosDecimo(f.data_admissao, null, ano))])));
       setSel(new Set());
+      setAjustes({});
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -137,11 +140,19 @@ export default function DecimoTerceiro() {
     // fica travada: vale o que foi gravado nela, não o seletor atual.
     const compCadastro = Number(f.complemento_salarial ?? 0);
     const temComplemento = s1 === "lancar" ? comComplemento : compCadastro > 0 && base >= Number(f.salario_base ?? 0) + compCadastro - 0.01;
-    const c = calcularDecimo(base, avos, temComplemento ? compCadastro : 0, pct1);
-    // 2ª parcela desconta o que foi lançado na 1ª (se já lançada, o valor gravado)
-    const p1 = s1 !== "lancar" ? Number(reg?.parcela1_valor ?? c.parcela1) : c.parcela1;
-    const p2 = s2 !== "lancar" ? Number(reg?.parcela2_valor ?? 0) : Math.max(0, Math.round((c.bruto - c.inss - c.irrf - p1) * 100) / 100);
-    return { f, reg, avos, base, c, s1, s2, p1, p2 };
+    const calc = calcularDecimo(base, avos, temComplemento ? compCadastro : 0, pct1);
+    // Valores digitados valem sobre o cálculo; com a 1ª lançada, bruto/INSS/IRRF gravados nela são o ponto de partida da 2ª
+    const aj = ajustes[f.id] ?? {};
+    const num = (k: keyof AjustesDecimo) => (aj[k] !== undefined && aj[k] !== "" ? numBR(aj[k]!) : undefined);
+    const r = aplicarAjustesDecimo(calc, {
+      bruto: num("bruto") ?? (s1 !== "lancar" && reg ? Number(reg.bruto) : undefined),
+      inss: num("inss") ?? (s1 !== "lancar" && reg ? Number(reg.inss) : undefined),
+      irrf: num("irrf") ?? (s1 !== "lancar" && reg ? Number(reg.irrf) : undefined),
+      p1: s1 !== "lancar" ? Number(reg?.parcela1_valor ?? calc.parcela1) : num("p1"),
+      p2: s2 !== "lancar" ? Number(reg?.parcela2_valor ?? 0) : num("p2"),
+    }, pct1);
+    const c = { ...calc, bruto: r.bruto, inss: r.inss, irrf: r.irrf, pct1: r.pct1, limitada: r.limitada };
+    return { f, reg, avos, base, c, s1, s2, p1: r.p1, p2: r.p2, editado: Object.values(aj).some(v => v !== undefined && v !== "") };
   });
   const tot = linhas.reduce((t, l) => ({ bruto: t.bruto + l.c.bruto, p1: t.p1 + l.p1, inss: t.inss + l.c.inss, irrf: t.irrf + l.c.irrf, p2: t.p2 + l.p2 }), { bruto: 0, p1: 0, inss: 0, irrf: 0, p2: 0 });
 
@@ -178,6 +189,13 @@ export default function DecimoTerceiro() {
     await carregar();
   }
 
+  // Valor editável enquanto a parcela não foi lançada; vazio = volta ao calculado
+  const campo = (fid: string, k: keyof AjustesDecimo, valor: number, editavel: boolean) => !editavel ? fmtBRL(valor) : (
+    <input value={ajustes[fid]?.[k] ?? fmtBase(valor)} inputMode="decimal"
+      onChange={e => setAjustes(p => ({ ...p, [fid]: { ...p[fid], [k]: e.target.value.replace(/[^\d.,]/g, "") } }))}
+      style={{ ...inp, width: 96, textAlign: "right", padding: "4px 6px", borderColor: ajustes[fid]?.[k] !== undefined ? "#C9921B" : undefined }}
+      title="Calculado pelo Arato; digite o valor da contabilidade se for diferente" />
+  );
   const chip = (s: string, venc?: string | null) => (
     <span style={{ display: "inline-block", fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 7, background: SIT[s].bg, color: SIT[s].cor }}>{SIT[s].rot}{venc && s !== "lancar" ? ` · ${fmtData(venc)}` : ""}</span>
   );
@@ -236,11 +254,11 @@ export default function DecimoTerceiro() {
                       <td style={{ ...td, textAlign: "left" }}>{fmtData(l.f.data_admissao)}</td>
                       <td style={td}><input value={avosEd[l.f.id] ?? ""} disabled={travado} onChange={e => setAvosEd(p => ({ ...p, [l.f.id]: e.target.value.replace(/\D/g, "").slice(0, 2) }))} style={{ ...inp, width: 44, textAlign: "right" }} title="Meses com 15 dias ou mais trabalhados no ano" />/12</td>
                       <td style={td}><input value={bases[l.f.id] ?? ""} disabled={travado} onChange={e => setBases(p => ({ ...p, [l.f.id]: e.target.value }))} style={{ ...inp, width: 100, textAlign: "right" }} /></td>
-                      <td style={{ ...td, fontWeight: 600 }}>{fmtBRL(l.c.bruto)}</td>
-                      <td style={td}>{fmtBRL(l.p1)}{l.s1 === "lancar" && l.c.limitada && <div style={{ fontSize: 10, color: "#7A5200" }} title="A 1ª não pode passar do 13º menos INSS e IRRF: a 2ª precisa ter valor para os descontos">limitada ao líquido ({fmtPct(l.c.pct1)})</div>}<div>{chip(l.s1, l.reg?.parcela1_vencimento)}{l.s1 === "aberto" && <button type="button" onClick={() => estornar(l.f, 1)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
-                      <td style={{ ...td, color: "var(--text-2)" }} title={l.c.brutoTributavel !== l.c.bruto ? `INSS e IRRF sobre ${fmtBRL(l.c.brutoTributavel)}, sem o complemento` : undefined}>{fmtBRL(l.c.inss)}{l.c.brutoTributavel !== l.c.bruto && <div style={{ fontSize: 10, color: "var(--text-3)" }}>sobre {fmtBRL(l.c.brutoTributavel)}</div>}</td>
-                      <td style={{ ...td, color: "var(--text-2)" }}>{fmtBRL(l.c.irrf)}</td>
-                      <td style={td}>{fmtBRL(l.p2)}<div>{chip(l.s2, l.reg?.parcela2_vencimento)}{l.s2 === "aberto" && <button type="button" onClick={() => estornar(l.f, 2)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
+                      <td style={{ ...td, fontWeight: 600 }}>{campo(l.f.id, "bruto", l.c.bruto, l.s2 === "lancar")}{l.editado && <div><button type="button" onClick={() => setAjustes(p => { const n = { ...p }; delete n[l.f.id]; return n; })} style={{ border: "none", background: "none", color: "#1A4870", fontSize: 10, cursor: "pointer", padding: 0 }} title="Descartar os valores digitados nesta linha">voltar ao cálculo</button></div>}</td>
+                      <td style={td}>{campo(l.f.id, "p1", l.p1, l.s1 === "lancar")}{l.s1 === "lancar" && l.c.limitada && <div style={{ fontSize: 10, color: "#7A5200" }} title="A 1ª não pode passar do 13º menos INSS e IRRF: a 2ª precisa ter valor para os descontos">limitada ao líquido ({fmtPct(l.c.pct1)})</div>}<div>{chip(l.s1, l.reg?.parcela1_vencimento)}{l.s1 === "aberto" && <button type="button" onClick={() => estornar(l.f, 1)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
+                      <td style={{ ...td, color: "var(--text-2)" }} title={l.c.brutoTributavel !== l.c.bruto ? `INSS e IRRF sobre ${fmtBRL(l.c.brutoTributavel)}, sem o complemento` : undefined}>{campo(l.f.id, "inss", l.c.inss, l.s2 === "lancar")}{l.c.brutoTributavel !== l.c.bruto && <div style={{ fontSize: 10, color: "var(--text-3)" }}>sobre {fmtBRL(l.c.brutoTributavel)}</div>}</td>
+                      <td style={{ ...td, color: "var(--text-2)" }}>{campo(l.f.id, "irrf", l.c.irrf, l.s2 === "lancar")}</td>
+                      <td style={td}>{campo(l.f.id, "p2", l.p2, l.s2 === "lancar")}<div>{chip(l.s2, l.reg?.parcela2_vencimento)}{l.s2 === "aberto" && <button type="button" onClick={() => estornar(l.f, 2)} style={{ marginLeft: 4, border: "none", background: "none", color: "#B91C1C", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>estornar</button>}</div></td>
                     </tr>
                   );
                 })}

@@ -83,6 +83,9 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
   const [fgtsMesEd, setFgtsMesEd] = useState<string | null>(null);
   const [ajustes, setAjustes] = useState<Record<string, string>>({});
   const [outros, setOutros] = useState("");
+  // Espelhar o cálculo da contabilidade (18/11/2026): multa do FGTS editável e verbas a mais (linhas livres)
+  const [multaEd, setMultaEd] = useState<string | null>(null);
+  const [extras, setExtras] = useState<{ id: string; descricao: string; tipo: "provento" | "desconto"; valor: string }[]>([]);
   const [obs, setObs] = useState("");
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState("");
@@ -128,13 +131,15 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
   const verbas: VerbaRescisao[] = useMemo(() => [
     ...verbasBase, ...automaticas,
     ...(num(outros) > 0 ? [{ codigo: "outros", descricao: "Outros descontos", valor: num(outros), tipo: "desconto" as const }] : []),
-  ], [verbasBase, automaticas, outros]);
+    ...extras.filter(x => num(x.valor) > 0).map(x => ({ codigo: `extra_${x.id}`, descricao: x.descricao.trim() || (x.tipo === "provento" ? "Outro provento" : "Outro desconto"), valor: num(x.valor), tipo: x.tipo })),
+  ], [verbasBase, automaticas, outros, extras]);
 
   const { proventos, descontos, liquido } = totaisRescisao(verbas);
   const fgtsEst = func.data_admissao ? estimarSaldoFgts(salarioBase, func.data_admissao, desligamento) : 0;
   const fgtsBase = saldoFgts !== null ? num(saldoFgts) : fgtsEst;
   const fgtsMes = fgtsMesEd !== null ? num(fgtsMesEd) : impostos.fgtsMes;
-  const multa = multaFgts(fgtsBase, fgtsMes, multaFgtsPct(tipo));
+  const multaCalc = multaFgts(fgtsBase, fgtsMes, multaFgtsPct(tipo));
+  const multa = multaEd !== null ? num(multaEd) : multaCalc;
   const prazo = pagto || (desligamento ? addDias(desligamento, 10) : "");
   const demitidoNoCadastro = !!func.data_demissao && func.ativo !== false;
 
@@ -223,6 +228,27 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
                       <td style={{ padding: "4px 12px" }}><input style={{ ...inp, textAlign: "right", padding: "4px 8px" }} value={ajustes[v.codigo] ?? mask(verbas.find(x => x.codigo === v.codigo)?.valor ?? v.valor)} onChange={e => setAjustes(p => ({ ...p, [v.codigo]: e.target.value }))} /></td>
                     </tr>
                   ))}
+                  {extras.map(x => (
+                    <tr key={x.id} style={{ borderTop: "0.5px solid #F0F2F6" }}>
+                      <td style={{ padding: "4px 12px" }}>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <select value={x.tipo} onChange={e => setExtras(p => p.map(y => y.id === x.id ? { ...y, tipo: e.target.value as "provento" | "desconto" } : y))} style={{ ...inp, width: 110, padding: "4px 6px" }}>
+                            <option value="provento">Provento</option><option value="desconto">Desconto</option>
+                          </select>
+                          <input placeholder="Descrição da verba" value={x.descricao} onChange={e => setExtras(p => p.map(y => y.id === x.id ? { ...y, descricao: e.target.value } : y))} style={{ ...inp, padding: "4px 8px" }} />
+                          <button type="button" title="Remover" onClick={() => setExtras(p => p.filter(y => y.id !== x.id))} style={{ border: "none", background: "none", color: "#E24B4A", cursor: "pointer", fontSize: 14 }}>×</button>
+                        </div>
+                      </td>
+                      <td style={{ padding: "4px 12px" }}><input style={{ ...inp, textAlign: "right", padding: "4px 8px" }} placeholder="0,00" value={x.valor} onChange={e => setExtras(p => p.map(y => y.id === x.id ? { ...y, valor: e.target.value } : y))} /></td>
+                    </tr>
+                  ))}
+                  <tr style={{ borderTop: "0.5px solid #F0F2F6" }}>
+                    <td colSpan={2} style={{ padding: "4px 12px" }}>
+                      <button type="button" onClick={() => setExtras(p => [...p, { id: crypto.randomUUID().slice(0, 8), descricao: "", tipo: "provento", valor: "" }])}
+                        style={{ border: "none", background: "none", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                        title="Verba que a contabilidade lançou e o Arato não calcula (ou que ficou zerada no cálculo)">+ Adicionar verba</button>
+                    </td>
+                  </tr>
                   <tr style={{ borderTop: "0.5px solid #F0F2F6" }}>
                     <td style={{ padding: "6px 12px", color: "#E24B4A" }}>(−) Outros descontos (vales, danos…)</td>
                     <td style={{ padding: "4px 12px" }}><input style={{ ...inp, textAlign: "right", padding: "4px 8px" }} placeholder="0,00" value={outros} onChange={e => setOutros(e.target.value)} /></td>
@@ -247,7 +273,9 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
             <div><label data-arato-label="true" style={lbl}>Saldo do FGTS{multaFgtsPct(tipo) > 0 ? ` (multa ${multaFgtsPct(tipo) * 100}%)` : ""}</label>
               <input style={inp} disabled={multaFgtsPct(tipo) === 0} value={saldoFgts ?? mask(fgtsEst)} onChange={e => setSaldoFgts(e.target.value)} />
               <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Estimativa; corrija com o extrato do FGTS.</div></div>
-            <div><label data-arato-label="true" style={lbl}>Multa do FGTS</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} readOnly value={fmt(multa)} /></div>
+            <div><label data-arato-label="true" style={lbl}>Multa do FGTS</label>
+              <input style={inp} value={multaEd ?? mask(multaCalc)} onChange={e => setMultaEd(e.target.value)} />
+              {multaEd !== null && <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Calculado: {fmt(multaCalc)} · <button type="button" onClick={() => setMultaEd(null)} style={{ border: "none", background: "none", color: "#1A4870", fontSize: 10, cursor: "pointer", padding: 0 }}>voltar ao cálculo</button></div>}</div>
             <div><label data-arato-label="true" style={lbl}>Pagar até (10 dias corridos)</label><InputData type="date" style={inp} value={prazo} onChange={e => setPagto(e.target.value)} /></div>
           </div>
           <div style={{ marginTop: 12 }}><label data-arato-label="true" style={lbl}>Observação</label><input style={inp} value={obs} onChange={e => setObs(e.target.value)} /></div>

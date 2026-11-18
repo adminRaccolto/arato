@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-f",
+    data: "18/11/2026",
+    titulo: "Rescisão e 13º: valores editáveis para espelhar a contabilidade",
+    modulos: ["Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "13º Salário: além de avos e base, agora dá para digitar 13º bruto, 1ª parcela, INSS, IRRF e 2ª parcela de cada funcionário quando a contabilidade calcular diferente. O campo alterado fica destacado e \"voltar ao cálculo\" descarta." },
+      { tipo: "melhoria", texto: "Rescisão: a multa do FGTS passou a ser editável, e \"+ Adicionar verba\" inclui proventos ou descontos que o Arato não calcula (ou que ficaram zerados no cálculo)." },
+    ],
+    onde: "Financeiro → Folha de Pagamento → abas 13º Salário e Rescisões",
+  },
+  {
     versao: "2026.11.18-e",
     data: "18/11/2026",
     titulo: "Resultados: DRE comparativa por ciclo e apuração unificada",
