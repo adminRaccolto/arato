@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.18-l",
+    data: "18/11/2026",
+    titulo: "Custos Totais: relatório sintético ou detalhado",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "melhoria", texto: "Escolha o Formato do relatório antes de imprimir ou exportar Custos Totais. Sintético é o padrão e apresenta os totais e categorias, com a visão por ciclo selecionada, sem listar os pagamentos. Detalhado acrescenta a relação completa dos pagamentos e dos itens para conferência." },
+      { tipo: "melhoria", texto: "PDF e Excel respeitam a opção escolhida. A consulta dos pagamentos na tela continua disponível para conferir os valores, independentemente do formato de exportação." },
+    ],
+    onde: "Resultados → Custos Totais → Formato do relatório",
+  },
+  {
     versao: "2026.11.18-k",
     data: "18/11/2026",
     titulo: "Adiantamentos a Fornecedores sem filtro de fazenda",

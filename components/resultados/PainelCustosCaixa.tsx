@@ -48,6 +48,7 @@ export function PainelCustosCaixa({
   grupo = "",
   pagina = 0,
   impressao = false,
+  formato = "sintetico",
   selecionarCiclo,
   selecionarGrupo,
   mudarPagina,
@@ -59,6 +60,7 @@ export function PainelCustosCaixa({
   grupo?: string;
   pagina?: number;
   impressao?: boolean;
+  formato?: "sintetico" | "detalhado";
   selecionarCiclo?: (id: string) => void;
   selecionarGrupo?: (id: string) => void;
   mudarPagina?: (n: number) => void;
@@ -77,6 +79,7 @@ export function PainelCustosCaixa({
   const linhas = impressao
     ? lista
     : lista.slice(paginaAtual * 50, (paginaAtual + 1) * 50);
+  const exibirPagamentos = !impressao || formato === "detalhado";
   const card = {
     padding: 18,
     border: "1px solid var(--border, rgb(213, 223, 227))",
@@ -266,140 +269,147 @@ export function PainelCustosCaixa({
         )}
       </section>
 
-      <section aria-label="Pagamentos que compõem os custos" style={card}>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 14,
-          }}
-        >
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18 }}>
-              {grupo ? categoriaCaixa(grupo) : "Pagamentos do período"}
-            </h2>
-            <p style={{ margin: "6px 0 0", fontSize: 13 }}>
-              {lista.length} títulos · {dinheiroCaixa(totalCustosCaixa(lista))}
-            </p>
-          </div>
-          {grupo && !impressao && (
-            <OperationalButton onClick={() => selecionarGrupo?.("")}>
-              Ver todas as categorias
-            </OperationalButton>
-          )}
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <OperationalGrid
-            data-op-title={impressao ? undefined : "Desembolsos operacionais"}
-            style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}
-          >
-            <thead>
-              <tr>
-                {[
-                  "Baixa",
-                  "Documento / pagamento",
-                  "Fazenda",
-                  "Ciclo",
-                  "Categoria",
-                  "Desembolso operacional",
-                ].map((c) => (
-                  <th
-                    key={c}
-                    scope="col"
-                    style={{
-                      textAlign: "left",
-                      padding: "10px 8px",
-                      borderBottom: "1px solid rgb(213, 223, 227)",
-                    }}
-                  >
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {linhas.map((p) => (
-                <tr key={p.id}>
-                  <td style={{ padding: 10, whiteSpace: "nowrap" }}>
-                    {exibirData(p.data)}
-                  </td>
-                  <td
-                    style={{
-                      padding: 10,
-                      minWidth: impressao ? undefined : 210,
-                    }}
-                  >
-                    <strong>{p.documento || "Sem nº de documento"}</strong>
-                    <div>{p.descricao}</div>
-                    <small>
-                      {p.origem === "lancamentos"
-                        ? "CP do produtor"
-                        : "CP da empresa"}
-                    </small>
-                  </td>
-                  <td style={{ padding: 10 }}>
-                    {ref.fazendas.find((f) => f.id === p.fazendaId)?.nome ??
-                      "Fazenda não localizada"}
-                  </td>
-                  <td style={{ padding: 10 }}>
-                    {nomeCicloCaixa(p.cicloId, ref)}
-                  </td>
-                  <td style={{ padding: 10 }}>
-                    {p.categoria}
-                    <div>
-                      <small>{p.operacao}</small>
-                    </div>
-                  </td>
-                  <td
-                    style={{
-                      padding: 10,
-                      textAlign: "right",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <strong>{dinheiroCaixa(p.valor)}</strong>
-                    {p.encargos > 0 && (
-                      <div style={{ fontSize: 11, whiteSpace: "normal" }}>
-                        Pagamento: {dinheiroCaixa(p.pago)} · juros/multa
-                        excluídos: {dinheiroCaixa(p.encargos)}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </OperationalGrid>
-        </div>
-        {!impressao && paginas > 1 && (
+      {exibirPagamentos && (
+        <section aria-label="Pagamentos que compõem os custos" style={card}>
           <div
             style={{
               display: "flex",
-              gap: 12,
+              flexWrap: "wrap",
               alignItems: "center",
-              marginTop: 14,
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 14,
             }}
           >
-            <OperationalButton
-              disabled={paginaAtual === 0}
-              onClick={() => mudarPagina?.(paginaAtual - 1)}
-            >
-              Anterior
-            </OperationalButton>
-            <span>
-              Página {paginaAtual + 1} de {paginas}
-            </span>
-            <OperationalButton
-              disabled={paginaAtual + 1 === paginas}
-              onClick={() => mudarPagina?.(paginaAtual + 1)}
-            >
-              Próxima
-            </OperationalButton>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18 }}>
+                {grupo ? categoriaCaixa(grupo) : "Pagamentos do período"}
+              </h2>
+              <p style={{ margin: "6px 0 0", fontSize: 13 }}>
+                {lista.length} títulos ·{" "}
+                {dinheiroCaixa(totalCustosCaixa(lista))}
+              </p>
+            </div>
+            {grupo && !impressao && (
+              <OperationalButton onClick={() => selecionarGrupo?.("")}>
+                Ver todas as categorias
+              </OperationalButton>
+            )}
           </div>
-        )}
-      </section>
+          <div style={{ overflowX: "auto" }}>
+            <OperationalGrid
+              data-op-title={impressao ? undefined : "Desembolsos operacionais"}
+              style={{
+                width: "100%",
+                fontSize: 12,
+                borderCollapse: "collapse",
+              }}
+            >
+              <thead>
+                <tr>
+                  {[
+                    "Baixa",
+                    "Documento / pagamento",
+                    "Fazenda",
+                    "Ciclo",
+                    "Categoria",
+                    "Desembolso operacional",
+                  ].map((c) => (
+                    <th
+                      key={c}
+                      scope="col"
+                      style={{
+                        textAlign: "left",
+                        padding: "10px 8px",
+                        borderBottom: "1px solid rgb(213, 223, 227)",
+                      }}
+                    >
+                      {c}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((p) => (
+                  <tr key={p.id}>
+                    <td style={{ padding: 10, whiteSpace: "nowrap" }}>
+                      {exibirData(p.data)}
+                    </td>
+                    <td
+                      style={{
+                        padding: 10,
+                        minWidth: impressao ? undefined : 210,
+                      }}
+                    >
+                      <strong>{p.documento || "Sem nº de documento"}</strong>
+                      <div>{p.descricao}</div>
+                      <small>
+                        {p.origem === "lancamentos"
+                          ? "CP do produtor"
+                          : "CP da empresa"}
+                      </small>
+                    </td>
+                    <td style={{ padding: 10 }}>
+                      {ref.fazendas.find((f) => f.id === p.fazendaId)?.nome ??
+                        "Fazenda não localizada"}
+                    </td>
+                    <td style={{ padding: 10 }}>
+                      {nomeCicloCaixa(p.cicloId, ref)}
+                    </td>
+                    <td style={{ padding: 10 }}>
+                      {p.categoria}
+                      <div>
+                        <small>{p.operacao}</small>
+                      </div>
+                    </td>
+                    <td
+                      style={{
+                        padding: 10,
+                        textAlign: "right",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <strong>{dinheiroCaixa(p.valor)}</strong>
+                      {p.encargos > 0 && (
+                        <div style={{ fontSize: 11, whiteSpace: "normal" }}>
+                          Pagamento: {dinheiroCaixa(p.pago)} · juros/multa
+                          excluídos: {dinheiroCaixa(p.encargos)}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </OperationalGrid>
+          </div>
+          {!impressao && paginas > 1 && (
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                marginTop: 14,
+              }}
+            >
+              <OperationalButton
+                disabled={paginaAtual === 0}
+                onClick={() => mudarPagina?.(paginaAtual - 1)}
+              >
+                Anterior
+              </OperationalButton>
+              <span>
+                Página {paginaAtual + 1} de {paginas}
+              </span>
+              <OperationalButton
+                disabled={paginaAtual + 1 === paginas}
+                onClick={() => mudarPagina?.(paginaAtual + 1)}
+              >
+                Próxima
+              </OperationalButton>
+            </div>
+          )}
+        </section>
+      )}
 
       {dados.pendencias.length > 0 && (
         <section
@@ -411,40 +421,47 @@ export function PainelCustosCaixa({
             fora do total operacional.
           </strong>
           <p style={{ fontSize: 13 }}>
-            Confira a classificação ou os dados de baixa indicados abaixo. Os
-            pagamentos sem ciclo com classificação operacional já estão
-            incluídos no total.
+            Confira a classificação e os dados de baixa na tela ou no relatório
+            detalhado. Os pagamentos sem ciclo com classificação operacional
+            já estão incluídos no total.
           </p>
-          <details open={impressao}>
-            <summary>Ver pagamentos a conferir</summary>
+          {exibirPagamentos && (
+            <details open={impressao}>
+              <summary>Ver pagamentos a conferir</summary>
+              <ul>
+                {dados.pendencias.map((p) => (
+                  <li key={p.id} style={{ marginTop: 10 }}>
+                    {p.descricao}
+                    {p.valor !== null && ` · ${dinheiroCaixa(p.valor)}`}
+                    <div>{p.motivo}</div>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+      )}
+      {dados.excluidos.length > 0 &&
+        (exibirPagamentos ? (
+          <details style={card} open={impressao}>
+            <summary>
+              {dados.excluidos.length} pagamentos fora do escopo operacional
+            </summary>
             <ul>
-              {dados.pendencias.map((p) => (
-                <li key={p.id} style={{ marginTop: 10 }}>
+              {dados.excluidos.map((p) => (
+                <li key={p.id} style={{ marginTop: 8 }}>
                   {p.descricao}
-                  {p.valor !== null && ` · ${dinheiroCaixa(p.valor)}`}
-                  <div>{p.motivo}</div>
+                  {p.valor !== null && ` · ${dinheiroCaixa(p.valor)}`} —{" "}
+                  {p.motivo}
                 </li>
               ))}
             </ul>
           </details>
-        </section>
-      )}
-      {dados.excluidos.length > 0 && (
-        <details style={card} open={impressao}>
-          <summary>
-            {dados.excluidos.length} pagamentos fora do escopo operacional
-          </summary>
-          <ul>
-            {dados.excluidos.map((p) => (
-              <li key={p.id} style={{ marginTop: 8 }}>
-                {p.descricao}
-                {p.valor !== null && ` · ${dinheiroCaixa(p.valor)}`} —{" "}
-                {p.motivo}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+        ) : (
+          <p style={{ margin: 0, fontSize: 13 }}>
+            {dados.excluidos.length} pagamentos fora do escopo operacional.
+          </p>
+        ))}
     </div>
   );
 }

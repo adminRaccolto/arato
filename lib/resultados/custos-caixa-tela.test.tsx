@@ -108,11 +108,81 @@ test("exportação conserva ciclo, data, categoria, total pago e encargos; impre
     <PainelCustosCaixa dados={d} referencias={ref} visao="total" />,
   );
   const print = renderToStaticMarkup(
-    <PainelCustosCaixa dados={d} referencias={ref} visao="total" impressao />,
+    <PainelCustosCaixa
+      dados={d}
+      referencias={ref}
+      visao="total"
+      formato="detalhado"
+      impressao
+    />,
   );
   assert.doesNotMatch(normal, /Pagamento 50</);
   assert.match(print, /Pagamento 50</);
   assert.match(normal, /Página 1 de 2/);
+});
+test("impressão sintética é o padrão e preserva totais sem listar pagamentos, pendências ou exclusões individuais", () => {
+  const d = dados();
+  d.pendencias.push({
+    id: "p",
+    descricao: "Pagamento a conferir individual",
+    motivo: "Classificação pendente",
+    valor: 50,
+  });
+  d.excluidos.push({
+    id: "e",
+    descricao: "Pagamento excluído individual",
+    motivo: "Investimento",
+    valor: 500,
+  });
+  for (const active of [false, true]) {
+    for (const visao of ["total", "ciclos"] as const) {
+      const html = renderToStaticMarkup(
+        <OperationalPresentation active={active}>
+          <PainelCustosCaixa
+            dados={d}
+            referencias={ref}
+            visao={visao}
+            impressao
+          />
+        </OperationalPresentation>,
+      );
+      assert.match(html, /R\$ 300,00/);
+      assert.match(html, /Em que foi gasto/);
+      assert.match(html, /1 pagamentos precisam de conferência/);
+      assert.match(html, /1 pagamentos fora do escopo operacional/);
+      assert.doesNotMatch(
+        html,
+        /Pagamentos do período|Documento \/ pagamento|Sementes pagas|Serviço pago|Pagamento a conferir individual|Pagamento excluído individual/,
+      );
+    }
+  }
+});
+test("escolher detalhado imprime os pagamentos selecionados e a relação de conferência", () => {
+  const d = dados();
+  d.pendencias.push({
+    id: "p",
+    descricao: "Pagamento a conferir individual",
+    motivo: "Classificação pendente",
+    valor: 50,
+  });
+  for (const active of [false, true]) {
+    const html = renderToStaticMarkup(
+      <OperationalPresentation active={active}>
+        <PainelCustosCaixa
+          dados={d}
+          referencias={ref}
+          visao="ciclos"
+          ciclo="__sem_ciclo__"
+          formato="detalhado"
+          impressao
+        />
+      </OperationalPresentation>,
+    );
+    assert.match(html, /Documento \/ pagamento/);
+    assert.match(html, /Serviço pago/);
+    assert.match(html, /Pagamento a conferir individual/);
+    assert.doesNotMatch(html, /Sementes pagas/);
+  }
 });
 test("pendências explicam pagamentos sem classificação; não ocultam o pagamento nem o motivo", () => {
   const d = dados();

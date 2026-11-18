@@ -47,6 +47,9 @@ export default function RelatorioCustosCaixa() {
   const [fim, setFim] = useState(() => hojeLocal());
   const [ano, setAno] = useState("");
   const [visao, setVisao] = useState<"total" | "ciclos">("total");
+  const [formato, setFormato] = useState<"sintetico" | "detalhado">(
+    "sintetico",
+  );
   const [ciclo, setCiclo] = useState("");
   const [grupo, setGrupo] = useState("");
   const [pagina, setPagina] = useState(0);
@@ -159,18 +162,29 @@ export default function RelatorioCustosCaixa() {
         },
         { rotulo: "Fazendas", valor: snapshot.fazenda },
         {
+          rotulo: "Formato",
+          valor:
+            formato === "detalhado"
+              ? "Detalhado — com relação de pagamentos"
+              : "Sintético — resumo dos custos",
+        },
+        {
           rotulo: "Ciclo",
           valor:
             visao === "ciclos" && ciclo
               ? nomeCicloCaixa(ciclo, snapshot.ref)
               : "Todos, incluindo sem ciclo",
         },
-        {
-          rotulo: "Detalhe dos pagamentos",
-          valor: grupo
-            ? categoriaCaixa(grupo)
-            : "Todas as categorias operacionais",
-        },
+        ...(formato === "detalhado"
+          ? [
+              {
+                rotulo: "Detalhe dos pagamentos",
+                valor: grupo
+                  ? categoriaCaixa(grupo)
+                  : "Todas as categorias operacionais",
+              },
+            ]
+          : []),
         {
           rotulo: "Regime",
           valor:
@@ -210,32 +224,40 @@ export default function RelatorioCustosCaixa() {
             nomeCicloCaixa(c.id, s.ref),
             c.valor,
           ]),
+          [],
+          [
+            "Pagamentos a conferir — fora do total operacional",
+            s.dados.pendencias.length,
+          ],
+          ["Pagamentos fora do escopo operacional", s.dados.excluidos.length],
         ]),
         "Resumo",
       );
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet(linhasPagamentosCaixa(itens, s.ref)),
-        "Pagamentos",
-      );
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet([
-          ...s.dados.pendencias.map((p) => ({
-            Situação: "A conferir — fora do total",
-            Descrição: p.descricao,
-            Motivo: p.motivo,
-            "Valor pago conhecido (R$)": p.valor,
-          })),
-          ...s.dados.excluidos.map((p) => ({
-            Situação: "Fora do escopo operacional",
-            Descrição: p.descricao,
-            Motivo: p.motivo,
-            "Valor pago conhecido (R$)": p.valor,
-          })),
-        ]),
-        "Conferência do período",
-      );
+      if (formato === "detalhado") {
+        XLSX.utils.book_append_sheet(
+          wb,
+          XLSX.utils.json_to_sheet(linhasPagamentosCaixa(itens, s.ref)),
+          "Pagamentos",
+        );
+        XLSX.utils.book_append_sheet(
+          wb,
+          XLSX.utils.json_to_sheet([
+            ...s.dados.pendencias.map((p) => ({
+              Situação: "A conferir — fora do total",
+              Descrição: p.descricao,
+              Motivo: p.motivo,
+              "Valor pago conhecido (R$)": p.valor,
+            })),
+            ...s.dados.excluidos.map((p) => ({
+              Situação: "Fora do escopo operacional",
+              Descrição: p.descricao,
+              Motivo: p.motivo,
+              "Valor pago conhecido (R$)": p.valor,
+            })),
+          ]),
+          "Conferência do período",
+        );
+      }
       XLSX.writeFile(
         wb,
         nomeRelatorio("Custos Totais", s.cliente, s.inicio, s.fim) + ".xlsx",
@@ -447,7 +469,31 @@ export default function RelatorioCustosCaixa() {
                 {exibirData(snapshot.inicio)} a {exibirData(snapshot.fim)} ·{" "}
                 {snapshot.fazenda}
               </span>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "end",
+                  gap: 8,
+                }}
+              >
+                <label>
+                  Formato do relatório
+                  <SelectField
+                    value={formato}
+                    onChange={(e) =>
+                      setFormato(e.target.value as "sintetico" | "detalhado")
+                    }
+                    style={input}
+                  >
+                    <option value="sintetico">
+                      Sintético — somente resumo
+                    </option>
+                    <option value="detalhado">
+                      Detalhado — com pagamentos
+                    </option>
+                  </SelectField>
+                </label>
                 <OperationalButton onClick={imprimir}>
                   PDF / Imprimir
                 </OperationalButton>
@@ -480,6 +526,7 @@ export default function RelatorioCustosCaixa() {
                   visao={visao}
                   ciclo={ciclo}
                   grupo={grupo}
+                  formato={formato}
                   impressao
                 />
               </div>

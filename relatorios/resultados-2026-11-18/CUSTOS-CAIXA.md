@@ -14,7 +14,7 @@ Entrega de 18/11/2026, substituindo, somente em Custos Totais, a apresentação 
 
 ## Apresentação e exportação
 
-Painel com total operacional, parcelas com/sem ciclo, categorias com participação e lista paginada de pagamentos. Visão por ciclo usa seletores com valores, sem estrutura de DRE. Selecionar uma categoria abre sua composição; o resumo continua mostrando todo o ciclo/período selecionado. PDF e Excel preservam essa distinção e incluem a relação completa do detalhe selecionado, além dos itens a conferir e dos pagamentos fora do escopo.
+Painel com total operacional, parcelas com/sem ciclo, categorias com participação e lista paginada de pagamentos. Visão por ciclo usa seletores com valores, sem estrutura de DRE. Selecionar uma categoria abre sua composição; o resumo continua mostrando todo o ciclo/período selecionado. PDF e Excel respeitam o campo **Formato do relatório**: **Sintético** (padrão) traz o resumo, sem relações individuais de pagamentos, pendências ou exclusões; **Detalhado** acrescenta a relação completa do detalhe selecionado e os itens para conferência. No sintético, as quantidades de pagamentos pendentes e fora do escopo continuam informadas. A consulta na tela conserva os detalhes em ambos os formatos.
 
 Alterar datas, fazenda ou cliente invalida o resultado/exportação anterior. Respostas de consultas antigas não substituem o resultado de filtros novos. Falha de consulta ou página interrompe a geração inteira, em vez de apresentar uma origem como zero.
 
@@ -25,6 +25,7 @@ Alterar datas, fazenda ou cliente invalida o resultado/exportação anterior. Re
 - ESLint dos arquivos alterados e build de produção aprovados.
 - Navegador Chromium com componentes/CSS reais e dados fictícios: layouts Padrão e Novo em 1440 e 393 px; total, seleção por ciclo/sem ciclo, composição por categoria, paginação e fichas, sem erro de JavaScript ou transbordamento horizontal da página.
 - `tsc --noEmit` geral continua apontando os 13 erros preexistentes em testes fiscais e de inativação da folha; nenhum diagnóstico nos novos arquivos. O build do aplicativo passa.
+- Complemento Sintético/Detalhado: 68 testes dos relatórios aprovados e build aprovado. No navegador, o componente completo foi exercitado nos dois layouts e nas larguras de 1440/393 px, com captura do conteúdo enviado ao PDF e leitura dos arquivos Excel efetivamente baixados: sintético somente com Resumo; detalhado com os 51 pagamentos de teste, inclusive os da segunda página, e itens de conferência. Os totais são idênticos nos dois formatos.
 
 ## Limites de dados históricos
 
