@@ -317,7 +317,7 @@ export default function AdiantamentosPage() {
   return (
     <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 24px" }}>
+      <div style={{ width: "100%", boxSizing: "border-box", padding: "20px 16px" }}>
 
         {/* Header */}
         <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
@@ -395,26 +395,26 @@ export default function AdiantamentosPage() {
                   const pctApliq = a.valor > 0 ? (a.valor_aplicado ?? 0) / a.valor * 100 : 0;
                   return (
                     <tr key={a.id} style={{ borderBottom: "0.5px solid #F0F4F8" }}>
-                      <td style={tdS}>
+                      <td style={{ ...tdS, minWidth: 180 }}>
                         <div style={{ fontWeight: 600 }}>{nomePessoa(a.pessoa_id)}</div>
                       </td>
-                      <td style={tdS}>
+                      <td style={{ ...tdS, minWidth: 200 }}>
                         <div>{a.descricao}</div>
-                        {a.observacao && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{a.observacao}</div>}
+                        {a.observacao && a.observacao.trim() !== (a.descricao ?? "").trim() && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{a.observacao}</div>}
                       </td>
                       <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>
                         {a.nr_documento || "—"}
                         {pedidoDoAdiantamento(a) && <div style={{ fontFamily: "inherit", fontSize: 10, color: "#0B2D50", marginTop: 2 }}>Pedido {pedidoDoAdiantamento(a)!.nr_pedido || `#${pedidoDoAdiantamento(a)!.numero}`}</div>}
                       </td>
-                      <td style={tdS}>{fmtData(a.data_emissao)}</td>
-                      <td style={{ ...tdS, color: a.data_previsao ? "var(--text-1)" : "var(--text-muted)" }}>
+                      <td style={{ ...tdS, whiteSpace: "nowrap" }}>{fmtData(a.data_emissao)}</td>
+                      <td style={{ ...tdS, whiteSpace: "nowrap", color: a.data_previsao ? "var(--text-1)" : "var(--text-muted)" }}>
                         {a.data_previsao ? (() => {
                           const dias = Math.ceil((new Date(a.data_previsao).getTime() - Date.now()) / 86400000);
                           const cor = dias < 0 ? "#E24B4A" : dias <= 7 ? "#EF9F27" : "var(--text-1)";
                           return <span style={{ color: cor }}>{fmtData(a.data_previsao)}{dias < 0 ? " (atrasado)" : dias <= 7 ? ` (${dias}d)` : ""}</span>;
                         })() : "—"}
                       </td>
-                      <td style={{ ...tdS, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtMoeda(a.valor,a.moeda)}</td>
+                      <td style={{ ...tdS, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtMoeda(a.valor,a.moeda)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
                         <div style={{ fontVariantNumeric: "tabular-nums", color: pctApliq > 0 ? "#1A5C38" : "var(--text-muted)" }}>{fmtMoeda(a.valor_aplicado ?? 0,a.moeda)}</div>
                         {pctApliq > 0 && (
@@ -424,10 +424,10 @@ export default function AdiantamentosPage() {
                         )}
                       </td>
                       <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: saldo > 0 ? "#7A5520" : "#1A5C38", fontVariantNumeric: "tabular-nums" }}>{fmtMoeda(saldo,a.moeda)}<div style={{ fontSize: 10, fontWeight: 400 }}>Crédito pago: {fmtMoeda(a.credito_disponivel ?? 0,a.moeda)}</div></td>
-                      <td style={tdS}>{statusPagamento(a)}<div style={{ fontSize: 11 }}>A pagar: {a.saldo_a_pagar == null ? "Conferir" : fmtMoeda(a.saldo_a_pagar, a.moeda)}</div></td>
+                      <td style={{ ...tdS, whiteSpace: "nowrap" }}>{statusPagamento(a)}<div style={{ fontSize: 11 }}>A pagar: {a.saldo_a_pagar == null ? "Conferir" : fmtMoeda(a.saldo_a_pagar, a.moeda)}</div></td>
                       <td style={tdS}>{badge(a.status)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", whiteSpace: "nowrap" }}>
                           <OperationalButton data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</OperationalButton>
                           {a.status !== "cancelado" && Number(a.saldo_a_pagar) > 0 && <OperationalButton data-arato-button="primary" style={{ ...btnSm, background: "#1A5C38", color: "#fff" }} onClick={() => abrirBaixa(a)}>Baixar pagamento</OperationalButton>}
                           {(a.status === "em_aberto" || a.status === "parcial") && (a.credito_disponivel ?? 0) > 0 && (
