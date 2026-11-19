@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.19-a",
+    data: "19/11/2026",
+    titulo: "Relatório Compras por Produto",
+    modulos: ["Compras", "Documentos Fiscais"],
+    itens: [
+      { tipo: "novidade", texto: "Novo relatório com só o movimento de entrada fiscal de compra, somado por produto: quantidade, valor, preço médio, último preço e notas de cada produto. Remessas, retornos, transferências, devoluções, bonificações e simples faturamento de entrega futura ficam de fora. Filtros por período, fazenda, produto, fornecedor, grupo e apropriação; visão sintética ou nota a nota; exporta PDF e Excel." },
+    ],
+    onde: "Comercial & Logística → Relatórios → Compras por Produto",
+  },
+  {
     versao: "2026.11.18-o",
     data: "18/11/2026",
     titulo: "Gratificação de funcionário vai para a OG Prêmio Funcionários",
