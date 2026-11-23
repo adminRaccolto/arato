@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { type: "divider", label: "Correções" },
   { type: "link",    id: "saude-dados", label: "Saúde dos dados",     icon: "🩺", path: "/admin/saude-dados" },
   { type: "link",    id: "cp-produtor", label: "CP sem Produtor (IA)",  icon: "🤖", path: "/admin/cp-produtor" },
+  { type: "link",    id: "fundir-produtos", label: "Fundir Produtos",  icon: "⧉",  path: "/admin/fundir-produtos" },
   { type: "divider", label: "Acesso" },
   { type: "link",    id: "usuarios",  label: "Usuários & Permissões",  icon: "🔑", path: "/admin/usuarios" },
   { type: "link",    id: "parceiros", label: "Parceiros BPO",          icon: "🤝", path: "/admin/parceiros" },

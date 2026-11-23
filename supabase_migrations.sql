@@ -23569,3 +23569,88 @@ UPDATE lancamentos l SET operacao_gerencial_id = fn_og_gratificacao(l.fazenda_id
     AND fn_og_gratificacao(l.fazenda_id) IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 461 — Fundir cadastros de produto pela tela da Raccolto, escolhendo o que permanece (23/11/2026)
+-- Gestão Arato → Correções → Fundir Produtos. Usa o motor da Seção 366 (fn_mesclar_insumos: troca o produto em NF,
+-- movimentações de estoque e todo vínculo, mesma unidade e tipo, tudo ou nada) e, na mesma transação, grava no cadastro
+-- que fica os campos escolhidos entre os cadastros fundidos. O valor anterior de cada campo fica em
+-- insumos_mesclagens.campos_antes e o desfazer devolve também os campos.
+-- ═══════════════════════════════════════════════════════════════════════════════
+ALTER TABLE insumos_mesclagens ADD COLUMN IF NOT EXISTS campos_antes jsonb;
+
+CREATE OR REPLACE FUNCTION fn_insumo_aplicar_campos(p_id uuid, p_campos jsonb) RETURNS void AS $$
+  UPDATE insumos i SET
+    nome               = CASE WHEN p_campos ? 'nome'               THEN r.nome               ELSE i.nome END,
+    categoria          = CASE WHEN p_campos ? 'categoria'          THEN r.categoria          ELSE i.categoria END,
+    subgrupo           = CASE WHEN p_campos ? 'subgrupo'           THEN r.subgrupo           ELSE i.subgrupo END,
+    grupo_id           = CASE WHEN p_campos ? 'grupo_id'           THEN r.grupo_id           ELSE i.grupo_id END,
+    fabricante         = CASE WHEN p_campos ? 'fabricante'         THEN r.fabricante         ELSE i.fabricante END,
+    ncm                = CASE WHEN p_campos ? 'ncm'                THEN r.ncm                ELSE i.ncm END,
+    principio_ativo_id = CASE WHEN p_campos ? 'principio_ativo_id' THEN r.principio_ativo_id ELSE i.principio_ativo_id END,
+    cultura_id         = CASE WHEN p_campos ? 'cultura_id'         THEN r.cultura_id         ELSE i.cultura_id END,
+    estoque_minimo     = CASE WHEN p_campos ? 'estoque_minimo'     THEN r.estoque_minimo     ELSE i.estoque_minimo END,
+    deposito_padrao_id = CASE WHEN p_campos ? 'deposito_padrao_id' THEN r.deposito_padrao_id ELSE i.deposito_padrao_id END,
+    foto_url           = CASE WHEN p_campos ? 'foto_url'           THEN r.foto_url           ELSE i.foto_url END
+  FROM jsonb_populate_record(NULL::insumos, p_campos) r
+  WHERE i.id = p_id
+$$ LANGUAGE sql SET search_path = public;
+
+CREATE OR REPLACE FUNCTION fn_mesclar_insumos_escolhendo(p_destino uuid, p_origens uuid[], p_campos jsonb, p_feito_por text DEFAULT NULL)
+RETURNS jsonb AS $$
+DECLARE
+  v_permitidos text[] := ARRAY['nome','categoria','subgrupo','grupo_id','fabricante','ncm','principio_ativo_id','cultura_id',
+                               'estoque_minimo','deposito_padrao_id','foto_url'];
+  v_campos jsonb := coalesce(p_campos, '{}'::jsonb);
+  v_k text; v_antes jsonb; v_res jsonb;
+BEGIN
+  IF jsonb_typeof(v_campos) <> 'object' THEN RAISE EXCEPTION 'Campos escolhidos em formato inválido.'; END IF;
+  FOR v_k IN SELECT jsonb_object_keys(v_campos) LOOP
+    IF NOT v_k = ANY(v_permitidos) THEN RAISE EXCEPTION 'Campo % não pode ser escolhido na fusão.', v_k; END IF;
+  END LOOP;
+  IF v_campos ? 'nome' AND trim(coalesce(v_campos->>'nome', '')) = '' THEN RAISE EXCEPTION 'O nome do produto não pode ficar vazio.'; END IF;
+
+  SELECT coalesce(jsonb_object_agg(k, to_jsonb(i) -> k), '{}'::jsonb) INTO v_antes
+    FROM insumos i, jsonb_object_keys(v_campos) k WHERE i.id = p_destino;
+
+  v_res := fn_mesclar_insumos(p_destino, p_origens, p_feito_por);
+
+  -- Depois da fusão: as origens já estão inativas, então o nome de uma delas pode passar ao cadastro que fica
+  IF v_campos <> '{}'::jsonb THEN
+    PERFORM fn_insumo_aplicar_campos(p_destino, v_campos);
+    UPDATE insumos_mesclagens SET campos_antes = v_antes WHERE id = (v_res->>'mesclagem_id')::uuid;
+  END IF;
+  RETURN v_res || jsonb_build_object('campos_alterados', (SELECT count(*) FROM jsonb_object_keys(v_campos)));
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Desfazer: devolve primeiro os campos do cadastro que ficou (antes de reativar as origens, que podem ter o mesmo nome)
+CREATE OR REPLACE FUNCTION fn_desfazer_mesclagem(p_mesclagem uuid) RETURNS jsonb AS $$
+DECLARE v_m record; x jsonb; v_n int := 0;
+BEGIN
+  SELECT * INTO v_m FROM insumos_mesclagens WHERE id = p_mesclagem FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Mesclagem não encontrada.'; END IF;
+  IF v_m.desfeita_em IS NOT NULL THEN RAISE EXCEPTION 'Mesclagem já desfeita em %.', v_m.desfeita_em; END IF;
+  FOR x IN SELECT * FROM jsonb_array_elements(v_m.alteracoes) LOOP
+    IF x->>'c' = 'lotes_semente' THEN
+      UPDATE nf_entrada_itens SET lotes_semente = x->'de' WHERE id = (x->>'id')::uuid;
+    ELSE
+      EXECUTE format('UPDATE %s SET %I = $1 WHERE id = $2', x->>'t', x->>'c') USING (x->>'de')::uuid, (x->>'id')::uuid;
+    END IF;
+    v_n := v_n + 1;
+  END LOOP;
+  IF v_m.campos_antes IS NOT NULL AND v_m.campos_antes <> '{}'::jsonb THEN
+    PERFORM fn_insumo_aplicar_campos(v_m.destino_id, v_m.campos_antes);
+  END IF;
+  UPDATE insumos SET ativo = true, mesclado_em = NULL, mesclado_at = NULL WHERE id = ANY(v_m.origem_ids);
+  UPDATE insumos SET custo_medio = v_m.custo_antes WHERE id = v_m.destino_id AND v_m.custo_antes IS NOT NULL;
+  PERFORM fn_estoque_recalcular(v_m.destino_id);
+  FOR x IN SELECT to_jsonb(u) FROM unnest(v_m.origem_ids) u LOOP PERFORM fn_estoque_recalcular((x #>> '{}')::uuid); END LOOP;
+  UPDATE insumos_mesclagens SET desfeita_em = now() WHERE id = p_mesclagem;
+  RETURN jsonb_build_object('linhas_restauradas', v_n);
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION fn_insumo_aplicar_campos(uuid, jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_mesclar_insumos_escolhendo(uuid, uuid[], jsonb, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_desfazer_mesclagem(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION fn_mesclar_insumos_escolhendo(uuid, uuid[], jsonb, text), fn_desfazer_mesclagem(uuid) TO service_role;
+NOTIFY pgrst, 'reload schema';
