@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.23-c",
+    data: "23/11/2026",
+    titulo: "Painel de Notas com aba de Remessas e aviso da operação fiscal",
+    modulos: ["Documentos Fiscais"],
+    itens: [
+      { tipo: "correcao", texto: "As remessas (armazém, simbólica e demais 59xx/69xx) saíram da aba Notas de Venda e ganharam a aba Notas de Remessa. Antes apareciam como venda e somavam no faturamento, inclusive as registradas de outro sistema sem CFOP, agora reconhecidas pela natureza da operação." },
+      { tipo: "melhoria", texto: "Quando o CFOP tem mais de uma operação fiscal cadastrada (ex.: 5101 Venda para Industrialização e Venda com Fixação), o campo Operação fiscal cadastrada avisa para escolher uma, e a mensagem de recusa do espelho ou da emissão diz quais são as opções." },
+    ],
+    onde: "Documentos Fiscais → Painel de Notas; Saídas → Venda Avulsa / Por Contrato → aba Operações-CFOP",
+  },
+  {
     versao: "2026.11.23-b",
     data: "23/11/2026",
     titulo: "Processar a NF direto pela baixa do Contas a Pagar",

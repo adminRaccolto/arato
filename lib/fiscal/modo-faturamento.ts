@@ -24,9 +24,12 @@ const RETORNO_BEM = new Set(["5909", "6909", "5913", "6913", "5916", "6916"]);
 const DEVOLUCAO = /^[56](2\d\d|41[0-3]|55[356])$/;
 
 /** Em qual modo da tela uma NF de saída aparece. */
-export function modoDaNota(n: { cfop?: string | null; dados_nf_json?: unknown }): ModoFaturamento | null {
-  const c = so(n.cfop);
-  if (!c) return null;
+export function modoDaNota(n: { cfop?: string | null; natureza?: string | null; dados_nf_json?: unknown }): ModoFaturamento | null {
+  // Remessa registrada de outro sistema sem CFOP gravado (ex.: Cleber, 28/10/2026): o CFOP vem do início da natureza
+  // ("5934 - REMESSA…") ou, sem número, a palavra remessa basta — antes elas caíam em Notas de Venda e no faturamento.
+  const nat = String(n.natureza ?? "");
+  const c = so(n.cfop) || (/^\s*([1-7])\.?(\d{3})\b/.exec(nat)?.slice(1).join("") ?? "");
+  if (!c) return /remessa/i.test(nat) ? "remessa" : null;
   if (DEVOLUCAO.test(c) || RETORNO_BEM.has(c)) return "devolucao";
   if (c[1] === "9" || REMESSA_EXTRA.has(c)) return "remessa";
   const dj = (n.dados_nf_json ?? {}) as { contrato_id?: string | null };

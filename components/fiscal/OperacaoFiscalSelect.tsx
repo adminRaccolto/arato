@@ -35,6 +35,7 @@ export default function OperacaoFiscalSelect({cfop,data,value,onChange,variaveis
     {!!campos.length&&<div data-arato-fields="true" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginTop:10}}>
       {campos.map(nome=><label key={nome} style={{fontSize:12}}>{nome.replaceAll("_"," ")}<input value={variaveis[nome] ?? ""} onChange={e=>onVariaveis({...variaveis,[nome]:e.target.value})} style={{display:"block",width:"100%",padding:8,border:"1px solid var(--border-table)",borderRadius:6,background:"var(--bg-card)",color:"var(--text-1)"}}/></label>)}
     </div>}
+    {!value&&aplicaveis.filter(o=>o.fazenda_id===fazendaId).length>1&&<span role="alert" style={{display:"block",marginTop:6,fontSize:12,color:"#92400E"}}>Há {aplicaveis.filter(o=>o.fazenda_id===fazendaId).length} operações cadastradas para o CFOP {cfop}. Escolha uma acima — no automático a emissão é recusada quando elas têm textos ou tributação diferentes.</span>}
     {erro&&<span role="alert" style={{color:"#b42318"}}>{erro}</span>}
   </div>;
 }

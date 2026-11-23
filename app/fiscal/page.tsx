@@ -95,7 +95,7 @@ const MODOS_EMISSAO: Record<number, string> = {
   6: "SVC-RS (Contingência)",
 };
 
-type Aba = "venda" | "devolucao" | "transferencia" | "cancelamento" | "complemento" | "certificado" | "contingencia";
+type Aba = "venda" | "remessa" | "devolucao" | "transferencia" | "cancelamento" | "complemento" | "certificado" | "contingencia";
 
 // ── Naturezas de Transferência ────────────────────────────────────────────────
 const NATUREZAS_TRANSFERENCIA = [
@@ -1429,13 +1429,23 @@ function FiscalInner() {
   const notasDevolucao  = notas.filter(n => (n.tipo === "entrada" && (n.cfop?.startsWith("1.2") || n.cfop?.startsWith("2.2")))
     || (n.tipo === "saida" && modoDaNota(n) === "devolucao")
     || !!(n.dados_nf_json as Record<string, unknown> | null)?.retorno_recusa_de);
-  const notasVenda      = notas.filter(n => n.tipo === "saida" && modoDaNota(n) !== "devolucao" && !ehTransferenciaNota(n));
+  // Remessas (armazém, simbólica, outras saídas 59xx/69xx) têm aba própria: antes caíam em Notas de Venda e somavam no
+  // faturamento (achado 23/11/2026, Cleber — inclusive as registradas sem CFOP, reconhecidas pela natureza)
+  const notasRemessa    = notas.filter(n => n.tipo === "saida" && modoDaNota(n) === "remessa" && !ehTransferenciaNota(n));
+  const notasVenda      = notas.filter(n => n.tipo === "saida" && modoDaNota(n) !== "devolucao" && modoDaNota(n) !== "remessa" && !ehTransferenciaNota(n));
   const notasCanceladas = notas.filter(n => n.status === "cancelada");
   const notasAutorizadas = notas.filter(n => n.status === "autorizada" && n.tipo === "saida");
 
-  const totalAutorizadas  = notasVenda.filter(n => n.status === "autorizada").length;
-  const totalRejeitadas   = notasVenda.filter(n => n.status === "rejeitada" || n.status === "denegada").length;
-  const totalProcessando  = notasVenda.filter(n => n.status === "em_digitacao").length;
+  // Aba Notas de Venda ou Notas de Remessa: mesma grade, lista conforme a aba
+  const notasGrade        = aba === "remessa" ? notasRemessa : notasVenda;
+  const totalAutorizadas  = notasGrade.filter(n => n.status === "autorizada").length;
+  const totalRejeitadas   = notasGrade.filter(n => n.status === "rejeitada" || n.status === "denegada").length;
+  const totalProcessando  = notasGrade.filter(n => n.status === "em_digitacao").length;
+  // Cartões do topo: vendas e remessas juntas (como antes da aba Notas de Remessa), sem depender da aba aberta
+  const saidasKpi         = [...notasVenda, ...notasRemessa];
+  const kpiAutorizadas    = saidasKpi.filter(n => n.status === "autorizada").length;
+  const kpiRejeitadas     = saidasKpi.filter(n => n.status === "rejeitada" || n.status === "denegada").length;
+  const kpiProcessando    = saidasKpi.filter(n => n.status === "em_digitacao").length;
   const faturamentoMes    = notasVenda.filter(n => n.status === "autorizada" && n.data_emissao >= "2026-03-01").reduce((a, n) => a + n.valor_total, 0);
 
   const proximoNumero = () => {
@@ -2154,6 +2164,7 @@ function FiscalInner() {
 
   const ABAS: { key: Aba; label: string; count?: number; alert?: boolean }[] = [
     { key: "venda",         label: "Notas de Venda",       count: notasVenda.length },
+    { key: "remessa",       label: "Notas de Remessa",     count: notasRemessa.length },
     { key: "devolucao",     label: "Nota de Devolução",    count: notasDevolucao.length },
     { key: "transferencia", label: "NF de Transferência",  count: notasTransferencia.length },
     { key: "cancelamento",  label: "Cancelamento de Nota", count: notasCanceladas.length },
@@ -2166,6 +2177,7 @@ function FiscalInner() {
     // Venda da produção sai pelo menu Saídas; este emissor fica para outras saídas até a tela Venda de Outros Bens
     venda:         { label: "◈ Outra NF-e de Saída",         onClick: () => { setBuscaPessoa(""); setDropdownPessoa(false); setModalVenda(true); } },
     // A devolução de compra sai da NF do fornecedor (Notas de Fornecedores → Devolver); ver aba Nota de Devolução
+    remessa:       { label: "◈ Nova Remessa",                onClick: () => router.push("/fiscal/remessas") },
     devolucao:     null,
     transferencia: { label: "◈ Nova NF de Transferência",   onClick: () => setModalTransferencia(true) },
     cancelamento:  null,
@@ -2205,10 +2217,10 @@ function FiscalInner() {
               {/* KPI cards */}
               <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
-                  { label: "NF-e autorizadas",   valor: String(totalAutorizadas),  cor: "#111111", sub: `${notas.filter(n => n.auto).length} emitidas automaticamente` },
+                  { label: "NF-e autorizadas",   valor: String(kpiAutorizadas),  cor: "#111111", sub: `${notas.filter(n => n.auto).length} emitidas automaticamente` },
                   { label: "Faturamento (mês)",   valor: fmtMoeda(faturamentoMes), cor: "#111111", sub: "notas autorizadas" },
                   { label: "Certificado A1",       valor: certDiasMin !== null ? `${certDiasMin}d` : "—",  cor: certDiasMin !== null && certDiasMin <= 15 ? "#E24B4A" : "#EF9F27", sub: certs.length === 0 ? "Nenhum certificado" : `${certs.length} certificado(s)` },
-                  { label: "Pendências",           valor: String(totalRejeitadas + totalProcessando), cor: totalRejeitadas > 0 ? "#E24B4A" : "#EF9F27", sub: `${totalRejeitadas} rejeitada(s) · ${totalProcessando} processando` },
+                  { label: "Pendências",           valor: String(kpiRejeitadas + kpiProcessando), cor: kpiRejeitadas > 0 ? "#E24B4A" : "#EF9F27", sub: `${kpiRejeitadas} rejeitada(s) · ${kpiProcessando} processando` },
                 ].map((s, i) => (
                   <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
@@ -2271,11 +2283,11 @@ function FiscalInner() {
               </div>
 
               {/* ── ABA: NOTAS DE VENDA ── */}
-              {aba === "venda" && (
+              {(aba === "venda" || aba === "remessa") && (
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 6 }}>
                     {[
-                      { label: "Todas", count: notasVenda.length, filter: null },
+                      { label: "Todas", count: notasGrade.length, filter: null },
                       { label: "Autorizadas", count: totalAutorizadas, filter: "autorizada" },
                       { label: "Rejeitadas", count: totalRejeitadas, filter: "rejeitada" },
                       { label: "Em digitação", count: totalProcessando, filter: "em_digitacao" },
@@ -2288,14 +2300,14 @@ function FiscalInner() {
                         </OperationalButton>
                       );
                     })}
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{notas.filter(n => n.auto).length}/{notasVenda.length} emitidas automaticamente</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{notasGrade.filter(n => n.auto).length}/{notasGrade.length} emitidas automaticamente</span>
                   </div>
                   <TabelaNFe ieEmitente={ieDaNota}
                       onTransmitirVenda={n => void transmitirVendaDoPainel(n)}
                       onEspelhoVenda={espelhoVendaDoPainel}
                       onEditarVenda={n => router.push(`/comercial/faturamento?editar_nota=${n.id}`)}
                       onExcluirVenda={excluirVendaDoPainel}
-                    notas={filtroStatusVenda ? notasVenda.filter(n => n.status === filtroStatusVenda || (filtroStatusVenda === "rejeitada" && n.status === "denegada")) : notasVenda}
+                    notas={filtroStatusVenda ? notasGrade.filter(n => n.status === filtroStatusVenda || (filtroStatusVenda === "rejeitada" && n.status === "denegada")) : notasGrade}
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => router.push(`/comercial/faturamento?complementar=${n.id}`)}
                     onConsultarSefaz={consultarSefaz}
@@ -2319,7 +2331,7 @@ function FiscalInner() {
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>
-                      Faturamento total: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(notasVenda.filter(n => n.status === "autorizada").reduce((a, n) => a + n.valor_total, 0))}</strong>
+                      {aba === "remessa" ? "Valor remetido (não é faturamento)" : "Faturamento total"}: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(notasGrade.filter(n => n.status === "autorizada").reduce((a, n) => a + n.valor_total, 0))}</strong>
                     </span>
                     <span style={{ fontSize: 11, color: "#444" }}>XMLs arquivados por 5 anos conforme legislação</span>
                   </div>

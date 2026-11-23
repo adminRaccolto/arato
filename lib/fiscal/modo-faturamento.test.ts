@@ -24,3 +24,11 @@ test("cada NF de saída cai no seu modo", () => {
   assert.equal(lerModoFaturamento("devolucao"), "devolucao");
   assert.equal(modoDaNota({ cfop: "" }), null);
 });
+
+test("remessa gravada sem CFOP: pelo número ou pela palavra na natureza", () => {
+  assert.equal(modoDaNota({ cfop: "", natureza: "REMESSA SIMBÓLICA DE MERCADORIA" }), "remessa");
+  assert.equal(modoDaNota({ cfop: null, natureza: "5934 - REMESSA SIMBOLICA DE MERCADORIA DEPOSITADA" }), "remessa");
+  assert.equal(modoDaNota({ cfop: "", natureza: "5.101 Venda de produção" }), "avulsa");
+  assert.equal(modoDaNota({ cfop: "", natureza: "Venda" }), null);
+  assert.equal(modoDaNota({ cfop: "5.101", natureza: "REMESSA" }), "avulsa");
+});

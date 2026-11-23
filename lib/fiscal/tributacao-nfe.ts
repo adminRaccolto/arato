@@ -3,7 +3,7 @@ import type { ItemNFe, NFeInput } from "../nfe/builder";
 import { lerPaginas } from "../paginar";
 import { validarReferenciasCliente } from "../api-referencias";
 
-type Regra = {id:string;fazenda_id:string;ncm?:string;cfop_interno?:string;cfop_externo?:string;cfop_dentro?:string;cfop_fora?:string;
+type Regra = {id:string;fazenda_id:string;nome?:string;ncm?:string;cfop_interno?:string;cfop_externo?:string;cfop_dentro?:string;cfop_fora?:string;
   icms_cst_interno?:string;icms_cst_externo?:string;icms_aliq?:number;icms_base_reduzida_pct?:number;pis_cst?:string;pis_aliq?:number;cofins_cst?:string;cofins_aliq?:number;
   ibs_cbs_imune?:boolean;ibs_cbs_cst?:string;ibs_cbs_cclasstrib?:string;ibs_cbs_reducao_pct?:number;ibs_estadual_aliq?:number;ibs_municipal_aliq?:number;cbs_aliq?:number;
   inf_cpl_template?:string;inf_cpl?:string;vigencia_inicio?:string|null;vigencia_fim?:string|null};
@@ -11,7 +11,11 @@ const dig = (s?:string)=>String(s ?? "").replace(/\D/g,"");
 const assinatura=(r:Regra)=>JSON.stringify([r.icms_cst_interno,r.icms_cst_externo,r.icms_aliq,r.icms_base_reduzida_pct,r.pis_cst,r.pis_aliq,r.cofins_cst,r.cofins_aliq,r.ibs_cbs_imune,r.ibs_cbs_cst,r.ibs_cbs_cclasstrib,r.ibs_cbs_reducao_pct,r.ibs_estadual_aliq,r.ibs_municipal_aliq,r.cbs_aliq,r.inf_cpl_template,r.inf_cpl]);
 function escolher(rows:Regra[],fazenda:string,rotulo:string):Regra|undefined {
   const locais=rows.filter(r=>r.fazenda_id===fazenda);const candidatos=locais.length?locais:rows;
-  if(new Set(candidatos.map(assinatura)).size>1)throw new Error("Há regras tributárias divergentes para "+rotulo+". Confira os parâmetros ou selecione a operação fiscal.");
+  if(new Set(candidatos.map(assinatura)).size>1){
+    // Nomeia as opções: o usuário escolhe uma em "Operação fiscal cadastrada" (aba Operações-CFOP) — 23/11/2026, Cleber
+    const nomes=[...new Set(candidatos.map(r=>r.nome).filter(Boolean))];
+    throw new Error("Há regras tributárias divergentes para "+rotulo+"."+(nomes.length>1?" Escolha qual usar no campo \"Operação fiscal cadastrada\" (aba Operações-CFOP): "+nomes.join(" ou ")+".":" Confira os parâmetros ou selecione a operação fiscal."));
+  }
   return [...candidatos].sort((a,b)=>a.id.localeCompare(b.id))[0];
 }
 
