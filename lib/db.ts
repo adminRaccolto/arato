@@ -7168,15 +7168,23 @@ export async function listarAplicacoesAdiantamento(adiantamento_id: string): Pro
   return data ?? [];
 }
 
+// Grava pelo servidor (app/api/financeiro/adiantamentos/criar): pelo navegador a regra de acesso do banco recusava
+// a ficha ("new row violates row-level security policy") com a sessão sem usuário ou para quem opera pelo seletor.
 export async function criarAdiantamento(
   a: Omit<AdiantamentoFornecedor, "id" | "created_at" | "valor_aplicado" | "lancamento_id">,
   jaQuitado: boolean,
+  produtorId?: string | null,
 ): Promise<AdiantamentoFornecedor> {
   const og = await resolverOperacaoGerencialPorClassificacao(a.fazenda_id, "2.01.01.09.001");
-  const { data, error } = await supabase.rpc("criar_adiantamento_fornecedor", { p_dados: a, p_quitado: jaQuitado, p_og: og ?? null });
-  if (error) throw new Error(error.code === "PGRST202" ? "Execute a Seção 421 do supabase_migrations.sql." : error.message);
+  const { data: { session } } = await supabase.auth.getSession();
+  const r = await fetch("/api/financeiro/adiantamentos/criar", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+    body: JSON.stringify({ dados: a, quitado: jaQuitado, og: og ?? null, produtor_id: produtorId || null }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) throw new Error(r.status === 401 ? "Sua sessão expirou. Entre novamente no sistema e salve de novo." : d.error ?? "Não foi possível salvar o adiantamento.");
   await reajustarPedidoDoAdiantamento(a.pedido_compra_id);
-  return data as AdiantamentoFornecedor;
+  return d.adiantamento as AdiantamentoFornecedor;
 }
 
 // O título do pedido vale o saldo menos os adiantamentos ligados: recalcula sempre que um deles muda.

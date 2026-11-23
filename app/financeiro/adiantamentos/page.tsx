@@ -17,7 +17,6 @@ import {
   listarPedidosCompraRelDaConta, atualizarAdiantamento, listarProdutoresDaConta,
 } from "../../../lib/db";
 import { fazendaDoProdutor, fazendaDaContaBancaria, primeiraFazenda } from "../../../lib/fazenda-de";
-import { supabase } from "../../../lib/supabase";
 import type {
   AdiantamentoFornecedor, AdiantamentoAplicacao,
   Pessoa, ContaBancaria, AnoSafra, RelPedidoCompra, Produtor,
@@ -212,9 +211,7 @@ export default function AdiantamentosPage() {
         ano_safra_id:     form.ano_safra_id || undefined,
         observacao:       form.observacao || undefined,
         status:           "em_aberto",
-      }, form.ja_quitado);
-      // O título no CP leva o produtor que paga (LCDPR); sem isso fica só a fazenda
-      if (produtorId && novo.lancamento_id) await supabase.from("lancamentos").update({ produtor_id: produtorId }).eq("id", novo.lancamento_id);
+      }, form.ja_quitado, produtorId); // o servidor grava também o produtor que paga no título do CP (LCDPR)
       setAdiantamentos(p => [{ ...novo, saldo_a_pagar: form.ja_quitado ? 0 : novo.valor }, ...p]);
       void recarregar().then(setAdiantamentos).catch(() => setErro("Adiantamento salvo. Atualize a lista para conferir o pagamento."));
       setModalNovo(false);

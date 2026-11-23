@@ -9,6 +9,16 @@ const RELEASES = [
   {
     versao: "2026.11.23-a",
     data: "23/11/2026",
+    titulo: "Novo adiantamento a fornecedor salva sem erro de permissão",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao salvar um Novo Adiantamento a Fornecedor podia aparecer \"new row violates row-level security policy for table adiantamentos_fornecedor\" e nada era gravado. O adiantamento passa a ser gravado pelo servidor, que confere antes se a fazenda, o fornecedor, a conta bancária, o pedido e o ano safra são do mesmo cliente. Se a sessão tiver expirado, a tela pede para entrar de novo." },
+    ],
+    onde: "Financeiro → Adiantamentos a Fornecedores → + Novo Adiantamento",
+  },
+  {
+    versao: "2026.11.23-a",
+    data: "23/11/2026",
     titulo: "Filtro por valor encontra os borderôs no CP e no CR",
     modulos: ["Financeiro"],
     itens: [
