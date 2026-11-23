@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.23-b",
+    data: "23/11/2026",
+    titulo: "Processar a NF direto pela baixa do Contas a Pagar",
+    modulos: ["Financeiro", "Documentos Fiscais"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao baixar um título lançado à mão, a janela Vincular Nota Fiscal à Baixa passa a ter Processar e Baixar: abre o processamento da NF escolhida (o mesmo de Documentos Fiscais), a NF gera o título dela, o título manual é substituído por ele e a baixa abre já no título da NF. Antes, o vínculo só gravava o número da nota: a NF continuava pendente e, se processada depois, criava outro título para a mesma conta." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Baixar (título lançado à mão, sem NF)",
+  },
+  {
     versao: "2026.11.23-a",
     data: "23/11/2026",
     titulo: "Novo adiantamento a fornecedor salva sem erro de permissão",

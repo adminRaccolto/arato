@@ -1,7 +1,10 @@
 "use client";
 // Vincular Nota Fiscal à baixa do CP — restaurado da tela anterior de Contas a Pagar (a tela unificada
-// de 01/10/2026 perdeu esta etapa). Ao baixar um título lançado à mão e sem NF, oferece vincular uma NF
-// pendente (NF-e de entrada ou NFS-e) ou seguir "sem NF".
+// de 01/10/2026 perdeu esta etapa). Ao baixar um título lançado à mão e sem NF, oferece uma NF pendente
+// (NF-e de entrada ou NFS-e) ou seguir "sem NF".
+// 23/11/2026: "Processar e Baixar" abre o processamento da própria NF (o mesmo de Documentos Fiscais); a NF gera o
+// título dela e o título manual é trocado por ele. Antes, "Vincular e Baixar" só gravava o número no título: a NF
+// seguia pendente e, se processada depois, criava um segundo título para a mesma conta.
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../AuthProvider";
@@ -11,18 +14,19 @@ type NfVinc = { id: string; tipo: "nf" | "nfse"; numero: string; serie?: string;
 const fmtD = (s?: string | null) => { if (!s) return "—"; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 const fmtM = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function ModalVincularNf({ titulo, fazendaId, onCancelar, onSemNf, onVinculado }: {
+export type NfParaProcessar = { id: string; tipo: "nf" | "nfse"; numero: string };
+
+export default function ModalVincularNf({ titulo, fazendaId, onCancelar, onSemNf, onProcessar }: {
   titulo: { id: string; descricao: string | null; valor: number | null };
   fazendaId: string;
   onCancelar: () => void;
   onSemNf: () => void;
-  onVinculado: (numero: string) => void;
+  onProcessar: (nf: NfParaProcessar) => void;
 }) {
   const [lista, setLista] = useState<NfVinc[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [sel, setSel] = useState<NfVinc | null>(null);
-  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   // NFs pendentes de todo o cliente — a NF pode estar noutra fazenda dele que não a do título.
   const { fazendaIds } = useAuth();
@@ -51,14 +55,6 @@ export default function ModalVincularNf({ titulo, fazendaId, onCancelar, onSemNf
   const b = busca.toLowerCase();
   const filtradas = lista.filter(nf => !b || nf.numero.includes(b) || (nf.emitente_nome ?? "").toLowerCase().includes(b) || nf.valor_total.toFixed(2).includes(b));
 
-  async function vincular() {
-    if (!sel) return;
-    setSalvando(true); setErro("");
-    const { data, error } = await supabase.from("lancamentos").update({ nfe_numero: sel.numero }).eq("id", titulo.id).select("id");
-    setSalvando(false);
-    if (error || !data?.length) { setErro(`Não foi possível vincular a NF${error ? `: ${error.message}` : " (sessão expirada — reconecte e tente novamente)"}.`); return; }
-    onVinculado(sel.numero);
-  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -107,11 +103,11 @@ export default function ModalVincularNf({ titulo, fazendaId, onCancelar, onSemNf
         </div>
         <div style={{ padding: "12px 22px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
           {erro ? <span style={{ fontSize: 12, color: "#791F1F", marginRight: "auto" }}>{erro}</span>
-            : sel ? <span style={{ fontSize: 12, background: "#E8E8E8", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }}>NF {sel.numero} selecionada</span> : null}
+            : sel ? <span style={{ fontSize: 12, background: "#E8E8E8", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }} title="A NF gera o título dela no CP e este título é trocado por ele">NF {sel.numero}: será processada e substitui este título</span> : null}
           <button type="button" onClick={onCancelar} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
           <button type="button" onClick={onSemNf} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #888", background: "transparent", color: "#555", cursor: "pointer", fontSize: 13 }}>Baixar sem NF</button>
-          <button type="button" disabled={!sel || salvando} onClick={vincular}
-            style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: sel ? "#111111" : "#CCC", color: "#fff", cursor: sel ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>{salvando ? "Vinculando…" : "Vincular e Baixar"}</button>
+          <button type="button" disabled={!sel} onClick={() => sel && onProcessar({ id: sel.id, tipo: sel.tipo, numero: sel.numero })}
+            style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: sel ? "#111111" : "#CCC", color: "#fff", cursor: sel ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>Processar e Baixar</button>
         </div>
       </div>
     </div>

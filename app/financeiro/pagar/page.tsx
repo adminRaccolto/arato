@@ -10,7 +10,9 @@ import EntryOutline from '../../../components/arato-layout/EntryOutline';
 
 import { motivoBloqueioExclusao, notaDoTitulo } from "../../../lib/financeiro/bloqueio-exclusao";
 import type { VeiculoUnificado } from "../../../lib/db";
-import ModalVincularNf from "../../../components/financeiro/ModalVincularNf";
+import ModalVincularNf, { type NfParaProcessar } from "../../../components/financeiro/ModalVincularNf";
+import ModalNf from "../../../components/fiscal/ModalNf";
+import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
 import { carregarUsuariosTitulos } from "../../../lib/financeiro/usuarios-titulos";
@@ -608,6 +610,40 @@ export default function ContasAPagarPage() {
 
   // Título lançado à mão e sem NF: antes de baixar, oferece vincular uma NF (restaurado da tela anterior).
   const [alertaNF, setAlertaNF] = useState<RelLancamento | null>(null);
+  // Processar e Baixar: a NF pendente escolhida é processada aqui; o título dela substitui o título manual e a baixa
+  // abre no título da NF (app/api/financeiro/titulos/substituir-por-nf)
+  const [processarNf, setProcessarNf] = useState<{ titulo: RelLancamento; nf: NfParaProcessar } | null>(null);
+  const [baixarDepois, setBaixarDepois] = useState<string[] | null>(null);
+  async function aoSalvarNfDoTitulo() {
+    if (!processarNf) return;
+    const { titulo, nf } = processarNf;
+    const { data: n } = await supabase.from(nf.tipo === "nf" ? "nf_entradas" : "nf_servicos").select("status").eq("id", nf.id).maybeSingle();
+    if (n?.status !== "processada") return; // rascunho salvo: segue no processamento
+    const { data: { session } } = await supabase.auth.getSession();
+    const r = await fetch("/api/financeiro/titulos/substituir-por-nf", {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+      body: JSON.stringify({ titulo_id: titulo.id, tipo: nf.tipo, nf_id: nf.id }),
+    });
+    const d = await r.json().catch(() => ({}));
+    setProcessarNf(null);
+    if (!r.ok || !d.ok) {
+      alert(`A NF ${nf.numero} foi processada, mas o título "${titulo.descricao ?? ""}" não foi trocado pelo dela: ${d.error ?? "erro desconhecido"}\n\nConfira no Contas a Pagar para não pagar a mesma conta duas vezes.`);
+      await carregar();
+      return;
+    }
+    await carregar();
+    const abertos = ((d.titulos ?? []) as { id: string; status: string }[]).filter(t => t.status !== "baixado").map(t => t.id);
+    setBaixarDepois(abertos.length ? abertos : null);
+    if (!abertos.length) alert(`NF ${nf.numero} processada e o título manual foi trocado pelo dela. Os títulos da NF já estão baixados.`);
+  }
+  // Depois de recarregar, abre a baixa no 1º título em aberto da NF
+  useEffect(() => {
+    if (!baixarDepois || !resultado) return;
+    const alvo = baixarDepois.map(id => resultado.find(x => x.id === id)).find(Boolean);
+    setBaixarDepois(null);
+    if (alvo) void abrirBaixa(alvo, true);
+    else alert("NF processada e o título manual foi trocado pelo dela. Localize o título da NF no Contas a Pagar para baixar.");
+  }, [baixarDepois, resultado]); // eslint-disable-line react-hooks/exhaustive-deps
   const CATEGORIAS_SEM_NF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto", "Adiantamento a Fornecedores"];
   const precisaVincularNF = (l: RelLancamento) =>
     !l.adiantamento_fornecedor && l.origem_tabela === "lancamentos" && l.moeda !== "barter" && !l.nfe_numero
@@ -3018,8 +3054,14 @@ export default function ContasAPagarPage() {
           fazendaId={(alertaNF.fazenda_id ?? fazendaId)!}
           onCancelar={() => setAlertaNF(null)}
           onSemNf={() => { const l = alertaNF; setAlertaNF(null); abrirBaixa(l, true); }}
-          onVinculado={numero => { const l = { ...alertaNF, nfe_numero: numero }; setAlertaNF(null); setResultado(prev => prev?.map(x => x.id === l.id ? { ...x, nfe_numero: numero } : x) ?? prev); abrirBaixa(l, true); }}
+          onProcessar={nf => { const l = alertaNF; setAlertaNF(null); setProcessarNf({ titulo: l, nf }); }}
         />
+      )}
+      {processarNf?.nf.tipo === "nf" && (
+        <ModalNf key={processarNf.nf.id} id={processarNf.nf.id} onClose={() => setProcessarNf(null)} onSaved={() => void aoSalvarNfDoTitulo()} />
+      )}
+      {processarNf?.nf.tipo === "nfse" && fazendaId && (
+        <ModalNfServico key={processarNf.nf.id} id={processarNf.nf.id} fazendaIdPadrao={fazendaId} onClose={() => setProcessarNf(null)} onSaved={() => void aoSalvarNfDoTitulo()} />
       )}
       {cadPessoaAberto && fazendaId && (
         <ModalCadastroFornecedor
