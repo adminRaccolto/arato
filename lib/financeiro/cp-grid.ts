@@ -1,5 +1,6 @@
 import type { PagamentoLote } from "../supabase";
 import { resumoBordero } from "./saldo-bordero.ts";
+import { casaFiltroNumero } from "./filtro-colunas.ts";
 
 export type TituloGrid = {
   id: string; origem_tabela: string; lote_id: string | null;
@@ -16,6 +17,8 @@ export type FiltrosCP = {
   busca: string;
   nf?: string;
   numero?: string;
+  /** Valores da linha do borderô, em reais; os títulos avulsos usam seus próprios filtros de coluna. */
+  valor?: string; pago?: string; saldo?: string;
   de: string; ate: string; hoje: string;
 };
 export const chaveTitulo = (origem: string, id: string) => `${origem}:${id}`;
@@ -73,11 +76,18 @@ export function vencimentoBordero(b: PagamentoLote, titulos: TituloGrid[]) {
   return b.data_vencimento || itensDoBordero(b, titulos).map(t => t.data_vencimento)
     .filter((d): d is string => !!d).sort().at(-1) || b.data_pagamento || null;
 }
+/** Estas colunas são filtradas no agrupamento, sem exigir o mesmo valor em uma NF dele. */
+export function colunaPropriaBordero(coluna: string) {
+  return ["numero", "valor", "pago", "saldo"].includes(coluna);
+}
 export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: FiltrosCP) {
   if (f.numero?.trim() && !texto(b.numero_titulo).includes(texto(f.numero.trim()))) return false;
   if (f.origens.size && !(b.itens ?? []).some(i => f.origens.has(i.origem_tabela ?? "lancamentos"))) return false;
   const itens = itensDoBordero(b, titulos);
   const resumo = resumoBordero(b);
+  if (!casaFiltroNumero(b.valor_total, f.valor ?? "")
+      || !casaFiltroNumero(resumo.liquidado, f.pago ?? "")
+      || !casaFiltroNumero(resumo.saldo, f.saldo ?? "")) return false;
   return corresponde(resumo.status, vencimentoBordero(b, titulos),
     itens.flatMap(nomesDoTitulo), itens.flatMap(t => [t.nfe_numero, t.documento_origem]), f, resumo.liquidado);
 }

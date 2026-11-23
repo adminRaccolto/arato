@@ -75,7 +75,7 @@ import { motivoDaObservacao } from "../../../lib/financeiro/saldo-pedido";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { statusExibido } from "../../../lib/financeiro/titulos";
-import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
+import { colunaPropriaBordero, filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
 import { arredondarMoeda, ratearMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import { carregarOrigemTitulos, descricaoSemParcela, juntarObservacoes } from "../../../lib/financeiro/origem-titulos";
@@ -494,7 +494,7 @@ export default function ContasAPagarPage() {
   const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || ATALHOS_SEM_DATA.has(fAtalho));
   const deAplicado = buscaSemData ? "" : fDataDe;
   const ateAplicado = buscaSemData ? "" : fDataAte;
-  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", numero: filtrosCol.numero ?? "", de: deAplicado, ate: ateAplicado, hoje: hojeISO() };
+  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", numero: filtrosCol.numero ?? "", valor: filtrosCol.valor, pago: filtrosCol.pago, saldo: filtrosCol.saldo, de: deAplicado, ate: ateAplicado, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({
@@ -514,7 +514,7 @@ export default function ContasAPagarPage() {
     baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº doc.", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
   const passaColunas = (l: RelLancamento, emBordero = false) => Object.entries(filtrosCol).every(([k, f]) => {
-    if (!f.trim() || k === "pessoa" || (emBordero && k === "numero")) return true;   // Fornecedor/Cliente: pela busca (nome, emitente da NF, descrição)
+    if (!f.trim() || k === "pessoa" || (emBordero && colunaPropriaBordero(k))) return true;   // Fornecedor/Cliente: pela busca (nome, emitente da NF, descrição)
     if (k === "valor" || k === "pago" || k === "saldo") {
       if (k === "valor") return casaFiltroNumero(l.valor, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, l.valor), f));
       return casaFiltroNumero(k === "pago" ? l.valor_pago : saldoBRL(l), f);
@@ -531,19 +531,19 @@ export default function ContasAPagarPage() {
     if (fAtalho === "previsoes") return ehPrevisao(l);
     return l.origem_lancamento === fAtalho;
   };
-  // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
+  // Atalho, moeda, produtor e demais colunas exigem um título compatível; número e valores usam a linha do borderô.
   // Achado real 28/10/2026: o borderô ignorava esses filtros — "Compra de terra" (que desliga o período) listava todos.
   const passaExtras = (l: RelLancamento, emBordero = false) => passaColunas(l, emBordero) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? ""));
-  const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
+  const temExtrasBordero = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.entries(filtrosCol).some(([k, f]) => !colunaPropriaBordero(k) && f.trim());
   const linhas = (resultado ?? []).filter(l => exibirNoCP(l) && !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaExtras(l));
   // Quem fez a baixa (popup na Baixa e no Status): busca no histórico só os títulos baixados/parciais da lista
   const quemBaixou = useQuemBaixou(linhas.filter(l => l.status_normalizado === "baixado" || l.status_normalizado === "parcial").slice(0, 1500).map(l => l.id));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP)
-    && (!temExtras || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
+    && (!temExtrasBordero || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
   // Borderô pago fica fora do filtro Aberto, com os títulos dentro dele: sem avisar, parece que sumiram
   const borderosPagosOcultos = fStatus.size === 0 || fStatus.has("baixado") ? [] : todosBorderos.filter(b => resumoBordero(b).status === "baixado"
     && filtrarBordero(b, resultado ?? [], { ...filtrosCP, status: new Set(["baixado"]) })
-    && (!temExtras || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
+    && (!temExtrasBordero || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),

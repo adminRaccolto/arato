@@ -69,7 +69,7 @@ import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancam
 import { statusExibido } from "../../../lib/financeiro/titulos";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
 import { casaFiltroNumero, casaFiltroTexto } from "../../../lib/financeiro/filtro-colunas";
-import { filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
+import { colunaPropriaBordero, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
 import { resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -466,7 +466,7 @@ export default function ContasAReceberPage() {
     baixa: "dd/mm", moeda: "BRL/USD", conta: "conta", nf: "nº NF", lancado: "origem", usuario: "usuário", observacao: "obs.", status: "status",
   };
   const passaColunas = (l: RelLancamento, emBordero = false) => Object.entries(filtrosCol).every(([k, f]) => {
-    if (!f.trim() || k === "pessoa" || (emBordero && k === "numero")) return true;   // Cliente: pela busca no banco (nome e descrição)
+    if (!f.trim() || k === "pessoa" || (emBordero && colunaPropriaBordero(k))) return true;   // Cliente: pela busca no banco (nome e descrição)
     if (k === "valor" || k === "pago" || k === "saldo") {
       if (k === "valor") return casaFiltroNumero(l.valor, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, l.valor), f));
       return casaFiltroNumero(k === "pago" ? l.valor_pago : saldoBRL(l), f);
@@ -475,7 +475,7 @@ export default function ContasAReceberPage() {
     return casaFiltroTexto(textoColuna(l, k), f);
   });
   const semDataTela = !periodoManual && (!!fBusca.trim() || !!(filtrosCol.nf ?? "").trim() || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho));
-  // Atalho, moeda, produtor e filtros de coluna: o título precisa passar; o borderô, ao menos um título dele.
+  // Atalho, moeda, produtor e demais colunas exigem um título compatível; número e valores usam a linha do borderô.
   const passaExtras = (l: RelLancamento, emBordero = false) => {
     if (!passaColunas(l, emBordero)) return false;
     if (fMoeda.size > 0 && !fMoeda.has(l.moeda ?? "BRL")) return false;
@@ -489,10 +489,10 @@ export default function ContasAReceberPage() {
     }
     return true;
   };
-  const temExtras = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.values(filtrosCol).some(f => f.trim());
-  const filtrosCR = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", numero: filtrosCol.numero ?? "", de: semDataTela ? "" : fDataDe, ate: semDataTela ? "" : fDataAte, hoje: hojeISO() };
+  const temExtrasBordero = !!fAtalho || fMoeda.size > 0 || fProdutor.size > 0 || Object.entries(filtrosCol).some(([k, f]) => !colunaPropriaBordero(k) && f.trim());
+  const filtrosCR = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", numero: filtrosCol.numero ?? "", valor: filtrosCol.valor, pago: filtrosCol.pago, saldo: filtrosCol.saldo, de: semDataTela ? "" : fDataDe, ate: semDataTela ? "" : fDataAte, hoje: hojeISO() };
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCR)
-    && (!temExtras || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
+    && (!temExtrasBordero || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
   const linhas = (resultado ?? []).filter(l => {
     if (tituloVinculado(l, vinculos)) return false;
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;

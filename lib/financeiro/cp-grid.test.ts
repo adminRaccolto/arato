@@ -112,3 +112,51 @@ test("borderô pago sem vencimento nem títulos aparece pela data do pagamento",
   assert.equal(filtrarBordero(fantasma, [], f), true);
   assert.equal(filtrarBordero(fantasma, [], { ...f, ate: "2026-08-31" }), false);
 });
+
+test("valor do borderô encontra o total de 300,00, sem confundir com títulos de 100,00 e 200,00", () => {
+  for (const tipo of ["pagar", "receber"] as const) {
+    const b = { ...pendente, tipo, valor_total: 300, itens: [
+      { id: "i1", lote_id: "b1", lancamento_id: "nf1", valor_pago: 100 },
+      { id: "i2", lote_id: "b1", lancamento_id: "nf2", valor_pago: 200, origem_tabela: "empresa_lancamentos" },
+    ] };
+    const titulos = [{ ...titulo, valor: 100 }, { ...titulo, id: "nf2", origem_tabela: "empresa_lancamentos", valor: 200 }];
+    const antes = structuredClone({ b, titulos });
+    assert.equal(filtrarBordero(b, titulos, filtros({ valor: "R$ 300,00" })), true);
+    assert.equal(filtrarBordero(b, titulos, filtros({ valor: "100,00" })), false);
+    assert.equal(filtrarBordero(b, titulos, filtros({ valor: "200,00" })), false);
+    assert.deepEqual({ b, titulos }, antes, "filtrar não altera títulos ou borderô");
+  }
+});
+
+test("valor agregado aceita centavos, maior, menor e faixa no formato brasileiro", () => {
+  const b = { ...pendente, valor_total: 1500.50 };
+  for (const valor of ["1.500,50", ">1500", "<1501", "1.400,00-1.600,00", "1500,50 até 1600", ""]) {
+    assert.equal(filtrarBordero(b, [titulo], filtros({ valor })), true, valor);
+  }
+  for (const valor of ["1.500,51", ">1500,50", "<1500,50", "1.400,00-1.500,49"]) {
+    assert.equal(filtrarBordero(b, [titulo], filtros({ valor })), false, valor);
+  }
+});
+
+test("pago e saldo usam o resumo exibido: aberto, parcial e quitado legado", () => {
+  const aberto = { ...pendente, valor_total: 300 };
+  const parcial = { ...aberto, valor_pago: 120, valor_juros: 15, valor_multa: 5, valor_desconto: 10 };
+  const quitado = { ...aberto, status: "pago" as const, valor_pago: null };
+  assert.equal(filtrarBordero(aberto, [titulo], filtros({ valor: "300", pago: "0", saldo: "300" })), true);
+  assert.equal(filtrarBordero(parcial, [titulo], filtros({ valor: "300", pago: "120", saldo: "180" })), true);
+  assert.equal(filtrarBordero(parcial, [titulo], filtros({ pago: "130" })), false, "encargos não mudam o valor da coluna Pago");
+  assert.equal(filtrarBordero(parcial, [titulo], filtros({ saldo: "300" })), false);
+  assert.equal(filtrarBordero(quitado, [titulo], filtros({ pago: "300", saldo: "0" })), true);
+  assert.equal(filtrarBordero(quitado, [titulo], filtros({ pago: "0" })), false);
+});
+
+test("valor do borderô é combinado com período, status, fornecedor, documento e origem", () => {
+  const b = { ...pendente, valor_total: 300 };
+  const f = filtros({ valor: "300", saldo: ">200", busca: "dipagro", nf: "123", numero: "987",
+    origens: new Set(["lancamentos"]), status: new Set(["em_aberto"]), de: "2026-10-10", ate: "2026-10-20" });
+  assert.equal(filtrarBordero(b, [titulo], f), true);
+  for (const outro of [{ valor: "100" }, { pago: ">0" }, { saldo: "100" }, { busca: "outro" }, { nf: "999" },
+    { numero: "999" }, { origens: new Set(["empresa_lancamentos"]) }, { status: new Set(["baixado"]) }, { ate: "2026-10-14" }]) {
+    assert.equal(filtrarBordero(b, [titulo], { ...f, ...outro }), false);
+  }
+});

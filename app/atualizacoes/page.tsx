@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.23-a",
+    data: "23/11/2026",
+    titulo: "Filtro por valor encontra os borderôs no CP e no CR",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Nos filtros das colunas Valor, Pago/Recebido e Saldo, os borderôs passam a ser encontrados pelos valores exibidos na própria linha do agrupamento. A busca aceita valor exato, maior, menor e faixa de valores, inclusive em pagamentos parciais, e pode ser combinada com os demais filtros." },
+    ],
+    onde: "Financeiro → Contas a Pagar e Contas a Receber",
+  },
+  {
     versao: "2026.11.19-a",
     data: "19/11/2026",
     titulo: "Relatório Compras por Produto",
