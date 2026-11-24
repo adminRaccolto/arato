@@ -11,12 +11,13 @@ import TopNav from "../../../components/TopNav";
 import PlanoGate from "../../../components/PlanoGate";
 import InputData from "../../../components/InputData";
 import SelectField from "../../../components/SelectField";
+import SelectBusca, { type SelectBuscaOption } from "../../../components/SelectBusca";
 import BotoesExportar from "../../../components/relatorios/BotoesExportar";
 import { OperationalButton, OperationalHeading } from "../../../components/OperationalUI";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { hojeLocal } from "../../../lib/data-local";
-import { listarGruposInsumoDaConta, listarInsumosParaConta } from "../../../lib/db";
+import { listarGruposInsumoDaConta, listarInsumosParaConta, listarPessoasDaConta } from "../../../lib/db";
 import type { RelatorioExport } from "../../../lib/relatorios/tabela-exportavel";
 import {
   APROPRIACAO_ROTULO, montarComprasPorProduto,
@@ -54,12 +55,14 @@ export default function ComprasPorProdutoPage() {
   const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
   const [grupos, setGrupos] = useState<string[]>([]);
   const [insumos, setInsumos] = useState<Map<string, InsumoInfo>>(new Map());
+  const [pessoas, setPessoas] = useState<{ nome: string; doc: string }[]>([]);
+  // Fornecedor escolhido no seletor: "d:<cpf/cnpj>" (cadastro ou nota com documento) ou "n:<nome>" (nota sem documento)
+  const [fFornecedorSel, setFFornecedorSel] = useState("");
 
   const [de, setDe] = useState(inicioDoAno());
   const [ate, setAte] = useState(hojeLocal());
   const [fFazenda, setFFazenda] = useState("");
   const [fProduto, setFProduto] = useState("");
-  const [fFornecedor, setFFornecedor] = useState("");
   const [fGrupo, setFGrupo] = useState("");
   const [fApropriacao, setFApropriacao] = useState("");
   const [soCadastro, setSoCadastro] = useState(false);
@@ -91,14 +94,16 @@ export default function ComprasPorProdutoPage() {
     if (!idsConta.length) return;
     let vivo = true;
     (async () => {
-      const [{ data: fz }, ins, grs] = await Promise.all([
+      const [{ data: fz }, ins, grs, pes] = await Promise.all([
         supabase.from("fazendas").select("id, nome").in("id", idsConta).order("nome"),
         listarInsumosParaConta(contaId, fazendaId ?? undefined).catch(() => []),
         listarGruposInsumoDaConta(fazendaId).catch(() => []),
+        listarPessoasDaConta(fazendaId).catch(() => []),
       ]);
       if (!vivo) return;
       const nomeGrupo = new Map(grs.map(g => [g.id, g.nome]));
       setFazendas((fz ?? []) as { id: string; nome: string }[]);
+      setPessoas(pes.map(p => ({ nome: p.nome, doc: String(p.cpf_cnpj ?? "").replace(/\D/g, "") })).filter(p => p.nome));
       setGrupos([...new Set(grs.map(g => g.nome))].sort((a, b) => a.localeCompare(b, "pt-BR")));
       setInsumos(new Map(ins.map(i => [i.id, { nome: i.nome, unidade: i.unidade ?? null, grupo: (i.grupo_id && nomeGrupo.get(i.grupo_id)) || null }])));
     })();
@@ -115,7 +120,7 @@ export default function ComprasPorProdutoPage() {
       // Data do movimento = data de entrada; sem ela, a de emissão
       const periodo = `and(data_entrada.gte.${de},data_entrada.lte.${ate}),and(data_entrada.is.null,data_emissao.gte.${de},data_emissao.lte.${ate})`;
       const nfs = await lerTudo<NfCompra>((a, b) => supabase.from("nf_entradas")
-        .select("id, fazenda_id, numero, serie, emitente_nome, data_emissao, data_entrada, status, tipo_entrada, cfop")
+        .select("id, fazenda_id, numero, serie, emitente_nome, emitente_cnpj, data_emissao, data_entrada, status, tipo_entrada, cfop")
         .in("fazenda_id", fids).eq("status", "processada").or(periodo).order("id").range(a, b));
       const ids = nfs.map(n => n.id);
       const itens: ItemCompra[] = [];
@@ -141,9 +146,42 @@ export default function ComprasPorProdutoPage() {
   const nomeFazenda = useMemo(() => new Map(fazendas.map(f => [f.id, f.nome])), [fazendas]);
   const produtos: ProdutoCompra[] = useMemo(() => dados ? montarComprasPorProduto({
     nfs: dados.nfs, itens: dados.itens, insumos, fazendas: nomeFazenda,
-    filtroProduto: fProduto, filtroFornecedor: fFornecedor, filtroGrupo: fGrupo, filtroApropriacao: fApropriacao, soCadastro,
+    filtroProduto: fProduto, filtroGrupo: fGrupo, filtroApropriacao: fApropriacao, soCadastro,
+    filtroFornecedor: fFornecedorSel.startsWith("n:") ? fFornecedorSel.slice(2) : undefined,
+    filtroFornecedorDoc: fFornecedorSel.startsWith("d:") ? fFornecedorSel.slice(2) : undefined,
     abrangencia, filtroInsumoId: fInsumoId || undefined,
-  }) : [], [dados, insumos, nomeFazenda, fProduto, fFornecedor, fGrupo, fApropriacao, soCadastro, abrangencia, fInsumoId]);
+  }) : [], [dados, insumos, nomeFazenda, fProduto, fFornecedorSel, fGrupo, fApropriacao, soCadastro, abrangencia, fInsumoId]);
+
+  // Opções dos seletores. Produto: itens do cadastro + descrições de NF sem cadastro (das notas carregadas).
+  // Fornecedor: cadastro de Pessoas (pelo CPF/CNPJ) + emitentes das notas carregadas que não estão no cadastro.
+  const opcoesProduto: SelectBuscaOption[] = useMemo(() => {
+    const cad = [...insumos.entries()].map(([id, i]) => ({ value: `i:${id}`, label: i.unidade ? `${i.nome} (${i.unidade})` : i.nome, group: "Cadastro" }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+    const desc = new Set<string>();
+    for (const it of dados?.itens ?? []) if (!it.insumo_id && it.descricao_produto?.trim()) desc.add(it.descricao_produto.trim());
+    const semCad = [...desc].sort((a, b) => a.localeCompare(b, "pt-BR")).map(d => ({ value: `t:${d}`, label: d, group: "Sem cadastro (descrição da NF)" }));
+    return [{ value: "", label: "Todos os produtos" }, ...cad, ...semCad];
+  }, [insumos, dados]);
+  const opcoesFornecedor: SelectBuscaOption[] = useMemo(() => {
+    const porDoc = new Map<string, string>();
+    for (const p of pessoas) if (p.doc && !porDoc.has(p.doc)) porDoc.set(p.doc, p.nome);
+    const docsCad = new Set(porDoc.keys());
+    const semDoc = new Set<string>();
+    for (const n of dados?.nfs ?? []) {
+      const doc = String(n.emitente_cnpj ?? "").replace(/\D/g, ""), nome = String(n.emitente_nome ?? "").trim();
+      if (doc) { if (!porDoc.has(doc)) porDoc.set(doc, nome || doc); } else if (nome) semDoc.add(nome);
+    }
+    const fmtDoc = (d: string) => d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : d;
+    const comDoc = [...porDoc.entries()].map(([doc, nome]) => ({ value: `d:${doc}`, label: `${nome} — ${fmtDoc(doc)}`, aliases: [doc], group: docsCad.has(doc) ? "Cadastro" : "Das notas carregadas" }))
+      .sort((a, b) => (a.group === b.group ? 0 : a.group === "Cadastro" ? -1 : 1) || a.label.localeCompare(b.label, "pt-BR"));
+    const soNome = [...semDoc].sort((a, b) => a.localeCompare(b, "pt-BR")).map(n => ({ value: `n:${n}`, label: n, group: "Das notas carregadas (sem CNPJ)" }));
+    return [{ value: "", label: "Todos os fornecedores" }, ...comDoc, ...soNome];
+  }, [pessoas, dados]);
+  const valorProduto = fInsumoId ? `i:${fInsumoId}` : fProduto ? `t:${fProduto}` : "";
+  const escolherProduto = (v: string) => {
+    if (v.startsWith("i:")) { setFInsumoId(v.slice(2)); setFProduto(""); }
+    else { setFInsumoId(""); setFProduto(v.startsWith("t:") ? v.slice(2) : ""); }
+  };
 
   const totalValor = produtos.reduce((s, p) => s + p.valorTotal, 0);
   const totalNfs = new Set(produtos.flatMap(p => p.movimentos.map(m => `${m.nf}|${m.fornecedor}`))).size;
@@ -154,10 +192,10 @@ export default function ComprasPorProdutoPage() {
     return [
       { rotulo: "Período", valor: `${fmtData(de)} a ${fmtData(ate)}` },
       { rotulo: "Entradas", valor: abrangencia === "entradas" ? "Todas as entradas fiscais" : "Somente compras" },
-      { rotulo: "Item (do Auditor de Estoque)", valor: fInsumoId ? insumos.get(fInsumoId)?.nome ?? fInsumoId : "" },
+      { rotulo: "Item", valor: fInsumoId ? insumos.get(fInsumoId)?.nome ?? fInsumoId : "" },
       { rotulo: "Fazenda", valor: fFazenda ? nomeFazenda.get(fFazenda) ?? "" : "Todas" },
-      { rotulo: "Produto", valor: fProduto },
-      { rotulo: "Fornecedor", valor: fFornecedor },
+      { rotulo: "Produto", valor: fInsumoId ? "" : fProduto },
+      { rotulo: "Fornecedor", valor: fFornecedorSel ? opcoesFornecedor.find(o => o.value === fFornecedorSel)?.label ?? "" : "" },
       { rotulo: "Grupo", valor: fGrupo },
       { rotulo: "Apropriação", valor: fApropriacao ? APROPRIACAO_ROTULO[fApropriacao] : "" },
       { rotulo: "Somente produtos do cadastro", valor: soCadastro ? "Sim" : "" },
@@ -236,14 +274,11 @@ export default function ComprasPorProdutoPage() {
                   </SelectField>
                 </div>
                 <div><label style={lbl}>Produto</label>
-                  {fInsumoId ? (
-                    <div style={{ ...inp, display: "flex", alignItems: "center", gap: 6, background: "#D5E8F5" }} title="Item aberto pelo Auditor de Estoque">
-                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{insumos.get(fInsumoId)?.nome ?? "Item do Auditor"}</span>
-                      <button type="button" onClick={() => setFInsumoId("")} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#0B2D50" }} aria-label="Tirar filtro do item">✕</button>
-                    </div>
-                  ) : <input value={fProduto} onChange={e => setFProduto(e.target.value)} placeholder="Nome ou descrição da NF" style={inp} />}
+                  <SelectBusca value={valorProduto} onChange={escolherProduto} options={opcoesProduto} placeholder="Todos os produtos" style={inp} />
                 </div>
-                <div><label style={lbl}>Fornecedor</label><input value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} placeholder="Nome do emitente" style={inp} /></div>
+                <div><label style={lbl}>Fornecedor</label>
+                  <SelectBusca value={fFornecedorSel} onChange={setFFornecedorSel} options={opcoesFornecedor} placeholder="Todos os fornecedores" style={inp} />
+                </div>
                 <div><label style={lbl}>Grupo</label>
                   <SelectField value={fGrupo} onChange={e => setFGrupo(e.target.value)} style={inp}>
                     <option value="">Todos</option>

@@ -72,3 +72,11 @@ test("todas as entradas fiscais: como a coluna Fiscal do Auditor (fora só retor
   const todas = montarComprasPorProduto({ ...base, abrangencia: "entradas", filtroInsumoId: "i1" });
   assert.deepEqual(todas.map(x => [x.produto, x.quantidade, x.nfs]), [["Glifo", 30, 3]]);
 });
+
+test("fornecedor escolhido no seletor filtra pelo CPF/CNPJ do emitente, qualquer que seja o nome na nota", () => {
+  const nf = (id: string, nome: string, doc: string) => ({ id, fazenda_id: "f", numero: id, serie: "1", emitente_nome: nome, emitente_cnpj: doc, data_emissao: "2026-05-01", data_entrada: null, status: "processada", tipo_entrada: null, cfop: "1102" });
+  const it = (id: string, nfId: string) => ({ id, nf_entrada_id: nfId, insumo_id: null, descricao_produto: "P", unidade: "L", quantidade: 1, valor_total: 10, cfop: "1102", tipo_apropiacao: "estoque" });
+  const r = montarComprasPorProduto({ nfs: [nf("a", "AGRO X LTDA", "12.345.678/0001-90"), nf("b", "AGRO X", "12345678000190"), nf("c", "OUTRO", "99")],
+    itens: [it("1", "a"), it("2", "b"), it("3", "c")], insumos: new Map(), fazendas: new Map(), filtroFornecedorDoc: "12345678000190" });
+  assert.equal(r[0].nfs, 2);
+});

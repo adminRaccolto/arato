@@ -13,6 +13,7 @@ const RELEASES = [
     modulos: ["Estoque", "Compras"],
     itens: [
       { tipo: "melhoria", texto: "O relatório Compras por Produto virou Entradas Fiscais por Produto: por padrão traz todas as NFs de entrada processadas (inclusive bonificação e outras entradas), na mesma base da coluna Fiscal do Auditor de Estoque; \"Somente compras\" mantém o relatório anterior." },
+      { tipo: "melhoria", texto: "Produto e Fornecedor viraram seletores com busca. O fornecedor é filtrado pelo CPF/CNPJ do emitente, então pega a nota mesmo com o nome escrito diferente." },
       { tipo: "melhoria", texto: "No Auditor de Estoque (Fiscal × Físico), o número da coluna Fiscal abre a relação de NFs de entrada daquele item, nota a nota, até a data da posição." },
     ],
     onde: "Relatórios → Entradas Fiscais por Produto; Estoque → Auditor Fiscal × Físico → coluna Fiscal",

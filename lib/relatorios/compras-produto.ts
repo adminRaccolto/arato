@@ -18,7 +18,7 @@ import { CFOP_FORA_DO_FISCAL } from "../estoque/auditoria-fiscal";
 export type Abrangencia = "compras" | "entradas";
 
 export type NfCompra = {
-  id: string; fazenda_id: string; numero: string | null; serie: string | null; emitente_nome: string | null;
+  id: string; fazenda_id: string; numero: string | null; serie: string | null; emitente_nome: string | null; emitente_cnpj?: string | null;
   data_emissao: string | null; data_entrada: string | null; status: string; tipo_entrada: string | null; cfop: string | null;
 };
 export type ItemCompra = {
@@ -64,6 +64,8 @@ export function montarComprasPorProduto(p: {
   nfs: NfCompra[]; itens: ItemCompra[]; insumos: Map<string, InsumoInfo>; fazendas: Map<string, string>;
   filtroProduto?: string; filtroGrupo?: string; filtroFornecedor?: string; filtroApropriacao?: string; soCadastro?: boolean;
   abrangencia?: Abrangencia; filtroInsumoId?: string;
+  /** Fornecedor escolhido no seletor: CPF/CNPJ (só dígitos) do emitente — o nome na NF varia entre notas */
+  filtroFornecedorDoc?: string;
 }): ProdutoCompra[] {
   const nfPorId = new Map(p.nfs.map(n => [n.id, n]));
   const todasEntradas = p.abrangencia === "entradas";
@@ -87,6 +89,7 @@ export function montarComprasPorProduto(p: {
     if (busca && !normalizar(nome).includes(busca) && !normalizar(descricao).includes(busca)) continue;
     const fornecedor = String(nf.emitente_nome ?? "").trim() || "—";
     if (forn && !normalizar(fornecedor).includes(forn)) continue;
+    if (p.filtroFornecedorDoc && String(nf.emitente_cnpj ?? "").replace(/\D/g, "") !== p.filtroFornecedorDoc) continue;
     const unidade = String((ins ? it.unidade || ins.unidade : it.unidade) ?? "").trim().toUpperCase();
     const chave = ins ? `i:${it.insumo_id}|${unidade}` : `d:${normalizar(descricao)}|${unidade}`;
     let g = mapa.get(chave);
