@@ -1,33 +1,25 @@
-// Relatório do Apoio Financeiro (24/11/2026): a mesma definição gera o PDF e o Excel (lib/relatorios/tabela-exportavel.ts).
-// Antes só havia uma planilha crua — datas em formato de banco, sem pessoa, sem totais, ignorando os filtros da tela e com
-// o "saldo projetado" somando inclusive o que já tinha sido pago.
-import type { Celula, RelatorioExport, TabelaExport } from "../relatorios/tabela-exportavel";
+// Relatório do Apoio Financeiro (24/11/2026), no molde do relatório de CP/CR: janela de filtro, colunas escolhidas,
+// agrupamento em vários níveis com subtotal e total geral, PDF ou Excel. Junta os títulos oficiais do CP/CR (com a baixa
+// própria do Apoio) e os lançamentos exclusivos do Apoio.
+//
+// Posição: a situação de cada título é a da data escolhida — baixado se a baixa é até essa data; senão vencido (vencimento
+// antes dela) ou a vencer. Assim dá para tirar a posição de um dia passado.
 
-export type StatusApoio = "baixado_oficial" | "baixado_apoio" | "aberto";
+import type { Celula } from "../relatorios/tabela-exportavel";
 
-export type TituloOficialRel = {
-  tipo: "pagar" | "receber"; descricao: string; valor: number; data_vencimento: string; data_baixa: string | null;
-  status: string; categoria: string | null; moeda?: string | null;
-  pessoa: string; documento: string; statusApoio: StatusApoio; dataBaixaApoio: string | null; contaBaixaApoio: string;
+export type Origem = "oficial" | "exclusivo";
+export type Situacao = "a_vencer" | "vencido" | "baixado";
+
+export type LinhaApoio = {
+  id: string; origem: Origem; tipo: "pagar" | "receber"; descricao: string; valor: number; moeda: string;
+  vencimento: string; dataBaixa: string | null;
+  /** Quem baixou: Apoio (baixa própria do Apoio num título oficial), Oficial (baixa do CP/CR) ou o exclusivo do Apoio */
+  baixadoPor: "apoio" | "oficial" | "exclusivo" | null;
+  pessoa: string; documento: string; produtor: string; safra: string; categoria: string; contaBaixa: string; observacao: string;
 };
-
-export type TituloExclusivoRel = {
-  tipo: "pagar" | "receber"; descricao: string; valor: number; data_vencimento: string; data_baixa: string | null;
-  baixado: boolean; pessoa: string; documento: string; produtor: string; safra: string; origem: string; categoria: string;
-  observacao: string;
-};
-
-export const ROTULO_STATUS_APOIO: Record<StatusApoio, string> = {
-  aberto: "Aberto", baixado_apoio: "Baixado (Apoio)", baixado_oficial: "Baixado (Oficial)",
-};
-
-const rotuloTipo = (t: "pagar" | "receber") => (t === "pagar" ? "Pagar" : "Receber");
-const soma = (v: number[]) => Math.round(v.reduce((a, b) => a + b, 0) * 100) / 100;
-const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const dataBR = (d: string) => (d ? d.slice(0, 10).split("-").reverse().join("/") : "");
 
 /** Status do título oficial no contexto do Apoio: a baixa registrada no Apoio vale mais que a do CP/CR. */
-export function statusApoioDe(statusOficial: string, temBaixaApoio: boolean): StatusApoio {
+export function statusApoioDe(statusOficial: string, temBaixaApoio: boolean): "baixado_oficial" | "baixado_apoio" | "aberto" {
   if (temBaixaApoio) return "baixado_apoio";
   return statusOficial === "baixado" ? "baixado_oficial" : "aberto";
 }
@@ -35,113 +27,181 @@ export function statusApoioDe(statusOficial: string, temBaixaApoio: boolean): St
 /** Títulos do CP/CR que entram no Apoio: cancelado não é conta, e compra no cartão vive na fatura (cp-grid). */
 export const entraNoApoio = (status: string) => status !== "cancelado" && status !== "cartao";
 
-export type FluxoLinha = { data: string; origem: "Oficial" | "Apoio"; tipo: "pagar" | "receber"; descricao: string; pessoa: string; valor: number; saldo: number };
+export function situacaoNaPosicao(l: LinhaApoio, posicao: string): Situacao {
+  if (l.baixadoPor && (!l.dataBaixa || l.dataBaixa.slice(0, 10) <= posicao)) return "baixado";
+  return l.vencimento < posicao ? "vencido" : "a_vencer";
+}
 
-/** Projeção só do que está em aberto, em ordem de vencimento, com saldo acumulado (entradas − saídas). */
-export function fluxoEmAberto(oficiais: TituloOficialRel[], exclusivos: TituloExclusivoRel[]): FluxoLinha[] {
-  const itens = [
-    ...oficiais.filter(o => o.statusApoio === "aberto").map(o => ({ data: o.data_vencimento, origem: "Oficial" as const, tipo: o.tipo, descricao: o.descricao, pessoa: o.pessoa, valor: o.valor })),
-    ...exclusivos.filter(e => !e.baixado).map(e => ({ data: e.data_vencimento, origem: "Apoio" as const, tipo: e.tipo, descricao: e.descricao, pessoa: e.pessoa, valor: e.valor })),
-  ].sort((a, b) => a.data.localeCompare(b.data) || a.descricao.localeCompare(b.descricao));
-  let saldo = 0;
-  return itens.map(i => {
-    saldo = Math.round((saldo + (i.tipo === "receber" ? i.valor : -i.valor)) * 100) / 100;
-    return { ...i, saldo };
+/** Dias até o vencimento na data da posição (negativo = em atraso); vazio quando baixado. */
+export function diasNaPosicao(l: LinhaApoio, posicao: string): number | null {
+  if (situacaoNaPosicao(l, posicao) === "baixado") return null;
+  return Math.round((Date.parse(`${l.vencimento}T12:00:00Z`) - Date.parse(`${posicao}T12:00:00Z`)) / 86_400_000);
+}
+
+export const ROTULO_SITUACAO: Record<Situacao, string> = { a_vencer: "A vencer", vencido: "Vencido", baixado: "Baixado" };
+export const ROTULO_ORIGEM: Record<Origem, string> = { oficial: "CP/CR Oficial", exclusivo: "Apoio Exclusivo" };
+const ROTULO_BAIXA = { apoio: "Apoio", oficial: "Oficial (CP/CR)", exclusivo: "Apoio" } as const;
+
+/** Chave do fornecedor/cliente: CPF/CNPJ quando há, senão o nome. */
+export const chavePessoa = (l: Pick<LinhaApoio, "documento" | "pessoa">) => l.documento ? `d:${l.documento.replace(/\D/g, "")}` : `n:${l.pessoa.trim().toUpperCase()}`;
+
+export type FiltroApoio = {
+  periodoPor: "vencimento" | "baixa"; de: string; ate: string; posicao: string;
+  tipo: "todos" | "pagar" | "receber";
+  origens: Set<Origem>; situacoes: Set<Situacao>; categorias: Set<string>; pessoas: Set<string>; produtores: Set<string>;
+};
+
+export function filtrarApoio(linhas: LinhaApoio[], f: FiltroApoio): LinhaApoio[] {
+  return linhas.filter(l => {
+    if (f.tipo !== "todos" && l.tipo !== f.tipo) return false;
+    if (f.origens.size && !f.origens.has(l.origem)) return false;
+    if (f.periodoPor === "baixa") {
+      const d = l.dataBaixa?.slice(0, 10) ?? "";
+      if (!l.baixadoPor || !d) return false;
+      if (f.de && d < f.de) return false;
+      if (f.ate && d > f.ate) return false;
+    } else {
+      if (f.de && l.vencimento < f.de) return false;
+      if (f.ate && l.vencimento > f.ate) return false;
+    }
+    if (f.situacoes.size && !f.situacoes.has(situacaoNaPosicao(l, f.posicao))) return false;
+    if (f.categorias.size && !f.categorias.has(l.categoria || "Sem categoria")) return false;
+    if (f.pessoas.size && !f.pessoas.has(chavePessoa(l))) return false;
+    if (f.produtores.size && !f.produtores.has(l.produtor || "Sem produtor")) return false;
+    return true;
   });
 }
 
-export function montarRelatorioApoio(p: {
-  oficiais: TituloOficialRel[]; exclusivos: TituloExclusivoRel[];
-  periodo: { de: string; ate: string }; fazenda?: string; filtros?: { rotulo: string; valor: string }[];
-}): RelatorioExport {
-  const { oficiais, exclusivos } = p;
-  const usd = oficiais.some(o => (o.moeda ?? "BRL") !== "BRL");
+export type TipoCol = "texto" | "data" | "moeda" | "numero";
+export const COLUNAS_APOIO: { key: string; label: string; tipo: TipoCol; peso: number }[] = [
+  { key: "vencimento",  label: "Vencimento",          tipo: "data",   peso: 62 },
+  { key: "origem",      label: "Origem",              tipo: "texto",  peso: 70 },
+  { key: "tipo",        label: "Tipo",                tipo: "texto",  peso: 46 },
+  { key: "descricao",   label: "Descrição",           tipo: "texto",  peso: 170 },
+  { key: "pessoa",      label: "Fornecedor / Cliente", tipo: "texto", peso: 140 },
+  { key: "documento",   label: "CPF/CNPJ",            tipo: "texto",  peso: 90 },
+  { key: "produtor",    label: "Produtor",            tipo: "texto",  peso: 100 },
+  { key: "safra",       label: "Safra",               tipo: "texto",  peso: 60 },
+  { key: "categoria",   label: "Categoria",           tipo: "texto",  peso: 100 },
+  { key: "situacao",    label: "Situação",            tipo: "texto",  peso: 56 },
+  { key: "dias",        label: "Dias p/ vencer (− = atraso)", tipo: "numero", peso: 50 },
+  { key: "data_baixa",  label: "Data da baixa",       tipo: "data",   peso: 62 },
+  { key: "baixado_por", label: "Baixado por",         tipo: "texto",  peso: 64 },
+  { key: "conta_baixa", label: "Conta (baixa Apoio)", tipo: "texto",  peso: 100 },
+  { key: "moeda",       label: "Moeda",               tipo: "texto",  peso: 36 },
+  { key: "receber",     label: "A receber (CR)",      tipo: "moeda",  peso: 80 },
+  { key: "pagar",       label: "A pagar (CP)",        tipo: "moeda",  peso: 80 },
+  { key: "saldo",       label: "Saldo em aberto",     tipo: "moeda",  peso: 80 },
+  { key: "observacao",  label: "Observação",          tipo: "texto",  peso: 140 },
+];
+export const COLUNAS_PADRAO = ["vencimento", "origem", "tipo", "descricao", "pessoa", "categoria", "situacao", "dias", "receber", "pagar", "saldo"];
+export const COLUNAS_TOTAL = new Set(["receber", "pagar", "saldo"]);
 
-  const tabOficial: TabelaExport = {
-    titulo: "CP/CR Oficial",
-    colunas: [
-      { rotulo: "Vencimento", tipo: "data" }, { rotulo: "Tipo" }, { rotulo: "Descrição" }, { rotulo: "Pessoa" }, { rotulo: "CPF/CNPJ" },
-      { rotulo: "Categoria" }, ...(usd ? [{ rotulo: "Moeda" }] : []), { rotulo: "Valor", tipo: "moeda" as const },
-      { rotulo: "Status Apoio" }, { rotulo: "Baixa Apoio", tipo: "data" as const }, { rotulo: "Conta (Apoio)" }, { rotulo: "Baixa Oficial", tipo: "data" as const },
-    ],
-    linhas: oficiais.map(o => [
-      o.data_vencimento, rotuloTipo(o.tipo), o.descricao, o.pessoa, o.documento, o.categoria ?? "",
-      ...(usd ? [o.moeda ?? "BRL"] : []), o.valor, ROTULO_STATUS_APOIO[o.statusApoio], o.dataBaixaApoio ?? "", o.contaBaixaApoio,
-      o.data_baixa ?? "",
-    ] as Celula[]),
+export const GRUPOS_APOIO: { key: string; label: string }[] = [
+  { key: "origem",    label: "Origem (Oficial / Exclusivo)" },
+  { key: "tipo",      label: "Tipo (CP/CR)" },
+  { key: "mes",       label: "Mês de vencimento" },
+  { key: "situacao",  label: "Situação na posição" },
+  { key: "pessoa",    label: "Fornecedor / Cliente" },
+  { key: "categoria", label: "Categoria" },
+  { key: "produtor",  label: "Produtor" },
+  { key: "safra",     label: "Safra" },
+];
+
+const r2 = (v: number) => Math.round(v * 100) / 100;
+const saldoAberto = (l: LinhaApoio, posicao: string) =>
+  situacaoNaPosicao(l, posicao) === "baixado" ? 0 : (l.tipo === "receber" ? l.valor : -l.valor);
+
+export function valorColuna(key: string, l: LinhaApoio, posicao: string): Celula {
+  switch (key) {
+    case "vencimento":  return l.vencimento;
+    case "origem":      return ROTULO_ORIGEM[l.origem];
+    case "tipo":        return l.tipo === "pagar" ? "Pagar" : "Receber";
+    case "descricao":   return l.descricao;
+    case "pessoa":      return l.pessoa;
+    case "documento":   return l.documento;
+    case "produtor":    return l.produtor;
+    case "safra":       return l.safra;
+    case "categoria":   return l.categoria;
+    case "situacao":    return ROTULO_SITUACAO[situacaoNaPosicao(l, posicao)];
+    case "dias":        return diasNaPosicao(l, posicao);
+    case "data_baixa":  return situacaoNaPosicao(l, posicao) === "baixado" ? (l.dataBaixa?.slice(0, 10) ?? "") : "";
+    case "baixado_por": return situacaoNaPosicao(l, posicao) === "baixado" && l.baixadoPor ? ROTULO_BAIXA[l.baixadoPor] : "";
+    case "conta_baixa": return l.contaBaixa;
+    case "moeda":       return l.moeda;
+    case "receber":     return l.tipo === "receber" ? l.valor : null;
+    case "pagar":       return l.tipo === "pagar" ? l.valor : null;
+    case "saldo":       return r2(saldoAberto(l, posicao));
+    case "observacao":  return l.observacao;
+    default:            return "";
+  }
+}
+
+export type Totais = { receber: number; pagar: number; saldo: number; n: number };
+export type ItemRel =
+  | { t: "grupo"; nivel: number; rot: string; tot: Totais }
+  | { t: "linha"; l: LinhaApoio }
+  | { t: "sub"; nivel: number; rot: string; tot: Totais };
+
+export function somar(linhas: LinhaApoio[], posicao: string): Totais {
+  const t = linhas.reduce((a, l) => {
+    if (l.tipo === "receber") a.receber += l.valor; else a.pagar += l.valor;
+    a.saldo += saldoAberto(l, posicao); a.n++; return a;
+  }, { receber: 0, pagar: 0, saldo: 0, n: 0 });
+  return { receber: r2(t.receber), pagar: r2(t.pagar), saldo: r2(t.saldo), n: t.n };
+}
+
+const ORDEM_SITUACAO: Record<Situacao, string> = { vencido: "1", a_vencer: "2", baixado: "3" };
+
+function grupoDe(key: string, l: LinhaApoio, posicao: string): { ord: string; rot: string } {
+  switch (key) {
+    case "origem":   return { ord: l.origem, rot: ROTULO_ORIGEM[l.origem] };
+    case "tipo":     return { ord: l.tipo === "receber" ? "1" : "2", rot: l.tipo === "receber" ? "Contas a Receber" : "Contas a Pagar" };
+    case "mes":      return { ord: l.vencimento.slice(0, 7), rot: l.vencimento ? `${l.vencimento.slice(5, 7)}/${l.vencimento.slice(0, 4)}` : "Sem data" };
+    case "situacao": { const s = situacaoNaPosicao(l, posicao); return { ord: ORDEM_SITUACAO[s], rot: ROTULO_SITUACAO[s] }; }
+    case "pessoa":   return { ord: (l.pessoa || "~").toUpperCase(), rot: l.pessoa || "Sem fornecedor/cliente" };
+    case "categoria": return { ord: (l.categoria || "~").toUpperCase(), rot: l.categoria || "Sem categoria" };
+    case "produtor": return { ord: (l.produtor || "~").toUpperCase(), rot: l.produtor || "Sem produtor" };
+    case "safra":    return { ord: l.safra || "~", rot: l.safra || "Sem safra" };
+    default:         return { ord: "", rot: "" };
+  }
+}
+
+/** Itens do relatório na ordem: grupo → (subníveis ou linhas por vencimento) → subtotal; e o total geral. */
+export function agruparApoio(linhas: LinhaApoio[], grupos: string[], posicao: string): { itens: ItemRel[]; geral: Totais } {
+  const out: ItemRel[] = [];
+  const rotGrupo = (k: string) => GRUPOS_APOIO.find(g => g.key === k)?.label.replace(/ \(.*\)$/, "") ?? k;
+  const rec = (ls: LinhaApoio[], nivel: number) => {
+    if (nivel >= grupos.length) {
+      [...ls].sort((a, b) => a.vencimento.localeCompare(b.vencimento) || a.descricao.localeCompare(b.descricao)).forEach(l => out.push({ t: "linha", l }));
+      return;
+    }
+    const key = grupos[nivel];
+    const mapa = new Map<string, { rot: string; ls: LinhaApoio[] }>();
+    for (const l of ls) {
+      const g = grupoDe(key, l, posicao); const k = `${g.ord}|${g.rot}`;
+      const e = mapa.get(k); if (e) e.ls.push(l); else mapa.set(k, { rot: g.rot, ls: [l] });
+    }
+    [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR")).forEach(([, g]) => {
+      const tot = somar(g.ls, posicao);
+      out.push({ t: "grupo", nivel, rot: `${rotGrupo(key)}: ${g.rot}`, tot });
+      rec(g.ls, nivel + 1);
+      out.push({ t: "sub", nivel, rot: `Subtotal — ${g.rot}`, tot });
+    });
   };
-  // Total do oficial separado por tipo: pagar e receber não se somam
-  const totOfPagar = soma(oficiais.filter(o => o.tipo === "pagar").map(o => o.valor));
-  const totOfReceber = soma(oficiais.filter(o => o.tipo === "receber").map(o => o.valor));
-  tabOficial.total = tabOficial.colunas.map((c, i) => i === 0 ? `${oficiais.length} título(s)` : c.rotulo === "Descrição" ? `Pagar ${brl(totOfPagar)} · Receber ${brl(totOfReceber)}` : "");
+  rec(linhas, 0);
+  return { itens: out, geral: somar(linhas, posicao) };
+}
 
-  const totExPagar = soma(exclusivos.filter(e => e.tipo === "pagar").map(e => e.valor));
-  const totExReceber = soma(exclusivos.filter(e => e.tipo === "receber").map(e => e.valor));
-  const tabExclusivo: TabelaExport = {
-    titulo: "Apoio Exclusivo",
-    colunas: [
-      { rotulo: "Vencimento", tipo: "data" }, { rotulo: "Tipo" }, { rotulo: "Descrição" }, { rotulo: "Pessoa" }, { rotulo: "CPF/CNPJ" },
-      { rotulo: "Produtor" }, { rotulo: "Safra" }, { rotulo: "Origem" }, { rotulo: "Categoria" }, { rotulo: "Valor", tipo: "moeda" },
-      { rotulo: "Status" }, { rotulo: "Data Baixa", tipo: "data" }, { rotulo: "Observação" },
-    ],
-    linhas: exclusivos.map(e => [
-      e.data_vencimento, rotuloTipo(e.tipo), e.descricao, e.pessoa, e.documento, e.produtor, e.safra, e.origem, e.categoria,
-      e.valor, e.baixado ? "Baixado" : "Aberto", e.data_baixa ?? "", e.observacao,
-    ]),
-    total: [`${exclusivos.length} lançamento(s)`, "", `Pagar ${brl(totExPagar)} · Receber ${brl(totExReceber)}`, "", "", "", "", "", "", null, "", "", ""],
-  };
-
-  const fluxo = fluxoEmAberto(oficiais, exclusivos);
-  const tabFluxo: TabelaExport = {
-    titulo: "Fluxo Projetado — títulos em aberto",
-    colunas: [
-      { rotulo: "Vencimento", tipo: "data" }, { rotulo: "Origem" }, { rotulo: "Tipo" }, { rotulo: "Descrição" }, { rotulo: "Pessoa" },
-      { rotulo: "Entrada", tipo: "moeda" }, { rotulo: "Saída", tipo: "moeda" }, { rotulo: "Saldo Acumulado", tipo: "moeda" },
-    ],
-    linhas: fluxo.map(f => [f.data, f.origem, rotuloTipo(f.tipo), f.descricao, f.pessoa,
-      f.tipo === "receber" ? f.valor : null, f.tipo === "pagar" ? f.valor : null, f.saldo]),
-    total: ["Total", "", "", "", "",
-      soma(fluxo.filter(f => f.tipo === "receber").map(f => f.valor)), soma(fluxo.filter(f => f.tipo === "pagar").map(f => f.valor)),
-      fluxo.at(-1)?.saldo ?? 0],
-  };
-
-  const abertoOf = (t: "pagar" | "receber") => soma(oficiais.filter(o => o.tipo === t && o.statusApoio === "aberto").map(o => o.valor));
-  const abertoEx = (t: "pagar" | "receber") => soma(exclusivos.filter(e => e.tipo === t && !e.baixado).map(e => e.valor));
-  const linhasResumo: [string, number, number][] = [
-    ["CP/CR Oficial — Pagar", totOfPagar, abertoOf("pagar")],
-    ["CP/CR Oficial — Receber", totOfReceber, abertoOf("receber")],
-    ["Apoio Exclusivo — Pagar", totExPagar, abertoEx("pagar")],
-    ["Apoio Exclusivo — Receber", totExReceber, abertoEx("receber")],
-  ];
-  const aReceber = abertoOf("receber") + abertoEx("receber"), aPagar = abertoOf("pagar") + abertoEx("pagar");
-  const tabResumo: TabelaExport = {
-    titulo: "Resumo",
-    colunas: [{ rotulo: "Grupo" }, { rotulo: "Total no período", tipo: "moeda" }, { rotulo: "Em aberto", tipo: "moeda" }],
-    linhas: linhasResumo,
-    total: ["Saldo em aberto (receber − pagar)", null, Math.round((aReceber - aPagar) * 100) / 100],
-  };
-
-  const filtros = [
-    { rotulo: "Período (vencimento)", valor: `${dataBR(p.periodo.de)} a ${dataBR(p.periodo.ate)}` },
-    ...(p.fazenda ? [{ rotulo: "Fazenda", valor: p.fazenda }] : []),
-    ...(p.filtros ?? []).filter(f => f.valor),
-  ];
+/** Destaques do relatório na posição: em aberto e vencido, por tipo. */
+export function resumoApoio(linhas: LinhaApoio[], posicao: string) {
+  const soma = (f: (l: LinhaApoio) => boolean) => r2(linhas.filter(f).reduce((a, l) => a + l.valor, 0));
+  const aberto = (l: LinhaApoio) => situacaoNaPosicao(l, posicao) !== "baixado";
+  const vencido = (l: LinhaApoio) => situacaoNaPosicao(l, posicao) === "vencido";
+  const receberAberto = soma(l => l.tipo === "receber" && aberto(l));
+  const pagarAberto = soma(l => l.tipo === "pagar" && aberto(l));
   return {
-    titulo: "Apoio Financeiro",
-    tipoArquivo: "APOIO FINANCEIRO",
-    orientacao: "landscape",
-    filtros,
-    resumo: [
-      { rotulo: "A pagar em aberto", valor: brl(aPagar) },
-      { rotulo: "A receber em aberto", valor: brl(aReceber) },
-      { rotulo: "Saldo em aberto", valor: brl(aReceber - aPagar) },
-    ],
-    secoes: [tabResumo, tabOficial, tabExclusivo, tabFluxo],
-    planilhas: [
-      { ...tabResumo, nome: "Resumo" },
-      { ...tabOficial, nome: "CP-CR Oficial" },
-      { ...tabExclusivo, nome: "Apoio Exclusivo" },
-      { ...tabFluxo, nome: "Fluxo Projetado" },
-    ],
+    receberAberto, pagarAberto, saldo: r2(receberAberto - pagarAberto),
+    receberVencido: soma(l => l.tipo === "receber" && vencido(l)), pagarVencido: soma(l => l.tipo === "pagar" && vencido(l)),
   };
 }

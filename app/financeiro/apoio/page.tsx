@@ -14,12 +14,12 @@ import {
   listarOperacoesGerenciaisAtivasDaConta,
   listarContas,
   listarFazendasDaConta,
+  listarProdutoresDaConta,
 } from "../../../lib/db";
 import SelectBusca from "../../../components/SelectBusca";
-import BotoesExportar from "../../../components/relatorios/BotoesExportar";
+import RelatorioApoioModal from "../../../components/financeiro/RelatorioApoioModal";
 import { lerPaginas } from "../../../lib/paginar";
-import { entraNoApoio, montarRelatorioApoio, statusApoioDe, ROTULO_STATUS_APOIO } from "../../../lib/financeiro/apoio-relatorio";
-import type { RelatorioExport } from "../../../lib/relatorios/tabela-exportavel";
+import { entraNoApoio, statusApoioDe, type LinhaApoio } from "../../../lib/financeiro/apoio-relatorio";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, AnoSafra, Ciclo, OperacaoGerencial, ContaBancaria } from "../../../lib/supabase";
 
@@ -38,6 +38,8 @@ interface Lancamento {
   pessoa_id: string | null;
   observacao: string | null;
   moeda?: string;
+  produtor_id?: string | null;
+  ano_safra_id?: string | null;
 }
 
 interface ApoioBaixa {
@@ -169,6 +171,12 @@ export default function ApoioFinanceiroPage() {
   // ── Dados de referência ───────────────────────────────────────────────────
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
+  const [produtoresConta, setProdutoresConta] = useState<{ id: string; nome: string }[]>([]);
+  const [relatorioAberto, setRelatorioAberto] = useState(false);
+  useEffect(() => {
+    if (!contaId) return;
+    listarProdutoresDaConta(contaId).then(ps => setProdutoresConta(ps.map(p => ({ id: p.id, nome: p.nome })))).catch(() => {});
+  }, [contaId]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([]);
@@ -242,7 +250,7 @@ export default function ApoioFinanceiroPage() {
       // vinham cortados. As baixas do Apoio vêm por fazenda — a lista de ids estourava o tamanho da consulta e falhava calada.
       const lancs = (await lerPaginas<Lancamento>((a, b) => supabase
         .from("lancamentos")
-        .select("id,fazenda_id,tipo,descricao,valor,data_vencimento,data_baixa,status,categoria,pessoa_id,observacao,moeda")
+        .select("id,fazenda_id,tipo,descricao,valor,data_vencimento,data_baixa,status,categoria,pessoa_id,observacao,moeda,produtor_id,ano_safra_id")
         .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
@@ -494,40 +502,40 @@ export default function ApoioFinanceiroPage() {
     }
   }
 
-  // ── Relatório PDF / Excel ─────────────────────────────────────────────────
-  // Sai com o que a tela mostra: filtros de tipo/status do CP/CR e os filtros por coluna do Apoio Exclusivo.
-  function gerarRelatorio(): RelatorioExport {
+  // ── Relatório (janela de filtro, como o de CP/CR) ─────────────────────────
+  // Todos os títulos carregados do período (oficiais + exclusivos); os filtros e a posição ficam na janela.
+  function linhasRelatorio(): LinhaApoio[] {
     const pessoaPorId = new Map(pessoas.map(p => [p.id, p]));
     const contaNomePorId = new Map(contasBancarias.map(c => [c.id, c.nome]));
-    const oficiais = lancsFiltrados.map(l => {
+    const produtorPorId = new Map(produtoresConta.map(p => [p.id, p.nome]));
+    const safraPorId = new Map(anosSafra.map(a => [a.id, a.descricao]));
+    const oficiais: LinhaApoio[] = lancamentos.map(l => {
       const ba = baixaApoioPorLancId.get(l.id);
+      const sa = statusApoio(l);
       const pes = l.pessoa_id ? pessoaPorId.get(l.pessoa_id) : undefined;
       return {
-        tipo: l.tipo, descricao: l.descricao, valor: Number(l.valor ?? 0), data_vencimento: l.data_vencimento, data_baixa: l.data_baixa,
-        status: l.status, categoria: l.categoria, moeda: l.moeda ?? "BRL",
-        pessoa: pes?.nome ?? "", documento: pes?.cpf_cnpj ?? "", statusApoio: statusApoio(l),
-        dataBaixaApoio: ba?.data_baixa ?? null, contaBaixaApoio: ba?.conta_bancaria_id ? (contaNomePorId.get(ba.conta_bancaria_id) ?? "") : "",
+        id: l.id, origem: "oficial", tipo: l.tipo, descricao: l.descricao, valor: Number(l.valor ?? 0), moeda: l.moeda ?? "BRL",
+        vencimento: l.data_vencimento,
+        dataBaixa: sa === "baixado_apoio" ? (ba?.data_baixa ?? null) : sa === "baixado_oficial" ? l.data_baixa : null,
+        baixadoPor: sa === "baixado_apoio" ? "apoio" : sa === "baixado_oficial" ? "oficial" : null,
+        pessoa: pes?.nome ?? "", documento: pes?.cpf_cnpj ?? "",
+        produtor: l.produtor_id ? produtorPorId.get(l.produtor_id) ?? "" : "", safra: l.ano_safra_id ? safraPorId.get(l.ano_safra_id) ?? "" : "",
+        categoria: l.categoria ?? "", contaBaixa: ba?.conta_bancaria_id ? (contaNomePorId.get(ba.conta_bancaria_id) ?? "") : "",
+        observacao: [l.observacao, ba?.observacao].filter(Boolean).join(" · "),
       };
     });
-    const exclusivos = apoioFiltrado.map(a => {
+    const exclusivos: LinhaApoio[] = apoioLancs.map(a => {
       const pes = a.pessoa_id ? pessoaPorId.get(a.pessoa_id) : undefined;
       return {
-        tipo: a.tipo, descricao: a.descricao, valor: Number(a.valor ?? 0), data_vencimento: a.data_vencimento, data_baixa: a.data_baixa,
-        baixado: a.baixado, pessoa: pes?.nome ?? a.pessoa_nome ?? "", documento: pes?.cpf_cnpj ?? "",
-        produtor: a.produtor_nome ?? "", safra: a.safra_nome ?? "", origem: a.origem ?? "", categoria: a.categoria ?? "", observacao: a.observacao ?? "",
+        id: a.id, origem: "exclusivo", tipo: a.tipo, descricao: a.descricao, valor: Number(a.valor ?? 0), moeda: "BRL",
+        vencimento: a.data_vencimento, dataBaixa: a.baixado ? a.data_baixa : null, baixadoPor: a.baixado ? "exclusivo" : null,
+        pessoa: pes?.nome ?? a.pessoa_nome ?? "", documento: pes?.cpf_cnpj ?? "",
+        produtor: a.produtor_nome ?? (a.produtor_id ? produtorPorId.get(a.produtor_id) ?? "" : ""),
+        safra: a.safra_nome ?? (a.ano_safra_id ? safraPorId.get(a.ano_safra_id) ?? "" : ""),
+        categoria: a.categoria ?? "", contaBaixa: "", observacao: a.observacao ?? "",
       };
     });
-    return montarRelatorioApoio({
-      oficiais, exclusivos, periodo: { de: dataIni, ate: dataFim },
-      filtros: [
-        { rotulo: "CP/CR — Tipo", valor: filtroTipo === "pagar" ? "Contas a Pagar" : filtroTipo === "receber" ? "Contas a Receber" : "" },
-        { rotulo: "CP/CR — Status", valor: filtroStatus ? ROTULO_STATUS_APOIO[filtroStatus] : "" },
-        { rotulo: "Exclusivo — Status", valor: fStatus === "aberto" ? "Aberto" : fStatus === "baixado" ? "Baixado" : "" },
-        { rotulo: "Exclusivo — Descrição", valor: fDescricao }, { rotulo: "Exclusivo — Fornecedor", valor: fFornecedor },
-        { rotulo: "Exclusivo — Produtor", valor: fProdutor }, { rotulo: "Exclusivo — Safra", valor: fSafra },
-        { rotulo: "Exclusivo — Origem", valor: fOrigem }, { rotulo: "Exclusivo — Categoria", valor: fCategoria },
-      ],
-    });
+    return [...oficiais, ...exclusivos];
   }
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
@@ -604,7 +612,10 @@ export default function ApoioFinanceiroPage() {
             <OperationalButton data-arato-button="secondary" onClick={carregar} style={btn("#111111")} disabled={carregando}>
               {carregando ? "…" : "Atualizar"}
             </OperationalButton>
-            <BotoesExportar disabled={carregando || (lancamentos.length === 0 && apoioLancs.length === 0)} gerar={gerarRelatorio} />
+            <OperationalButton data-arato-button="primary" onClick={() => setRelatorioAberto(true)} disabled={carregando || (lancamentos.length === 0 && apoioLancs.length === 0)}
+              style={btn("#1A4870")} title="Filtro, agrupamentos e posição; sai em PDF ou Excel">
+              🔍 Relatório
+            </OperationalButton>
           </OperationalFilters>
         </OperationalHeading>
 
@@ -1262,6 +1273,7 @@ export default function ApoioFinanceiroPage() {
           </div>
         )}
       </div>
+      {relatorioAberto && <RelatorioApoioModal linhas={linhasRelatorio()} onFechar={() => setRelatorioAberto(false)} />}
     </>
   );
 }

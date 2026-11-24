@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-d",
+    data: "24/11/2026",
+    titulo: "Relatório do Apoio Financeiro com agrupamentos e posição",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "O botão Relatório do Apoio Financeiro abre uma janela de filtro como a do relatório de CP/CR: posição em uma data (situação, dias de atraso e saldo em aberto naquele dia), período por vencimento ou baixa, origem, situação, categoria, produtor e fornecedor; colunas e agrupamentos em vários níveis com subtotal e total geral; sai em PDF ou Excel." },
+    ],
+    onde: "Financeiro → Apoio Financeiro → 🔍 Relatório",
+  },
+  {
     versao: "2026.11.24-c",
     data: "24/11/2026",
     titulo: "Painel Mercado mostra bolsa e vencimento de cada cotação",
