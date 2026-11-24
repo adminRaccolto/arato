@@ -1,6 +1,4 @@
 "use client";
-import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
-import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -18,6 +16,10 @@ import {
   listarFazendasDaConta,
 } from "../../../lib/db";
 import SelectBusca from "../../../components/SelectBusca";
+import BotoesExportar from "../../../components/relatorios/BotoesExportar";
+import { lerPaginas } from "../../../lib/paginar";
+import { entraNoApoio, montarRelatorioApoio, statusApoioDe, ROTULO_STATUS_APOIO } from "../../../lib/financeiro/apoio-relatorio";
+import type { RelatorioExport } from "../../../lib/relatorios/tabela-exportavel";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, AnoSafra, Ciclo, OperacaoGerencial, ContaBancaria } from "../../../lib/supabase";
 
@@ -141,7 +143,6 @@ const FORM_VAZIO = {
 
 export default function ApoioFinanceiroPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId, contaNome } = useAuth();
-  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
   // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
@@ -237,27 +238,21 @@ export default function ApoioFinanceiroPage() {
     if (!fazAtiva) return;
     setCarregando(true);
     try {
-      const { data: lancs } = await supabase
+      // Paginado (24/11/2026): o .limit(10000) antigo esbarrava no teto de 1.000 linhas do Supabase e a tela e o Excel
+      // vinham cortados. As baixas do Apoio vêm por fazenda — a lista de ids estourava o tamanho da consulta e falhava calada.
+      const lancs = (await lerPaginas<Lancamento>((a, b) => supabase
         .from("lancamentos")
         .select("id,fazenda_id,tipo,descricao,valor,data_vencimento,data_baixa,status,categoria,pessoa_id,observacao,moeda")
         .in("fazenda_id", fazendaIds)
         .gte("data_vencimento", dataIni)
         .lte("data_vencimento", dataFim)
-        .order("data_vencimento")
-        .limit(10000);
-
-      setLancamentos((lancs ?? []) as Lancamento[]);
-
-      if (lancs && lancs.length > 0) {
-        const ids = lancs.map((l) => l.id);
-        const { data: baixas } = await supabase
-          .from("apoio_baixas")
-          .select("*")
-          .in("lancamento_id", ids);
-        setApoioBaixas((baixas ?? []) as ApoioBaixa[]);
-      } else {
-        setApoioBaixas([]);
-      }
+        .order("data_vencimento").order("id")
+        .range(a, b))).filter(l => entraNoApoio(l.status));
+      setLancamentos(lancs);
+      const baixas = await lerPaginas<ApoioBaixa>((a, b) => supabase
+        .from("apoio_baixas").select("*").in("fazenda_id", fazendaIds).order("id").range(a, b));
+      const idsLanc = new Set(lancs.map(l => l.id));
+      setApoioBaixas(baixas.filter(b => idsLanc.has(b.lancamento_id)));
 
       // Paginação: PostgREST do Supabase tem max_rows=1000 fixo — .limit() não supera esse cap.
       // Busca em lotes de 1000 até esgotar todos os registros do período.
@@ -279,6 +274,8 @@ export default function ApoioFinanceiroPage() {
         from += PAGE;
       }
       setApoioLancs(allApoio);
+    } catch (e) {
+      setMsg(`Erro ao carregar: ${e instanceof Error ? e.message : e}`);
     } finally {
       setCarregando(false);
     }
@@ -290,9 +287,7 @@ export default function ApoioFinanceiroPage() {
   const baixaApoioPorLancId = new Map(apoioBaixas.map((b) => [b.lancamento_id, b]));
 
   function statusApoio(l: Lancamento): "baixado_oficial" | "baixado_apoio" | "aberto" {
-    if (l.status === "baixado" && !baixaApoioPorLancId.has(l.id)) return "baixado_oficial";
-    if (baixaApoioPorLancId.has(l.id)) return "baixado_apoio";
-    return "aberto";
+    return statusApoioDe(l.status, baixaApoioPorLancId.has(l.id));
   }
 
   // ── Abrir modal de baixar ─────────────────────────────────────────────────
@@ -499,74 +494,40 @@ export default function ApoioFinanceiroPage() {
     }
   }
 
-  // ── Excel export ──────────────────────────────────────────────────────────
-  async function exportarExcel() {
-    const XLSX = await import("xlsx");
-    const wb = XLSX.utils.book_new();
-
-    const rowsOficial = lancamentos.map((l) => {
-      const sa = statusApoio(l);
+  // ── Relatório PDF / Excel ─────────────────────────────────────────────────
+  // Sai com o que a tela mostra: filtros de tipo/status do CP/CR e os filtros por coluna do Apoio Exclusivo.
+  function gerarRelatorio(): RelatorioExport {
+    const pessoaPorId = new Map(pessoas.map(p => [p.id, p]));
+    const contaNomePorId = new Map(contasBancarias.map(c => [c.id, c.nome]));
+    const oficiais = lancsFiltrados.map(l => {
       const ba = baixaApoioPorLancId.get(l.id);
+      const pes = l.pessoa_id ? pessoaPorId.get(l.pessoa_id) : undefined;
       return {
-        "Tipo":               l.tipo === "pagar" ? "Pagar" : "Receber",
-        "Descrição":          l.descricao,
-        "Categoria":          l.categoria ?? "",
-        "Vencimento":         l.data_vencimento,
-        "Valor":              l.valor,
-        "Status Oficial":     l.status,
-        "Status Apoio":       sa === "baixado_oficial" ? "Baixado (Oficial)" : sa === "baixado_apoio" ? "Baixado (Apoio)" : "Aberto",
-        "Data Baixa Oficial": l.data_baixa ?? "",
-        "Data Baixa Apoio":   ba?.data_baixa ?? "",
+        tipo: l.tipo, descricao: l.descricao, valor: Number(l.valor ?? 0), data_vencimento: l.data_vencimento, data_baixa: l.data_baixa,
+        status: l.status, categoria: l.categoria, moeda: l.moeda ?? "BRL",
+        pessoa: pes?.nome ?? "", documento: pes?.cpf_cnpj ?? "", statusApoio: statusApoio(l),
+        dataBaixaApoio: ba?.data_baixa ?? null, contaBaixaApoio: ba?.conta_bancaria_id ? (contaNomePorId.get(ba.conta_bancaria_id) ?? "") : "",
       };
     });
-    const ws1 = XLSX.utils.json_to_sheet(rowsOficial);
-    XLSX.utils.book_append_sheet(wb, ws1, "CP-CR Oficial");
-
-    const rowsExclusivo = apoioLancs.map((a) => ({
-      "Tipo":       a.tipo === "pagar" ? "Pagar" : "Receber",
-      "Descrição":  a.descricao,
-      "Pessoa":     a.pessoa_nome ?? "",
-      "Categoria":  a.categoria ?? "",
-      "Vencimento": a.data_vencimento,
-      "Valor":      a.valor,
-      "Status":     a.baixado ? "Baixado" : "Aberto",
-      "Data Baixa": a.data_baixa ?? "",
-      "Observação": a.observacao ?? "",
-    }));
-    const ws2 = XLSX.utils.json_to_sheet(rowsExclusivo.length ? rowsExclusivo : [{ "(vazio)": "" }]);
-    XLSX.utils.book_append_sheet(wb, ws2, "Apoio Exclusivo");
-
-    type EntradaFluxo = { data: string; descricao: string; origem: string; tipo: string; valor: number; pago: boolean; sinal: number };
-    const entradas: EntradaFluxo[] = [
-      ...lancamentos.map((l) => ({
-        data: l.data_vencimento, descricao: l.descricao, origem: "Oficial",
-        tipo: l.tipo === "pagar" ? "Pagar" : "Receber", valor: l.valor,
-        pago: statusApoio(l) !== "aberto", sinal: l.tipo === "receber" ? 1 : -1,
-      })),
-      ...apoioLancs.map((a) => ({
-        data: a.data_vencimento, descricao: a.descricao, origem: "Apoio",
-        tipo: a.tipo === "pagar" ? "Pagar" : "Receber", valor: a.valor,
-        pago: a.baixado, sinal: a.tipo === "receber" ? 1 : -1,
-      })),
-    ].sort((a, b) => a.data.localeCompare(b.data));
-
-    let saldo = 0;
-    const rowsFluxo = entradas.map((e) => {
-      saldo += e.sinal * e.valor;
+    const exclusivos = apoioFiltrado.map(a => {
+      const pes = a.pessoa_id ? pessoaPorId.get(a.pessoa_id) : undefined;
       return {
-        "Data": e.data, "Origem": e.origem, "Tipo": e.tipo, "Descrição": e.descricao,
-        "Pago?": e.pago ? "Sim" : "Não",
-        "Crédito": e.sinal > 0 ? e.valor : "",
-        "Débito": e.sinal < 0 ? e.valor : "",
-        "Saldo Projetado": saldo,
+        tipo: a.tipo, descricao: a.descricao, valor: Number(a.valor ?? 0), data_vencimento: a.data_vencimento, data_baixa: a.data_baixa,
+        baixado: a.baixado, pessoa: pes?.nome ?? a.pessoa_nome ?? "", documento: pes?.cpf_cnpj ?? "",
+        produtor: a.produtor_nome ?? "", safra: a.safra_nome ?? "", origem: a.origem ?? "", categoria: a.categoria ?? "", observacao: a.observacao ?? "",
       };
     });
-    const ws3 = XLSX.utils.json_to_sheet(rowsFluxo.length ? rowsFluxo : [{ "(vazio)": "" }]);
-    XLSX.utils.book_append_sheet(wb, ws3, "Fluxo Consolidado");
-
-    XLSX.writeFile(wb, `${nomeRelatorio("APOIO FINANCEIRO", clienteRelatorio, dataIni, dataFim)}.xlsx`);
-    setMsg("Excel exportado com sucesso.");
-    setTimeout(() => setMsg(null), 3000);
+    return montarRelatorioApoio({
+      oficiais, exclusivos, periodo: { de: dataIni, ate: dataFim },
+      filtros: [
+        { rotulo: "CP/CR — Tipo", valor: filtroTipo === "pagar" ? "Contas a Pagar" : filtroTipo === "receber" ? "Contas a Receber" : "" },
+        { rotulo: "CP/CR — Status", valor: filtroStatus ? ROTULO_STATUS_APOIO[filtroStatus] : "" },
+        { rotulo: "Exclusivo — Status", valor: fStatus === "aberto" ? "Aberto" : fStatus === "baixado" ? "Baixado" : "" },
+        { rotulo: "Exclusivo — Descrição", valor: fDescricao }, { rotulo: "Exclusivo — Fornecedor", valor: fFornecedor },
+        { rotulo: "Exclusivo — Produtor", valor: fProdutor }, { rotulo: "Exclusivo — Safra", valor: fSafra },
+        { rotulo: "Exclusivo — Origem", valor: fOrigem }, { rotulo: "Exclusivo — Categoria", valor: fCategoria },
+      ],
+    });
   }
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
@@ -584,6 +545,22 @@ export default function ApoioFinanceiroPage() {
       const sa = statusApoio(l);
       if (filtroStatus !== sa) return false;
     }
+    return true;
+  });
+
+  // ── Filtragem Apoio Exclusivo (filtros por coluna) — usada no grid e no relatório ──
+  const incluiTexto = (v: string | null | undefined, f: string) =>
+    !f || (v ?? "").toLowerCase().includes(f.toLowerCase());
+  const apoioFiltrado = apoioLancs.filter((a) => {
+    const pessoaNomeF = (a.pessoa_id ? pessoas.find(p => p.id === a.pessoa_id)?.nome : null) ?? a.pessoa_nome ?? "";
+    if (!incluiTexto(a.descricao, fDescricao))    return false;
+    if (!incluiTexto(pessoaNomeF, fFornecedor))   return false;
+    if (!incluiTexto(a.produtor_nome, fProdutor)) return false;
+    if (!incluiTexto(a.safra_nome, fSafra))       return false;
+    if (!incluiTexto(a.origem, fOrigem))          return false;
+    if (!incluiTexto(a.categoria, fCategoria))    return false;
+    if (fStatus === "aberto"  && a.baixado)  return false;
+    if (fStatus === "baixado" && !a.baixado) return false;
     return true;
   });
 
@@ -627,9 +604,7 @@ export default function ApoioFinanceiroPage() {
             <OperationalButton data-arato-button="secondary" onClick={carregar} style={btn("#111111")} disabled={carregando}>
               {carregando ? "…" : "Atualizar"}
             </OperationalButton>
-            <OperationalButton data-arato-button="secondary" onClick={exportarExcel} style={btn("#16A34A")}>
-              ↓ Exportar Excel
-            </OperationalButton>
+            <BotoesExportar disabled={carregando || (lancamentos.length === 0 && apoioLancs.length === 0)} gerar={gerarRelatorio} />
           </OperationalFilters>
         </OperationalHeading>
 
@@ -913,20 +888,6 @@ export default function ApoioFinanceiroPage() {
                   </thead>
                   <tbody>
                     {(() => {
-                      const inc = (v: string | null | undefined, f: string) =>
-                        !f || (v ?? "").toLowerCase().includes(f.toLowerCase());
-                      const apoioFiltrado = apoioLancs.filter((a) => {
-                        const pessoaNomeF = (a.pessoa_id ? pessoas.find(p => p.id === a.pessoa_id)?.nome : null) ?? a.pessoa_nome ?? "";
-                        if (!inc(a.descricao, fDescricao))   return false;
-                        if (!inc(pessoaNomeF, fFornecedor))  return false;
-                        if (!inc(a.produtor_nome, fProdutor)) return false;
-                        if (!inc(a.safra_nome, fSafra))      return false;
-                        if (!inc(a.origem, fOrigem))         return false;
-                        if (!inc(a.categoria, fCategoria))   return false;
-                        if (fStatus === "aberto"  && a.baixado)  return false;
-                        if (fStatus === "baixado" && !a.baixado) return false;
-                        return true;
-                      });
                       const temFiltro = fDescricao || fFornecedor || fProdutor || fSafra || fOrigem || fCategoria || fStatus;
                       return (<>
                         {apoioFiltrado.length === 0 && (

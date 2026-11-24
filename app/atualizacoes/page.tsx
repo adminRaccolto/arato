@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-a",
+    data: "24/11/2026",
+    titulo: "Apoio Financeiro: todos os títulos, relatório em PDF e Excel organizado",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A tela e o relatório do Apoio Financeiro mostravam no máximo 1.000 títulos do CP/CR; agora trazem todos os do período. Títulos cancelados e compras no cartão (que ficam na fatura) não aparecem mais como em aberto." },
+      { tipo: "melhoria", texto: "Novo relatório em PDF, e o Excel foi refeito: abas Resumo, CP-CR Oficial, Apoio Exclusivo e Fluxo Projetado, com pessoa e CPF/CNPJ, datas e valores formatados, totais e os filtros aplicados. Os dois saem com o que está filtrado na tela, e o fluxo projetado considera só o que está em aberto." },
+    ],
+    onde: "Financeiro → Apoio Financeiro → 🖨 PDF / ⬇ Excel",
+  },
+  {
     versao: "2026.11.23-c",
     data: "23/11/2026",
     titulo: "Painel de Notas com aba de Remessas e aviso da operação fiscal",
