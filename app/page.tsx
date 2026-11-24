@@ -4,6 +4,7 @@ import {useOperationalPresentation} from '../components/arato-layout/presentatio
 
 import { OperationalButton, OperationalFilters } from "../components/OperationalUI";
 import { useState, useEffect, useRef, useCallback } from "react";
+import QuadroAvisos from "../components/painel/QuadroAvisos";
 import TopNav from "../components/TopNav";
 import OnboardingPanel from "../components/OnboardingPanel";
 import { supabase } from "../lib/supabase";
@@ -744,6 +745,7 @@ export default function Dashboard() {
               })
             )}
           </div>
+          <QuadroAvisos />
         </div>
 
         {/* Conciliação (apenas se houver pendências) */}
@@ -974,6 +976,7 @@ export default function Dashboard() {
               })
             )}
           </div>
+          <QuadroAvisos />
         </div>
 
         {/* Conciliação (apenas se houver pendências) */}

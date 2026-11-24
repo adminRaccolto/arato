@@ -23654,3 +23654,37 @@ REVOKE ALL ON FUNCTION fn_mesclar_insumos_escolhendo(uuid, uuid[], jsonb, text) 
 REVOKE ALL ON FUNCTION fn_desfazer_mesclagem(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION fn_mesclar_insumos_escolhendo(uuid, uuid[], jsonb, text), fn_desfazer_mesclagem(uuid) TO service_role;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 462 — Certidões (CND) dos produtores, com vencimento no Quadro de Avisos (24/11/2026)
+-- Uma linha por certidão emitida (Federal, Estadual, Municipal, Trabalhista, FGTS, ...).
+-- Renovar = cadastrar a certidão nova; a antiga fica como histórico. Dados do cliente → conta_id.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS produtor_certidoes (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id            uuid NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  produtor_id         uuid NOT NULL REFERENCES produtores(id) ON DELETE CASCADE,
+  tipo                text NOT NULL CHECK (tipo IN ('federal','estadual','municipal','trabalhista','fgts','ambiental','outra')),
+  orgao               text,
+  numero              text,
+  codigo_autenticacao text,
+  data_emissao        date,
+  data_validade       date NOT NULL,
+  positiva_efeito_negativa boolean NOT NULL DEFAULT false,
+  observacao          text,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  updated_at          timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_produtor_certidoes_conta ON produtor_certidoes(conta_id, data_validade);
+CREATE INDEX IF NOT EXISTS idx_produtor_certidoes_produtor ON produtor_certidoes(produtor_id, tipo, data_validade DESC);
+
+ALTER TABLE produtor_certidoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "produtor_certidoes_cliente" ON produtor_certidoes;
+CREATE POLICY "produtor_certidoes_cliente" ON produtor_certidoes FOR ALL TO authenticated
+  USING ((SELECT public.rls_sou_raccotlo()) OR conta_id IN (SELECT public.rls_minhas_contas()))
+  WITH CHECK ((SELECT public.rls_sou_raccotlo()) OR conta_id IN (SELECT public.rls_minhas_contas()));
+
+COMMIT;
+NOTIFY pgrst, 'reload schema';

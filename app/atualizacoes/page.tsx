@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-f",
+    data: "24/11/2026",
+    titulo: "Controle de CND dos produtores e Quadro de Avisos no Início",
+    modulos: ["Fiscal", "Início"],
+    itens: [
+      { tipo: "novo", texto: "Nova tela Fiscal → Certidões (CND): certidões de todos os produtores do cliente (Federal, Estadual, Municipal, Trabalhista, FGTS, Ambiental e outras) com número, autenticação, emissão e validade. Mostra vencidas, que vencem em até 15 e 30 dias, produtores sem CND Federal e o vencimento do certificado digital A1. Renovar cadastra a certidão nova e guarda a antiga no histórico; a CND Federal traz o texto pronto para o campo CND da NF-e." },
+      { tipo: "novo", texto: "A tela inicial ganhou o Quadro de Avisos: CND e certificado digital vencidos ou que vencem em até 30 dias, por produtor, com link para renovar." },
+    ],
+    onde: "Fiscal → Controle → Certidões (CND) · Início → Quadro de Avisos",
+  },
+  {
     versao: "2026.11.24-e",
     data: "24/11/2026",
     titulo: "CND do emitente entra sozinha na NF-e",

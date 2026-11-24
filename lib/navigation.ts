@@ -217,6 +217,7 @@ export const NAV: NavItem[] = [
       { id: "fiscal-gnre",          label: "GNRE",                     path: "/fiscal/gnre",                        moduleId: "fiscal_nfe"  },
       { id: "fiscal-triangulacao",  label: "Triangulação de NF",       path: "/fiscal/triangulacao",               moduleId: "fiscal_nfe", disabled: true },
       { id: "fiscal-certificado",   label: "Certificado Digital",      path: "/fiscal?aba=certificado",             moduleId: "fiscal_nfe"  },
+      { id: "fiscal-certidoes",     label: "Certidões (CND)",          path: "/fiscal/certidoes",                   moduleId: "fiscal_nfe"  },
       { type: "divider", label: "Obrigações" },
       { id: "fiscal-lcdpr",         label: "LCDPR",                    path: "/lcdpr",                              moduleId: "fiscal_sped" },
       { id: "fiscal-sped-contabil", label: "Preparação contábil",      path: "/fiscal/sped-contabil",               moduleId: "fiscal_sped" },
