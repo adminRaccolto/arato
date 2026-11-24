@@ -9,9 +9,11 @@ const CACHE_TTL = 30 * 1000; // 30 segundos
 export interface PrecosData {
   usdBrl:          number;          // Dólar Spot (taxa comercial)
   usdPtax:         number | null;   // Dólar PTAX (Banco Central — publicado ~13h em dias úteis)
-  soja:            { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
-  milho:           { cbot: number; brl: number; variacao: number; fonte: "B3" | "CBOT_EST" };
-  algodao:         { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
+  // contrato: vencimento cotado (ex.: "Jan/27"); null quando a fonte não informou
+  soja:            { cbot: number; brl: number; variacao: number; fonte: "CBOT"; contrato: string | null };
+  milho:           { cbot: number; brl: number; variacao: number; fonte: "B3" | "CBOT_EST"; contrato: string | null };
+  // Algodão é negociado na ICE (Nova York), não na CBOT
+  algodao:         { cbot: number; brl: number; variacao: number; fonte: "ICE"; contrato: string | null };
   cepea_soja_png:  number | null;   // Soja Paranaguá R$/sc (CEPEA/ESALQ)
   cepea_milho_cps: number | null;   // Milho Campinas R$/sc (CEPEA/ESALQ)
   premio_implicito: number | null;  // ¢/bu = (CEPEA/câmbio/fator - CBOT) × 100
@@ -79,6 +81,27 @@ function yahooPrice(data: unknown): { last: number; prev: number } {
   };
 }
 
+const MESES_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MESES_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Vencimento do contrato contínuo pelo nome que o Yahoo devolve ("Soybean Futures,Jan-2027", "Cotton Mar 27") → "Jan/27". */
+function contratoDoNome(nome: string | null | undefined): string | null {
+  const m = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]?(\d{2}|\d{4})\b/.exec(String(nome ?? ""));
+  if (!m) return null;
+  return `${MESES_PT[MESES_EN.indexOf(m[1])]}/${m[2].slice(-2)}`;
+}
+
+/** Próximos vencimentos do algodão na ICE (Mar, Mai, Jul, Out, Dez), a partir do mês atual. */
+function algodaoTickers(): { ticker: string; contrato: string }[] {
+  const meses = [{ m: 3, c: "H" }, { m: 5, c: "K" }, { m: 7, c: "N" }, { m: 10, c: "V" }, { m: 12, c: "Z" }];
+  const hoje = new Date(); const out: { ticker: string; contrato: string }[] = [];
+  for (const ano of [hoje.getFullYear(), hoje.getFullYear() + 1]) for (const { m, c } of meses) {
+    if (ano === hoje.getFullYear() && m < hoje.getMonth() + 1) continue;
+    if (out.length < 3) out.push({ ticker: `CT${c}${String(ano).slice(-2)}.NYB`, contrato: `${MESES_PT[m - 1]}/${String(ano).slice(-2)}` });
+  }
+  return out;
+}
+
 function variacao(last: number, prev: number): number {
   if (!prev) return 0;
   return Math.round((last - prev) / prev * 1000) / 10; // 1 casa decimal
@@ -97,9 +120,9 @@ export async function GET() {
   const FALLBACK: PrecosData = {
     usdBrl:           usdFallback,
     usdPtax:          null,
-    soja:             { cbot: 1030, brl: cbotParaBRL(1030, FATOR_SOJA,    usdFallback), variacao: 0, fonte: "CBOT" },
-    milho:            { cbot: 435,  brl: cbotParaBRL(435,  FATOR_MILHO,   usdFallback), variacao: 0, fonte: "CBOT_EST" },
-    algodao:          { cbot: 72,   brl: cbotParaBRL(72,   FATOR_ALGODAO, usdFallback), variacao: 0, fonte: "CBOT" },
+    soja:             { cbot: 1030, brl: cbotParaBRL(1030, FATOR_SOJA,    usdFallback), variacao: 0, fonte: "CBOT", contrato: null },
+    milho:            { cbot: 435,  brl: cbotParaBRL(435,  FATOR_MILHO,   usdFallback), variacao: 0, fonte: "CBOT_EST", contrato: null },
+    algodao:          { cbot: 72,   brl: cbotParaBRL(72,   FATOR_ALGODAO, usdFallback), variacao: 0, fonte: "ICE", contrato: null },
     cepea_soja_png:   null,
     cepea_milho_cps:  null,
     premio_implicito: null,
@@ -152,6 +175,9 @@ export async function GET() {
 
   try {
     const b3MilhoTickers = milhoB3Tickers();
+    // CT=F não traz o nome do vencimento: os próximos contratos explícitos, para achar qual o contínuo está cotando
+    const ctTickers = algodaoTickers();
+    const ctExplicitos = Promise.allSettled(ctTickers.map(t => fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${t.ticker}?interval=1d&range=2d`)));
     console.log("[precos] iniciando fetch paralelo");
 
     const [cambioRes, cambioYahooRes, sojaRes, milhoCbotRes, algodaoRes, ptaxRes, cepeaRes, ...milhoB3Results] = await Promise.allSettled([
@@ -202,12 +228,34 @@ export async function GET() {
     const milhoCbotPrices = milhoCbotRes.status === "fulfilled" ? yahooPrice(milhoCbotRes.value): { last: 0, prev: 0 };
     const algodaoPrices   = algodaoRes.status   === "fulfilled" ? yahooPrice(algodaoRes.value)  : { last: 0, prev: 0 };
 
+    // Vencimento cotado: soja e milho pelo nome do contínuo; algodão pelo contrato explícito de preço igual ao do CT=F
+    const nomeYahoo = (r: PromiseSettledResult<unknown>) => r.status === "fulfilled"
+      ? ((r.value as { chart?: { result?: { meta?: { shortName?: string } }[] } })?.chart?.result?.[0]?.meta?.shortName ?? null) : null;
+    const contratoSoja = contratoDoNome(nomeYahoo(sojaRes));
+    const contratoMilhoCbot = contratoDoNome(nomeYahoo(milhoCbotRes));
+    let contratoAlgodao: string | null = null;
+    if (algodaoPrices.last > 0) {
+      const exp = await ctExplicitos;
+      let melhor = Infinity;
+      exp.forEach((r, i) => {
+        if (r.status !== "fulfilled") return;
+        const d = Math.abs(yahooPrice(r.value).last - algodaoPrices.last);
+        if (yahooPrice(r.value).last > 0 && d < melhor && d <= 0.5) { melhor = d; contratoAlgodao = ctTickers[i].contrato; }
+      });
+    }
+
     // Milho B3: usa o primeiro ticker que retornar preço válido (> R$30/sc)
     let milhoB3Prices = { last: 0, prev: 0 };
-    for (const res of milhoB3Results) {
+    let contratoMilhoB3: string | null = null;
+    for (const [i, res] of milhoB3Results.entries()) {
       if (res.status === "fulfilled") {
         const p = yahooPrice(res.value);
-        if (p.last > 30) { milhoB3Prices = p; break; }
+        if (p.last > 30) {
+          milhoB3Prices = p;
+          const m = /^[A-Z]{3}([FHKNUX])(\d{2})/.exec(b3MilhoTickers[i] ?? "");
+          if (m) contratoMilhoB3 = `${MESES_PT[[1, 3, 5, 7, 9, 11]["FHKNUX".indexOf(m[1])] - 1]}/${m[2]}`;
+          break;
+        }
       }
     }
 
@@ -235,18 +283,21 @@ export async function GET() {
         brl:      cbotParaBRL(sojaPrices.last, FATOR_SOJA, usdBrl),
         variacao: variacao(sojaPrices.last, sojaPrices.prev),
         fonte:    "CBOT",
+        contrato: contratoSoja,
       },
       milho: {
         cbot:     Math.round(milhoCbotPrices.last * 10) / 10,
         brl:      milhoBrl,
         variacao: milhoVar,
         fonte:    milhoFonte,
+        contrato: milhoB3Valido ? contratoMilhoB3 : contratoMilhoCbot,
       },
       algodao: {
         cbot:     Math.round(algodaoPrices.last * 10) / 10,
         brl:      cbotParaBRL(algodaoPrices.last, FATOR_ALGODAO, usdBrl),
         variacao: variacao(algodaoPrices.last, algodaoPrices.prev),
-        fonte:    "CBOT",
+        fonte:    "ICE",
+        contrato: contratoAlgodao,
       },
       cepea_soja_png:  cepea.soja_png,
       cepea_milho_cps: cepea.milho_cps,

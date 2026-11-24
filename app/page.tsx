@@ -787,9 +787,12 @@ export default function Dashboard() {
         )}</div><aside className="native-home-market" aria-label="Mercado"><div className="native-home-market-heading"><span className="native-home-market-symbol" aria-hidden="true">↗</span><div><h2>Mercado</h2><p>Commodities e câmbio</p></div></div>{loadPr&&<p className="native-home-market-state">Carregando cotações…</p>}{!loadPr&&!precos&&<p className="native-home-market-state">Cotações indisponíveis no momento.</p>}{!loadPr && precos && (
             <div className="native-home-quotes" style={{ display:"flex",alignItems:"center",flexWrap:"wrap",gap:24,borderTop:"0.5px solid rgba(255,255,255,0.06)",paddingTop:14 }}>
               {[
-                { nome:"SOJA CBOT", v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
-                { nome:"MILHO",    v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"",                                 d:precos.milho.variacao },
-                { nome:"ALGODÃO",  v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, d:precos.algodao.variacao },
+                // Bolsa e vencimento cotado no rótulo (24/11/2026). Milho sem B3 na fonte = CBOT convertido em R$/sc (sem base)
+                { nome:`SOJA CBOT${precos.soja.contrato ? ` · ${precos.soja.contrato.toUpperCase()}` : ""}`, v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
+                precos.milho.fonte === "B3"
+                  ? { nome:`MILHO B3${precos.milho.contrato ? ` · ${precos.milho.contrato.toUpperCase()}` : ""}`, v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"", d:precos.milho.variacao }
+                  : { nome:`MILHO CBOT${precos.milho.contrato ? ` · ${precos.milho.contrato.toUpperCase()}` : ""}`, v:`${fmtUsd(precos.milho.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.milho.brl)}/sc (convertido)`, d:precos.milho.variacao },
+                { nome:`ALGODÃO ICE${precos.algodao.contrato ? ` · ${precos.algodao.contrato.toUpperCase()}` : ""}`, v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, d:precos.algodao.variacao },
                 { nome:"USD SPOT", v:`R$ ${fmtBrl(precos.usdBrl)}`,       brl:"",                                 d:0 },
                 { nome:"PTAX",     v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"",                 d:0 },
               ].map((m,i) => (
@@ -902,9 +905,12 @@ export default function Dashboard() {
           {!loadPr && precos && (
             <div style={{ display:"flex",alignItems:"center",flexWrap:"wrap",gap:24,borderTop:"0.5px solid rgba(255,255,255,0.06)",paddingTop:14 }}>
               {[
-                { nome:"SOJA CBOT", v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
-                { nome:"MILHO",    v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"",                                 d:precos.milho.variacao },
-                { nome:"ALGODÃO",  v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, d:precos.algodao.variacao },
+                // Bolsa e vencimento cotado no rótulo (24/11/2026). Milho sem B3 na fonte = CBOT convertido em R$/sc (sem base)
+                { nome:`SOJA CBOT${precos.soja.contrato ? ` · ${precos.soja.contrato.toUpperCase()}` : ""}`, v:`${fmtUsd(precos.soja.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`, d:precos.soja.variacao },
+                precos.milho.fonte === "B3"
+                  ? { nome:`MILHO B3${precos.milho.contrato ? ` · ${precos.milho.contrato.toUpperCase()}` : ""}`, v:`R$ ${fmtBrl(precos.milho.brl)}/sc`, brl:"", d:precos.milho.variacao }
+                  : { nome:`MILHO CBOT${precos.milho.contrato ? ` · ${precos.milho.contrato.toUpperCase()}` : ""}`, v:`${fmtUsd(precos.milho.cbot)}¢/bu`, brl:`R$ ${fmtBrl(precos.milho.brl)}/sc (convertido)`, d:precos.milho.variacao },
+                { nome:`ALGODÃO ICE${precos.algodao.contrato ? ` · ${precos.algodao.contrato.toUpperCase()}` : ""}`, v:`${fmtUsd(precos.algodao.cbot)}¢/lb`,brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, d:precos.algodao.variacao },
                 { nome:"USD SPOT", v:`R$ ${fmtBrl(precos.usdBrl)}`,       brl:"",                                 d:0 },
                 { nome:"PTAX",     v:precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—", brl:"",                 d:0 },
               ].map((m,i) => (

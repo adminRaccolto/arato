@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-c",
+    data: "24/11/2026",
+    titulo: "Painel Mercado mostra bolsa e vencimento de cada cotação",
+    modulos: ["Painel"],
+    itens: [
+      { tipo: "melhoria", texto: "Soja, milho e algodão mostram a bolsa e o contrato cotado (ex.: SOJA CBOT · JAN/27, ALGODÃO ICE · MAR/27). O milho deixa claro quando é a CBOT convertida em R$/sc, sem base, e não a B3; o algodão passa a ser identificado como ICE, e não CBOT." },
+    ],
+    onde: "Tela inicial → Mercado",
+  },
+  {
     versao: "2026.11.24-b",
     data: "24/11/2026",
     titulo: "Entradas Fiscais por Produto, ligado ao Auditor de Estoque",
