@@ -166,7 +166,7 @@ export const NAV: NavItem[] = [
       // como única seção final).
       { type: "divider", label: "Relatórios" },
       { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/relatorios/pedidos-compra",                       moduleId: "compras", bloco: "Compras" },
-      { id: "com-rel-compras-produto", label: "Compras por Produto",   path: "/relatorios/compras-produto",                      moduleId: "compras", bloco: "Compras" },
+      { id: "com-rel-compras-produto", label: "Entradas Fiscais por Produto", path: "/relatorios/compras-produto",                      moduleId: "compras", bloco: "Compras" },
       { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque",                                         bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },
       { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex",                                  bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },
       { id: "com-rel-aud-fiscal", label: "Auditor Fiscal × Físico",     path: "/estoque/auditoria-fiscal",                        bloco: "Estoque", planoModulo: "estoque", moduleId: "estoque" },

@@ -61,3 +61,14 @@ test("filtros de produto, fornecedor, grupo, apropriação e só cadastro", () =
   assert.deepEqual(montarComprasPorProduto({ ...p, filtroApropriacao: "direto" }).map(x => x.produto), ["Diesel"]);
   assert.deepEqual(montarComprasPorProduto({ ...p, soCadastro: true }).map(x => x.produto), ["UREIA"]);
 });
+
+test("todas as entradas fiscais: como a coluna Fiscal do Auditor (fora só retorno/remessa de armazém)", () => {
+  const nf = (id: string, cfop: string) => ({ id, fazenda_id: "f", numero: id, serie: "1", emitente_nome: "X", data_emissao: "2026-05-01", data_entrada: null, status: "processada", tipo_entrada: null, cfop });
+  const it = (id: string, nfId: string, cfop: string, insumo = "i1") => ({ id, nf_entrada_id: nfId, insumo_id: insumo, descricao_produto: "P", unidade: "L", quantidade: 10, valor_total: 100, cfop, tipo_apropiacao: "estoque" });
+  const nfs = [nf("a", "1102"), nf("b", "1910"), nf("c", "1906"), nf("d", "1949")];
+  const itens = [it("1", "a", "1102"), it("2", "b", "1910"), it("3", "c", "1906"), it("4", "d", "1949"), it("5", "d", "1949", "i2")];
+  const base = { nfs, itens, insumos: new Map([["i1", { nome: "Glifo", unidade: "L", grupo: null }], ["i2", { nome: "Outro", unidade: "L", grupo: null }]]), fazendas: new Map([["f", "Faz"]]) };
+  assert.equal(montarComprasPorProduto(base).find(x => x.produto === "Glifo")!.quantidade, 10);
+  const todas = montarComprasPorProduto({ ...base, abrangencia: "entradas", filtroInsumoId: "i1" });
+  assert.deepEqual(todas.map(x => [x.produto, x.quantidade, x.nfs]), [["Glifo", 30, 3]]);
+});

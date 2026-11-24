@@ -203,7 +203,10 @@ export default function AuditoriaFiscalEstoque() {
                     <tr key={`${l.fazenda_id}|${l.insumo_id}`}>
                       <td style={{ ...td, textAlign: "left" }}>{ins?.nome ?? "—"} <span style={{ color: "var(--text-3)", fontSize: 11 }}>{ins?.unidade ?? ""}</span></td>
                       {visao === "fazenda" && <td style={{ ...td, textAlign: "left", color: "var(--text-2)" }}>{nomeFaz(l.fazenda_id)}</td>}
-                      <td style={td}>{fmtQ(l.fiscal)}</td>
+                      <td style={td}>{Math.abs(l.fiscal_nf) > 0.0005
+                        ? <a href={`/relatorios/compras-produto?insumo=${l.insumo_id}&ate=${ate}&abrangencia=entradas${l.fazenda_id ? `&fazenda=${l.fazenda_id}` : ""}`} target="_blank" rel="noreferrer"
+                            title="Ver as NFs de entrada deste item" style={{ color: "#1A4870", textDecoration: "underline dotted" }}>{fmtQ(l.fiscal)}</a>
+                        : fmtQ(l.fiscal)}</td>
                       <td style={td}>{fmtQ(l.fisico)}</td>
                       <td style={{ ...td, fontWeight: 600, color: Math.abs(l.diferenca) < 0.0005 ? "var(--text-3)" : l.diferenca < 0 ? "#B91C1C" : "#7A5200" }}>{fmtQ(l.diferenca)}</td>
                       {COLS_CAT.map(c => <td key={c.k} style={{ ...td, color: c.k === "nf_divergente" && Math.abs(l.categorias[c.k]) > 0.0005 ? "#B91C1C" : "var(--text-2)" }}>{fmtQ(l.categorias[c.k])}</td>)}

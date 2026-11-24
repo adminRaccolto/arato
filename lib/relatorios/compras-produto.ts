@@ -10,6 +10,13 @@
 //  - Fora: x922 (simples faturamento de entrega futura — sem mercadoria; ela entra depois pela x116/x117, contá-la
 //    dobraria a quantidade), transferência, retorno, remessa, devolução, bonificação e "outras" (x949).
 
+// Abrangência "entradas" (24/11/2026): toda NF de entrada processada, como a coluna Fiscal do Auditor de Estoque
+// (lib/estoque/auditoria-fiscal.ts) — inclui bonificação, outras entradas, devolução de venda etc.; fora só a NF de
+// retorno/remessa de armazém (CFOP_FORA_DO_FISCAL em algum item), porque o produto continua do cliente.
+import { CFOP_FORA_DO_FISCAL } from "../estoque/auditoria-fiscal";
+
+export type Abrangencia = "compras" | "entradas";
+
 export type NfCompra = {
   id: string; fazenda_id: string; numero: string | null; serie: string | null; emitente_nome: string | null;
   data_emissao: string | null; data_entrada: string | null; status: string; tipo_entrada: string | null; cfop: string | null;
@@ -56,14 +63,20 @@ export function itemEhCompra(nf: NfCompra, it: ItemCompra): boolean {
 export function montarComprasPorProduto(p: {
   nfs: NfCompra[]; itens: ItemCompra[]; insumos: Map<string, InsumoInfo>; fazendas: Map<string, string>;
   filtroProduto?: string; filtroGrupo?: string; filtroFornecedor?: string; filtroApropriacao?: string; soCadastro?: boolean;
+  abrangencia?: Abrangencia; filtroInsumoId?: string;
 }): ProdutoCompra[] {
   const nfPorId = new Map(p.nfs.map(n => [n.id, n]));
+  const todasEntradas = p.abrangencia === "entradas";
+  const nfsForaDoFiscal = new Set(todasEntradas
+    ? p.itens.filter(i => CFOP_FORA_DO_FISCAL.has(String(i.cfop ?? "").replace(/\D/g, ""))).map(i => i.nf_entrada_id) : []);
   const busca = p.filtroProduto ? normalizar(p.filtroProduto) : "";
   const forn = p.filtroFornecedor ? normalizar(p.filtroFornecedor) : "";
   const mapa = new Map<string, ProdutoCompra & { _nfs: Set<string>; _forn: Set<string> }>();
   for (const it of p.itens) {
     const nf = nfPorId.get(it.nf_entrada_id);
-    if (!nf || !itemEhCompra(nf, it)) continue;
+    if (!nf) continue;
+    if (todasEntradas ? (nf.status !== "processada" || nfsForaDoFiscal.has(nf.id)) : !itemEhCompra(nf, it)) continue;
+    if (p.filtroInsumoId && it.insumo_id !== p.filtroInsumoId) continue;
     const ins = it.insumo_id ? p.insumos.get(it.insumo_id) : undefined;
     if (p.soCadastro && !ins) continue;
     if (p.filtroApropriacao && it.tipo_apropiacao !== p.filtroApropriacao) continue;

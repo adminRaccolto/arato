@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-b",
+    data: "24/11/2026",
+    titulo: "Entradas Fiscais por Produto, ligado ao Auditor de Estoque",
+    modulos: ["Estoque", "Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O relatório Compras por Produto virou Entradas Fiscais por Produto: por padrão traz todas as NFs de entrada processadas (inclusive bonificação e outras entradas), na mesma base da coluna Fiscal do Auditor de Estoque; \"Somente compras\" mantém o relatório anterior." },
+      { tipo: "melhoria", texto: "No Auditor de Estoque (Fiscal × Físico), o número da coluna Fiscal abre a relação de NFs de entrada daquele item, nota a nota, até a data da posição." },
+    ],
+    onde: "Relatórios → Entradas Fiscais por Produto; Estoque → Auditor Fiscal × Físico → coluna Fiscal",
+  },
+  {
     versao: "2026.11.24-a",
     data: "24/11/2026",
     titulo: "Apoio Financeiro: todos os títulos, relatório em PDF e Excel organizado",
