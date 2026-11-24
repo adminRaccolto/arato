@@ -15,10 +15,13 @@ export const TIPOS_CERTIDAO: { id: TipoCertidao; label: string; orgao: string }[
 export const rotuloTipoCertidao = (t: string) => TIPOS_CERTIDAO.find(x => x.id === t)?.label ?? t;
 
 export type Certidao = {
-  id: string; conta_id: string; produtor_id: string; tipo: TipoCertidao; orgao?: string | null; numero?: string | null;
+  id: string; conta_id: string; produtor_id: string | null; pessoa_id?: string | null; tipo: TipoCertidao; orgao?: string | null; numero?: string | null;
   codigo_autenticacao?: string | null; data_emissao?: string | null; data_validade: string;
   positiva_efeito_negativa?: boolean | null; observacao?: string | null;
 };
+
+/** Titular da certidão: produtor do cliente ou pessoa (comprador/fornecedor). */
+export const titularDe = (c: Pick<Certidao, "produtor_id" | "pessoa_id">) => c.produtor_id ? "pr:" + c.produtor_id : "pe:" + (c.pessoa_id ?? "");
 
 export type SituacaoVenc = "vencida" | "vence_15" | "vence_30" | "em_dia";
 export const ANTECEDENCIA_AVISO = 30;
@@ -42,7 +45,7 @@ export const ROTULO_SITUACAO: Record<SituacaoVenc, string> = {
 export function certidoesVigentes(certidoes: Certidao[]): Certidao[] {
   const m = new Map<string, Certidao>();
   for (const c of certidoes) {
-    const k = c.produtor_id + "|" + c.tipo;
+    const k = titularDe(c) + "|" + c.tipo;
     const atual = m.get(k);
     if (!atual || c.data_validade > atual.data_validade) m.set(k, c);
   }
@@ -51,7 +54,7 @@ export function certidoesVigentes(certidoes: Certidao[]): Certidao[] {
 
 /** Certidões antigas (substituídas por outra mais nova do mesmo produtor e tipo). */
 export function ehSubstituida(c: Certidao, todas: Certidao[]): boolean {
-  return todas.some(o => o.id !== c.id && o.produtor_id === c.produtor_id && o.tipo === c.tipo && o.data_validade > c.data_validade);
+  return todas.some(o => o.id !== c.id && titularDe(o) === titularDe(c) && o.tipo === c.tipo && o.data_validade > c.data_validade);
 }
 
 export type Aviso = {
@@ -68,6 +71,7 @@ export function montarAvisos(
   const avisos: Aviso[] = [];
   let emDia = 0;
   for (const c of certidoesVigentes(certidoes)) {
+    if (!c.produtor_id) continue; // CND de comprador/fornecedor não vai ao Quadro de Avisos
     const situacao = situacaoVenc(c.data_validade, hoje);
     if (situacao === "em_dia") { emDia++; continue; }
     avisos.push({ id: "cnd-" + c.id, tipo: "cnd", produtorId: c.produtor_id, produtor: nomeProdutor(c.produtor_id),
@@ -91,7 +95,7 @@ export function montarAvisos(
 
 /** Produtores que não têm nenhuma CND Federal cadastrada (a que vai na NF-e). */
 export function semCndFederal(produtorIds: string[], certidoes: Certidao[]): string[] {
-  const com = new Set(certidoes.filter(c => c.tipo === "federal").map(c => c.produtor_id));
+  const com = new Set(certidoes.filter(c => c.tipo === "federal" && c.produtor_id).map(c => c.produtor_id));
   return produtorIds.filter(id => !com.has(id));
 }
 
@@ -100,4 +104,30 @@ export function textoDias(dias: number): string {
   if (dias === 0) return "vence hoje";
   if (dias === 1) return "vence amanhã";
   return `vence em ${dias} dias`;
+}
+
+// ── NF-e: CND do remetente e do destinatário nas informações complementares ──
+
+/** CND Federal válida na data da nota, do titular (produtor ou pessoa) — a de validade mais longa. */
+export function cndFederalValida(certidoes: Certidao[], titular: { produtorIds?: string[]; pessoaIds?: string[] }, data: string) {
+  const prods = new Set(titular.produtorIds ?? []), pess = new Set(titular.pessoaIds ?? []);
+  return certidoes
+    .filter(c => c.tipo === "federal" && c.data_validade >= data.slice(0, 10) && (!c.data_emissao || c.data_emissao <= data.slice(0, 10)))
+    .filter(c => (c.produtor_id && prods.has(c.produtor_id)) || (c.pessoa_id && pess.has(c.pessoa_id)))
+    .sort((a, b) => b.data_validade.localeCompare(a.data_validade))[0] ?? null;
+}
+
+/** Mesmo formato das notas emitidas pelo sistema anterior: "CND REMETENTE Nº x/NUMERO DE AUTENTICAÇÃO: y;VENC:dd/mm/aaaa." */
+export function textoCndNfe(c: Pick<Certidao, "numero" | "codigo_autenticacao" | "data_validade" | "positiva_efeito_negativa">, papel: "REMETENTE" | "DESTINATARIO"): string {
+  const sigla = c.positiva_efeito_negativa ? "CPEND" : "CND";
+  const partes = [`${sigla} ${papel} Nº ${(c.numero ?? "").trim() || "S/N"}`];
+  if (c.codigo_autenticacao?.trim()) partes.push(`NUMERO DE AUTENTICAÇÃO: ${c.codigo_autenticacao.trim()}`);
+  return `${partes.join("/")};VENC:${c.data_validade.slice(0, 10).split("-").reverse().join("/")}.`;
+}
+
+/** Tira as frases de ICMS diferido do texto — usado quando nenhum item da nota tem CST 51 (ex.: produto isento, CST 040). */
+export function removerTextoDiferido(texto: string): string {
+  return texto.split(/\n/).map(linha =>
+    linha.split(/(?<=\.)\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/).filter(f => !/diferid|diferimento/i.test(f)).join(" ").trim(),
+  ).filter(Boolean).join("\n");
 }

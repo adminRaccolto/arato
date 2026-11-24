@@ -39,3 +39,16 @@ test("avisos: só vencidas e até 30 dias, mais urgente primeiro; certificado A1
 test("produtores sem CND Federal", () => {
   assert.deepEqual(semCndFederal(["p1", "p2", "p3"], [c({}), c({ produtor_id: "p2", tipo: "estadual" })]), ["p2", "p3"]);
 });
+
+test("NF-e: CND válida na data, texto no formato da nota antiga e retirada do diferimento", async () => {
+  const { cndFederalValida, textoCndNfe, removerTextoDiferido } = await import("./certidoes.ts");
+  const certs = [c({ numero: "0065302145", codigo_autenticacao: "TAUBBLB2UA2TU29U", data_validade: "2026-12-06" }),
+    c({ id: "nova", numero: "0065753233", data_validade: "2027-01-07" }), { ...c({ produtor_id: null as unknown as string, data_validade: "2026-12-20" }), pessoa_id: "pe1" }];
+  assert.equal(cndFederalValida(certs, { produtorIds: ["p1"] }, "2026-11-24")?.id, "nova");
+  assert.equal(cndFederalValida(certs, { pessoaIds: ["pe1"] }, "2026-12-21"), null);
+  assert.equal(cndFederalValida(certs, { pessoaIds: ["pe1"] }, "2026-12-01")?.data_validade, "2026-12-20");
+  assert.equal(textoCndNfe(certs[0], "REMETENTE"), "CND REMETENTE Nº 0065302145/NUMERO DE AUTENTICAÇÃO: TAUBBLB2UA2TU29U;VENC:06/12/2026.");
+  assert.equal(removerTextoDiferido("ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991."),
+    "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.");
+  assert.equal(removerTextoDiferido("Venda de resíduo.\nICMS diferido nos termos do Decreto MT n. 4.540/2004."), "Venda de resíduo.");
+});

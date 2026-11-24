@@ -21,6 +21,7 @@ import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal, mesm
 import { configComIdentidade, buscarTitularCadastro, produtoresDoDocumento } from "./titular-cadastro";
 import { maiorNumeroDaSerie, mensagemNumeroEmUso, numeroJaEmUso } from "./numero-em-uso";
 import { usaTextosDeVenda } from "./textos-automaticos";
+import { cndFederalValida, removerTextoDiferido, textoCndNfe, type Certidao } from "../fiscal/certidoes";
 import { carregarCertificadoEmitente, baixarA1Exato, contextoCertificados } from "./certificado-emitente";
 import type { PemPair } from "./signer";
 import { indexarConfigsEmitentes } from "./configs-emitentes";
@@ -239,6 +240,41 @@ export interface ResultadoEmissao {
 }
 
 // ─── Função principal: emitirNFe ─────────────────────────────────────────────
+/** CND Federal do remetente (produtor emitente) e do destinatário (produtor ou pessoa), da conta da fazenda,
+ *  válidas na data da nota. Sem a tabela (Seção 463 não rodada) ou sem certidão, volta vazio e a nota segue. */
+async function cndsDaNota(fazendaId: string, docEmitente: string | undefined, docDestinatario: string | undefined, dataEmissao?: string) {
+  type C = { numero?: string | null; texto: string };
+  const vazio: { remetente: C | null; destinatario: C | null } = { remetente: null, destinatario: null };
+  try {
+    const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    if (!faz?.conta_id) return vazio;
+    const data = dataEmissao?.slice(0, 10) || new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Cuiaba" }).format(new Date());
+    const variantes = (doc?: string) => {
+      const d = (doc ?? "").replace(/\D/g, "");
+      if (!d) return [];
+      const f = d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : d;
+      return [...new Set([d, f])];
+    };
+    const ids = async (tabela: "produtores" | "pessoas", doc?: string) => {
+      const v = variantes(doc);
+      if (!v.length) return [] as string[];
+      const { data: rows } = await sb().from(tabela).select("id").eq("conta_id", faz.conta_id).in("cpf_cnpj", v);
+      return (rows ?? []).map(r => r.id as string);
+    };
+    const [prodEmit, prodDest, pessDest] = await Promise.all([ids("produtores", docEmitente), ids("produtores", docDestinatario), ids("pessoas", docDestinatario)]);
+    if (!prodEmit.length && !prodDest.length && !pessDest.length) return vazio;
+    const { data: certs, error } = await sb().from("produtor_certidoes").select("*").eq("conta_id", faz.conta_id).eq("tipo", "federal").gte("data_validade", data);
+    if (error || !certs?.length) return vazio;
+    const lista = certs as Certidao[];
+    const rem = cndFederalValida(lista, { produtorIds: prodEmit }, data);
+    const dest = cndFederalValida(lista, { produtorIds: prodDest, pessoaIds: pessDest }, data);
+    return {
+      remetente: rem ? { numero: rem.numero, texto: textoCndNfe(rem, "REMETENTE") } : null,
+      destinatario: dest ? { numero: dest.numero, texto: textoCndNfe(dest, "DESTINATARIO") } : null,
+    };
+  } catch { return vazio; }
+}
+
 export async function emitirNFe(
   fazendaId: string,
   moduloKey: string,
@@ -509,9 +545,19 @@ export async function emitirNFe(
   const cfopInterno = cfopPrimario.startsWith("5");
   const cfopInterestadual = cfopPrimario.startsWith("6");
   const partesInfCpl: string[] = [];
-  // Texto livre e CND do emitente (Parâmetros → Fiscal); não repete quando a tela já mandou o mesmo texto (ex.: transferência)
-  const jaNoTexto=(t:string)=>!!input.infCpl?.includes(t);
-  for (const t of [confg.inf_cpl_padrao, confg.inf_cpl_cnd].map(v=>String(v ?? "").trim()))
+  // Texto da tela (Observação). Sem nenhum item com CST 51, as frases de ICMS diferido saem: a natureza da venda
+  // traz o diferimento pronto e a nota de produto isento (CST 040) saía com os dois textos (24/11/2026).
+  const semDiferimento = itensComIBSCBS.every(i => !!i.cst_icms && i.cst_icms.slice(-2) !== "51");
+  let infCplTela = (input.infCpl ?? "").trim();
+  if (semDiferimento) infCplTela = removerTextoDiferido(infCplTela);
+  // CND Federal do remetente e do destinatário vindas de Fiscal → Certidões (CND), válidas na data da nota
+  const cnds = await cndsDaNota(fazendaId, emitente.cpf_cnpj, input.destinatario.cpf_cnpj, input.data_emissao);
+  // Texto livre e CND do emitente (Parâmetros → Fiscal); não repete quando a tela já mandou o mesmo texto (ex.: transferência).
+  // Com CND do remetente no controle, o campo CND dos Parâmetros deixa de entrar (e sai do texto da tela, se veio de lá).
+  const cndConfig = String(confg.inf_cpl_cnd ?? "").trim();
+  if (cnds.remetente && cndConfig) infCplTela = infCplTela.split(cndConfig).join(" ").replace(/\s{2,}/g, " ").trim();
+  const jaNoTexto=(t:string)=>infCplTela.includes(t);
+  for (const t of [String(confg.inf_cpl_padrao ?? "").trim(), cnds.remetente ? "" : cndConfig])
     if (t && !jaNoTexto(t)) partesInfCpl.push(t);
   const textosDeVenda = usaTextosDeVenda(input.itens.map(i => i.cfop), input.finNFe);
   if (textosDeVenda && cfopInterno && itensComIBSCBS.every(i=>!i.cst_icms||i.cst_icms.slice(-2)==="51") && confg.icms_diferido_ativo === "true") {
@@ -524,7 +570,9 @@ export async function emitirNFe(
     const txt = confg.inf_cpl_funrural?.trim() || "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.";
     partesInfCpl.push(txt);
   }
-  if (input.infCpl?.trim()) partesInfCpl.push(input.infCpl.trim());
+  if (infCplTela) partesInfCpl.push(infCplTela);
+  // CND no fim, como nas notas do sistema anterior; não repete se o número já foi digitado na Observação
+  for (const c of [cnds.remetente, cnds.destinatario]) if (c && !(c.numero && infCplTela.includes(c.numero))) partesInfCpl.push(c.texto);
   try {
     const variaveis={...(input.variaveis_fiscais ?? {}),...(input.nfe_ref?{NF_ORIGEM:(Array.isArray(input.nfe_ref)?input.nfe_ref:[input.nfe_ref]).map(c=>c.replace(/\D/g,"").slice(25,34).replace(/^0+/,"")).join(", ")}: {})};
     for(const item of itensComIBSCBS){

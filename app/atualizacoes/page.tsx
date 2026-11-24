@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-g",
+    data: "24/11/2026",
+    titulo: "CND do remetente e do destinatário automáticas na NF-e; venda de produto isento",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A NF-e passa a trazer sozinha, nas informações complementares, a CND Federal válida do remetente e do destinatário cadastradas em Fiscal → Certidões (CND) — no mesmo formato das notas do sistema anterior (número, autenticação e vencimento). Não é mais preciso colar a CND a cada nota." },
+      { tipo: "novo", texto: "Certidões (CND) aceita também compradores e fornecedores do cadastro de Pessoas, para a CND do destinatário." },
+      { tipo: "correcao", texto: "Nota sem nenhum item com CST 51 (ex.: produto isento, CST 040) não leva mais o texto de ICMS diferido que vinha pronto na natureza da venda — sai da Observação ao trocar o CST e também na emissão." },
+      { tipo: "novo", texto: "Operação fiscal \"Venda de Produto Isento (Art. 115-I Anexo IV RICMS/MT)\" — CFOP 5101, CST 040 — para venda de resíduo de soja." },
+    ],
+    onde: "Fiscal → Certidões (CND) · Documentos Fiscais → Saídas · Operações Fiscais",
+  },
+  {
     versao: "2026.11.24-f",
     data: "24/11/2026",
     titulo: "Controle de CND dos produtores e Quadro de Avisos no Início",

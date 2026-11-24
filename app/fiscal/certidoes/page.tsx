@@ -6,8 +6,8 @@ import Link from "next/link";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarProdutoresDaConta } from "../../../lib/db";
-import type { Produtor } from "../../../lib/supabase";
+import { listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
+import type { Pessoa, Produtor } from "../../../lib/supabase";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -15,7 +15,7 @@ import SelectBusca from "../../../components/SelectBusca";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import {
-  TIPOS_CERTIDAO, ROTULO_SITUACAO, certidoesVigentes, diasAteData, ehSubstituida, rotuloTipoCertidao, semCndFederal, situacaoVenc, textoDias,
+  TIPOS_CERTIDAO, ROTULO_SITUACAO, certidoesVigentes, textoCndNfe, titularDe, diasAteData, ehSubstituida, rotuloTipoCertidao, semCndFederal, situacaoVenc, textoDias,
   type Certidao, type CertificadoA1, type SituacaoVenc, type TipoCertidao,
 } from "../../../lib/fiscal/certidoes";
 
@@ -30,22 +30,18 @@ const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "
 const lbl: React.CSSProperties = { display: "block", fontSize: 11, color: "var(--text-2)", marginBottom: 4, fontWeight: 600 };
 const card: React.CSSProperties = { background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: "14px 16px" };
 
-type Form = { id?: string; produtor_id: string; tipo: TipoCertidao; orgao: string; numero: string; codigo_autenticacao: string;
+// titular = "pr:<produtor>" ou "pe:<pessoa>" (comprador/fornecedor — CND do destinatário na NF-e)
+type Form = { id?: string; titular: string; tipo: TipoCertidao; orgao: string; numero: string; codigo_autenticacao: string;
   data_emissao: string; data_validade: string; positiva_efeito_negativa: boolean; observacao: string };
-const formVazio = (produtor_id = "", tipo: TipoCertidao = "federal"): Form => ({ produtor_id, tipo, orgao: TIPOS_CERTIDAO.find(t => t.id === tipo)?.orgao ?? "",
+const formVazio = (titular = "", tipo: TipoCertidao = "federal"): Form => ({ titular, tipo, orgao: TIPOS_CERTIDAO.find(t => t.id === tipo)?.orgao ?? "",
   numero: "", codigo_autenticacao: "", data_emissao: hojeLocal(), data_validade: "", positiva_efeito_negativa: false, observacao: "" });
-
-/** Texto pronto para colar no campo CND do emitente (Parâmetros do Sistema → Fiscal). */
-function textoNfe(c: Form): string {
-  const partes = [`${c.positiva_efeito_negativa ? "CPEND" : "CND"} Nº ${c.numero || "—"}`];
-  if (c.codigo_autenticacao) partes.push(`Número de Autenticação: ${c.codigo_autenticacao}`);
-  return `REMETENTE: ${partes.join(" / ")}; Certidão válida até: ${fmtData(c.data_validade)}.`;
-}
 
 export default function CertidoesPage() {
   const { contaId, fazendaIds } = useAuth();
   const hoje = hojeLocal();
   const [produtores, setProdutores] = useState<Produtor[]>([]);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [fTitular, setFTitular] = useState<"" | "pr" | "pe">("");
   const [certidoes, setCertidoes] = useState<Certidao[]>([]);
   const [certificados, setCertificados] = useState<CertificadoA1[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -56,24 +52,25 @@ export default function CertidoesPage() {
   const [historico, setHistorico] = useState(false);
   const [modal, setModal] = useState<{ form: Form; somenteLeitura: boolean } | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const [copiado, setCopiado] = useState(false);
 
   async function carregar() {
     if (!contaId) return;
     setCarregando(true); setErro("");
     try {
-      const [prods, cert] = await Promise.all([
+      const [prods, pess, cert] = await Promise.all([
         listarProdutoresDaConta(contaId),
+        listarPessoasDaConta(fazendaIds?.[0] ?? null).catch(() => [] as Pessoa[]),
         supabase.from("produtor_certidoes").select("*").eq("conta_id", contaId).order("data_validade", { ascending: false }).order("id").range(0, 4999),
       ]);
       if (cert.error) throw new Error(cert.error.message.includes("produtor_certidoes") ? "Tabela de certidões ainda não criada — rode a Seção 462 no Supabase." : cert.error.message);
       setProdutores([...prods].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setPessoas([...pess].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")));
       setCertidoes((cert.data ?? []) as Certidao[]);
     } catch (e) { setErro((e as Error).message); }
     setCarregando(false);
   }
 
-  useEffect(() => { void carregar(); }, [contaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void carregar(); }, [contaId, fazendaIds?.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!fazendaIds?.length) return;
     fetch(`/api/cert-meta?fazenda_ids=${fazendaIds.join(",")}`).then(r => r.json()).then(j => setCertificados(j.certs ?? [])).catch(() => setCertificados([]));
@@ -81,43 +78,44 @@ export default function CertidoesPage() {
   // Link do Quadro de Avisos: ?produtor=<id>
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("produtor");
-    if (p) setFProdutor(p);
+    if (p) setFProdutor("pr:" + p);
   }, []);
 
-  const nome = (id: string) => produtores.find(p => p.id === id)?.nome ?? "Produtor removido";
-  const doc = (id: string) => produtores.find(p => p.id === id)?.cpf_cnpj ?? "";
+  // chave do titular: "pr:<id>" produtor, "pe:<id>" pessoa
+  const nome = (k: string) => k.startsWith("pe:") ? (pessoas.find(p => p.id === k.slice(3))?.nome ?? "Cadastro removido") : (produtores.find(p => "pr:" + p.id === k)?.nome ?? "Produtor removido");
+  const doc = (k: string) => k.startsWith("pe:") ? (pessoas.find(p => p.id === k.slice(3))?.cpf_cnpj ?? "") : (produtores.find(p => "pr:" + p.id === k)?.cpf_cnpj ?? "");
   const vigentes = useMemo(() => certidoesVigentes(certidoes), [certidoes]);
   const semFederal = useMemo(() => semCndFederal(produtores.map(p => p.id), certidoes), [produtores, certidoes]);
   const contagem = useMemo(() => {
     const c: Record<SituacaoVenc, number> = { vencida: 0, vence_15: 0, vence_30: 0, em_dia: 0 };
-    for (const v of vigentes) c[situacaoVenc(v.data_validade, hoje)]++;
+    for (const v of vigentes) if (v.produtor_id) c[situacaoVenc(v.data_validade, hoje)]++;
     return c;
   }, [vigentes, hoje]);
 
   const linhas = (historico ? certidoes : vigentes)
-    .filter(c => !fProdutor || c.produtor_id === fProdutor)
+    .filter(c => !fProdutor || titularDe(c) === fProdutor)
+    .filter(c => !fTitular || titularDe(c).startsWith(fTitular))
     .filter(c => !fTipo || c.tipo === fTipo)
     .filter(c => !fSituacao || situacaoVenc(c.data_validade, hoje) === fSituacao)
-    .sort((a, b) => nome(a.produtor_id).localeCompare(nome(b.produtor_id)) || a.tipo.localeCompare(b.tipo) || b.data_validade.localeCompare(a.data_validade));
+    .sort((a, b) => nome(titularDe(a)).localeCompare(nome(titularDe(b))) || a.tipo.localeCompare(b.tipo) || b.data_validade.localeCompare(a.data_validade));
 
-  const certsFiltrados = certificados.filter(c => !fProdutor || c.produtor_id === fProdutor).filter(c => c.data_vencimento);
+  const certsFiltrados = certificados.filter(c => !fProdutor || "pr:" + c.produtor_id === fProdutor).filter(c => c.data_vencimento);
 
   function abrir(c: Certidao) {
-    setCopiado(false);
-    setModal({ somenteLeitura: true, form: { id: c.id, produtor_id: c.produtor_id, tipo: c.tipo, orgao: c.orgao ?? "", numero: c.numero ?? "",
+    setModal({ somenteLeitura: true, form: { id: c.id, titular: titularDe(c), tipo: c.tipo, orgao: c.orgao ?? "", numero: c.numero ?? "",
       codigo_autenticacao: c.codigo_autenticacao ?? "", data_emissao: c.data_emissao ?? "", data_validade: c.data_validade,
       positiva_efeito_negativa: !!c.positiva_efeito_negativa, observacao: c.observacao ?? "" } });
   }
-  function nova(produtor_id = fProdutor, tipo: TipoCertidao = "federal") { setCopiado(false); setModal({ somenteLeitura: false, form: formVazio(produtor_id, tipo) }); }
+  function nova(titular = fProdutor, tipo: TipoCertidao = "federal") { setModal({ somenteLeitura: false, form: formVazio(titular, tipo) }); }
 
   async function salvar() {
     if (!modal || !contaId) return;
     const f = modal.form;
-    if (!f.produtor_id) { alert("Escolha o produtor."); return; }
+    if (!f.titular) { alert("Escolha o produtor ou o comprador/fornecedor."); return; }
     if (!f.data_validade) { alert("Informe a data de validade da certidão."); return; }
     if (f.data_emissao && f.data_emissao > f.data_validade) { alert("A emissão não pode ser depois da validade."); return; }
     setSalvando(true);
-    const payload = { conta_id: contaId, produtor_id: f.produtor_id, tipo: f.tipo, orgao: f.orgao.trim() || null, numero: f.numero.trim() || null,
+    const payload = { conta_id: contaId, produtor_id: f.titular.startsWith("pr:") ? f.titular.slice(3) : null, pessoa_id: f.titular.startsWith("pe:") ? f.titular.slice(3) : null, tipo: f.tipo, orgao: f.orgao.trim() || null, numero: f.numero.trim() || null,
       codigo_autenticacao: f.codigo_autenticacao.trim() || null, data_emissao: f.data_emissao || null, data_validade: f.data_validade,
       positiva_efeito_negativa: f.positiva_efeito_negativa, observacao: f.observacao.trim() || null, updated_at: new Date().toISOString() };
     const r = f.id ? await supabase.from("produtor_certidoes").update(payload).eq("id", f.id) : await supabase.from("produtor_certidoes").insert(payload);
@@ -134,6 +132,10 @@ export default function CertidoesPage() {
     setModal(null); void carregar();
   }
 
+  const opcoesTitular = [
+    ...produtores.map(p => ({ value: "pr:" + p.id, label: `${p.nome}${p.cpf_cnpj ? " — " + p.cpf_cnpj : ""}`, group: "Produtores do cliente", aliases: [(p.cpf_cnpj ?? "").replace(/\D/g, "")] })),
+    ...pessoas.map(p => ({ value: "pe:" + p.id, label: `${p.nome}${p.cpf_cnpj ? " — " + p.cpf_cnpj : ""}`, group: "Compradores e fornecedores", aliases: [(p.cpf_cnpj ?? "").replace(/\D/g, "")] })),
+  ];
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setModal(m => m && ({ ...m, form: { ...m.form, [k]: v } }));
   const ro = modal?.somenteLeitura ?? false;
 
@@ -174,9 +176,17 @@ export default function CertidoesPage() {
 
         <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 14 }}>
           <div style={{ minWidth: 260 }}>
-            <span style={lbl}>Produtor</span>
-            <SelectBusca value={fProdutor} onChange={setFProdutor} placeholder="Todos os produtores"
-              options={[{ value: "", label: "Todos os produtores" }, ...produtores.map(p => ({ value: p.id, label: p.nome, aliases: [p.cpf_cnpj ?? "", (p.cpf_cnpj ?? "").replace(/\D/g, "")] }))]} />
+            <span style={lbl}>Titular da certidão</span>
+            <SelectBusca value={fProdutor} onChange={setFProdutor} placeholder="Todos"
+              options={[{ value: "", label: "Todos" }, ...opcoesTitular]} />
+          </div>
+          <div>
+            <span style={lbl}>Titular</span>
+            <SelectField value={fTitular} onChange={e => setFTitular(e.target.value as "" | "pr" | "pe")} style={{ ...inp, width: 210 }}>
+              <option value="">Produtores e compradores</option>
+              <option value="pr">Só produtores do cliente</option>
+              <option value="pe">Só compradores e fornecedores</option>
+            </SelectField>
           </div>
           <div>
             <span style={lbl}>Certidão</span>
@@ -201,7 +211,7 @@ export default function CertidoesPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)", textAlign: "left" }}>
-                {["Produtor", "Certidão", "Número", "Emissão", "Validade", "Situação", ""].map(h => <th key={h} style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
+                {["Titular", "Certidão", "Número", "Emissão", "Validade", "Situação", ""].map(h => <th key={h} style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -211,7 +221,7 @@ export default function CertidoesPage() {
                   const s = situacaoVenc(c.data_validade, hoje); const antiga = ehSubstituida(c, certidoes);
                   return (
                     <tr key={c.id} style={{ borderBottom: "0.5px solid var(--border-table)", opacity: antiga ? 0.55 : 1 }}>
-                      <td style={{ padding: "9px 12px" }}><div style={{ fontWeight: 600, color: "var(--text-1)" }}>{nome(c.produtor_id)}</div><div style={{ fontSize: 11, color: "var(--text-3)" }}>{doc(c.produtor_id)}</div></td>
+                      <td style={{ padding: "9px 12px" }}><div style={{ fontWeight: 600, color: "var(--text-1)" }}>{nome(titularDe(c))}</div><div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.pessoa_id ? "Comprador/fornecedor · " : ""}{doc(titularDe(c))}</div></td>
                       <td style={{ padding: "9px 12px" }}>{rotuloTipoCertidao(c.tipo)}{c.positiva_efeito_negativa ? <span style={{ fontSize: 10, color: "var(--text-3)" }}> · positiva c/ efeito de negativa</span> : null}</td>
                       <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{c.numero || "—"}</td>
                       <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{fmtData(c.data_emissao)}</td>
@@ -221,7 +231,7 @@ export default function CertidoesPage() {
                           : <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: COR[s].bg, color: COR[s].fg, whiteSpace: "nowrap" }}>{s === "em_dia" ? "Em dia" : textoDias(diasAteData(c.data_validade, hoje))}</span>}
                       </td>
                       <td style={{ padding: "9px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
-                        {!antiga && s !== "em_dia" && <OperationalButton data-arato-button="secondary" onClick={() => nova(c.produtor_id, c.tipo)} style={{ padding: "4px 10px", marginRight: 6, background: "#FBF3E0", color: "#8A6212", border: "0.5px solid #E9D29A", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Renovar</OperationalButton>}
+                        {!antiga && s !== "em_dia" && <OperationalButton data-arato-button="secondary" onClick={() => nova(titularDe(c), c.tipo)} style={{ padding: "4px 10px", marginRight: 6, background: "#FBF3E0", color: "#8A6212", border: "0.5px solid #E9D29A", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Renovar</OperationalButton>}
                         <OperationalButton data-arato-button="secondary" onClick={() => abrir(c)} style={{ padding: "4px 10px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Abrir</OperationalButton>
                       </td>
                     </tr>
@@ -236,8 +246,8 @@ export default function CertidoesPage() {
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Produtores sem CND Federal cadastrada</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {semFederal.map(id => (
-                <OperationalButton key={id} data-arato-button="secondary" onClick={() => nova(id, "federal")} style={{ padding: "5px 10px", background: "#FBF3E0", color: "#8A6212", border: "0.5px solid #E9D29A", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
-                  + {nome(id)}
+                <OperationalButton key={id} data-arato-button="secondary" onClick={() => nova("pr:" + id, "federal")} style={{ padding: "5px 10px", background: "#FBF3E0", color: "#8A6212", border: "0.5px solid #E9D29A", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                  + {nome("pr:" + id)}
                 </OperationalButton>
               ))}
             </div>
@@ -254,7 +264,7 @@ export default function CertidoesPage() {
               const v = String(c.data_vencimento).slice(0, 10); const s = situacaoVenc(v, hoje);
               return (
                 <div key={(c.produtor_id ?? "") + i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0", borderTop: i ? "0.5px solid var(--border-table)" : "none", fontSize: 13 }}>
-                  <span style={{ flex: 1, color: "var(--text-1)" }}>{(c.produtor_id && produtores.some(p => p.id === c.produtor_id) ? nome(c.produtor_id) : c.produtor_nome) || c.cpf_cnpj}</span>
+                  <span style={{ flex: 1, color: "var(--text-1)" }}>{(c.produtor_id && produtores.some(p => p.id === c.produtor_id) ? nome("pr:" + c.produtor_id) : c.produtor_nome) || c.cpf_cnpj}</span>
                   <span style={{ color: "var(--text-2)" }}>válido até {fmtData(v)}</span>
                   <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: COR[s].bg, color: COR[s].fg }}>{s === "em_dia" ? "Em dia" : textoDias(diasAteData(v, hoje))}</span>
                 </div>
@@ -272,9 +282,8 @@ export default function CertidoesPage() {
             </div>
             <div data-arato-fields="true" style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
               <div style={{ gridColumn: "1/-1" }}>
-                <span style={lbl}>Produtor *</span>
-                <SelectBusca value={modal.form.produtor_id} onChange={v => set("produtor_id", v)} disabled={ro}
-                  options={produtores.map(p => ({ value: p.id, label: `${p.nome}${p.cpf_cnpj ? " — " + p.cpf_cnpj : ""}`, aliases: [(p.cpf_cnpj ?? "").replace(/\D/g, "")] }))} />
+                <span style={lbl}>Titular (produtor ou comprador/fornecedor) *</span>
+                <SelectBusca value={modal.form.titular} onChange={v => set("titular", v)} disabled={ro} options={opcoesTitular} />
               </div>
               <div>
                 <span style={lbl}>Certidão *</span>
@@ -295,12 +304,10 @@ export default function CertidoesPage() {
               <div style={{ gridColumn: "1/-1" }}><span style={lbl}>Observação</span><textarea value={modal.form.observacao} readOnly={ro} rows={2} onChange={e => set("observacao", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
               {modal.form.tipo === "federal" && modal.form.data_validade && (
                 <div style={{ gridColumn: "1/-1", background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Texto para a NF-e (campo CND em Parâmetros do Sistema → Fiscal)</div>
-                  <div style={{ fontSize: 12, color: "var(--text-1)", marginBottom: 6 }}>{textoNfe(modal.form)}</div>
-                  <OperationalButton data-arato-button="secondary" onClick={() => { void navigator.clipboard?.writeText(textoNfe(modal.form)); setCopiado(true); }}
-                    style={{ padding: "4px 10px", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>
-                    {copiado ? "✓ Copiado" : "Copiar texto"}
-                  </OperationalButton>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+                    Entra sozinho nas informações complementares das NF-e {modal.form.titular.startsWith("pe:") ? "em que este cadastro é o destinatário" : "emitidas por este produtor"}, enquanto válida:
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-1)" }}>{textoCndNfe(modal.form, modal.form.titular.startsWith("pe:") ? "DESTINATARIO" : "REMETENTE")}</div>
                 </div>
               )}
             </div>
@@ -309,7 +316,7 @@ export default function CertidoesPage() {
                 {modal.form.id && !ro && <OperationalButton data-arato-button="danger" onClick={excluir} style={{ padding: "8px 14px", background: "none", color: "#E24B4A", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Excluir</OperationalButton>}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                {ro && <OperationalButton data-arato-button="secondary" onClick={() => nova(modal.form.produtor_id, modal.form.tipo)} style={{ padding: "8px 14px", background: "#FBF3E0", color: "#8A6212", border: "0.5px solid #E9D29A", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Renovar</OperationalButton>}
+                {ro && <OperationalButton data-arato-button="secondary" onClick={() => nova(modal.form.titular, modal.form.tipo)} style={{ padding: "8px 14px", background: "#FBF3E0", color: "#8A6212", border: "0.5px solid #E9D29A", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Renovar</OperationalButton>}
                 {ro && <OperationalButton data-arato-button="secondary" onClick={() => setModal(m => m && ({ ...m, somenteLeitura: false }))} style={{ padding: "8px 14px", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>✏ Editar</OperationalButton>}
                 <OperationalButton data-arato-button="secondary" onClick={() => setModal(null)} style={{ padding: "8px 14px", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>{ro ? "Fechar" : "Cancelar"}</OperationalButton>
                 {!ro && <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{salvando ? "Salvando…" : "Salvar"}</OperationalButton>}

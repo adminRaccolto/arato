@@ -1,4 +1,5 @@
 "use client";
+import { removerTextoDiferido } from "../../../lib/fiscal/certidoes";
 import { EditorNfe, SecaoNfe } from "../../../components/fiscal/EditorNfe";
 import "../../../components/fiscal/EditorNfe.css";
 import type { AbaEmissaoNfe } from "../../../lib/fiscal/editor-nfe";
@@ -1474,7 +1475,7 @@ function FaturamentoInner() {
           </div>
           <div style={{ gridColumn: "span 2" }}>
             <label data-arato-label="true" style={lbl}>CST do ICMS</label>
-            <SelectField style={inp} value={fVenda.cst_icms} onChange={e => fv({ cst_icms: e.target.value })} title="Vale para todos os itens desta nota. Automático segue a Operação Fiscal ou o CFOP.">
+            <SelectField style={inp} value={fVenda.cst_icms} onChange={e => { const v = e.target.value; fv({ cst_icms: v, ...(v && v.slice(-2) !== "51" ? { observacao: removerTextoDiferido(fVenda.observacao ?? "") } : {}) }); }} title="Vale para todos os itens desta nota. Automático segue a Operação Fiscal ou o CFOP.">
               <option value="">Automático — Operação Fiscal / CFOP</option>
               {OPCOES_CST_EMISSAO.map(o => <option key={o.v} value={o.v}>{o.rotulo}</option>)}
             </SelectField>

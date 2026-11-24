@@ -23688,3 +23688,32 @@ CREATE POLICY "produtor_certidoes_cliente" ON produtor_certidoes FOR ALL TO auth
 
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+-- Seção 463 — CND de compradores/fornecedores (Pessoas) + operação de venda isenta do Cleber (24/11/2026)
+-- 1) produtor_certidoes passa a aceitar certidão de uma Pessoa (destinatário da NF-e): titular = produtor OU pessoa.
+--    A NF-e põe sozinha a CND Federal válida do remetente e do destinatário nas informações complementares.
+-- 2) Operação fiscal "Venda de Produto Isento" (5101, CST 040, art. 115-I do Anexo IV do RICMS/MT) nas fazendas
+--    da conta Cleber Henrique Rodrigues — venda de resíduo de soja. Só operação interna: CFOP externo repete o 5101
+--    para a operação nunca ser oferecida numa venda 6101.
+-- ═══════════════════════════════════════════════════════════════════════════════════════
+BEGIN;
+
+ALTER TABLE produtor_certidoes ADD COLUMN IF NOT EXISTS pessoa_id uuid REFERENCES pessoas(id) ON DELETE CASCADE;
+ALTER TABLE produtor_certidoes ALTER COLUMN produtor_id DROP NOT NULL;
+ALTER TABLE produtor_certidoes DROP CONSTRAINT IF EXISTS produtor_certidoes_titular;
+ALTER TABLE produtor_certidoes ADD CONSTRAINT produtor_certidoes_titular CHECK (num_nonnulls(produtor_id, pessoa_id) = 1);
+CREATE INDEX IF NOT EXISTS idx_produtor_certidoes_pessoa ON produtor_certidoes(pessoa_id, tipo, data_validade DESC) WHERE pessoa_id IS NOT NULL;
+
+INSERT INTO operacoes_fiscais (fazenda_id, nome, descricao, cfop_interno, cfop_externo, icms_cst_interno, icms_cst_externo,
+  icms_aliq, icms_base_reduzida_pct, pis_cst, pis_aliq, cofins_cst, cofins_aliq, ibs_cbs_imune, ibs_cbs_reducao_pct, inf_cpl_template, ativa)
+SELECT f.id, 'Venda de Produto Isento (Art. 115-I Anexo IV RICMS/MT)',
+  'Venda interna de produto isento de ICMS (ex.: resíduo de soja) — art. 115-I do Anexo IV do RICMS/MT, Decreto 2.212/2014. Somente operação interna.',
+  '5101', '5101', '040', '040', 0, 100, '06', 0, '06', 0, false, 60,
+  'PRODUTO ISENTO CONF ART 115 I DO ANEXO IV DO RICMS/MT APROVADO PELO DECRETO 2212/2014', true
+FROM fazendas f
+WHERE f.conta_id = '87109388-a698-42d9-917e-adb1ed5d8768'
+  AND NOT EXISTS (SELECT 1 FROM operacoes_fiscais o WHERE o.fazenda_id = f.id AND o.nome = 'Venda de Produto Isento (Art. 115-I Anexo IV RICMS/MT)');
+
+COMMIT;
+NOTIFY pgrst, 'reload schema';
