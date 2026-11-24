@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.24-e",
+    data: "24/11/2026",
+    titulo: "CND do emitente entra sozinha na NF-e",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O texto do campo CND (Parâmetros do Sistema → Fiscal → Informações Complementares) agora entra automaticamente nas informações complementares de toda NF-e do emitente — antes ele só aparecia na pré-visualização. Não é mais preciso colar a CND a cada nota; quando a certidão vencer, basta atualizar o campo." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → Fiscal",
+  },
+  {
     versao: "2026.11.24-d",
     data: "24/11/2026",
     titulo: "Relatório do Apoio Financeiro com agrupamentos e posição",

@@ -509,7 +509,10 @@ export async function emitirNFe(
   const cfopInterno = cfopPrimario.startsWith("5");
   const cfopInterestadual = cfopPrimario.startsWith("6");
   const partesInfCpl: string[] = [];
-  if (confg.inf_cpl_padrao) partesInfCpl.push(String(confg.inf_cpl_padrao).trim());
+  // Texto livre e CND do emitente (Parâmetros → Fiscal); não repete quando a tela já mandou o mesmo texto (ex.: transferência)
+  const jaNoTexto=(t:string)=>!!input.infCpl?.includes(t);
+  for (const t of [confg.inf_cpl_padrao, confg.inf_cpl_cnd].map(v=>String(v ?? "").trim()))
+    if (t && !jaNoTexto(t)) partesInfCpl.push(t);
   const textosDeVenda = usaTextosDeVenda(input.itens.map(i => i.cfop), input.finNFe);
   if (textosDeVenda && cfopInterno && itensComIBSCBS.every(i=>!i.cst_icms||i.cst_icms.slice(-2)==="51") && confg.icms_diferido_ativo === "true") {
     const txt = confg.inf_cpl_icms_diferido?.trim() || "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.";
