@@ -32,7 +32,7 @@ import {
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
   listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario, listarFuncoes, salvarFuncao, excluirFuncao,
   listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao, criarLancamento,
-  listarFeriasFuncionario, salvarFeriasGozo, sincronizarPeriodosFerias, processarFolhaMensal,
+  listarFeriasFuncionario, sincronizarPeriodosFerias, processarFolhaMensal,
   listarGrupos, criarGrupo, atualizarGrupo, excluirGrupo,
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarDepositos, criarDeposito, atualizarDeposito, excluirDeposito,
@@ -473,7 +473,8 @@ function CadastrosInner() {
   const [modalPremiacao, setModalPremiacao] = useState(false);
   const [fPremiacao, setFPremiacao]         = useState({ mes_referencia: "", data_pagamento: "", descricao: "", valor: "" });
   const [modalGozo, setModalGozo]           = useState<FuncionarioFerias | null>(null);
-  const [fGozo, setFGozo]                   = useState({ data_inicio_gozo: "", data_fim_gozo: "", dias_gozados: "30", abono_pecuniario: false, dias_abono: "10" });
+  const [vendaDiasFerias, setVendaDiasFerias] = useState(false);
+  const abrirConcessaoFerias = (periodo: FuncionarioFerias, venda = false) => { setVendaDiasFerias(venda); setModalGozo(periodo); };
   const [mesProcessar, setMesProcessar]     = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; });
   const [processando, setProcessando]       = useState(false);
 
@@ -2390,11 +2391,12 @@ function CadastrosInner() {
 
   // "+ Lançar férias": abre a concessão no período mais antigo ainda em aberto; se o funcionário não tem nenhum
   // período (sem data de admissão, por exemplo), cria um período avulso para a concessão poder ser lançada.
-  const lancarFeriasAvulsa = async () => {
+  const lancarFeriasAvulsa = async (venda = false) => {
     if (!editFunc || !fazIdEff) return;
     const abertos = ferias.filter(f => f.status !== "concedido" && f.status !== "gozado")
       .sort((a, b) => a.periodo_inicio.localeCompare(b.periodo_inicio));
-    if (abertos.length) { setModalGozo(abertos[0]); return; }
+    if (abertos.length) { abrirConcessaoFerias(abertos[0], venda); return; }
+    if (venda && ferias.length) { alert("Não há período disponível para vender dias. Confira as concessões já registradas na aba Férias."); return; }
     const fim = new Date(); fim.setDate(fim.getDate() - 1);
     const ini = new Date(fim); ini.setFullYear(ini.getFullYear() - 1); ini.setDate(ini.getDate() + 1);
     const adm = editFunc.data_admissao;
@@ -2407,23 +2409,8 @@ function CadastrosInner() {
     }).select().single();
     if (error || !data) { alert("Não foi possível criar o período de férias: " + (error?.message ?? "erro desconhecido")); return; }
     setFerias(prev => [...prev, data as FuncionarioFerias]);
-    setModalGozo(data as FuncionarioFerias);
+    abrirConcessaoFerias(data as FuncionarioFerias, venda);
   };
-
-  const salvarGozo = async () => salvar(async () => {
-    if (!modalGozo) return;
-    const dados: Partial<FuncionarioFerias> = {
-      data_inicio_gozo: fGozo.data_inicio_gozo || undefined,
-      data_fim_gozo: fGozo.data_fim_gozo || undefined,
-      dias_gozados: Number(fGozo.dias_gozados) || 30,
-      abono_pecuniario: fGozo.abono_pecuniario,
-      dias_abono: fGozo.abono_pecuniario ? (Number(fGozo.dias_abono) || 10) : 0,
-      status: "concedido",
-    };
-    await salvarFeriasGozo(modalGozo.id, dados);
-    setFerias(prev => prev.map(f => f.id === modalGozo.id ? { ...f, ...dados } : f));
-    setModalGozo(null);
-  });
 
   async function processarFolha() {
     if (!fazendaId) return;
@@ -10620,15 +10607,15 @@ function CadastrosInner() {
             {abaFunc === "ferias" && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-2)" }}>Concessão de férias: calcula o valor (dias/30 + 1/3 e abono) e lança no Contas a Pagar</span>
-                  {editFunc && <OperationalButton data-arato-button="primary" style={btnV} onClick={lancarFeriasAvulsa}>+ Lançar férias</OperationalButton>}
+                  <span style={{ fontSize: 12, color: "var(--text-2)" }}>Férias e venda de dias: descanso, abono pecuniário e pagamento no Contas a Pagar</span>
+                  {editFunc && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><OperationalButton data-arato-button="secondary" style={btnR} onClick={() => lancarFeriasAvulsa(true)}>Venda de dias</OperationalButton><OperationalButton data-arato-button="primary" style={btnV} onClick={() => lancarFeriasAvulsa()}>+ Lançar férias</OperationalButton></div>}
                 </div>
                 {ferias.length === 0 && <div style={{ padding: "20px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{editFunc ? "Nenhum período aquisitivo encontrado (preencha a data de admissão para calculá-los automaticamente). Você pode lançar as férias mesmo assim em + Lançar férias." : "Salve o funcionário com data de admissão para calcular períodos de férias."}</div>}
                 {ferias.length > 0 && (
                   <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
-                        {["Período aquisitivo", "Vencimento", "Status", "Gozo", "Dias", "Valor lançado", ""].map((h, i) => (
+                        {["Período aquisitivo", "Vencimento", "Status", "Descanso", "Dias de descanso", "Dias vendidos", "Abono no CP", "Total lançado", ""].map((h, i) => (
                           <th key={i} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 11, borderBottom: "0.5px solid var(--border-row)" }}>{h}</th>
                         ))}
                       </tr>
@@ -10655,16 +10642,20 @@ function CadastrosInner() {
                               {fer.data_inicio_gozo ? `${fer.data_inicio_gozo} → ${fer.data_fim_gozo || "?"}` : "—"}
                             </td>
                             <td style={{ padding: "10px 12px", color: "var(--text-1)" }}>
-                              {fer.dias_gozados ? `${fer.dias_gozados}d${fer.abono_pecuniario ? ` + ${fer.dias_abono}d abono` : ""}` : "30d"}
+                              {fer.dias_gozados ? `${fer.dias_gozados}d` : "—"}
+                            </td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-1)" }}>{fer.abono_pecuniario ? `${fer.dias_abono ?? 0}d` : "—"}</td>
+                            <td style={{ padding: "10px 12px", color: "var(--text-1)" }}>
+                              {fer.abono_pecuniario && fer.lancado_financeiro ? `R$ ${(fer.valor_abono ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                              {fer.data_solicitacao_abono && <div style={{ fontSize: 10, color: "var(--text-2)" }}>Solicitado em {fer.data_solicitacao_abono.split("-").reverse().join("/")}</div>}
                             </td>
                             <td style={{ padding: "10px 12px", color: "var(--text-1)" }}>
                               {fer.lancado_financeiro ? `R$ ${((fer.valor_ferias ?? 0) + (fer.valor_abono ?? 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
                             </td>
                             <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
                               {fer.status !== "concedido" && fer.status !== "gozado" && (
-                                <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => setModalGozo(fer)}>
-                                  Conceder
-                                </OperationalButton>
+                                <><OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirConcessaoFerias(fer)}>Conceder</OperationalButton>
+                                <OperationalButton data-arato-button="secondary" style={{ ...btnE, marginLeft: 6 }} onClick={() => abrirConcessaoFerias(fer, true)}>Vender dias</OperationalButton></>
                               )}
                               {fer.status === "concedido" && (
                                 <>
@@ -10759,7 +10750,7 @@ function CadastrosInner() {
 
       {/* Modal Concessão de Férias */}
       {modalGozo && editFunc && (
-        <ConcederFeriasModal func={editFunc} fazendaId={fazIdEff!} fer={modalGozo} onClose={() => setModalGozo(null)}
+        <ConcederFeriasModal key={`${modalGozo.id}:${vendaDiasFerias}`} vendaInicial={vendaDiasFerias} func={editFunc} fazendaId={fazIdEff!} fer={modalGozo} onClose={() => setModalGozo(null)}
           onDone={(n) => { setFerias(prev => prev.map(f => f.id === n.id ? n : f)); setModalGozo(null); }} />
       )}
 

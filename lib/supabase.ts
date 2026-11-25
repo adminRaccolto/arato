@@ -1146,6 +1146,8 @@ export type FuncionarioFerias = {
   data_inicio_gozo?: string;
   data_fim_gozo?: string;
   dias_gozados?: number;
+  dias_direito?: number;
+  data_solicitacao_abono?: string | null;
   abono_pecuniario?: boolean;
   dias_abono?: number;
   valor_ferias?: number;

@@ -23733,3 +23733,13 @@ CREATE INDEX IF NOT EXISTS idx_premio_seguro_identidade_cp ON pagamentos_premio_
 CREATE INDEX IF NOT EXISTS idx_folha_func_identidade_cp ON folha_funcionarios(cp_lancamento_id) WHERE cp_lancamento_id IS NOT NULL;
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 465 — Férias: dias de direito e solicitação do abono pecuniário
+-- Preserva as concessões históricas e os títulos financeiros existentes.
+-- =============================================================================
+BEGIN;
+ALTER TABLE funcionario_ferias ADD COLUMN IF NOT EXISTS dias_direito integer NOT NULL DEFAULT 30;
+ALTER TABLE funcionario_ferias ADD COLUMN IF NOT EXISTS data_solicitacao_abono date;
+COMMIT;
+NOTIFY pgrst, 'reload schema';

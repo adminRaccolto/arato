@@ -2,6 +2,8 @@
 import { supabase } from "./supabase";
 import type { Funcionario, FuncionarioFerias } from "./supabase";
 import { criarLancamento, resolverOperacaoGerencialPorClassificacao } from "./db";
+import { validarConcessaoFerias, type ConcessaoFerias } from "./folha/ferias";
+export { calcularFerias } from "./folha/ferias";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -11,15 +13,6 @@ export const salarioReferencia = (f: Pick<Funcionario, "salario_base" | "complem
   Number(f.salario_base ?? 0) + Number(f.complemento_salarial ?? 0);
 
 // ── Férias ──────────────────────────────────────────────────────────────────
-export function calcularFerias(salario: number, diasGozo: number, abono: boolean, diasAbono: number) {
-  const dia = salario / 30;
-  const ferias = r2(dia * diasGozo);
-  const tercoFerias = r2(ferias / 3);
-  const valAbono = abono ? r2(dia * diasAbono) : 0;
-  const tercoAbono = abono ? r2(valAbono / 3) : 0;
-  return { ferias, tercoFerias, valAbono, tercoAbono, totalFerias: r2(ferias + tercoFerias), totalAbono: r2(valAbono + tercoAbono), total: r2(ferias + tercoFerias + valAbono + tercoAbono) };
-}
-
 const ogCodigo = (f: Funcionario, base: "002" | "008" | "013") =>
   f.area_trabalho === "administrativo" ? `2.01.02.01.03.${base}` : `2.01.01.10.${base}`;
 
@@ -51,28 +44,42 @@ async function excluirCPsAbertos(ids: string[]) {
   if (error) throw error;
 }
 
-export async function concederFerias(func: Funcionario, fazendaId: string, fer: FuncionarioFerias, p: {
-  inicio: string; fim: string; dias: number; abono: boolean; diasAbono: number; valorFerias: number; valorAbono: number; dataPagamento: string;
-}) {
+export async function concederFerias(func: Funcionario, fazendaId: string, fer: FuncionarioFerias, p: ConcessaoFerias) {
+  const erroValidacao = validarConcessaoFerias(p, salarioReferencia(func));
+  if (erroValidacao) throw new Error(erroValidacao);
+  const { data: atual, error: erroLeitura } = await supabase.from("funcionario_ferias").select("*")
+    .eq("id", fer.id).eq("funcionario_id", func.id).single();
+  if (erroLeitura || !atual) throw new Error("Não foi possível conferir o período de férias. Atualize antes de lançar.");
+  if (atual.lancado_financeiro || atual.status === "concedido" || atual.status === "gozado") throw new Error("Este período já possui uma concessão. Atualize o cadastro antes de continuar.");
+  // Confere o esquema antes do financeiro, preservando a concessão antiga de 30 dias.
+  if ((!("dias_direito" in atual) && (p.diasDireito ?? 30) !== 30)
+      || (!("data_solicitacao_abono" in atual) && p.abono && p.solicitacaoAbono)) {
+    throw new Error("Aplique a Seção 465 para registrar dias de direito e a solicitação do abono antes de lançar.");
+  }
+  const fazendaFerias = atual.fazenda_id || fazendaId;
   const ids: string[] = [];
   const nome = func.nome;
-  if (p.valorFerias > 0) ids.push(await criarCP(func, fazendaId, `Férias — ${nome} — gozo ${p.inicio.split("-").reverse().join("/")}`, func.area_trabalho === "administrativo" ? "FÉRIAS - ADM" : "FÉRIAS - FAZ", p.valorFerias, p.dataPagamento, "002"));
-  if (p.abono && p.valorAbono > 0) ids.push(await criarCP(func, fazendaId, `Abono pecuniário de férias — ${nome}`, func.area_trabalho === "administrativo" ? "FÉRIAS - ADM" : "FÉRIAS - FAZ", p.valorAbono, p.dataPagamento, "002"));
+  if (p.valorFerias > 0) ids.push(await criarCP(func, fazendaFerias, `Férias — ${nome} — gozo ${p.inicio.split("-").reverse().join("/")}`, func.area_trabalho === "administrativo" ? "FÉRIAS - ADM" : "FÉRIAS - FAZ", p.valorFerias, p.dataPagamento, "002"));
+  if (p.abono && p.valorAbono > 0) ids.push(await criarCP(func, fazendaFerias, `Abono pecuniário de férias — ${nome} — venda de ${p.diasAbono} dias`, func.area_trabalho === "administrativo" ? "FÉRIAS - ADM" : "FÉRIAS - FAZ", p.valorAbono, p.dataPagamento, "002"));
   const dados = {
+    ...("dias_direito" in atual ? { dias_direito: p.diasDireito ?? 30 } : {}),
+    ...("data_solicitacao_abono" in atual ? { data_solicitacao_abono: p.abono ? p.solicitacaoAbono || null : null } : {}),
     data_inicio_gozo: p.inicio, data_fim_gozo: p.fim, dias_gozados: p.dias,
     abono_pecuniario: p.abono, dias_abono: p.abono ? p.diasAbono : 0,
     valor_ferias: p.valorFerias, valor_abono: p.abono ? p.valorAbono : 0,
     lancado_financeiro: ids.length > 0, lancamento_ids: ids, data_pagamento: p.dataPagamento, status: "concedido" as const,
   };
-  const { error } = await supabase.from("funcionario_ferias").update(dados).eq("id", fer.id);
-  if (error) throw error;
-  return { ...fer, ...dados } as FuncionarioFerias;
+  const { data: salva, error } = await supabase.from("funcionario_ferias").update(dados)
+    .eq("id", fer.id).eq("funcionario_id", func.id).select().single();
+  if (error || !salva) throw new Error(error?.message || "Não foi possível confirmar o registro das férias. Atualize antes de repetir.");
+  return salva as FuncionarioFerias;
 }
 
 export async function cancelarConcessaoFerias(fer: FuncionarioFerias & { lancamento_ids?: string[] }) {
   await excluirCPsAbertos(fer.lancamento_ids ?? []);
   const fim = new Date(fer.periodo_fim + "T12:00:00");
   const dados = {
+    ...("data_solicitacao_abono" in fer ? { data_solicitacao_abono: null } : {}),
     data_inicio_gozo: null, data_fim_gozo: null, dias_gozados: null, abono_pecuniario: false, dias_abono: null,
     valor_ferias: null, valor_abono: null, lancado_financeiro: false, lancamento_ids: null, data_pagamento: null,
     status: fim > new Date() ? "aquisindo" : "disponivel",

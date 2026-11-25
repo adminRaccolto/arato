@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.25-b",
+    data: "25/11/2026",
+    titulo: "Venda de dias de férias no cadastro do funcionário",
+    modulos: ["Cadastros", "Folha de Pagamento", "Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na aba Férias do funcionário, use Venda de dias ou Vender dias no período desejado para abrir a concessão com abono pecuniário. O formulário separa descanso e dias vendidos, ajusta a data final e calcula férias, abono e seus terços. Férias e abono geram títulos separados no Contas a Pagar." },
+      { tipo: "melhoria", texto: "Informe os dias de direito do período para limitar a venda a um terço: até 10 de 30, 8 de 24, 6 de 18 ou 4 de 12 dias. A data da solicitação é opcional; o formulário informa o prazo legal, e o histórico apresenta dias vendidos, valor do abono e total lançado." },
+    ],
+    onde: "Cadastros → Funcionários → Férias",
+  },
+  {
     versao: "2026.11.25-a",
     data: "25/11/2026",
     titulo: "Produtor e fornecedor do CP e CR conferidos na origem",
