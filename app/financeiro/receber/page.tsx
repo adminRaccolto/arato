@@ -9,6 +9,7 @@ import EntryOutline from '../../../components/arato-layout/EntryOutline';
 import { motivoBloqueioExclusao, notaDoTitulo } from "../../../lib/financeiro/bloqueio-exclusao";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
+import { carregarIdentidadesTitulos } from "../../../lib/financeiro/identidades-titulos";
 import { carregarUsuariosTitulos } from "../../../lib/financeiro/usuarios-titulos";
 import { textoQuemBaixou, useQuemBaixou } from "../../../lib/financeiro/quem-baixou";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -69,7 +70,7 @@ import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancam
 import { statusExibido } from "../../../lib/financeiro/titulos";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
 import { casaFiltroNumero, casaFiltroTexto } from "../../../lib/financeiro/filtro-colunas";
-import { colunaPropriaBordero, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
+import { colunaPropriaBordero, filtrarNomeTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero, itensDoBordero } from "../../../lib/financeiro/cp-grid";
 import { resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -333,10 +334,7 @@ export default function ContasAReceberPage() {
         if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       }
       if (nfBusca) q = q.ilike("nfe_numero", `%${nfBusca}%`);
-      if (fBusca.trim()) {
-        const t = fBusca.trim();
-        q = q.or(`pessoa_nome.ilike.%${t}%,and(pessoa_nome.is.null,descricao.ilike.%${t}%)`);
-      }
+      // O nome pode estar só na origem fiscal: aplica a busca após conferir os vínculos.
       // Todas as páginas, com ordem fixa (data + id): antes era limit(1000) por data de lançamento — acima de 1.000
       // títulos, quais entravam variava a cada carga (título "aparecia e sumia")
       q = q.order("data_lancamento", { ascending: false }).order("id");
@@ -349,15 +347,16 @@ export default function ContasAReceberPage() {
       }
       // Carga mais nova já começou (ex.: chegou a conta do usuário depois da 1ª carga só da fazenda): esta é descartada
       if (seq !== cargaSeq.current) return;
-      const [comUsuarios, cots] = await Promise.all([carregarUsuariosTitulos(supabase, regs), carregarCotacoesUSD(supabase, regs)]);
+      const [comUsuarios, cots] = await Promise.all([carregarIdentidadesTitulos(supabase, regs).then(t => carregarUsuariosTitulos(supabase, t)), carregarCotacoesUSD(supabase, regs)]);
       if (seq !== cargaSeq.current) return;
       ultimaCarga.current = Date.now();
       setCotacoes(cots);
       setResultado(comUsuarios);
     } catch (e: unknown) {
+      if (seq !== cargaSeq.current) return;
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
     } finally {
-      setCarregando(false);
+      if (seq === cargaSeq.current) setCarregando(false);
     }
   // Período/busca/origem/status entram nos deps pra "Atualizar" e Enter
   // sempre lerem o valor atual dos campos (sem isso, carregar() ficava com
@@ -410,13 +409,14 @@ export default function ContasAReceberPage() {
       setBorderosPagos(pagos);
       // Cliente, produtor e origem do borderô vêm dos títulos dele (o cabeçalho do borderô não guarda cliente)
       const ids = [...new Set([...pend, ...pagos].flatMap(b => (b.itens ?? []).map(i => i.lancamento_id)))];
-      const titulos: { id: string; pessoa_nome: string | null; produtor_nome: string | null; empresa_nome: string | null; origem_tabela: string; operacao_gerencial_nome: string | null }[] = [];
+      const titulos: { id: string; fazenda_id: string | null; pessoa_id: string | null; pessoa_nome: string | null; produtor_nome: string | null; empresa_nome: string | null; origem_tabela: string; operacao_gerencial_nome: string | null }[] = [];
       for (let i = 0; i < ids.length; i += 100) {
-        const { data, error: leituraErro } = await supabase.from("rel_lancamentos").select("id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 100));
-        if (leituraErro) { console.warn("[borderôs] nomes dos títulos não carregados:", leituraErro.message); break; }   // só enfeite: não derruba a lista
+        const { data, error: leituraErro } = await supabase.from("rel_lancamentos").select("id, fazenda_id, pessoa_id, pessoa_nome, produtor_nome, empresa_nome, origem_tabela, operacao_gerencial_nome").in("id", ids.slice(i, i + 100));
+        if (leituraErro) throw leituraErro;
         titulos.push(...((data ?? []) as typeof titulos));
       }
-      const porId = new Map(titulos.map(t => [t.id, t]));
+      const identificados = await carregarIdentidadesTitulos(supabase, titulos);
+      const porId = new Map(identificados.map(t => [`${t.origem_tabela}:${t.id}`, t]));
       const idsContas = [...new Set([...pend, ...pagos].map(b => b.conta_bancaria).filter(Boolean))] as string[];
       const { data: contasB, error: contasErro } = idsContas.length ? await supabase.from("contas_bancarias").select("id, nome").in("id", idsContas) : { data: [], error: null };
       if (contasErro) console.warn("[borderôs] contas bancárias não carregadas:", contasErro.message);
@@ -424,7 +424,7 @@ export default function ContasAReceberPage() {
       const unicoOuVarios = (vals: (string | null)[]) => { const u = [...new Set(vals.filter(Boolean))] as string[]; return u.length <= 1 ? (u[0] ?? null) : `Vários (${u.length})`; };
       if (sequencia !== cargaBorderosSeq.current) return;
       setInfoBordero(new Map([...pend, ...pagos].map(b => {
-        const ts = (b.itens ?? []).map(i => porId.get(i.lancamento_id)).filter((t): t is typeof titulos[number] => !!t);
+        const ts = (b.itens ?? []).map(i => porId.get(`${i.origem_tabela ?? "lancamentos"}:${i.lancamento_id}`)).filter((t): t is NonNullable<typeof t> => !!t);
         return [b.id, {
           cliente: unicoOuVarios(ts.map(t => t.pessoa_nome)),
           produtor: unicoOuVarios(ts.map(t => t.produtor_nome ?? t.empresa_nome)),
@@ -494,7 +494,7 @@ export default function ContasAReceberPage() {
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCR)
     && (!temExtrasBordero || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
   const linhas = (resultado ?? []).filter(l => {
-    if (tituloVinculado(l, vinculos)) return false;
+    if (tituloVinculado(l, vinculos) || !filtrarNomeTitulo(l, fBusca)) return false;
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
     if (fStatus.size > 0) {
       const st = l.status_normalizado ?? "";

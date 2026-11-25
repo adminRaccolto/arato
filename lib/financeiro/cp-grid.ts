@@ -57,6 +57,10 @@ const funcionarioDaDescricao = (descricao?: string | null) =>
 const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome
   ? [t.pessoa_nome, ...[emitenteDaNF(t.descricao), funcionarioDaDescricao(t.descricao)].filter((v): v is string => !!v)]
   : [t.descricao];
+/** A busca usa o nome já conferido na origem, inclusive quando o espelho não o tinha. */
+export function filtrarNomeTitulo(t: TituloGrid, busca: string) {
+  return !busca.trim() || nomesDoTitulo(t).some(v => texto(v).includes(texto(busca.trim())));
+}
 export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   // 'cartao': comprometido no cartão de crédito — nunca é saldo em aberto do
   // fornecedor/produtor, não entra no grid de CP de jeito nenhum (nem sem

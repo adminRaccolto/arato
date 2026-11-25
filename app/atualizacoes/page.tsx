@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.25-a",
+    data: "25/11/2026",
+    titulo: "Produtor e fornecedor do CP e CR conferidos na origem",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "As colunas Produtor e Fornecedor/Cliente passam a consultar os vínculos atuais do título e de sua origem, incluindo notas fiscais, serviços, contratos, consórcios, seguros e folha. Os nomes atualizados também são usados nos filtros e nos borderôs, nos layouts Padrão e Novo Layout. Quando o cadastro de origem não informa o produtor, ele continua pendente de identificação, sem atribuição automática pelo dono da fazenda." },
+      { tipo: "correcao", texto: "Ao gerar ou editar o plano de parcelas de um consórcio, o produtor cadastrado nele passa a acompanhar os títulos do Contas a Pagar." },
+    ],
+    onde: "Financeiro → Contas a Pagar, Contas a Receber e Consórcios",
+  },
+  {
     versao: "2026.11.24-g",
     data: "24/11/2026",
     titulo: "CND do remetente e do destinatário automáticas na NF-e; venda de produto isento",

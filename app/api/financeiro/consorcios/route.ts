@@ -102,7 +102,7 @@ async function salvarGridConsorcio(body: {
 
   // CPs: cria/atualiza só as parcelas não pagas
   const { data: cpsExistentes } = await sb.from("lancamentos")
-    .select("id, numero_documento, status")
+    .select("id, numero_documento, status, produtor_id")
     .eq("consorcio_id", body.consorcio_id);
   const cpPorNumero = new Map((cpsExistentes ?? []).map(l => [String(l.numero_documento), l]));
   const numerosNoGrid = new Set(body.parcelas.map(p => String(p.numero)));
@@ -112,6 +112,7 @@ async function salvarGridConsorcio(body: {
     if (p.pago) continue;
     const existente = cpPorNumero.get(String(p.numero));
     const campos = {
+      ...(c.produtor_id && !existente?.produtor_id ? { produtor_id: c.produtor_id } : {}),
       valor: p.valor, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
       descricao: `${descBase} — Parcela ${p.numero}/${body.parcelas.length}`,
     };
@@ -172,6 +173,12 @@ export async function PATCH(req: NextRequest) {
     }
 
     const sb = admin();
+
+    const { data: consorcio, error: erroConsorcio } = await sb.from("consorcios")
+      .select("id,fazenda_id,produtor_id").eq("id", body.consorcio_id).maybeSingle();
+    if (erroConsorcio || !consorcio || consorcio.fazenda_id !== body.fazenda_id) {
+      return NextResponse.json({ error: "Consórcio não encontrado na fazenda informada." }, { status: 400 });
+    }
 
     // Remove parcelas e CPs existentes (não pagas)
     await falharSeErro(sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id), "excluir parcelas_consorcio");
@@ -237,6 +244,7 @@ export async function PATCH(req: NextRequest) {
               data_vencimento:   dataVenc,
               status:            "em_aberto",
               consorcio_id:      body.consorcio_id,
+              produtor_id:      consorcio.produtor_id ?? null,
               ciclo_id:          r.ciclo_id,
               numero_documento:  String(i),
               origem_lancamento: "consorcio",
@@ -256,6 +264,7 @@ export async function PATCH(req: NextRequest) {
             data_vencimento:   dataVenc,
             status:            "em_aberto",
             consorcio_id:      body.consorcio_id,
+            produtor_id:      consorcio.produtor_id ?? null,
             numero_documento:  String(i),
             origem_lancamento: "consorcio",
             ...(body.administradora_pessoa_id ? { pessoa_id: body.administradora_pessoa_id } : {}),

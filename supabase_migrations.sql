@@ -23717,3 +23717,19 @@ WHERE f.conta_id = '87109388-a698-42d9-917e-adb1ed5d8768'
 
 COMMIT;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 464 — Identificação no CP/CR: vínculos das apólices e índices de consulta
+-- Repõe os pré-requisitos das Seções 404/405, ausentes em instalações antigas.
+-- Não atribui produtores por suposição nem altera valores, baixas ou títulos históricos.
+-- =============================================================================
+BEGIN;
+ALTER TABLE apolices_seguro ADD COLUMN IF NOT EXISTS seguradora_pessoa_id uuid REFERENCES pessoas(id) ON DELETE SET NULL;
+ALTER TABLE apolices_seguro ADD COLUMN IF NOT EXISTS produtor_id uuid REFERENCES produtores(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_apolices_seguradora_pessoa ON apolices_seguro(seguradora_pessoa_id) WHERE seguradora_pessoa_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_apolices_produtor ON apolices_seguro(produtor_id) WHERE produtor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_nf_servicos_identidade_cp ON nf_servicos(lancamento_id) WHERE lancamento_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_premio_seguro_identidade_cp ON pagamentos_premio_seguro(lancamento_id) WHERE lancamento_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_folha_func_identidade_cp ON folha_funcionarios(cp_lancamento_id) WHERE cp_lancamento_id IS NOT NULL;
+COMMIT;
+NOTIFY pgrst, 'reload schema';
