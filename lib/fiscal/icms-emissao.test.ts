@@ -42,5 +42,5 @@ test("duplicação preserva a escolha e os percentuais do rascunho", () => {
   const r = montarRascunhoDuplicado({ id: "nf-origem", fazenda_id: "faz", tipo: "saida", status: "autorizada", numero: "1", valor_total: 100, dados_nf_json: f }, { numero: "2" }, "2026-11-17");
   const recuperado = { ...campos, ...r.dados_nf_json };
   assert.deepEqual(icmsDaEmissao(recuperado), icmsDaEmissao(f));
-  assert.equal(r.dados_nf_json.cst_icms, "020");
+  assert.equal((r.dados_nf_json as Record<string, unknown>).cst_icms, "020");
 });

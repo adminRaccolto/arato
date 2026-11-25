@@ -117,7 +117,7 @@ test("valor do borderô encontra o total de 300,00, sem confundir com títulos d
   for (const tipo of ["pagar", "receber"] as const) {
     const b = { ...pendente, tipo, valor_total: 300, itens: [
       { id: "i1", lote_id: "b1", lancamento_id: "nf1", valor_pago: 100 },
-      { id: "i2", lote_id: "b1", lancamento_id: "nf2", valor_pago: 200, origem_tabela: "empresa_lancamentos" },
+      { id: "i2", lote_id: "b1", lancamento_id: "nf2", valor_pago: 200, origem_tabela: "empresa_lancamentos" as const },
     ] };
     const titulos = [{ ...titulo, valor: 100 }, { ...titulo, id: "nf2", origem_tabela: "empresa_lancamentos", valor: 200 }];
     const antes = structuredClone({ b, titulos });
@@ -141,7 +141,7 @@ test("valor agregado aceita centavos, maior, menor e faixa no formato brasileiro
 test("pago e saldo usam o resumo exibido: aberto, parcial e quitado legado", () => {
   const aberto = { ...pendente, valor_total: 300 };
   const parcial = { ...aberto, valor_pago: 120, valor_juros: 15, valor_multa: 5, valor_desconto: 10 };
-  const quitado = { ...aberto, status: "pago" as const, valor_pago: null };
+  const quitado = { ...aberto, status: "pago" as const, valor_pago: null as unknown as number }; // legado gravou null
   assert.equal(filtrarBordero(aberto, [titulo], filtros({ valor: "300", pago: "0", saldo: "300" })), true);
   assert.equal(filtrarBordero(parcial, [titulo], filtros({ valor: "300", pago: "120", saldo: "180" })), true);
   assert.equal(filtrarBordero(parcial, [titulo], filtros({ pago: "130" })), false, "encargos não mudam o valor da coluna Pago");

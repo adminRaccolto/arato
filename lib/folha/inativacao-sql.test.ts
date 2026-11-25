@@ -41,27 +41,27 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
     INSERT INTO fazendas VALUES('${id(1)}','${id(10)}'),('${id(2)}','${id(11)}'),('${id(3)}','${id(10)}');
     INSERT INTO funcionarios VALUES('${id(20)}','${id(1)}','Ana',true,NULL),('${id(21)}','${id(1)}','Bia',true,NULL),('${id(22)}','${id(2)}','Outra conta',true,NULL);`);
    for(const [n,comp,status] of [[50,'2026-11','rascunho'],[51,'2026-12','rascunho'],[52,'2026-10','rascunho'],[53,'2026-10','fechado'],[54,'2026-09','pago']] as const){
-    await db.query('INSERT INTO folha_pagamento(id,fazenda_id,empresa_id,competencia,status,valor_bruto,valor_liquido,fgts_total,inss_patronal,cp_fgts_id,cp_inss_patronal_id)VALUES($1,$2,$3,$4,$5,3000,2700,240,600,$6,$7)',[id(n),id(1),id(40),comp,status,id(2000+n),id(3000+n)]);
+    await db.query<Record<string,any>>('INSERT INTO folha_pagamento(id,fazenda_id,empresa_id,competencia,status,valor_bruto,valor_liquido,fgts_total,inss_patronal,cp_fgts_id,cp_inss_patronal_id)VALUES($1,$2,$3,$4,$5,3000,2700,240,600,$6,$7)',[id(n),id(1),id(40),comp,status,id(2000+n),id(3000+n)]);
     for(const segundo of [false,true]){
      const v=segundo?2000:1000;
-     await db.query('INSERT INTO lancamentos(id,fazenda_id,funcionario_id,tipo,natureza,moeda,valor,status)VALUES($1,$2,$3,\'pagar\',$4,\'BRL\',$5,\'em_aberto\')',[salario(n,segundo),id(1),id(segundo?21:20),status==='rascunho'?'previsao':'real',v*0.9]);
-     await db.query('INSERT INTO folha_funcionarios(id,folha_id,funcionario_id,nome_funcionario,salario_bruto,inss_trabalhador,fgts,inss_patronal,cp_lancamento_id)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[linha(n,segundo),id(n),id(segundo?21:20),segundo?'Bia':'Ana',v,v*0.1,v*0.08,v*0.2,salario(n,segundo)]);
+     await db.query<Record<string,any>>('INSERT INTO lancamentos(id,fazenda_id,funcionario_id,tipo,natureza,moeda,valor,status)VALUES($1,$2,$3,\'pagar\',$4,\'BRL\',$5,\'em_aberto\')',[salario(n,segundo),id(1),id(segundo?21:20),status==='rascunho'?'previsao':'real',v*0.9]);
+     await db.query<Record<string,any>>('INSERT INTO folha_funcionarios(id,folha_id,funcionario_id,nome_funcionario,salario_bruto,inss_trabalhador,fgts,inss_patronal,cp_lancamento_id)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[linha(n,segundo),id(n),id(segundo?21:20),segundo?'Bia':'Ana',v,v*0.1,v*0.08,v*0.2,salario(n,segundo)]);
     }
     for(const [num,valor] of [[2000+n,240],[3000+n,600]])
-     await db.query('INSERT INTO lancamentos(id,fazenda_id,tipo,natureza,moeda,valor,status)VALUES($1,$2,\'pagar\',$3,\'BRL\',$4,\'em_aberto\')',[id(num),id(1),status==='rascunho'?'previsao':'real',valor]);
+     await db.query<Record<string,any>>('INSERT INTO lancamentos(id,fazenda_id,tipo,natureza,moeda,valor,status)VALUES($1,$2,\'pagar\',$3,\'BRL\',$4,\'em_aberto\')',[id(num),id(1),status==='rascunho'?'previsao':'real',valor]);
    }
    await db.exec(`INSERT INTO previsoes_gasto SELECT id,id,valor,valor,'aberta',now() FROM lancamentos WHERE natureza='previsao';
     UPDATE lancamentos SET previsao_gasto_id=id WHERE natureza='previsao';`);
   }
   const get=async(n:string)=>(await db.query<Record<string,any>>('SELECT * FROM lancamentos WHERE id=$1',[n])).rows[0];
-  const inativar=()=>db.query('UPDATE funcionarios SET ativo=false WHERE id=$1',[id(20)]);
+  const inativar=()=>db.query<Record<string,any>>('UPDATE funcionarios SET ativo=false WHERE id=$1',[id(20)]);
   async function scenario(nome:string,fn:()=>Promise<void>){await t.test(nome,async()=>{await seed();await fn();});}
   await scenario('sem data de demissão: cancela mês atual, futuro e rascunho antigo, mantendo fechadas e outro funcionário',async()=>{
    const outra=await get(salario(50,true)),fechada=await get(salario(53));
    await inativar();
    for(const n of [50,51,52]){
     assert.equal((await get(salario(n))).status,'cancelado');
-    assert.equal((await db.query('SELECT count(*) n FROM folha_funcionarios WHERE id=$1',[linha(n)])).rows[0].n,0);
+    assert.equal((await db.query<Record<string,any>>('SELECT count(*) n FROM folha_funcionarios WHERE id=$1',[linha(n)])).rows[0].n,0);
     const h=(await db.query<Record<string,any>>('SELECT * FROM folha_pagamento WHERE id=$1',[id(n)])).rows[0];
     assert.equal(Number(h.valor_bruto),2000);assert.equal(Number(h.valor_liquido),1800);
     assert.equal(Number((await get(id(2000+n))).valor),160);assert.equal(Number((await get(id(3000+n))).valor),400);
@@ -69,14 +69,14 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
     assert.equal(prev.status,'cancelada');assert.equal(Number(prev.saldo),0);
    }
    assert.deepEqual(await get(salario(50,true)),outra);assert.deepEqual(await get(salario(53)),fechada);
-   assert.equal((await db.query('SELECT count(*) n FROM folha_historico WHERE usuario_id=$1',[id(99)])).rows[0].n,3);
-   await inativar();assert.equal((await db.query('SELECT count(*) n FROM folha_historico')).rows[0].n,3);
+   assert.equal((await db.query<Record<string,any>>('SELECT count(*) n FROM folha_historico WHERE usuario_id=$1',[id(99)])).rows[0].n,3);
+   await inativar();assert.equal((await db.query<Record<string,any>>('SELECT count(*) n FROM folha_historico')).rows[0].n,3);
   });
   for(const [nome,patch] of [['real',"natureza='real'"],['pago',"status='baixado',valor_pago=900"],['parcial',"status='parcial',valor_pago=200"],['conciliado','conciliado=true'],['borderô',`lote_id='${id(90)}'`],['contrato',`contrato_financeiro_id='${id(90)}'`],['cartão',`fatura_cartao_id='${id(90)}'`]] as const)
    await scenario(`título ${nome} preserva valor e vínculo`,async()=>{
     await db.exec(`UPDATE lancamentos SET ${patch} WHERE id='${salario(50)}'`);const antes=await get(salario(50));
     await inativar();assert.deepEqual(await get(salario(50)),antes);
-    assert.equal((await db.query('SELECT cp_lancamento_id FROM folha_funcionarios WHERE id=$1',[linha(50)])).rows[0].cp_lancamento_id,salario(50));
+    assert.equal((await db.query<Record<string,any>>('SELECT cp_lancamento_id FROM folha_funcionarios WHERE id=$1',[linha(50)])).rows[0].cp_lancamento_id,salario(50));
    });
   await scenario('parte paga, extrato e composição de borderô protegem mesmo com a raiz em aberto',async()=>{
    await db.exec(`INSERT INTO lancamentos(id,fazenda_id,titulo_origem_id,natureza,tipo,valor,status)VALUES('${id(90)}','${id(1)}','${salario(50)}','real','pagar',200,'baixado');
@@ -89,7 +89,7 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
    await inativar();assert.equal((await get(salario(50))).status,'em_aberto');
   });
   await scenario('sem outros funcionários: cancela encargos previstos e zera o cabeçalho',async()=>{
-   await db.query('UPDATE funcionarios SET ativo=false WHERE id=$1',[id(21)]);await inativar();
+   await db.query<Record<string,any>>('UPDATE funcionarios SET ativo=false WHERE id=$1',[id(21)]);await inativar();
    assert.equal((await get(id(2050))).status,'cancelado');assert.equal((await get(id(3050))).status,'cancelado');
    assert.equal(Number((await db.query<Record<string,any>>('SELECT valor_liquido FROM folha_pagamento WHERE id=$1',[id(50)])).rows[0].valor_liquido),0);
   });
@@ -99,9 +99,9 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
   });
   await scenario('tela antiga não consegue reincluir inativo, mas rescisão real posterior é permitida',async()=>{
    await inativar();
-   const insercao=await db.query('INSERT INTO folha_funcionarios(id,folha_id,funcionario_id,nome_funcionario)VALUES($1,$2,$3,$4),($5,$2,$6,$7) RETURNING funcionario_id',[id(90),id(50),id(20),'Ana',id(92),id(21),'Bia']);
+   const insercao=await db.query<Record<string,any>>('INSERT INTO folha_funcionarios(id,folha_id,funcionario_id,nome_funcionario)VALUES($1,$2,$3,$4),($5,$2,$6,$7) RETURNING funcionario_id',[id(90),id(50),id(20),'Ana',id(92),id(21),'Bia']);
    assert.equal(insercao.rows.length,1);assert.equal(insercao.rows[0].funcionario_id,id(21));
-   await db.query('UPDATE funcionarios SET data_demissao=$1,ativo=false WHERE id=$2',['2026-11-20',id(20)]);
+   await db.query<Record<string,any>>('UPDATE funcionarios SET data_demissao=$1,ativo=false WHERE id=$2',['2026-11-20',id(20)]);
    await db.exec(`INSERT INTO lancamentos(id,fazenda_id,funcionario_id,tipo,natureza,moeda,valor,status)VALUES('${id(91)}','${id(1)}','${id(20)}','pagar','real','BRL',5000,'em_aberto')`);
    assert.equal(Number((await get(id(91))).valor),5000);
   });
@@ -109,34 +109,34 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
    await db.exec(`CREATE FUNCTION falhar_encargo() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF OLD.id='${id(2050)}' THEN RAISE EXCEPTION 'Falha de encargo';END IF;RETURN NEW;END$$;
     CREATE TRIGGER falha BEFORE UPDATE ON lancamentos FOR EACH ROW EXECUTE FUNCTION falhar_encargo();`);
    await assert.rejects(inativar(),/Falha de encargo/);
-   assert.equal((await db.query('SELECT ativo FROM funcionarios WHERE id=$1',[id(20)])).rows[0].ativo,true);
+   assert.equal((await db.query<Record<string,any>>('SELECT ativo FROM funcionarios WHERE id=$1',[id(20)])).rows[0].ativo,true);
    assert.equal((await get(salario(50))).status,'em_aberto');
-   assert.equal((await db.query('SELECT count(*) n FROM folha_funcionarios WHERE id=$1',[linha(50)])).rows[0].n,1);
+   assert.equal((await db.query<Record<string,any>>('SELECT count(*) n FROM folha_funcionarios WHERE id=$1',[linha(50)])).rows[0].n,1);
    await db.exec('DROP TRIGGER falha ON lancamentos');
   });
   await scenario('sincronização em andamento impede corrida e não deixa inativação incompleta',async()=>{
    await db.exec(`UPDATE folha_pagamento SET previsoes_sync_em=clock_timestamp() WHERE id='${id(51)}'`);
    await assert.rejects(inativar(),/sendo atualizada/);
    assert.equal((await get(salario(50))).status,'em_aberto');
-   assert.equal((await db.query('SELECT count(*) n FROM folha_historico')).rows[0].n,0);
+   assert.equal((await db.query<Record<string,any>>('SELECT count(*) n FROM folha_historico')).rows[0].n,0);
   });
   await scenario('migração regulariza inativo já existente e reaplicação é idempotente',async()=>{
    await db.exec(`ALTER TABLE funcionarios DISABLE TRIGGER trg_funcionario_inativo_previsoes;UPDATE funcionarios SET ativo=false WHERE id='${id(20)}';ALTER TABLE funcionarios ENABLE TRIGGER trg_funcionario_inativo_previsoes;`);
    await db.exec(sql);await db.exec(sql);assert.equal((await get(salario(50))).status,'cancelado');
-   assert.equal((await db.query('SELECT count(*) n FROM folha_historico')).rows[0].n,3);
+   assert.equal((await db.query<Record<string,any>>('SELECT count(*) n FROM folha_historico')).rows[0].n,3);
   });
   await scenario('linha de outro cliente bloqueia sem alterar dados',async()=>{
-   await db.query('UPDATE folha_funcionarios SET funcionario_id=$1 WHERE id=$2',[id(22),linha(50)]);
-   await assert.rejects(db.query('UPDATE funcionarios SET ativo=false WHERE id=$1',[id(22)]),/clientes diferentes/);
+   await db.query<Record<string,any>>('UPDATE folha_funcionarios SET funcionario_id=$1 WHERE id=$2',[id(22),linha(50)]);
+   await assert.rejects(db.query<Record<string,any>>('UPDATE funcionarios SET ativo=false WHERE id=$1',[id(22)]),/clientes diferentes/);
    assert.equal((await get(salario(50))).status,'em_aberto');
   });
   await scenario('funcionário de outra fazenda do mesmo cliente é tratado na folha do empregador',async()=>{
-   await db.query('UPDATE funcionarios SET fazenda_id=$1 WHERE id=$2',[id(3),id(20)]);
+   await db.query<Record<string,any>>('UPDATE funcionarios SET fazenda_id=$1 WHERE id=$2',[id(3),id(20)]);
    await inativar();assert.equal((await get(salario(50))).status,'cancelado');
   });
   await scenario('função privilegiada não pode ser executada diretamente por usuário autenticado',async()=>{
    await db.exec('SET ROLE authenticated');
-   try{await assert.rejects(db.query('SELECT folha_limpar_inativos(NULL,$1)',[id(20)]),/permission denied/);}
+   try{await assert.rejects(db.query<Record<string,any>>('SELECT folha_limpar_inativos(NULL,$1)',[id(20)]),/permission denied/);}
    finally{await db.exec('RESET ROLE');}
   });
   await db.exec('CREATE TABLE financeiro_operacoes(requisicao_id uuid,tabela text,registro_id uuid,acao text,dados jsonb,antes jsonb,depois jsonb,retorno jsonb,created_at timestamptz)');
@@ -144,7 +144,7 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
   const i447=source.indexOf('-- Seção 447 —');const f447=source.indexOf("\n-- Seção ",i447+10);
   await db.exec(source.slice(i447,f447<0?undefined:f447));
   await scenario('encargos opcionais: desmarcar cancela previsões e conserva salários e cálculos',async()=>{
-   await db.query('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]);
+   await db.query<Record<string,any>>('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]);
    assert.equal((await get(id(2050))).status,'cancelado');assert.equal((await get(id(3050))).status,'cancelado');
    assert.equal((await get(salario(50))).status,'em_aberto');
    const f=(await db.query<Record<string,any>>('SELECT * FROM folha_pagamento WHERE id=$1',[id(50)])).rows[0];
@@ -155,15 +155,15 @@ test("inativação: SQL real preserva obrigações e elimina previsões dos rasc
   });
   await scenario('encargo pago impede desmarcação sem modificar valor ou opção',async()=>{
    await db.exec(`UPDATE lancamentos SET natureza='real',status='baixado',valor_pago=240 WHERE id='${id(2050)}'`);
-   await assert.rejects(db.query('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]),/Regularize/);
+   await assert.rejects(db.query<Record<string,any>>('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]),/Regularize/);
    assert.equal((await get(id(2050))).status,'baixado');
-   assert.equal((await db.query('SELECT gerar_encargos_cp FROM folha_pagamento WHERE id=$1',[id(50)])).rows[0].gerar_encargos_cp,true);
+   assert.equal((await db.query<Record<string,any>>('SELECT gerar_encargos_cp FROM folha_pagamento WHERE id=$1',[id(50)])).rows[0].gerar_encargos_cp,true);
   });
   await scenario('opção fica protegida na folha fechada e pode ser reativada no rascunho',async()=>{
-   await assert.rejects(db.query('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(53)]),/Reabra/);
-   await db.query('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]);
-   await db.query('UPDATE folha_pagamento SET gerar_encargos_cp=true WHERE id=$1',[id(50)]);
-   assert.equal((await db.query('SELECT gerar_encargos_cp FROM folha_pagamento WHERE id=$1',[id(50)])).rows[0].gerar_encargos_cp,true);
+   await assert.rejects(db.query<Record<string,any>>('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(53)]),/Reabra/);
+   await db.query<Record<string,any>>('UPDATE folha_pagamento SET gerar_encargos_cp=false WHERE id=$1',[id(50)]);
+   await db.query<Record<string,any>>('UPDATE folha_pagamento SET gerar_encargos_cp=true WHERE id=$1',[id(50)]);
+   assert.equal((await db.query<Record<string,any>>('SELECT gerar_encargos_cp FROM folha_pagamento WHERE id=$1',[id(50)])).rows[0].gerar_encargos_cp,true);
   });
  }finally{await db.close();}
 });

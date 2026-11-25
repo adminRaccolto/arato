@@ -10,7 +10,7 @@ const conteudo = <SecaoNfe titulo="Dados da operação"><input name="referencia"
 
 test("navegação percorre as mesmas seis etapas sem ultrapassar as extremidades", () => {
   assert.deepEqual(ABAS_EMISSAO_NFE.map(a => a.label), ["Emitente", "Destinatário", "Itens e tributos", "Transporte", "Referências e observações", "Origem da operação"]);
-  let atual = ABAS_EMISSAO_NFE[0].id;
+  let atual: (typeof ABAS_EMISSAO_NFE)[number]["id"] = ABAS_EMISSAO_NFE[0].id;
   const visitadas: string[] = [atual];
   for (let i = 1; i < ABAS_EMISSAO_NFE.length; i++) { atual = moverAbaEmissao(atual, 1); visitadas.push(atual); }
   assert.deepEqual(visitadas, ABAS_EMISSAO_NFE.map(a => a.id));
