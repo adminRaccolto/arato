@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.25-c",
+    data: "25/11/2026",
+    titulo: "Adiantamento a fornecedor e Folha de Pagamento",
+    modulos: ["Financeiro", "Folha de Pagamento"],
+    itens: [
+      { tipo: "melhoria", texto: "Adiantamento a fornecedor todo usado em NF sai do grid do Contas a Pagar. Continua em Financeiro → Adiantamentos a Fornecedores, na aba Aplicados." },
+      { tipo: "melhoria", texto: "Ao aplicar um adiantamento em Adiantamentos a Fornecedores, o campo NF lista as notas desse fornecedor com saldo em aberto no Contas a Pagar (total ou parcial, NF-e ou NFS-e, de qualquer fazenda do cliente). Escolher a nota preenche o valor e a descrição." },
+      { tipo: "melhoria", texto: "A janela da folha abre ocupando quase a tela toda, e a coluna Empregador some quando a folha é de um empregador só, para as colunas ficarem menos apertadas." },
+      { tipo: "melhoria", texto: "Funcionário com encargos zerados no cadastro: INSS e IRRF passam a ser editáveis na folha, para informar o desconto quando houver." },
+    ],
+    onde: "Financeiro → Contas a Pagar · Adiantamentos a Fornecedores · Folha de Pagamento",
+  },
+  {
     versao: "2026.11.25-b",
     data: "25/11/2026",
     titulo: "Venda de dias de férias no cadastro do funcionário",

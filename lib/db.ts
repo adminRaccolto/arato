@@ -7212,6 +7212,34 @@ export async function cancelarAdiantamento(id: string): Promise<void> {
   await reajustarPedidoDoAdiantamento((atual as AdiantamentoFornecedor | null)?.pedido_compra_id);
 }
 
+/** Títulos do CP com NF e saldo em aberto (total ou parcial) do fornecedor do adiantamento, em todas as fazendas do
+ *  cliente — opções do campo "NF" ao aplicar o adiantamento (25/11/2026). A regra final é do banco
+ *  (adiantamentos_disponiveis_cp), conferida de novo ao aplicar. */
+export type TituloNfAberto = { id: string; nf: string; descricao: string; vencimento: string | null; saldo: number; parcial: boolean; fazenda_id: string };
+export async function listarNfsAbertasDoFornecedor(fazendaIds: string[], a: Pick<AdiantamentoFornecedor, "pessoa_id" | "moeda">): Promise<TituloNfAberto[]> {
+  if (!a.pessoa_id || !fazendaIds.length) return [];
+  // Mesmo CPF/CNPJ em outro cadastro de pessoa também vale (mesma regra do banco)
+  const { data: p } = await supabase.from("pessoas").select("cpf_cnpj").eq("id", a.pessoa_id).maybeSingle();
+  const doc = String(p?.cpf_cnpj ?? "").replace(/\D/g, "");
+  let pessoaIds = [a.pessoa_id];
+  if (doc.length === 11 || doc.length === 14) {
+    const fmt = doc.length === 11 ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    const { data: ps } = await supabase.from("pessoas").select("id").in("cpf_cnpj", [doc, fmt]);
+    pessoaIds = [...new Set([a.pessoa_id, ...(ps ?? []).map(x => x.id as string)])];
+  }
+  const { data, error } = await supabase.from("lancamentos")
+    .select("id,fazenda_id,descricao,data_vencimento,valor,valor_pago,moeda,nfe_numero,numero_documento,nf_entrada_id,origem_lancamento,natureza,lote_id,fatura_cartao_id,contrato_financeiro_id,titulo_origem_id")
+    .in("fazenda_id", fazendaIds).in("pessoa_id", pessoaIds).eq("tipo", "pagar")
+    .in("status", ["em_aberto", "vencido", "vencendo", "parcial"]).order("data_vencimento").limit(500);
+  if (error) throw error;
+  return (data ?? [])
+    .filter(t => (t.natureza ?? "real") !== "previsao" && !t.lote_id && !t.fatura_cartao_id && !t.contrato_financeiro_id && !(Number(t.valor_pago ?? 0) > 0)
+      && (t.moeda ?? "BRL") === (a.moeda ?? "BRL") && !(t.origem_lancamento === "pedido_compra" && !t.nf_entrada_id)
+      && !!(t.nfe_numero || t.nf_entrada_id || (/^nf/.test(t.origem_lancamento ?? "") && t.numero_documento)))
+    .map(t => ({ id: t.id, fazenda_id: t.fazenda_id, nf: String(t.nfe_numero || t.numero_documento || ""), descricao: t.descricao ?? "",
+      vencimento: t.data_vencimento ?? null, saldo: Number(t.valor ?? 0), parcial: !!t.titulo_origem_id }));
+}
+
 export async function aplicarAdiantamento(
   adiantamento: AdiantamentoFornecedor,
   valorAplicado: number,
@@ -7219,15 +7247,17 @@ export async function aplicarAdiantamento(
   descricao: string,
   nrNf?: string,
   nfEntradaId?: string,
+  lancamentoId?: string,
 ): Promise<AdiantamentoAplicacao> {
   let q = supabase.from("lancamentos").select("id,nf_entrada_id,cotacao_usd,moeda")
-    .eq("fazenda_id", adiantamento.fazenda_id).eq("tipo", "pagar").in("status", ["em_aberto", "vencido", "vencendo"]);
-  if (nfEntradaId) q = q.eq("nf_entrada_id", nfEntradaId);
+    .eq("tipo", "pagar").in("status", ["em_aberto", "vencido", "vencendo", "parcial"]);
+  if (lancamentoId) q = q.eq("id", lancamentoId); // título escolhido na lista de NFs em aberto do fornecedor
+  else if (nfEntradaId) q = q.eq("fazenda_id", adiantamento.fazenda_id).eq("nf_entrada_id", nfEntradaId);
   else if (nrNf) {
     const { data: nfs, error } = await supabase.from("nf_entradas").select("id")
       .eq("fazenda_id", adiantamento.fazenda_id).eq("numero", nrNf);
     if (error) throw error;
-    q = q.in("nf_entrada_id", (nfs ?? []).map(n => n.id));
+    q = q.eq("fazenda_id", adiantamento.fazenda_id).in("nf_entrada_id", (nfs ?? []).map(n => n.id));
   } else throw new Error("Informe a NF ou aplique o crédito diretamente na baixa do CP. Uma anotação isolada não abate o financeiro.");
   const { data: titulos, error } = await q;
   if (error) throw error;

@@ -1,11 +1,13 @@
 export type OrigemTituloCP = {
   id: string; origem_tabela: string; origem_lancamento?: string | null;
-  categoria?: string | null; adiantamento_fornecedor?: boolean;
+  categoria?: string | null; adiantamento_fornecedor?: boolean; adiantamento_aplicado?: boolean;
   nf_entrada_id?: string | null; nfe_numero?: string | null;
 };
 /** Pedido tem controle próprio; a dívida da NF continua no CP. Adiantamento a fornecedor voltou ao grid em 18/11/2026
- *  (pedido do dono): baixa e estorno pelo CP usam a mesma rotina da tela de Adiantamentos. */
+ *  (pedido do dono): baixa e estorno pelo CP usam a mesma rotina da tela de Adiantamentos. Depois de todo usado em NF
+ *  (status "aplicado"), sai do grid (25/11/2026) — continua na tela de Adiantamentos e no razão. */
 export function exibirNoCP(t: OrigemTituloCP): boolean {
+  if (t.adiantamento_aplicado) return false;
   const temNF = !!t.nf_entrada_id || !!t.nfe_numero;
   return t.origem_lancamento !== "pedido_compra" || temNF;
 }

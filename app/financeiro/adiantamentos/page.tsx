@@ -12,7 +12,7 @@ import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   listarAdiantamentosDaConta, criarAdiantamento, cancelarAdiantamento, baixarAdiantamentoFornecedor, estornarPagamentoAdiantamento,
-  aplicarAdiantamento, listarAplicacoesAdiantamento,
+  aplicarAdiantamento, listarAplicacoesAdiantamento, listarNfsAbertasDoFornecedor, type TituloNfAberto,
   listarPessoasDaConta, listarContas, listarAnosSafra, listarFazendasDaConta,
   listarPedidosCompraRelDaConta, atualizarAdiantamento, listarProdutoresDaConta,
 } from "../../../lib/db";
@@ -74,7 +74,7 @@ const VAZIO_FORM = {
   ano_safra_id: "", observacao: "", ja_quitado: true,
 };
 
-const VAZIO_APLIQ = { valor_aplicado: "", data_aplicacao: "", descricao: "", nr_nf: "" };
+const VAZIO_APLIQ = { valor_aplicado: "", data_aplicacao: "", descricao: "", nr_nf: "", lancamento_id: "" };
 
 export default function AdiantamentosPage() {
   const { fazendaId, fazendaIds = [], contaId, anoSafraVigenteId } = useAuth();
@@ -120,6 +120,19 @@ export default function AdiantamentosPage() {
   const [salvandoBaixa, setSalvandoBaixa] = useState(false);
 
   const [fApliq, setFApliq] = useState({ ...VAZIO_APLIQ });
+  // NFs do fornecedor com saldo em aberto (total ou parcial) para o campo NF do Aplicar (25/11/2026)
+  const [nfsAbertas, setNfsAbertas] = useState<TituloNfAberto[] | null>(null);
+  const abrirAplicar = (a: AdiantamentoFornecedor) => {
+    setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: hojeLocal() }); setErro(""); setNfsAbertas(null);
+    listarNfsAbertasDoFornecedor(idsConta, a).then(setNfsAbertas).catch(e => { setNfsAbertas([]); setErro(`Não foi possível listar as NFs em aberto: ${(e as Error).message}`); });
+  };
+  const escolherNf = (id: string) => {
+    const t = nfsAbertas?.find(x => x.id === id);
+    if (!t || !modalApliq) { setFApliq(p => ({ ...p, lancamento_id: "", nr_nf: "" })); return; }
+    const valor = Math.min(modalApliq.credito_disponivel ?? 0, t.saldo);
+    setFApliq(p => ({ ...p, lancamento_id: t.id, nr_nf: t.nf, valor_aplicado: String(Math.round(valor * 100) / 100),
+      descricao: p.descricao.trim() ? p.descricao : `Aplicado na NF ${t.nf}` }));
+  };
 
   useEffect(() => {
     if (!fazRef || !idsConta.length) return;
@@ -227,14 +240,16 @@ export default function AdiantamentosPage() {
     if (!fApliq.valor_aplicado) errosAp.push("Valor a Aplicar");
     if (!fApliq.data_aplicacao) errosAp.push("Data de Aplicação");
     if (!fApliq.descricao.trim()) errosAp.push("Descrição");
-    if (!fApliq.nr_nf.trim()) errosAp.push("NF (ou aplique pela baixa do CP)");
+    if (!fApliq.lancamento_id) errosAp.push("NF");
     if (errosAp.length) { setErro(`Preencha antes de salvar: ${errosAp.join(", ")}`); return; }
     const val = Number(fApliq.valor_aplicado);
     const saldo = modalApliq.credito_disponivel ?? 0;
     if (val > saldo + 0.01) { setErro(`Valor maior que o saldo disponível (${fmtBRL(saldo)})`); return; }
     setSalvando(true); setErro("");
     try {
-      await aplicarAdiantamento(modalApliq, val, fApliq.data_aplicacao, fApliq.descricao.trim(), fApliq.nr_nf || undefined);
+      const nfSel = nfsAbertas?.find(x => x.id === fApliq.lancamento_id);
+      if (nfSel && val > nfSel.saldo + 0.01) { setErro(`Valor maior que o saldo em aberto da NF ${nfSel.nf} (${fmtBRL(nfSel.saldo)})`); setSalvando(false); return; }
+      await aplicarAdiantamento(modalApliq, val, fApliq.data_aplicacao, fApliq.descricao.trim(), fApliq.nr_nf || undefined, undefined, fApliq.lancamento_id);
       // Recarrega lista para refletir novo saldo/status
       recarregar().then(setAdiantamentos);
       setModalApliq(null);
@@ -437,7 +452,7 @@ export default function AdiantamentosPage() {
                           {a.status !== "cancelado" && Number(a.saldo_a_pagar) > 0 && <OperationalButton data-arato-button="primary" style={{ ...btnSm, background: "#1A5C38", color: "#fff" }} onClick={() => abrirBaixa(a)}>Baixar pagamento</OperationalButton>}
                           {(a.status === "em_aberto" || a.status === "parcial") && (a.credito_disponivel ?? 0) > 0 && (
                             <OperationalButton data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
-                              onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: hojeLocal() }); setErro(""); }}>
+                              onClick={() => abrirAplicar(a)}>
                               Aplicar
                             </OperationalButton>
                           )}
@@ -604,7 +619,7 @@ export default function AdiantamentosPage() {
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Crédito pago disponível</div><div style={{ fontWeight: 700, color: "#7A5520", fontSize: 16 }}>{fmtBRL(modalApliq.credito_disponivel ?? 0)}</div></div>
           </div>
 
-          <p style={{ fontSize: 12, color: "var(--text-2)" }}>A aplicação abate o CP da NF. Se houver mais de uma parcela, selecione o título em Contas a Pagar e aplique o crédito na baixa.</p>
+          <p style={{ fontSize: 12, color: "var(--text-2)" }}>A aplicação abate o CP da NF escolhida, sem saída bancária. Se a NF tiver várias parcelas, cada uma aparece separada na lista.</p>
           <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label data-arato-label="true" style={lbl}>Valor a Aplicar *</label>
@@ -619,8 +634,11 @@ export default function AdiantamentosPage() {
               <input style={inp} placeholder="Ex: Aplicado na NF de Insumos 001234" value={fApliq.descricao} onChange={e => setFApliq(p => ({ ...p, descricao: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label data-arato-label="true" style={lbl}>Nº da NF / Referência</label>
-              <input style={inp} placeholder="Ex: NF 001234 — Bayer Brasil" value={fApliq.nr_nf} onChange={e => setFApliq(p => ({ ...p, nr_nf: e.target.value }))} />
+              <label data-arato-label="true" style={lbl}>NF com saldo em aberto deste fornecedor *</label>
+              {nfsAbertas === null ? <div style={{ fontSize: 12, color: "var(--text-3)", padding: "8px 0" }}>Carregando NFs em aberto…</div>
+                : nfsAbertas.length === 0 ? <div style={{ fontSize: 12, color: "#7A5520", background: "#FBF3E0", borderRadius: 8, padding: "8px 10px" }}>Nenhuma NF deste fornecedor com saldo em aberto no Contas a Pagar. Processe a NF em Documentos Fiscais antes de aplicar o adiantamento.</div>
+                : <SelectBusca value={fApliq.lancamento_id} onChange={escolherNf} placeholder="Selecione a NF…"
+                    options={nfsAbertas.map(t => ({ value: t.id, label: `NF ${t.nf || "s/nº"} · venc. ${fmtData(t.vencimento ?? undefined)} · saldo ${fmtBRL(t.saldo)}${t.parcial ? " (parcial)" : ""}${fazendasConta.length > 1 ? ` · ${fazendasConta.find(f => f.id === t.fazenda_id)?.nome ?? ""}` : ""}` }))} />}
             </div>
           </div>
 

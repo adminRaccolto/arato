@@ -181,7 +181,8 @@ function recalc(f: FolhaFunc): FolhaFunc {
     f = { ...f, he_valor: he.he_valor, he_dsr: he.he_dsr };
   }
   const bruto = Math.round(((f.salario_base || 0) + (f.gratificacao || 0) + (f.he_valor || 0) + (f.he_dsr || 0)) * 100) / 100;
-  if (f.sem_impostos) return { ...f, salario_bruto: bruto, inss_trabalhador: 0, irrf: 0, fgts: 0, inss_patronal: 0 };
+  // Cadastro zerado: a folha não calcula; INSS e IRRF do trabalhador ficam como digitados na folha (25/11/2026)
+  if (f.sem_impostos) return { ...f, salario_bruto: bruto, inss_trabalhador: f.inss_trabalhador || 0, irrf: f.irrf || 0, fgts: 0, inss_patronal: 0 };
   const inss  = calcINSS(bruto);
   const r2 = (n: number) => Math.round(n * 100) / 100;
   const fgts = f.fgts_pct == null ? calcFGTS(bruto) : r2(bruto * f.fgts_pct / 100);
@@ -486,6 +487,8 @@ export default function FolhaPagamentoPage() {
           he_50_horas: Number(i.he_50_horas ?? 0), he_100_horas: Number(i.he_100_horas ?? 0),
           he_valor: Number(i.he_valor ?? 0), he_dsr: Number(i.he_dsr ?? 0),
           _comp: folha.competencia,
+          // Cadastro zerado: INSS/IRRF digitados à mão na folha (só a marca; os valores gravados não mudam)
+          sem_impostos: (() => { const c = funcionarios.find(x => x.id === i.funcionario_id); return c ? pctsEncargos(c).sem_impostos : false; })(),
         };
         // Folhas gravadas preservam os valores da competência. O cadastro atual só
         // preenche folhas novas; ajustes retroativos precisam ser feitos explicitamente.
@@ -1154,6 +1157,8 @@ export default function FolhaPagamentoPage() {
   }, new Map<string, { chave: string; nome: string; n: number }>()).values()).sort((a, b) => a.nome.localeCompare(b.nome)) : [];
   const linhaVisivel = (f: FolhaFunc) => !!folhaEdit.id || empNova === "*" || (empNova !== "" && chaveEmpregador(f) === empNova);
   const idxVisiveis = (folhaEdit.funcionarios ?? []).map((f, i) => linhaVisivel(f) ? i : -1).filter(i => i >= 0);
+  // Um empregador só (já no título da folha): a coluna Empregador some e sobra espaço para as demais (25/11/2026)
+  const colEmpregador = new Set(idxVisiveis.map(i => chaveEmpregador(folhaEdit.funcionarios[i]))).size > 1;
   function escolherEmpregadorNova(ch: string) {
     setEmpNova(ch);
     setSelecionados(new Set((folhaEdit.funcionarios ?? []).map((f, i) => (ch === "*" || (ch !== "" && chaveEmpregador(f) === ch)) ? i : -1).filter(i => i >= 0)));
@@ -1627,7 +1632,7 @@ export default function FolhaPagamentoPage() {
       {/* ══════════════ MODAL FOLHA ══════════════ */}
       {modalFolha && (
         <div data-folha-modal="true" style={S.overlay} onClick={()=>setModalFolha(false)}>
-          <div role="dialog" aria-modal="true" aria-labelledby="folha-dialog-title" className={folhaStyles.modal} data-folha-dialog="true" style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-labelledby="folha-dialog-title" className={folhaStyles.modal} data-folha-dialog="true" style={{ ...S.modal, width: "99vw", maxWidth: "none", maxHeight: "97vh", padding: "16px 18px 24px" }} onClick={e=>e.stopPropagation()}>
             <div className={folhaStyles.modalHeading} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <h2 id="folha-dialog-title" data-arato-h2="true" style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
@@ -1775,7 +1780,7 @@ export default function FolhaPagamentoPage() {
                     <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Horas Extras","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. / CP"].map(h=>(
+                          {["☑","",...(colEmpregador ? ["Empregador"] : []),"Funcionário","Salário Base","Gratificação","Horas Extras","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. / CP"].map(h=>(
                             <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -1801,7 +1806,7 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, width:24, padding:"4px 4px" }}>
                                   <OperationalButton data-arato-button="secondary" onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:"#1A4870", padding:"0 2px" }}>{expanded?"▾":"▸"}</OperationalButton>
                                 </td>
-                                <td style={{ ...S.td, minWidth:110, padding:"4px 8px" }}>
+                                {colEmpregador && <td style={{ ...S.td, minWidth:110, padding:"4px 8px" }}>
                                   {f.empresa_id
                                     ? <>
                                         <span style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{empresasMap[f.empresa_id] ?? "Empresa"}</span>
@@ -1810,7 +1815,7 @@ export default function FolhaPagamentoPage() {
                                     : f.produtor_id
                                       ? <span style={{ fontSize:11, fontWeight:600, color:"#16A34A", background:"#DCFCE7", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap" }}>{produtoresMap[f.produtor_id] ?? "Produtor"}</span>
                                       : <span style={{ fontSize:11, color:"#aaa" }}>Sem vínculo</span>}
-                                </td>
+                                </td>}
                                 <td style={{ ...S.td, fontWeight:600, minWidth:140, padding:"4px 8px" }}>{f.nome_funcionario}</td>
                                 <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", color:"#555", textAlign:"right", padding:"4px 8px", whiteSpace:"nowrap" }}>
                                   {moeda(f.salario_base)}
@@ -1846,8 +1851,16 @@ export default function FolhaPagamentoPage() {
                                   )}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.salario_bruto)}</td>
-                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.inss_trabalhador)}</td>
-                                <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.irrf)}</td>
+                                {(["inss_trabalhador", "irrf"] as const).map(campo => (
+                                  <td key={campo} style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>
+                                    {f.sem_impostos && editavel
+                                      ? <input type="number" min="0" step="0.01" value={f[campo] || ""} placeholder="0,00"
+                                          title={`Cadastro do funcionário sem encargos: a folha não calcula ${campo === "irrf" ? "o IRRF" : "o INSS"}. Informe o valor descontado, se houver.`}
+                                          onChange={e=>setFuncField(idx, campo, Math.max(0, parseFloat(e.target.value)||0))}
+                                          style={{ ...S.inp, width:82, textAlign:"right", fontSize:12, borderColor: f[campo] > 0 ? "#C9921B" : "#DDE2EE" }} />
+                                      : moeda(f[campo])}
+                                  </td>
+                                ))}
                                 <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap", color: (f.complemento_salarial ?? 0) > 0 ? "#1A4870" : "#888", fontWeight: (f.complemento_salarial ?? 0) > 0 ? 600 : 400 }}>{moeda(f.complemento_salarial ?? 0)}</td>
                                 {/* ── Outros Descontos — com justificativa inline ── */}
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
@@ -1888,7 +1901,7 @@ export default function FolhaPagamentoPage() {
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={15} style={{ padding:"12px 16px 16px 44px" }}>
+                                  <td colSpan={colEmpregador ? 15 : 14} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
                                         <label data-arato-label="true" style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>

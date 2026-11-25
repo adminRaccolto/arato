@@ -13,6 +13,7 @@ test("adiantamentos ao fornecedor aparecem no grid do CP (18/11/2026)",()=>{
   assert.equal(exibirNoCP({...nf,categoria:"Adiantamento a Fornecedores"}),true);
   const pedidoAdiantado={...nf,id:"adi",origem_lancamento:"pedido_compra",nf_entrada_id:null,adiantamento_fornecedor:true};
   assert.equal(exibirNoCP(pedidoAdiantado),false);
+  assert.equal(exibirNoCP({...nf,adiantamento_fornecedor:true,adiantamento_aplicado:true}),false, "todo usado em NF: sai do grid (25/11/2026)");
 });
 test("borderô só de pedidos é oculto; com adiantamento ou NF aparece",()=>{
   const ped={...nf,id:"ped",origem_lancamento:"pedido_compra",nf_entrada_id:null};

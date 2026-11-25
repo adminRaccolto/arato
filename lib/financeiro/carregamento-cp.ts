@@ -1,31 +1,32 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type TituloCP = { id: string; origem_tabela: string; fazenda_id?: string | null; origem_lancamento?: string | null; nf_entrada_id?: string | null };
-type VinculoCP = { adiantamento_fornecedor?: boolean; nf_entrada_id?: string | null; pedido_compra_id?: string | null };
+type VinculoCP = { adiantamento_fornecedor?: boolean; adiantamento_aplicado?: boolean; nf_entrada_id?: string | null; pedido_compra_id?: string | null };
 
 /** Classificação necessária antes de exibir o CP. Consulta famílias de adiantamentos, não cada lote do histórico inteiro. */
 export async function carregarVinculosCP<T extends TituloCP>(db: SupabaseClient, titulos: T[]): Promise<(T & VinculoCP)[]> {
   const fazendas = [...new Set(titulos.filter(t => t.origem_tabela === "lancamentos").map(t => t.fazenda_id).filter((id): id is string => !!id))];
   const adiantamentos = new Set<string>();
+  const aplicados = new Set<string>(); // crédito todo usado em NF: sai do grid (pedido do dono 25/11/2026)
   for (let i=0; i<fazendas.length; i+=100) {
     for (let de=0;;de+=1000) {
-      const { data,error }=await db.from("adiantamentos_fornecedor").select("id,lancamento_id")
+      const { data,error }=await db.from("adiantamentos_fornecedor").select("id,lancamento_id,status")
         .in("fazenda_id",fazendas.slice(i,i+100)).order("id").range(de,de+999);
       if (error) throw error;
-      for (const a of data ?? []) if (a.lancamento_id) adiantamentos.add(a.lancamento_id);
+      for (const a of data ?? []) if (a.lancamento_id) { adiantamentos.add(a.lancamento_id); if (a.status === "aplicado") aplicados.add(a.lancamento_id); }
       if (!data || data.length<1000) break;
     }
   }
   const vinculos = new Map<string,VinculoCP>();
-  for (const id of adiantamentos) vinculos.set(id,{adiantamento_fornecedor:true});
+  for (const id of adiantamentos) vinculos.set(id,{adiantamento_fornecedor:true,adiantamento_aplicado:aplicados.has(id)});
   const tarefas: (()=>Promise<void>)[]=[];
   const raizes=[...adiantamentos];
   for (let i=0;i<raizes.length;i+=100) tarefas.push(async()=>{
     for(let de=0;;de+=1000){
-      const {data,error}=await db.from("lancamentos").select("id")
+      const {data,error}=await db.from("lancamentos").select("id,titulo_origem_id")
         .in("titulo_origem_id",raizes.slice(i,i+100)).order("id").range(de,de+999);
       if(error)throw error;
-      for(const p of data ?? [])vinculos.set(p.id,{adiantamento_fornecedor:true});
+      for(const p of data ?? [])vinculos.set(p.id,{adiantamento_fornecedor:true,adiantamento_aplicado:aplicados.has(p.titulo_origem_id)});
       if(!data || data.length<1000)break;
     }
   });
