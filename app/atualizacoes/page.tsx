@@ -9,10 +9,11 @@ const RELEASES = [
   {
     versao: "2026.11.26-a",
     data: "26/11/2026",
-    titulo: "Transferências entre contas fora do Contas a Pagar e a Receber",
+    titulo: "Transferências entre contas fora do CP, do CR, do DRE e de Custos",
     modulos: ["Financeiro"],
     itens: [
       { tipo: "correcao", texto: "Transferência entre contas, aplicação, resgate e ajuste de saldo lançados pela Tesouraria não aparecem mais no Contas a Pagar nem no Contas a Receber — não são dívida nem recebível. Continuam em Financeiro → Tesouraria e na Conciliação Bancária. Taxa bancária, IOF/IR, seguro e consórcio lançados pela Tesouraria seguem no CP." },
+      { tipo: "correcao", texto: "Esses mesmos movimentos entre contas ficam fora do DRE, das Margens por Safra e de Custos (Totais e pelo caixa), também os antigos lançados pela conciliação com origem manual. Aplicação e resgate de aplicação não contam mais como receita ou custo; IOF e IR sobre a aplicação continuam como despesa financeira." },
     ],
     onde: "Financeiro → Contas a Pagar · Contas a Receber · Tesouraria",
   },

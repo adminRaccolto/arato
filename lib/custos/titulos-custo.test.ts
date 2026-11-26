@@ -29,3 +29,10 @@ test("previsão efetivada (natureza real, origem previsão) é gasto feito; prev
   assert.equal(ehPrevisaoAberta({ status: "baixado", natureza: "previsao" }), false);
   assert.equal(ehPrevisaoAberta({ status: "em_aberto", natureza: "real", origem_lancamento: "previsao" }), false);
 });
+
+test("movimento entre contas fica fora do DRE e do Custos mesmo com origem manual (26/11/2026)", () => {
+  for (const categoria of ["Transferência entre Contas", "Resgate de Aplicação", "Resgate de Aplicação Financeira", "Aplicação Financeira", "Aporte em Aplicação Financeira", "Ajuste de Saldo"])
+    assert.equal(entraNoCusto({ status: "baixado", categoria, origem_lancamento: "manual" }), false, categoria);
+  assert.equal(entraNoCusto({ status: "baixado", categoria: "Taxa Bancária", origem_lancamento: "manual" }), true);
+  assert.equal(entraNoCusto({ status: "baixado", categoria: "IOF — Aplicação Financeira" }), true, "IOF é custo financeiro");
+});

@@ -206,6 +206,8 @@ test("considera somente custos e despesas acima do EBITDA, inclusive categorias 
     "Juros sobre empréstimos",
     "Pagamento de Custeio",
     "Transferência",
+    "Aplicação Financeira",
+    "Resgate de Aplicação",
     "Aquisição de máquina",
     "IRPJ",
     "CSLL",

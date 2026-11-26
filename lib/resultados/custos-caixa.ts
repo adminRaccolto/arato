@@ -117,7 +117,7 @@ export function classificarCustoCaixa(
   const origem = t.origem_lancamento ?? t.origem;
   if (
     origem === "tesouraria" ||
-    /^(transfer|ajuste de saldo|captacao|distribuicao de lucro|retirada de socio|aporte)/.test(
+    /^(transfer|ajuste de saldo|captacao|distribuicao de lucro|retirada de socio|aporte|aplicacao financeira|resgate de aplicacao)/.test(
       categoria,
     )
   )

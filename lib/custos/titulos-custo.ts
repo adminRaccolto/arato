@@ -6,7 +6,9 @@
 export type TituloCusto = { status?: string | null; categoria?: string | null; origem_lancamento?: string | null; natureza?: string | null };
 
 // Principal de empréstimo e movimentos de caixa: não são custo de produção (juros e IOF continuam como custo financeiro)
-const NAO_CUSTO = /^(pagamento (?:de )?(custeio|financiamento|securitiza|cpr|egf|empr)|capta[cç][aã]o|ajuste de saldo|transfer|adiantamento)/i;
+// Aplicação, aporte e resgate de aplicação financeira: dinheiro mudando de conta, não custo nem receita — também quando o
+// título antigo foi gravado com origem "manual" pela conciliação (26/11/2026)
+const NAO_CUSTO = /^(pagamento (?:de )?(custeio|financiamento|securitiza|cpr|egf|empr)|capta[cç][aã]o|ajuste de saldo|transfer|adiantamento|aplica[cç][aã]o financeira|aporte em aplica|resgate de aplica)/i;
 
 /**
  * O título entra como custo? Fora: cancelado, previsão, tesouraria, principal de empréstimo e movimentos de caixa.
