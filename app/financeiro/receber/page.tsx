@@ -1,5 +1,6 @@
 "use client";
 import { fetchFinanceiro } from "../../../lib/financeiro/requisicao";
+import { movimentoEntreContas } from "../../../lib/financeiro/visibilidade-cp";
 import {useOperationalPresentation} from '../../../components/arato-layout/presentation-mode';
 import NativeActionOrbit from '../../../components/arato-layout/NativeActionOrbit';
 import NativeRecordPanel from '../../../components/arato-layout/NativeRecordPanel';
@@ -495,6 +496,7 @@ export default function ContasAReceberPage() {
     && (!temExtrasBordero || itensDoBordero(b, resultado ?? []).some(l => passaExtras(l, true))));
   const linhas = (resultado ?? []).filter(l => {
     if (tituloVinculado(l, vinculos) || !filtrarNomeTitulo(l, fBusca)) return false;
+    if (movimentoEntreContas(l)) return false; // transferência/aplicação/ajuste da Tesouraria não é recebível
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
     if (fStatus.size > 0) {
       const st = l.status_normalizado ?? "";

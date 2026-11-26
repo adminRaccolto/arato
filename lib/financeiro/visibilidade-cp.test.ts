@@ -23,3 +23,11 @@ test("borderô só de pedidos é oculto; com adiantamento ou NF aparece",()=>{
   assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:ped.id},{lancamento_id:nf.id}]},[ped,a,nf]),true);
   assert.equal(exibirBorderoNoCP({itens:[{lancamento_id:"antigo"}]},[ped,a,nf]),true);
 });
+
+test("transferência, aplicação/resgate e ajuste da Tesouraria ficam fora do CP; taxa bancária continua (26/11/2026)",()=>{
+  const tes={id:"t",origem_tabela:"lancamentos",origem_lancamento:"tesouraria"};
+  for (const categoria of ["Transferência entre Contas","Aporte em Aplicação Financeira","Resgate de Aplicação Financeira","Ajuste de Saldo"])
+    assert.equal(exibirNoCP({...tes,categoria}),false,categoria);
+  assert.equal(exibirNoCP({...tes,categoria:"Taxa Bancária"}),true);
+  assert.equal(exibirNoCP({...nf,categoria:"Transferência entre Contas"}),true,"só a origem Tesouraria");
+});

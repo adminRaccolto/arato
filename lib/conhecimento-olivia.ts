@@ -670,6 +670,7 @@ Sem decisão, a sobra continua como previsão no caixa.
 **Fora do módulo:** contratos financeiros e arrendamentos não entram na Previsão de Gastos.
 
 ### Tesouraria, mútuo e aplicações
+**Tesouraria fora do CP/CR:** transferência entre contas, aplicação, aporte, resgate e ajuste de saldo lançados em Financeiro → Tesouraria não aparecem no Contas a Pagar nem no Contas a Receber (não são dívida nem recebível). Para conferir, editar ou desfazer, use a própria Tesouraria; a conciliação bancária continua enxergando esses lançamentos. Taxa bancária, IOF/IR, seguro, consórcio e "Outros" lançados pela Tesouraria continuam aparecendo no CP.
 **Filtros da Tesouraria:** Em Financeiro → Tesouraria, acima da lista, há os filtros Buscar (descrição, operação, conta, observação ou valor), Operação, Tipo (Entradas/Saídas), Status (Aberto/Baixado), Conta e Data de/até. Os cartões Total Entradas, Total Saídas e Lançamentos em Aberto mostram só o que está filtrado. Limpar tira todos os filtros.
 
 **Lançamento de Mútuo:** Em Financeiro → Tesouraria, use o botão "Lançamento de Mútuo" ou a operação de mesmo nome no Novo Lançamento.

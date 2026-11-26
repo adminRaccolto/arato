@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.26-a",
+    data: "26/11/2026",
+    titulo: "Transferências entre contas fora do Contas a Pagar e a Receber",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Transferência entre contas, aplicação, resgate e ajuste de saldo lançados pela Tesouraria não aparecem mais no Contas a Pagar nem no Contas a Receber — não são dívida nem recebível. Continuam em Financeiro → Tesouraria e na Conciliação Bancária. Taxa bancária, IOF/IR, seguro e consórcio lançados pela Tesouraria seguem no CP." },
+    ],
+    onde: "Financeiro → Contas a Pagar · Contas a Receber · Tesouraria",
+  },
+  {
     versao: "2026.11.25-c",
     data: "25/11/2026",
     titulo: "Adiantamento a fornecedor e Folha de Pagamento",
