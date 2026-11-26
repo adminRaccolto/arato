@@ -1446,7 +1446,7 @@ function FaturamentoInner() {
 
       case "operacoes": return (
         <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:12 }}>
-          <OperacaoFiscalSelect cfop={fVenda.cfop} data={fVenda.data_emissao} value={operacaoFiscalId} onChange={setOperacaoFiscalId} variaveis={variaveisFiscais} onVariaveis={setVariaveisFiscais} nfReferencia={fVenda.nf_ref_chave}/>
+          <OperacaoFiscalSelect cfop={fVenda.cfop} data={fVenda.data_emissao} value={operacaoFiscalId} onChange={setOperacaoFiscalId} variaveis={variaveisFiscais} onVariaveis={setVariaveisFiscais} nfReferencia={fVenda.nf_ref_chave} cst={fVenda.cst_icms}/>
           <div style={{ gridColumn:"1/3" }}>
             <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
             <SelectField style={inp} value={fVenda.cfop}

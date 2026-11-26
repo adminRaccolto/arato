@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.26-b",
+    data: "26/11/2026",
+    titulo: "NF-e de venda escolhe a operação fiscal pela CST marcada",
+    modulos: ["Fiscal", "Comercial"],
+    itens: [
+      { tipo: "melhoria", texto: "Quando o cliente tem várias operações fiscais para o mesmo CFOP (ex.: 5101 diferido e 5101 isento) e a nota tem a CST do ICMS marcada, a emissão usa sozinha a operação de mesma CST, com o texto legal dela. Só pede a escolha no campo \"Operação fiscal cadastrada\" se houver mais de uma operação com essa CST e textos diferentes; o aviso agora diz quais são." },
+    ],
+    onde: "Comercial → Faturamento · NF-e Avulsa → Itens e tributos",
+  },
+  {
     versao: "2026.11.26-a",
     data: "26/11/2026",
     titulo: "Transferências entre contas fora do CP, do CR, do DRE e de Custos",

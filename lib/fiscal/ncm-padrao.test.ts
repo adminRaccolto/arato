@@ -79,3 +79,23 @@ test("emissão: Operação Fiscal com CST e classificação IBS/CBS próprios di
   const semDef = dbFake({ ncm_tributacoes: [], operacoes_fiscais: [{ ...op, ibs_cbs_cst: null, ibs_cbs_cclasstrib: null }] });
   await assert.rejects(resolverTributacaoNFe(semDef, "f1", { ...nota("38089329", "5934"), operacao_fiscal_id: "op1" } as never, { ibs_cbs_ativo: "sim" }, "3"), /Cadastre a tributação IBS\/CBS do NCM 38089329[\s\S]*Carregar padrões do agro/);
 });
+
+test("emissão: CST marcada no item escolhe sozinha a operação do CFOP com a mesma CST (caso Cleber 26/11/2026)", async () => {
+  const base = { fazenda_id: "f1", cfop_interno: "5101", cfop_externo: "6101", pis_cst: "06", cofins_cst: "06", ibs_cbs_cst: "200", ibs_cbs_cclasstrib: "200036", ibs_cbs_reducao_pct: 60, vigencia_inicio: null, vigencia_fim: null };
+  const ops = [
+    { ...base, id: "ind", nome: "Venda para Industrialização", icms_cst_interno: "051", icms_cst_externo: "020", inf_cpl_template: "ICMS diferido" },
+    { ...base, id: "termo", nome: "Venda com Fixação", icms_cst_interno: "051", icms_cst_externo: "051", inf_cpl_template: "Venda a fixar" },
+    { ...base, id: "isento", nome: "Venda de Produto Isento", icms_cst_interno: "040", icms_cst_externo: "040", inf_cpl_template: "PRODUTO ISENTO" },
+  ];
+  const db = dbFake({ ncm_tributacoes: [], operacoes_fiscais: ops });
+  const n = nota("23040010", "5101");
+  const comCst = { ...n, itens: [{ ...n.itens[0], cst_icms: "40", cst_icms_manual: true }] };
+  const [it] = await resolverTributacaoNFe(db, "f1", comCst as never, {}, "3");
+  assert.equal(it.cst_icms, "40");
+  assert.equal(it.regra_fiscal?.texto_legal, "PRODUTO ISENTO");
+  // Sem CST marcada continua pedindo a escolha, nomeando as opções
+  await assert.rejects(resolverTributacaoNFe(db, "f1", n as never, {}, "3"), /Operação fiscal cadastrada/);
+  // Duas operações com a mesma CST e textos diferentes: continua pedindo a escolha
+  const dup = dbFake({ ncm_tributacoes: [], operacoes_fiscais: [...ops, { ...ops[2], id: "isento2", nome: "Venda para Industrialização (isenta)", inf_cpl_template: "OUTRO TEXTO" }] });
+  await assert.rejects(resolverTributacaoNFe(dup, "f1", comCst as never, {}, "3"), /Venda de Produto Isento/);
+});

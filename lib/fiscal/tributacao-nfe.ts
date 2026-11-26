@@ -37,7 +37,11 @@ export async function resolverTributacaoNFe(db:SupabaseClient,fazendaId:string,i
       throw new Error("A escolha de CST do ICMS exige regime normal. Para Simples Nacional ou MEI, utilize o CSOSN da configuração fiscal e mantenha o CST em Automático.");
     const cfop=dig(item.cfop);const interno=["1","5"].includes(cfop[0]);
     const candidatas=ops.filter(r=>vigente(r)&&dig(interno?r.cfop_interno:r.cfop_externo)===cfop);
-    const op=input.operacao_fiscal_id?candidatas.find(r=>r.id===input.operacao_fiscal_id):escolher(candidatas,fazendaId,"CFOP "+cfop);
+    // CST marcada à mão no item escolhe entre as operações do CFOP: só as de mesma CST concorrem (26/11/2026, Cleber —
+    // venda isenta 040 recusada no automático por haver também operações 051 do 5101)
+    const cstOp=(r:Regra)=>dig(interno?r.icms_cst_interno:r.icms_cst_externo).slice(-2);
+    const mesmaCst=icmsManual&&item.cst_icms?candidatas.filter(r=>cstOp(r)===dig(item.cst_icms).slice(-2)):[];
+    const op=input.operacao_fiscal_id?candidatas.find(r=>r.id===input.operacao_fiscal_id):escolher(mesmaCst.length?mesmaCst:candidatas,fazendaId,"CFOP "+cfop);
     if(input.operacao_fiscal_id&&!op)throw new Error("A operação fiscal selecionada não corresponde ao cliente, CFOP ou data da nota.");
     const ncm=escolher(ncms.filter(r=>vigente(r)&&dig(r.ncm)===dig(item.ncm)),fazendaId,"NCM "+item.ncm);
     // CST de ICMS em branco no NCM = "pela operação": o NCM só define o IBS/CBS (padrões do agro fora dos grãos, lib/fiscal/ncm-padrao.ts)
