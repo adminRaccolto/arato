@@ -9,10 +9,11 @@ const RELEASES = [
   {
     versao: "2026.11.27-a",
     data: "27/11/2026",
-    titulo: "Complemento salarial do cadastro na folha em rascunho",
+    titulo: "Folha em rascunho: complemento salarial e empregador vindos do cadastro",
     modulos: ["RH", "Financeiro"],
     itens: [
       { tipo: "correcao", texto: "Folha em rascunho criada antes do complemento salarial ser cadastrado mostrava R$ 0,00 na coluna Complemento. Agora, ao abrir o rascunho, o complemento vem do cadastro atual do funcionário e entra no salário líquido; basta Salvar Folha. Folhas fechadas não mudam." },
+      { tipo: "correcao", texto: "Folha em rascunho gravada sem empregador (\"Sem vínculo\") e com funcionários de mais de um produtor: ao Salvar Folha, ela é separada sozinha em uma folha por empregador no mês, com previsões de salário e encargos refeitas por empregador." },
     ],
     onde: "Financeiro → Folha de Pagamento",
   },

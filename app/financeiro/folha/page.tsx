@@ -559,6 +559,31 @@ export default function FolhaPagamentoPage() {
     setModalFolha(true);
   }
 
+  // Uma folha por EMPREGADOR: empresa (PJ) ou, sem empresa, o produtor rural; fazenda = a da maioria dos funcionários
+  function agruparPorEmpregador(funcs: FolhaFunc[]) {
+    const grupos = new Map<string, { empresaId: string | null; produtorId: string | null; fazendaIdGrupo: string; itens: FolhaFunc[] }>();
+    for (const f of funcs) {
+      const fazendaIdGrupo = f.fazenda_id ?? fazendaId!;
+      const empresaId  = f.empresa_id ?? null;
+      // Folha de PJ continua uma por empresa (o produtor não separa a folha); sem empresa, uma por produtor
+      const produtorChave = empresaId ? null : (f.produtor_id ?? null);
+      // O mesmo CNPJ/CPF é o mesmo empregador, ainda que cadastrado como produtor e como empresa
+      const key = chaveEmpregador(f) || `${empresaId ?? ""}|${produtorChave ?? ""}`;
+      if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId: produtorChave, fazendaIdGrupo, itens: [] });
+      const g = grupos.get(key)!;
+      g.itens.push(f);
+      // Folha de PJ guarda o produtor vinculado dos funcionários (antes ficava vazio — achado 30/10/2026, Muriana)
+      if (empresaId && !g.produtorId && f.produtor_id) g.produtorId = f.produtor_id;
+    }
+    // Fazenda da folha = a da maioria dos funcionários do grupo
+    for (const g of grupos.values()) {
+      const cont = new Map<string, number>();
+      for (const it of g.itens) { const fz = it.fazenda_id ?? fazendaId!; cont.set(fz, (cont.get(fz) ?? 0) + 1); }
+      g.fazendaIdGrupo = [...cont.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? g.fazendaIdGrupo;
+    }
+    return grupos;
+  }
+
   async function salvarFolha() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar folha)", perigo: false }))) return;
     if (!fazendaId) return;
@@ -573,33 +598,26 @@ export default function FolhaPagamentoPage() {
         // Edição de folha existente — mantém empregador e fazenda originais
         // Folha de PJ sem produtor gravado (antigas): leva o produtor vinculado dos funcionários
         const produtorEdit = folhaEdit.empresa_id && !folhaEdit.produtor_id ? (funcs.find(f => f.produtor_id)?.produtor_id ?? null) : folhaEdit.produtor_id;
-        inativosIgnorados += await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, produtorEdit, folhaEdit.fazenda_id);
-        setMsg("Folha salva.");
+        const gruposSemVinculo = !folhaEdit.empresa_id && !folhaEdit.produtor_id ? [...agruparPorEmpregador(funcs).values()] : [];
+        if (gruposSemVinculo.length && gruposSemVinculo.some(g => g.empresaId || g.produtorId)) {
+          // Folha antiga gravada sem empregador ("Sem vínculo", antes da Seção 261) e com funcionários de mais de um
+          // produtor: esta folha fica com o 1º empregador e os demais vão para a folha deles no mês (27/11/2026, Cleber)
+          const [primeiro, ...demais] = gruposSemVinculo;
+          await apiFolha({ operacao: "update_folha", id: folhaEdit.id, empresa_id: primeiro.empresaId, produtor_id: primeiro.produtorId });
+          inativosIgnorados += await salvarFolhaMes(folhaEdit.competencia!, primeiro.itens, primeiro.empresaId, primeiro.produtorId, folhaEdit.fazenda_id);
+          for (const g of demais)
+            inativosIgnorados += await salvarFolhaMes(folhaEdit.competencia!, g.itens, g.empresaId, g.produtorId, g.fazendaIdGrupo, true);
+          setMsg(demais.length ? `Folha salva e separada por empregador (${gruposSemVinculo.length} folhas no mês).` : "Folha salva.");
+        } else {
+          inativosIgnorados += await salvarFolhaMes(folhaEdit.competencia!, funcs, folhaEdit.empresa_id, produtorEdit, folhaEdit.fazenda_id);
+          setMsg("Folha salva.");
+        }
       } else {
         // Nova folha — uma por EMPREGADOR por mês: empresa (PJ) ou, sem empresa, o produtor rural. Produtores diferentes
         // (empresa_id nulo) NÃO caem na mesma folha (Seção 261). A fazenda do funcionário NÃO separa a folha: o
         // empregador é do cliente (achado 30/10/2026 — Muriana Out/2026 saiu em folhas separadas por ter funcionários
         // cadastrados em duas fazendas). A folha fica na fazenda da maioria dos funcionários.
-        const grupos = new Map<string, { empresaId: string | null; produtorId: string | null; fazendaIdGrupo: string; itens: FolhaFunc[] }>();
-        for (const f of funcs) {
-          const fazendaIdGrupo = f.fazenda_id ?? fazendaId!;
-          const empresaId  = f.empresa_id ?? null;
-          // Folha de PJ continua uma por empresa (o produtor não separa a folha); sem empresa, uma por produtor
-          const produtorChave = empresaId ? null : (f.produtor_id ?? null);
-          // O mesmo CNPJ/CPF é o mesmo empregador, ainda que cadastrado como produtor e como empresa
-          const key = chaveEmpregador(f) || `${empresaId ?? ""}|${produtorChave ?? ""}`;
-          if (!grupos.has(key)) grupos.set(key, { empresaId, produtorId: produtorChave, fazendaIdGrupo, itens: [] });
-          const g = grupos.get(key)!;
-          g.itens.push(f);
-          // Folha de PJ guarda o produtor vinculado dos funcionários (antes ficava vazio — achado 30/10/2026, Muriana)
-          if (empresaId && !g.produtorId && f.produtor_id) g.produtorId = f.produtor_id;
-        }
-        // Fazenda da folha = a da maioria dos funcionários do grupo
-        for (const g of grupos.values()) {
-          const cont = new Map<string, number>();
-          for (const it of g.itens) { const fz = it.fazenda_id ?? fazendaId!; cont.set(fz, (cont.get(fz) ?? 0) + 1); }
-          g.fazendaIdGrupo = [...cont.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? g.fazendaIdGrupo;
-        }
+        const grupos = agruparPorEmpregador(funcs);
         const meses = monthsInRange(modalCompDe, modalCompAte);
         for (const comp of meses) {
           for (const { empresaId, produtorId, fazendaIdGrupo, itens } of grupos.values()) {
@@ -657,7 +675,7 @@ export default function FolhaPagamentoPage() {
     return json;
   }
 
-  async function salvarFolhaMes(comp: string, funcsTela: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string) {
+  async function salvarFolhaMes(comp: string, funcsTela: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string, somarNaExistente = false) {
     let funcs = funcsTela;
     const fazendaAlvo = fazendaIdGrupo ?? funcs[0]?.fazenda_id ?? fazendaId!;
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
@@ -692,7 +710,7 @@ export default function FolhaPagamentoPage() {
         ...dadosFolha,
       });
       folhaId = res.id as string;
-      if (!res.criou && folhaEdit.id) {
+      if (!res.criou && folhaEdit.id && !somarNaExistente) {
         // Editando a folha (o empregador foi resolvido para outra folha do mesmo CNPJ): regrava os funcionários
         await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
       } else if (!res.criou) {
@@ -709,7 +727,7 @@ export default function FolhaPagamentoPage() {
           inss_patronal: todos.reduce((s, f) => s + Number(f.inss_patronal ?? 0), 0),
           fgts_total: todos.reduce((s, f) => s + Number(f.fgts ?? 0), 0) });
       }
-      if (comp === folhaEdit.competencia) setFolhaEdit(p => ({ ...p, id: folhaId, fazenda_id: fazendaAlvo, empresa_id: empresaId ?? null, produtor_id: produtorId ?? null }));
+      if (comp === folhaEdit.competencia && !somarNaExistente) setFolhaEdit(p => ({ ...p, id: folhaId, fazenda_id: fazendaAlvo, empresa_id: empresaId ?? null, produtor_id: produtorId ?? null }));
     } else {
       await apiFolha({ operacao: "update_folha", id: folhaId, ...dadosFolha });
       await apiFolha({ operacao: "delete_funcionarios", folha_id: folhaId });
