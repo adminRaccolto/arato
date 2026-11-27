@@ -482,7 +482,11 @@ export default function FolhaPagamentoPage() {
         const base: FolhaFunc = {
           ...i,
           salario_base: Math.round(((i.salario_bruto ?? 0) - (i.gratificacao ?? 0) - (i.he_valor ?? 0) - (i.he_dsr ?? 0)) * 100) / 100,
-          complemento_salarial: i.complemento_salarial ?? 0,
+          // Rascunho segue o complemento do cadastro atual (folha criada antes do complemento ser cadastrado ficava
+          // com R$ 0,00 — 27/11/2026, Warlles); folha fechada mantém o valor gravado na competência
+          complemento_salarial: folha.status === "rascunho"
+            ? Number(funcionarios.find(x => x.id === i.funcionario_id)?.complemento_salarial ?? i.complemento_salarial ?? 0)
+            : i.complemento_salarial ?? 0,
           gratificacao: i.gratificacao ?? 0,
           he_50_horas: Number(i.he_50_horas ?? 0), he_100_horas: Number(i.he_100_horas ?? 0),
           he_valor: Number(i.he_valor ?? 0), he_dsr: Number(i.he_dsr ?? 0),

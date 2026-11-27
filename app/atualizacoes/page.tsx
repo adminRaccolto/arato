@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.11.27-a",
+    data: "27/11/2026",
+    titulo: "Complemento salarial do cadastro na folha em rascunho",
+    modulos: ["RH", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Folha em rascunho criada antes do complemento salarial ser cadastrado mostrava R$ 0,00 na coluna Complemento. Agora, ao abrir o rascunho, o complemento vem do cadastro atual do funcionário e entra no salário líquido; basta Salvar Folha. Folhas fechadas não mudam." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.11.26-b",
     data: "26/11/2026",
     titulo: "NF-e de venda escolhe a operação fiscal pela CST marcada",
